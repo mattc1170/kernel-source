@@ -27,7 +27,7 @@ Group:          Development/Sources
 Version:        @RPMVERSION@
 %if %using_buildservice
 %if 0%{?is_kotd}
-Release:        <RELEASE>.g@COMMIT@
+Release:        <RELEASE>.venvr.imsdk.g@COMMIT@
 %else
 Release:        @RELEASE@
 %endif

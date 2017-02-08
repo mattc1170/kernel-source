@@ -1,0 +1,33 @@
+From: mattcrane@tycoint.com
+Date:
+Subject: drm/i915/skl: Add missing SKL ids
+This is a re-creation of the following patch from the
+Intel Media SDK 2017 that was unable to be applied
+cleanly to the current SUSE 4.4 kernel:
+
+0089-drm-i915-skl-Add-missing-SKL-ids.patch
+---
+ include/drm/i915_pciids.h |    3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+--- a/include/drm/i915_pciids.h
++++ b/include/drm/i915_pciids.h
+@@ -261,9 +261,9 @@
+ 	INTEL_VGA_DEVICE(0x22b3, info)
+ 
+ #define INTEL_SKL_GT1_IDS(info)	\
++	INTEL_VGA_DEVICE(0x1902, info), /* ULT GT1 */ \
+ 	INTEL_VGA_DEVICE(0x1906, info), /* ULT GT1 */ \
+ 	INTEL_VGA_DEVICE(0x190E, info), /* ULX GT1 */ \
+-	INTEL_VGA_DEVICE(0x1902, info), /* DT  GT1 */ \
+ 	INTEL_VGA_DEVICE(0x190B, info), /* Halo GT1 */ \
+ 	INTEL_VGA_DEVICE(0x190A, info) /* SRV GT1 */
+ 
+@@ -284,6 +284,7 @@
+ 	INTEL_VGA_DEVICE(0x1926, info), /* ULT GT3 */ \
+ 	INTEL_VGA_DEVICE(0x1927, info), /* ULT GT3 */ \
+ 	INTEL_VGA_DEVICE(0x192B, info), /* Halo GT3 */ \
++	INTEL_VGA_DEVICE(0x192D, info), /* SRV GT3 */ \
+ 	INTEL_VGA_DEVICE(0x192A, info)  /* SRV GT3 */
+ 
+ #define INTEL_SKL_GT4_IDS(info) \

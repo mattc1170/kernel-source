@@ -32,7 +32,7 @@ License:        GPL-2.0
 Group:          Development/Sources
 Version:        @RPMVERSION@
 %if 0%{?is_kotd}
-Release:        <RELEASE>.g@COMMIT@
+Release:        <RELEASE>.venvr.imsdk.g@COMMIT@
 %else
 Release:        @RELEASE@
 %endif
