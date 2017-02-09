@@ -1,0 +1,61 @@
+From: Pierre-Louis Bossart <pierre-louis.bossart@linux.intel.com>
+Date: Fri, 12 Aug 2016 16:27:44 -0500
+Subject: [PATCH 62/82] ASoC: Intel: bytcr-rt5640: add Asus T100TAF quirks
+Git-commit: 73442e3ccbc3136cf92a6785d81d118932292681
+Patch-mainline: 4.9-rc1
+References: bsc#1010690
+
+Add quirk based on DMI string matching
+Also fix matching to use DMI_EXACT_MATCH otherwise T100TA and T100TAF
+will be using same quirk
+
+Signed-off-by: Pierre-Louis Bossart <pierre-louis.bossart@linux.intel.com>
+Signed-off-by: Mark Brown <broonie@kernel.org>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ sound/soc/intel/boards/bytcr_rt5640.c |   20 ++++++++++++++------
+ 1 file changed, 14 insertions(+), 6 deletions(-)
+
+--- a/sound/soc/intel/boards/bytcr_rt5640.c
++++ b/sound/soc/intel/boards/bytcr_rt5640.c
+@@ -127,16 +127,24 @@ static const struct dmi_system_id byt_rt
+ 	{
+ 		.callback = byt_rt5640_quirk_cb,
+ 		.matches = {
+-			DMI_MATCH(DMI_SYS_VENDOR, "ASUSTeK COMPUTER INC."),
+-			DMI_MATCH(DMI_PRODUCT_NAME, "T100TA"),
++			DMI_EXACT_MATCH(DMI_SYS_VENDOR, "ASUSTeK COMPUTER INC."),
++			DMI_EXACT_MATCH(DMI_PRODUCT_NAME, "T100TA"),
+ 		},
+ 		.driver_data = (unsigned long *)BYT_RT5640_IN1_MAP,
+ 	},
+ 	{
+ 		.callback = byt_rt5640_quirk_cb,
+ 		.matches = {
+-			DMI_MATCH(DMI_SYS_VENDOR, "DellInc."),
+-			DMI_MATCH(DMI_PRODUCT_NAME, "Venue 8 Pro 5830"),
++			DMI_EXACT_MATCH(DMI_SYS_VENDOR, "ASUSTeK COMPUTER INC."),
++			DMI_EXACT_MATCH(DMI_PRODUCT_NAME, "T100TAF"),
++		},
++		.driver_data = (unsigned long *)BYT_RT5640_IN1_MAP,
++	},
++	{
++		.callback = byt_rt5640_quirk_cb,
++		.matches = {
++			DMI_EXACT_MATCH(DMI_SYS_VENDOR, "DellInc."),
++			DMI_EXACT_MATCH(DMI_PRODUCT_NAME, "Venue 8 Pro 5830"),
+ 		},
+ 		.driver_data = (unsigned long *)(BYT_RT5640_DMIC2_MAP |
+ 						 BYT_RT5640_DMIC_EN),
+@@ -144,8 +152,8 @@ static const struct dmi_system_id byt_rt
+ 	{
+ 		.callback = byt_rt5640_quirk_cb,
+ 		.matches = {
+-			DMI_MATCH(DMI_SYS_VENDOR, "Hewlett-Packard"),
+-			DMI_MATCH(DMI_PRODUCT_NAME, "HP ElitePad 1000 G2"),
++			DMI_EXACT_MATCH(DMI_SYS_VENDOR, "Hewlett-Packard"),
++			DMI_EXACT_MATCH(DMI_PRODUCT_NAME, "HP ElitePad 1000 G2"),
+ 		},
+ 		.driver_data = (unsigned long *)BYT_RT5640_IN1_MAP,
+ 	},

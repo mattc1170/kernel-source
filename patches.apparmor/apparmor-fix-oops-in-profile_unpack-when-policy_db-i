@@ -1,0 +1,32 @@
+From 5f20fdfed16bc599a325a145bf0123a8e1c9beea Mon Sep 17 00:00:00 2001
+From: John Johansen <john.johansen@canonical.com>
+Date: Wed, 15 Jun 2016 10:00:55 +0300
+Subject: [PATCH] apparmor: fix oops in profile_unpack() when policy_db is not present
+Git-commit: 5f20fdfed16bc599a325a145bf0123a8e1c9beea
+Patch-mainline: 4.8-rc1
+References: bsc#1000304
+
+Buglink: http://bugs.launchpad.net/bugs/1592547
+
+If unpack_dfa() returns NULL due to the dfa not being present,
+profile_unpack() is not checking if the dfa is not present (NULL).
+
+Signed-off-by: John Johansen <john.johansen@canonical.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ security/apparmor/policy_unpack.c |    3 +++
+ 1 file changed, 3 insertions(+)
+
+--- a/security/apparmor/policy_unpack.c
++++ b/security/apparmor/policy_unpack.c
+@@ -629,6 +629,9 @@ static struct aa_profile *unpack_profile
+ 			error = PTR_ERR(profile->policy.dfa);
+ 			profile->policy.dfa = NULL;
+ 			goto fail;
++		} else if (!profile->policy.dfa) {
++			error = -EPROTO;
++			goto fail;
+ 		}
+ 		if (!unpack_u32(e, &profile->policy.start[0], "start"))
+ 			/* default start state */

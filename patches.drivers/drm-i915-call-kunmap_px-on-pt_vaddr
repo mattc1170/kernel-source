@@ -1,0 +1,35 @@
+From 44a7102484db0ddfa6f855b57ffe0566f739b55a Mon Sep 17 00:00:00 2001
+From: Matthew Auld <matthew.auld@intel.com>
+Date: Tue, 12 Apr 2016 16:57:42 +0100
+Subject: [PATCH] drm/i915: call kunmap_px on pt_vaddr
+Git-commit: 44a7102484db0ddfa6f855b57ffe0566f739b55a
+Patch-mainline: 4.7-rc1
+References: bsc#1005545
+
+We need to kunmap pt_vaddr and not pt itself, otherwise we end up
+mapping a bunch of pages without ever unmapping them.
+
+Cc: Chris Wilson <chris@chris-wilson.co.uk>
+Cc: Joonas Lahtinen <joonas.lahtinen@linux.intel.com>
+Fixes: d1c54acd67dc ("drm/i915/gtt: Introduce kmap|kunmap for dma page")
+Signed-off-by: Matthew Auld <matthew.auld@intel.com>
+Reviewed-by: Joonas Lahtinen <joonas.lahtinen@linux.intel.com>
+Signed-off-by: Mika Kuoppala <mika.kuoppala@intel.com>
+Link: http://patchwork.freedesktop.org/patch/msgid/1460476663-24890-4-git-send-email-matthew.auld@intel.com
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/gpu/drm/i915/i915_gem_gtt.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+--- a/drivers/gpu/drm/i915/i915_gem_gtt.c
++++ b/drivers/gpu/drm/i915/i915_gem_gtt.c
+@@ -739,7 +739,7 @@ static void gen8_ppgtt_clear_pte_range(s
+ 			num_entries--;
+ 		}
+ 
+-		kunmap_px(ppgtt, pt);
++		kunmap_px(ppgtt, pt_vaddr);
+ 
+ 		pte = 0;
+ 		if (++pde == I915_PDES) {

@@ -1,0 +1,56 @@
+From d2f83a1fb90e3eaf534404bfd214495530986058 Mon Sep 17 00:00:00 2001
+From: Nicolai Stange <nicstange@gmail.com>
+Date: Tue, 22 Mar 2016 13:12:36 +0100
+Subject: [PATCH 3/9] lib/mpi: mpi_write_sgl(): fix style issue with lzero
+ decrement
+Git-commit: 654842ef53d7820129a751f5cc620e5a69c694a9
+Patch-mainline: v4.7-rc1
+References: bsc#1003581
+
+Within the copying loop in mpi_write_sgl(), we have
+
+  if (lzeros > 0) {
+    ...
+    lzeros -= sizeof(alimb);
+  }
+
+However, at this point, lzeros < sizeof(alimb) holds. Make this fact
+explicit by rewriting the above to
+
+  if (lzeros) {
+    ...
+    lzeros = 0;
+  }
+
+Signed-off-by: Nicolai Stange <nicstange@gmail.com>
+Signed-off-by: Herbert Xu <herbert@gondor.apana.org.au>
+Acked-by: Michal Marek <mmarek@suse.com>
+
+---
+ lib/mpi/mpicoder.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/lib/mpi/mpicoder.c b/lib/mpi/mpicoder.c
+index 6bb52beb06b0..d8b372b9cc11 100644
+--- a/lib/mpi/mpicoder.c
++++ b/lib/mpi/mpicoder.c
+@@ -402,14 +402,14 @@ int mpi_write_to_sgl(MPI a, struct scatterlist *sgl, unsigned *nbytes,
+ #else
+ #error please implement for this limb size.
+ #endif
+-		if (lzeros > 0) {
++		if (lzeros) {
+ 			mpi_limb_t *limb1 = (void *)p - sizeof(alimb);
+ 			mpi_limb_t *limb2 = (void *)p - sizeof(alimb)
+ 				+ lzeros;
+ 			*limb1 = *limb2;
+ 			p -= lzeros;
+ 			y = lzeros;
+-			lzeros -= sizeof(alimb);
++			lzeros = 0;
+ 		}
+ 
+ 		p = p - (sizeof(alimb) - y);
+-- 
+2.10.0
+

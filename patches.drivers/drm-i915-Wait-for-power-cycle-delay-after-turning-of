@@ -1,0 +1,49 @@
+From 1d5c65edd930ff05ef036bbade87275e4b5b7b90 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Ville=20Syrj=C3=A4l=C3=A4?= <ville.syrjala@linux.intel.com>
+Date: Mon, 18 Apr 2016 19:17:51 +0300
+Subject: [PATCH] drm/i915: Wait for power cycle delay after turning off DSI panel power
+Mime-version: 1.0
+Content-type: text/plain; charset=UTF-8
+Content-transfer-encoding: 8bit
+Git-commit: 1d5c65edd930ff05ef036bbade87275e4b5b7b90
+Patch-mainline: 4.7-rc1
+References: bsc#1005545
+
+The power cycle delay starts _after_ turning off the panel power. Do the
+msleep after frobbing the pmic panel power gpio.
+
+Also toss in a FIXME about optimizing away needless waits.
+
+Cc: Shobhit Kumar <shobhit.kumar@intel.com>
+Cc: Jani Nikula <jani.nikula@intel.com>
+Fixes: fc45e8219907 ("drm/i915: Use the CRC gpio for panel enable/disable")
+Signed-off-by: Ville Syrjälä <ville.syrjala@linux.intel.com>
+Link: http://patchwork.freedesktop.org/patch/msgid/1460996271-29795-1-git-send-email-ville.syrjala@linux.intel.com
+Reviewed-by: Shobhit Kumar <shobhit.kumar@intel.com>
+Reviewed-by: Jani Nikula <jani.nikula@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/gpu/drm/i915/intel_dsi.c |    7 ++++++-
+ 1 file changed, 6 insertions(+), 1 deletion(-)
+
+--- a/drivers/gpu/drm/i915/intel_dsi.c
++++ b/drivers/gpu/drm/i915/intel_dsi.c
+@@ -642,11 +642,16 @@ static void intel_dsi_post_disable(struc
+ 	drm_panel_unprepare(intel_dsi->panel);
+ 
+ 	msleep(intel_dsi->panel_off_delay);
+-	msleep(intel_dsi->panel_pwr_cycle_delay);
+ 
+ 	/* Panel Disable over CRC PMIC */
+ 	if (intel_dsi->gpio_panel)
+ 		gpiod_set_value_cansleep(intel_dsi->gpio_panel, 0);
++
++	/*
++	 * FIXME As we do with eDP, just make a note of the time here
++	 * and perform the wait before the next panel power on.
++	 */
++	msleep(intel_dsi->panel_pwr_cycle_delay);
+ }
+ 
+ static bool intel_dsi_get_hw_state(struct intel_encoder *encoder,

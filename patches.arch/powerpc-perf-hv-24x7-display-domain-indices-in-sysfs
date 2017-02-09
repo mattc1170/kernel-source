@@ -2,9 +2,8 @@ From: Sukadev Bhattiprolu <sukadev@linux.vnet.ibm.com>
 Date: Tue, 16 Feb 2016 20:07:51 -0500
 Subject: powerpc/perf/hv-24x7: Display domain indices in sysfs
 Git-commit: d34171e88aeed4a99c00c7f2af3d5c553e7a4972
-Patch-mainline: v3.20-rc1
+Patch-mainline: v4.6-rc1
 References: fate#320704
-Signed-off-by: Tony Jones <tonyj@suse.de>
 
 To help users determine domains, display the domain indices used by the
 kernel in sysfs.
@@ -19,6 +18,7 @@ kernel in sysfs.
 
 Signed-off-by: Sukadev Bhattiprolu <sukadev@linux.vnet.ibm.com>
 Signed-off-by: Michael Ellerman <mpe@ellerman.id.au>
+Signed-off-by: Tony Jones <tonyj@suse.de>
 ---
  arch/powerpc/perf/hv-24x7.c | 41 +++++++++++++++++++++++++++++++++++++++++
  arch/powerpc/perf/hv-24x7.h |  1 +

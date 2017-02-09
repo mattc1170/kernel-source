@@ -1,0 +1,68 @@
+From cd998ded5c1295c690285c04a6ef8bc014d14234 Mon Sep 17 00:00:00 2001
+From: Jarkko Nikula <jarkko.nikula@linux.intel.com>
+Date: Thu, 11 Feb 2016 16:36:03 +0200
+Subject: [PATCH] i2c: designware: Prevent runtime suspend during adapter registration
+Git-commit: cd998ded5c1295c690285c04a6ef8bc014d14234
+Patch-mainline: 4.6-rc1
+References: bsc#1011913
+
+There can be unnecessary runtime suspend-resume cycle during
+i2c-designware-platdrv probe when it registers the I2C adapter device. This
+happens because i2c-designware-platdrv is set to initially active platform
+device in its probe function and is a parent of I2C adapter.
+
+In that case power.usage_count of i2c-designware device is zero and
+pm_runtime_get()/pm_runtime_put() cycle during probe could put it into
+runtime suspend. This happens when the i2c_register_adapter() calls the
+Device_register(): 
+
+i2c_register_adapter
+  device_register
+    device_add
+      bus_probe_device
+        device_initial_probe
+          __device_attach
+            if (dev->parent) pm_runtime_get_sync(dev->parent)
+            ...
+            if (dev->parent) pm_runtime_put(dev->parent)
+
+After that the i2c_register_adapter() continues registering I2C slave
+devices. In case slave device probe does I2C transfers the parent will
+resume again and thus get a needless runtime suspend/resume cycle during
+adapter registration.
+
+Prevent this while retaining the runtime PM status of i2c-designware by
+only incrementing/decrementing device power usage count during I2C
+adapter registration. That makes sure there won't be spurious runtime PM
+status changes and lets the driver core to idle the device after probe
+finishes.
+
+Signed-off-by: Jarkko Nikula <jarkko.nikula@linux.intel.com>
+Acked-by: Mika Westerberg <mika.westerberg@linux.intel.com>
+Signed-off-by: Wolfram Sang <wsa@the-dreams.de>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/i2c/busses/i2c-designware-core.c |    8 ++++++++
+ 1 file changed, 8 insertions(+)
+
+--- a/drivers/i2c/busses/i2c-designware-core.c
++++ b/drivers/i2c/busses/i2c-designware-core.c
+@@ -874,9 +874,17 @@ int i2c_dw_probe(struct dw_i2c_dev *dev)
+ 		return r;
+ 	}
+ 
++	/*
++	 * Increment PM usage count during adapter registration in order to
++	 * avoid possible spurious runtime suspend when adapter device is
++	 * registered to the device core and immediate resume in case bus has
++	 * registered I2C slaves that do I2C transfers in their probe.
++	 */
++	pm_runtime_get_noresume(dev->dev);
+ 	r = i2c_add_numbered_adapter(adap);
+ 	if (r)
+ 		dev_err(dev->dev, "failure adding adapter: %d\n", r);
++	pm_runtime_put_noidle(dev->dev);
+ 
+ 	return r;
+ }

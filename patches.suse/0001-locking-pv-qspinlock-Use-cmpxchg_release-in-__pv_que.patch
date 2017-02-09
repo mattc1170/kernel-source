@@ -1,0 +1,50 @@
+From b193049375b04df3ada8c3347b7083db95918bc3 Mon Sep 17 00:00:00 2001
+From: Pan Xinhui <xinhui.pan@linux.vnet.ibm.com>
+Date: Mon, 19 Sep 2016 05:23:52 -0400
+Subject: [PATCH] locking/pv-qspinlock: Use cmpxchg_release() in __pv_queued_spin_unlock()
+Git-commit: b193049375b04df3ada8c3347b7083db95918bc3
+Patch-mainline: v4.9
+References: bsc#969756
+
+cmpxchg_release() is more lighweight than cmpxchg() on some archs(e.g.
+PPC), moreover, in __pv_queued_spin_unlock() we only needs a RELEASE in
+the fast path(pairing with *_try_lock() or *_lock()). And the slow path
+has smp_store_release too. So it's safe to use cmpxchg_release here.
+
+Suggested-by: Boqun Feng <boqun.feng@gmail.com>
+Signed-off-by: Pan Xinhui <xinhui.pan@linux.vnet.ibm.com>
+Signed-off-by: Peter Zijlstra (Intel) <peterz@infradead.org>
+Cc: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: Peter Zijlstra <peterz@infradead.org>
+Cc: Thomas Gleixner <tglx@linutronix.de>
+Cc: benh@kernel.crashing.org
+Cc: linuxppc-dev@lists.ozlabs.org
+Cc: mpe@ellerman.id.au
+Cc: paulmck@linux.vnet.ibm.com
+Cc: paulus@samba.org
+Cc: virtualization@lists.linux-foundation.org
+Cc: waiman.long@hpe.com
+Link: http://lkml.kernel.org/r/1474277037-15200-2-git-send-email-xinhui.pan@linux.vnet.ibm.com
+Signed-off-by: Ingo Molnar <mingo@kernel.org>
+Signed-off-by: Davidlohr Bueso <dbueso@suse.de>
+
+---
+ kernel/locking/qspinlock_paravirt.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/kernel/locking/qspinlock_paravirt.h b/kernel/locking/qspinlock_paravirt.h
+index 3acf16d79cf4..e3b5520005db 100644
+--- a/kernel/locking/qspinlock_paravirt.h
++++ b/kernel/locking/qspinlock_paravirt.h
+@@ -540,7 +540,7 @@ __visible void __pv_queued_spin_unlock(struct qspinlock *lock)
+ 	 * unhash. Otherwise it would be possible to have multiple @lock
+ 	 * entries, which would be BAD.
+ 	 */
+-	locked = cmpxchg(&l->locked, _Q_LOCKED_VAL, 0);
++	locked = cmpxchg_release(&l->locked, _Q_LOCKED_VAL, 0);
+ 	if (likely(locked == _Q_LOCKED_VAL))
+ 		return;
+ 
+-- 
+2.6.6
+

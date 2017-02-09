@@ -2,8 +2,7 @@ From: Iyappan Subramanian <isubramanian@apm.com>
 Date: Fri, 12 Aug 2016 22:05:46 -0700
 Subject: Documentation: dtb: xgene: Add rxlos GPIO mapping
 Git-commit: c50fc2622cbce4341daf40a4e7ad3f1625c9e55c
-Patch-mainline: Queued
-Git-repo: git://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git
+Patch-mainline: v4.9-rc1
 References: bsc#993051
 
 Signed-off-by: Quan Nguyen <qnguyen@apm.com>

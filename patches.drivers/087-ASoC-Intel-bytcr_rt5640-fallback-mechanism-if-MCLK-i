@@ -1,0 +1,41 @@
+From: Pierre-Louis Bossart <pierre-louis.bossart@linux.intel.com>
+Date: Tue, 13 Dec 2016 12:41:30 -0600
+Subject: [PATCH] ASoC: Intel: bytcr_rt5640: fallback mechanism if MCLK is not
+ enabled
+Patch-mainline: Submitted, alsa-devel ML, Dec 13, 2016
+References: bsc#1010690
+
+Commit df1a2776a795 ("ASoC: Intel: bytcr_rt5640: add MCLK support")
+was merged but the corresponding clock framework patches have not,
+after being bumped from audio to clock to x86 domains. The missing
+clock-related patches result in a regression starting with 4.9 with
+the audio card not being created.
+
+Rather than reverting this commit and all following updates already
+queued up for 4.10, handle run-time dependency on MCLK and fall back
+to the previous bit-clock mode. This provides the same functionality
+as in 4.8 for Baytrail devices. On Baytrail-CR most devices remain
+silent with this fallback but additional patches are needed anyway.
+
+This patch should be applied to -stable as well as ASoC 4.10 fixes
+
+Signed-off-by: Pierre-Louis Bossart <pierre-louis.bossart@linux.intel.com>
+Signed-off-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ sound/soc/intel/boards/bytcr_rt5640.c |    4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+--- a/sound/soc/intel/boards/bytcr_rt5640.c
++++ b/sound/soc/intel/boards/bytcr_rt5640.c
+@@ -776,7 +776,9 @@ static int snd_byt_rt5640_mc_probe(struc
+ 			dev_err(&pdev->dev,
+ 				"Failed to get MCLK from pmc_plt_clk_3: %ld\n",
+ 				PTR_ERR(priv->mclk));
+-			return PTR_ERR(priv->mclk);
++
++			/* Fall back to bitclock only */
++			byt_rt5640_quirk &= ~BYT_RT5640_MCLK_EN;
+ 		}
+ 	}
+ 

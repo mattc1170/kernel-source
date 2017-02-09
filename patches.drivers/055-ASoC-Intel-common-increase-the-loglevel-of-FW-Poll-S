@@ -1,0 +1,29 @@
+From: Vedang Patel <vedang.patel@intel.com>
+Date: Fri, 24 Jun 2016 17:37:10 -0700
+Subject: [PATCH 55/82] ASoC: Intel: common: increase the loglevel of "FW Poll Status".
+Git-commit: ef06b6f3912f4438f9275922dae17c11360ceefc
+Patch-mainline: 4.8-rc1
+References: bsc#1010690
+
+For consistency with other log statements, change dev_info to dev_dbg
+for a kernel print which is frequently printed by the driver.
+
+Signed-off-by: Vedang Patel <vedang.patel@intel.com>
+Signed-off-by: Mark Brown <broonie@kernel.org>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ sound/soc/intel/common/sst-dsp.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+--- a/sound/soc/intel/common/sst-dsp.c
++++ b/sound/soc/intel/common/sst-dsp.c
+@@ -285,7 +285,7 @@ int sst_dsp_register_poll(struct sst_dsp
+ 	}
+ 
+ 	reg = sst_dsp_shim_read_unlocked(ctx, offset);
+-	dev_info(ctx->dev, "FW Poll Status: reg=%#x %s %s\n", reg, operation,
++	dev_dbg(ctx->dev, "FW Poll Status: reg=%#x %s %s\n", reg, operation,
+ 			(time < timeout) ? "successful" : "timedout");
+ 	ret = time < timeout ? 0 : -ETIME;
+ 

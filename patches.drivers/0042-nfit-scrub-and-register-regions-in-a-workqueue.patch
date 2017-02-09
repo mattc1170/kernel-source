@@ -22,12 +22,10 @@ notifies the related driver(s) when the scrub completes.
 Signed-off-by: Dan Williams <dan.j.williams@intel.com>
 Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
 ---
- drivers/acpi/nfit.c | 537 +++++++++++++++++++++++++++++++++++-----------------
- drivers/acpi/nfit.h |   8 +-
- 2 files changed, 371 insertions(+), 174 deletions(-)
+ drivers/acpi/nfit.c |  535 +++++++++++++++++++++++++++++++++++-----------------
+ drivers/acpi/nfit.h |    8 
+ 2 files changed, 370 insertions(+), 173 deletions(-)
 
-diff --git a/drivers/acpi/nfit.c b/drivers/acpi/nfit.c
-index 4aa2bd5..3646501 100644
 --- a/drivers/acpi/nfit.c
 +++ b/drivers/acpi/nfit.c
 @@ -21,6 +21,7 @@
@@ -55,7 +53,7 @@ index 4aa2bd5..3646501 100644
  static struct workqueue_struct *nfit_wq;
  
  struct nfit_table_prev {
-@@ -1548,97 +1559,84 @@ static void acpi_nfit_blk_region_disable(struct nvdimm_bus *nvdimm_bus,
+@@ -1549,97 +1560,84 @@ static void acpi_nfit_blk_region_disable
  }
  
  static int ars_get_cap(struct acpi_nfit_desc *acpi_desc,
@@ -137,17 +135,6 @@ index 4aa2bd5..3646501 100644
 +	struct nd_cmd_ars_start ars_start;
 +	struct nvdimm_bus_descriptor *nd_desc = &acpi_desc->nd_desc;
 +	struct nd_cmd_ars_status *ars_status = acpi_desc->ars_status;
-+
-+	memset(&ars_start, 0, sizeof(ars_start));
-+	ars_start.address = ars_status->restart_address;
-+	ars_start.length = ars_status->restart_length;
-+	ars_start.type = ars_status->type;
-+	rc = nd_desc->ndctl(nd_desc, NULL, ND_CMD_ARS_START, &ars_start,
-+			sizeof(ars_start), &cmd_rc);
-+	if (rc < 0)
-+		return rc;
-+	return cmd_rc;
-+}
  
 -	while (1) {
 -		rc = nd_desc->ndctl(nd_desc, NULL, ND_CMD_ARS_STATUS, cmd,
@@ -163,7 +150,17 @@ index 4aa2bd5..3646501 100644
 -
 -		if (cmd_rc == -EAGAIN || cmd_rc == 0)
 -			return 0;
--
++	memset(&ars_start, 0, sizeof(ars_start));
++	ars_start.address = ars_status->restart_address;
++	ars_start.length = ars_status->restart_length;
++	ars_start.type = ars_status->type;
++	rc = nd_desc->ndctl(nd_desc, NULL, ND_CMD_ARS_START, &ars_start,
++			sizeof(ars_start), &cmd_rc);
++	if (rc < 0)
++		return rc;
++	return cmd_rc;
++}
+ 
 -		/* TODO: error list overflow support */
 -		if (cmd_rc == -ENOSPC)
 -			return -ENXIO;
@@ -203,7 +200,7 @@ index 4aa2bd5..3646501 100644
  	for (i = 0; i < ars_status->num_records; i++) {
  		rc = nvdimm_bus_add_poison(nvdimm_bus,
  				ars_status->records[i].err_address,
-@@ -1650,101 +1648,14 @@ static int ars_status_process_records(struct nvdimm_bus *nvdimm_bus,
+@@ -1651,101 +1649,14 @@ static int ars_status_process_records(st
  	return 0;
  }
  
@@ -307,7 +304,7 @@ index 4aa2bd5..3646501 100644
  	struct nd_blk_region_desc *ndbr_desc;
  	struct nfit_mem *nfit_mem;
  	int blk_valid = 0;
-@@ -1780,7 +1691,9 @@ static int acpi_nfit_init_mapping(struct acpi_nfit_desc *acpi_desc,
+@@ -1781,7 +1692,9 @@ static int acpi_nfit_init_mapping(struct
  		ndbr_desc->enable = acpi_nfit_blk_region_enable;
  		ndbr_desc->disable = acpi_nfit_blk_region_disable;
  		ndbr_desc->do_io = acpi_desc->blk_do_io;
@@ -318,7 +315,7 @@ index 4aa2bd5..3646501 100644
  			return -ENOMEM;
  		break;
  	}
-@@ -1800,7 +1713,7 @@ static int acpi_nfit_register_region(struct acpi_nfit_desc *acpi_desc,
+@@ -1801,7 +1714,7 @@ static int acpi_nfit_register_region(str
  	struct resource res;
  	int count = 0, rc;
  
@@ -327,7 +324,7 @@ index 4aa2bd5..3646501 100644
  		return 0;
  
  	if (spa->range_index == 0) {
-@@ -1837,47 +1750,324 @@ static int acpi_nfit_register_region(struct acpi_nfit_desc *acpi_desc,
+@@ -1838,47 +1751,324 @@ static int acpi_nfit_register_region(str
  		}
  		nd_mapping = &nd_mappings[count++];
  		rc = acpi_nfit_init_mapping(acpi_desc, nd_mapping, ndr_desc,
@@ -528,10 +525,10 @@ index 4aa2bd5..3646501 100644
 +	struct acpi_nfit_desc *acpi_desc;
 +	unsigned int tmo = scrub_timeout;
 +	unsigned int overflow_retry = scrub_overflow_abort;
-+
+ 
 +	acpi_desc = container_of(work, typeof(*acpi_desc), work);
 +	dev = acpi_desc->dev;
- 
++
 +	/*
 +	 * We scrub in 2 phases.  The first phase waits for any platform
 +	 * firmware initiated scrubs to complete and then we go search for the
@@ -631,7 +628,7 @@ index 4aa2bd5..3646501 100644
 +		if (ars_start <= spa->address && ars_start + ars_len
 +				>= spa->address + spa->length)
 +			acpi_nfit_register_region(acpi_desc, nfit_spa);
-+	}
+ 	}
 +
 +	/*
 +	 * For all the ranges not covered by an initial scrub we still
@@ -647,7 +644,7 @@ index 4aa2bd5..3646501 100644
 +			nfit_spa->ars_done = 1;
 +		else
 +			acpi_nfit_register_region(acpi_desc, nfit_spa);
- 	}
++	}
 +
 +	list_for_each_entry(nfit_spa, &acpi_desc->spas, list)
 +		acpi_nfit_async_scrub(acpi_desc, nfit_spa);
@@ -671,7 +668,7 @@ index 4aa2bd5..3646501 100644
  	return 0;
  }
  
-@@ -2019,6 +2209,7 @@ void acpi_nfit_desc_init(struct acpi_nfit_desc *acpi_desc, struct device *dev)
+@@ -2020,6 +2210,7 @@ void acpi_nfit_desc_init(struct acpi_nfi
  	INIT_LIST_HEAD(&acpi_desc->dimms);
  	mutex_init(&acpi_desc->spa_map_mutex);
  	mutex_init(&acpi_desc->init_mutex);
@@ -679,17 +676,17 @@ index 4aa2bd5..3646501 100644
  }
  EXPORT_SYMBOL_GPL(acpi_nfit_desc_init);
  
-diff --git a/drivers/acpi/nfit.h b/drivers/acpi/nfit.h
-index e8388fe..c75576b 100644
 --- a/drivers/acpi/nfit.h
 +++ b/drivers/acpi/nfit.h
-@@ -57,12 +57,16 @@ enum {
+@@ -57,6 +57,7 @@ enum {
  	NFIT_ARS_START_BUSY = 6,
  	NFIT_ARS_CAP_NONE = 1,
  	NFIT_ARS_F_OVERFLOW = 1,
 +	NFIT_ARS_TIMEOUT = 90,
  };
  
+ enum nfit_root_notifiers {
+@@ -66,7 +67,10 @@ enum nfit_root_notifiers {
  struct nfit_spa {
  	struct acpi_nfit_system_address *spa;
  	struct list_head list;
@@ -701,7 +698,7 @@ index e8388fe..c75576b 100644
  };
  
  struct nfit_dcr {
-@@ -124,6 +128,8 @@ struct acpi_nfit_desc {
+@@ -128,6 +132,8 @@ struct acpi_nfit_desc {
  	struct list_head idts;
  	struct nvdimm_bus *nvdimm_bus;
  	struct device *dev;
@@ -710,4 +707,3 @@ index e8388fe..c75576b 100644
  	struct work_struct work;
  	unsigned int cancel:1;
  	unsigned long dimm_dsm_force_en;
-

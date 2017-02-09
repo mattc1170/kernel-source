@@ -1,0 +1,56 @@
+From: Pierre-Louis Bossart <pierre-louis.bossart@linux.intel.com>
+Date: Thu, 3 Mar 2016 21:36:38 -0600
+Subject: [PATCH 49/82] ASoC: Intel: bytcr_rt5640: use HID translation util
+Git-commit: a232b96dcece4761793d39b8fb2c9d050df30357
+Patch-mainline: 4.6-rc1
+References: bsc#1010690
+
+Remove hard-coded generation of codec name, use translation routine
+to avoid issues with codec name not matching what the ACPI subsystem
+registered
+
+Signed-off-by: Pierre-Louis Bossart <pierre-louis.bossart@linux.intel.com>
+Signed-off-by: Mark Brown <broonie@kernel.org>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ sound/soc/intel/boards/bytcr_rt5640.c |   22 +++++++++++++++++++---
+ 1 file changed, 19 insertions(+), 3 deletions(-)
+
+--- a/sound/soc/intel/boards/bytcr_rt5640.c
++++ b/sound/soc/intel/boards/bytcr_rt5640.c
+@@ -340,15 +340,31 @@ static int snd_byt_rt5640_mc_probe(struc
+ {
+ 	int ret_val = 0;
+ 	struct sst_acpi_mach *mach;
++	const char *i2c_name = NULL;
++	int i;
++	int dai_index;
+ 
+ 	/* register the soc card */
+ 	byt_rt5640_card.dev = &pdev->dev;
+ 	mach = byt_rt5640_card.dev->platform_data;
+ 
++	/* fix index of codec dai */
++	dai_index = MERR_DPCM_COMPR + 1;
++	for (i = 0; i < ARRAY_SIZE(byt_rt5640_dais); i++) {
++		if (!strcmp(byt_rt5640_dais[i].codec_name, "i2c-10EC5640:00")) {
++			dai_index = i;
++			break;
++		}
++	}
++
+ 	/* fixup codec name based on HID */
+-	snprintf(byt_rt5640_codec_name, sizeof(byt_rt5640_codec_name),
+-		 "%s%s%s", "i2c-", mach->id, ":00");
+-	byt_rt5640_dais[MERR_DPCM_COMPR+1].codec_name = byt_rt5640_codec_name;
++	i2c_name = sst_acpi_find_name_from_hid(mach->id);
++	if (i2c_name != NULL) {
++		snprintf(byt_rt5640_codec_name, sizeof(byt_rt5640_codec_name),
++			"%s%s", "i2c-", i2c_name);
++
++		byt_rt5640_dais[dai_index].codec_name = byt_rt5640_codec_name;
++	}
+ 
+ 	/* check quirks before creating card */
+ 	dmi_check_system(byt_rt5640_quirk_table);

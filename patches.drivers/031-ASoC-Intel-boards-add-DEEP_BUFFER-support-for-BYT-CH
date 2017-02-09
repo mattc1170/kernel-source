@@ -1,0 +1,108 @@
+From: Pierre-Louis Bossart <pierre-louis.bossart@linux.intel.com>
+Date: Thu, 17 Dec 2015 20:35:45 -0600
+Subject: [PATCH 31/82] ASoC: Intel: boards: add DEEP_BUFFER support for BYT/CHT/BSW
+Git-commit: d35eb96a95dc82befe2d9d1533728506b0847f14
+Patch-mainline: 4.5-rc1
+References: bsc#1010690
+
+Add dai links to enable additional playback stream with deeper
+buffer for lower power consumption.
+The normal and DEEP_buffer streams are not mutually exclusive,
+content will be mixed by the DSP.
+
+Signed-off-by: Pierre-Louis Bossart <pierre-louis.bossart@linux.intel.com>
+Signed-off-by: Mark Brown <broonie@kernel.org>
+Signed-off-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ sound/soc/intel/boards/bytcr_rt5640.c        |   13 +++++++++++++
+ sound/soc/intel/boards/cht_bsw_max98090_ti.c |   12 ++++++++++++
+ sound/soc/intel/boards/cht_bsw_rt5645.c      |   12 ++++++++++++
+ sound/soc/intel/boards/cht_bsw_rt5672.c      |   12 ++++++++++++
+ 4 files changed, 49 insertions(+)
+
+--- a/sound/soc/intel/boards/bytcr_rt5640.c
++++ b/sound/soc/intel/boards/bytcr_rt5640.c
+@@ -267,6 +267,19 @@ static struct snd_soc_dai_link byt_rt564
+ 		.dpcm_capture = 1,
+ 		.ops = &byt_rt5640_aif1_ops,
+ 	},
++	[MERR_DPCM_DEEP_BUFFER] = {
++		.name = "Deep-Buffer Audio Port",
++		.stream_name = "Deep-Buffer Audio",
++		.cpu_dai_name = "deepbuffer-cpu-dai",
++		.codec_dai_name = "snd-soc-dummy-dai",
++		.codec_name = "snd-soc-dummy",
++		.platform_name = "sst-mfld-platform",
++		.ignore_suspend = 1,
++		.nonatomic = true,
++		.dynamic = 1,
++		.dpcm_playback = 1,
++		.ops = &byt_rt5640_aif1_ops,
++	},
+ 	[MERR_DPCM_COMPR] = {
+ 		.name = "Baytrail Compressed Port",
+ 		.stream_name = "Baytrail Compress",
+--- a/sound/soc/intel/boards/cht_bsw_max98090_ti.c
++++ b/sound/soc/intel/boards/cht_bsw_max98090_ti.c
+@@ -235,6 +235,18 @@ static struct snd_soc_dai_link cht_daili
+ 		.dpcm_capture = 1,
+ 		.ops = &cht_aif1_ops,
+ 	},
++	[MERR_DPCM_DEEP_BUFFER] = {
++		.name = "Deep-Buffer Audio Port",
++		.stream_name = "Deep-Buffer Audio",
++		.cpu_dai_name = "deepbuffer-cpu-dai",
++		.codec_dai_name = "snd-soc-dummy-dai",
++		.codec_name = "snd-soc-dummy",
++		.platform_name = "sst-mfld-platform",
++		.nonatomic = true,
++		.dynamic = 1,
++		.dpcm_playback = 1,
++		.ops = &cht_aif1_ops,
++	},
+ 	[MERR_DPCM_COMPR] = {
+ 		.name = "Compressed Port",
+ 		.stream_name = "Compress",
+--- a/sound/soc/intel/boards/cht_bsw_rt5645.c
++++ b/sound/soc/intel/boards/cht_bsw_rt5645.c
+@@ -263,6 +263,18 @@ static struct snd_soc_dai_link cht_daili
+ 		.dpcm_capture = 1,
+ 		.ops = &cht_aif1_ops,
+ 	},
++	[MERR_DPCM_DEEP_BUFFER] = {
++		.name = "Deep-Buffer Audio Port",
++		.stream_name = "Deep-Buffer Audio",
++		.cpu_dai_name = "deepbuffer-cpu-dai",
++		.codec_dai_name = "snd-soc-dummy-dai",
++		.codec_name = "snd-soc-dummy",
++		.platform_name = "sst-mfld-platform",
++		.nonatomic = true,
++		.dynamic = 1,
++		.dpcm_playback = 1,
++		.ops = &cht_aif1_ops,
++	},
+ 	[MERR_DPCM_COMPR] = {
+ 		.name = "Compressed Port",
+ 		.stream_name = "Compress",
+--- a/sound/soc/intel/boards/cht_bsw_rt5672.c
++++ b/sound/soc/intel/boards/cht_bsw_rt5672.c
+@@ -251,6 +251,18 @@ static struct snd_soc_dai_link cht_daili
+ 		.dpcm_capture = 1,
+ 		.ops = &cht_aif1_ops,
+ 	},
++	[MERR_DPCM_DEEP_BUFFER] = {
++		.name = "Deep-Buffer Audio Port",
++		.stream_name = "Deep-Buffer Audio",
++		.cpu_dai_name = "deepbuffer-cpu-dai",
++		.codec_dai_name = "snd-soc-dummy-dai",
++		.codec_name = "snd-soc-dummy",
++		.platform_name = "sst-mfld-platform",
++		.nonatomic = true,
++		.dynamic = 1,
++		.dpcm_playback = 1,
++		.ops = &cht_aif1_ops,
++	},
+ 	[MERR_DPCM_COMPR] = {
+ 		.name = "Compressed Port",
+ 		.stream_name = "Compress",

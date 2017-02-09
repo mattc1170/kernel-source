@@ -2,8 +2,7 @@ From: Iyappan Subramanian <isubramanian@apm.com>
 Date: Fri, 12 Aug 2016 22:05:43 -0700
 Subject: drivers: net: xgene: XFI PCS reset when link is down
 Git-commit: 3eb7cb9dc94609c14c51029964ac4bfd59cc4d25
-Patch-mainline: Queued
-Git-repo: git://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git
+Patch-mainline: v4.9-rc1
 References: bsc#993051
 
 This patch fixes the link recovery issue, by doing PCS reset

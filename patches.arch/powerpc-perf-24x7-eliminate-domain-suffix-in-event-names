@@ -2,9 +2,8 @@ From: Sukadev Bhattiprolu <sukadev@linux.vnet.ibm.com>
 Date: Tue, 16 Feb 2016 22:21:25 -0500
 Subject: powerpc/perf/24x7: Eliminate domain suffix in event names
 Git-commit: 8f69dc701aac170421117adf7e04d8ec7031a05f
-Patch-mainline: v3.20-rc1
+Patch-mainline: v4.6-rc1
 References: fate#320704
-Signed-off-by: Tony Jones <tonyj@suse.de>
 
 The Physical Core events of the 24x7 PMU can be monitored across various
 domains (physical core, vcpu home core, vcpu home node etc). For each of
@@ -42,6 +41,7 @@ need to specify the domain index for the Chip events.
 
 Signed-off-by: Sukadev Bhattiprolu <sukadev@linux.vnet.ibm.com>
 Signed-off-by: Michael Ellerman <mpe@ellerman.id.au>
+Signed-off-by: Tony Jones <tonyj@suse.de>
 ---
  arch/powerpc/perf/hv-24x7.c | 149 ++++++++++++++++++++------------------------
  1 file changed, 66 insertions(+), 83 deletions(-)

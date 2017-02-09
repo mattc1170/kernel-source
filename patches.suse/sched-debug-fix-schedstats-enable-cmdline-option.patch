@@ -3,7 +3,8 @@ Date: Thu, 9 Jun 2016 14:28:58 +0100
 Subject: [PATCH] sched/debug: fix 'schedstats=enable' cmdline option
 
 References: Scheduler performance -- debugging overhead, fate#320486
-Patch-mainline: No, expected 4.7 and queued in tip
+Git-commit: 4698f88c06b893f2acc0b443004a53bf490fde7c
+Patch-mainline: v4.7
 
 The 'schedstats=enable' option doesn't work, and also produces the
 following warning during boot:

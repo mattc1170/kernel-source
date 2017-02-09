@@ -2,8 +2,7 @@ From: Iyappan Subramanian <isubramanian@apm.com>
 Date: Fri, 12 Aug 2016 22:05:44 -0700
 Subject: drivers: net: xgene: Poll link status via GPIO
 Git-commit: 27ecf87c8a9d6152203ff5feb74535abd48e9ad3
-Patch-mainline: Queued
-Git-repo: git://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git
+Patch-mainline: v4.9-rc1
 References: bsc#993051
 
 When 10GbE SFP+ module is not plugged in or cable is not connected,

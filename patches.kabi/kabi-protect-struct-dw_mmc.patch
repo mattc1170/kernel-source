@@ -1,0 +1,31 @@
+From: Jiri Slaby <jslaby@suse.cz>
+Subject: kABI: protect struct dw_mci
+Patch-mainline: never, kabi
+
+In 4.4.22, commit 59e62eb42a5923a095c7616ef9997327e0bfdb70 (mmc:
+dw_mmc: use resource_size_t to store physical address), upstream
+commit 260b31643691e8a58683a4ccc3bdf7abfd86f54a changed phy_regs type
+in struct dw_mci. It indeed changed the layout of that structure.
+
+But struct dw_mci is only internal to dw_mmc driver.  So protect the
+change by __GENKSYMS__ and be done with it.
+
+Signed-off-by: Jiri Slaby <jslaby@suse.cz>
+---
+ include/linux/mmc/dw_mmc.h |    4 ++++
+ 1 file changed, 4 insertions(+)
+
+--- a/include/linux/mmc/dw_mmc.h
++++ b/include/linux/mmc/dw_mmc.h
+@@ -172,7 +172,11 @@ struct dw_mci {
+ 	/* For edmac */
+ 	struct dw_mci_dma_slave *dms;
+ 	/* Registers's physical base address */
++#ifdef __GENKSYMS__
++	void			*phy_regs;
++#else
+ 	resource_size_t		phy_regs;
++#endif
+ 
+ 	u32			cmd_status;
+ 	u32			data_status;

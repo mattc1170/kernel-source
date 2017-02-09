@@ -3,7 +3,8 @@ From: Ard Biesheuvel <ard.biesheuvel@linaro.org>
 Date: Thu, 10 Mar 2016 12:40:02 +0700
 Subject: [PATCH 2/7] efi: libstub: move Graphics Output Protocol handling to
  generic code
-Patch-mainline: Submitted, https://lkml.kernel.org/r/1457588408-19309-3-git-send-email-ard.biesheuvel@linaro.org
+Patch-mainline: v4.7-rc1
+Git-commit: fc37206427ce38eafbeff48099d873235e878450
 References: bnc#974215
 
 The Graphics Output Protocol code executes in the stub, so create a generic

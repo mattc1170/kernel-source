@@ -1,0 +1,33 @@
+From: Pierre-Louis Bossart <pierre-louis.bossart@linux.intel.com>
+Date: Thu, 17 Dec 2015 20:35:47 -0600
+Subject: [PATCH 33/82] ASoC: Intel: Atom: clean-up compressed DAI definition
+Git-commit: 77095796ae9cbaf315f80611edb5aa569796e339
+Patch-mainline: 4.5-rc1
+References: bsc#1010690
+
+the fields channels_min, channels_max, rate and formats are
+irrelevant for compressed playback, they will depend on the
+content. This was probably a copy-paste mistake to have
+them in the first place
+
+Signed-off-by: Pierre-Louis Bossart <pierre-louis.bossart@linux.intel.com>
+Signed-off-by: Mark Brown <broonie@kernel.org>
+Signed-off-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ sound/soc/intel/atom/sst-mfld-platform-pcm.c |    4 ----
+ 1 file changed, 4 deletions(-)
+
+--- a/sound/soc/intel/atom/sst-mfld-platform-pcm.c
++++ b/sound/soc/intel/atom/sst-mfld-platform-pcm.c
+@@ -528,10 +528,6 @@ static struct snd_soc_dai_driver sst_pla
+ 	.ops = &sst_compr_dai_ops,
+ 	.playback = {
+ 		.stream_name = "Compress Playback",
+-		.channels_min = SST_STEREO,
+-		.channels_max = SST_STEREO,
+-		.rates = SNDRV_PCM_RATE_48000,
+-		.formats = SNDRV_PCM_FMTBIT_S16_LE,
+ 	},
+ },
+ /* BE CPU  Dais */

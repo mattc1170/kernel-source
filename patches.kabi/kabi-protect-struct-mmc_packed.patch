@@ -1,0 +1,33 @@
+From: Jiri Slaby <jslaby@suse.cz>
+Subject: kABI: protect struct mmc_packed
+Patch-mainline: never, kabi
+References: kabi
+
+In 4.4.28, commit 2983d3fa16a3dfbc889a1f56de6be34f9ef4d3d2 (mmc: core:
+Annotate cmd_hdr as __le32), upstream commit
+3f2d26643595973e835e8356ea90c7c15cb1b0f1 changed cmd_hdr type
+in struct mmc_packed from u32 to __le32. __GENKSYMS__ smells a change
+in the layout of that structure.
+
+But it was only the annotation what changed, so fool the checker by
+__GENKSYMS__ and be done with it.
+
+Signed-off-by: Jiri Slaby <jslaby@suse.cz>
+---
+ drivers/mmc/card/queue.h |    4 ++++
+ 1 file changed, 4 insertions(+)
+
+--- a/drivers/mmc/card/queue.h
++++ b/drivers/mmc/card/queue.h
+@@ -25,7 +25,11 @@ enum mmc_packed_type {
+ 
+ struct mmc_packed {
+ 	struct list_head	list;
++#ifdef __GENKSYMS__
++	u32			cmd_hdr[1024];
++#else
+ 	__le32			cmd_hdr[1024];
++#endif
+ 	unsigned int		blocks;
+ 	u8			nr_entries;
+ 	u8			retries;

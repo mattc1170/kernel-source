@@ -1,0 +1,41 @@
+From: Pierre-Louis Bossart <pierre-louis.bossart@linux.intel.com>
+Date: Fri, 12 Aug 2016 16:27:55 -0500
+Subject: [PATCH 03/82] ASoC: rt5640: add internal clock source support
+Git-commit: c49aed77d55b42a1ec5e1d01c2ab788abc82717c
+Patch-mainline: 4.9-rc1
+References: bsc#1010690
+
+Adding missing definitions and flags to select internal
+clock source as system clock, needed for jack detection.
+
+Signed-off-by: Pierre-Louis Bossart <pierre-louis.bossart@linux.intel.com>
+Signed-off-by: Mark Brown <broonie@kernel.org>
+Signed-off-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ sound/soc/codecs/rt5640.c |    3 +++
+ sound/soc/codecs/rt5640.h |    1 +
+ 2 files changed, 4 insertions(+)
+
+--- a/sound/soc/codecs/rt5640.c
++++ b/sound/soc/codecs/rt5640.c
+@@ -1861,6 +1861,9 @@ static int rt5640_set_dai_sysclk(struct
+ 	case RT5640_SCLK_S_PLL1:
+ 		reg_val |= RT5640_SCLK_SRC_PLL1;
+ 		break;
++	case RT5640_SCLK_S_RCCLK:
++		reg_val |= RT5640_SCLK_SRC_RCCLK;
++		break;
+ 	default:
+ 		dev_err(codec->dev, "Invalid clock id (%d)\n", clk_id);
+ 		return -EINVAL;
+--- a/sound/soc/codecs/rt5640.h
++++ b/sound/soc/codecs/rt5640.h
+@@ -984,6 +984,7 @@
+ #define RT5640_SCLK_SRC_SFT			14
+ #define RT5640_SCLK_SRC_MCLK			(0x0 << 14)
+ #define RT5640_SCLK_SRC_PLL1			(0x1 << 14)
++#define RT5640_SCLK_SRC_RCCLK			(0x2 << 14)
+ #define RT5640_PLL1_SRC_MASK			(0x3 << 12)
+ #define RT5640_PLL1_SRC_SFT			12
+ #define RT5640_PLL1_SRC_MCLK			(0x0 << 12)

@@ -4,7 +4,8 @@ To: linux-btrfs@vger.kernel.org
 Cc: Mark Fasheh <mfasheh@suse.de>, Goldwyn Rodrigues <rgoldwyn@suse.de>
 Date: Tue,  9 Aug 2016 16:30:19 +0800
 References: bsc983087, bsc986255
-Patch-mainline: Submitted, https://patchwork.kernel.org/patch/9280259/
+Git-commit: cb93b52cc005ba0e470845b519c662e661d5113c
+Patch-mainline: v4.8-rc5
 
 Refactor btrfs_qgroup_insert_dirty_extent() function, to two functions:
 1. _btrfs_qgroup_insert_dirty_extent()

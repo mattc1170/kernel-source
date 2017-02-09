@@ -1,0 +1,117 @@
+From: Daniel Lezcano <daniel.lezcano@linaro.org>
+Date: Thu, 14 Jan 2016 10:54:13 +0100
+Subject: genirq: Use a common macro to go through the actions list
+Git-commit: f944b5a7aff05a244a6c8cac297819af09a199e4
+Patch-mainline: v4.6-rc1
+References: bsc#1006827
+
+The irq code browses the list of actions differently to inspect the element
+one by one. Even if it is not a problem, for the sake of consistent code,
+provide a macro similar to for_each_irq_desc in order to have the same loop to
+go through the actions list and use it in the code.
+
+[ tglx: Renamed the macro ]
+
+Signed-off-by: Daniel Lezcano <daniel.lezcano@linaro.org>
+Link: http://lkml.kernel.org/r/1452765253-31148-1-git-send-email-daniel.lezcano@linaro.org
+Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
+Acked-by: Joerg Roedel <jroedel@suse.de>
+---
+ kernel/irq/handle.c    | 6 ++----
+ kernel/irq/internals.h | 3 +++
+ kernel/irq/manage.c    | 8 +++-----
+ kernel/irq/proc.c      | 2 +-
+ kernel/irq/spurious.c  | 4 +---
+ 5 files changed, 10 insertions(+), 13 deletions(-)
+
+--- a/kernel/irq/handle.c
++++ b/kernel/irq/handle.c
+@@ -136,10 +136,9 @@ irqreturn_t handle_irq_event_percpu(stru
+ {
+ 	irqreturn_t retval = IRQ_NONE;
+ 	unsigned int flags = 0, irq = desc->irq_data.irq;
+-	struct irqaction *action = desc->action;
++	struct irqaction *action;
+ 
+-	/* action might have become NULL since we dropped the lock */
+-	while (action) {
++	for_each_action_of_desc(desc, action) {
+ 		irqreturn_t res;
+ 
+ 		trace_irq_handler_entry(irq, action);
+@@ -173,7 +172,6 @@ irqreturn_t handle_irq_event_percpu(stru
+ 		}
+ 
+ 		retval |= res;
+-		action = action->next;
+ 	}
+ 
+ 	add_interrupt_randomness(irq, flags);
+--- a/kernel/irq/internals.h
++++ b/kernel/irq/internals.h
+@@ -131,6 +131,9 @@ static inline void chip_bus_sync_unlock(
+ #define IRQ_GET_DESC_CHECK_GLOBAL	(_IRQ_DESC_CHECK)
+ #define IRQ_GET_DESC_CHECK_PERCPU	(_IRQ_DESC_CHECK | _IRQ_DESC_PERCPU)
+ 
++#define for_each_action_of_desc(desc, act)			\
++	for (act = desc->act; act; act = act->next)
++
+ struct irq_desc *
+ __irq_get_desc_lock(unsigned int irq, unsigned long *flags, bool bus,
+ 		    unsigned int check);
+--- a/kernel/irq/manage.c
++++ b/kernel/irq/manage.c
+@@ -144,13 +144,11 @@ int irq_can_set_affinity(unsigned int ir
+  */
+ void irq_set_thread_affinity(struct irq_desc *desc)
+ {
+-	struct irqaction *action = desc->action;
++	struct irqaction *action;
+ 
+-	while (action) {
++	for_each_action_of_desc(desc, action)
+ 		if (action->thread)
+ 			set_bit(IRQTF_AFFINITY, &action->thread_flags);
+-		action = action->next;
+-	}
+ }
+ 
+ #ifdef CONFIG_GENERIC_PENDING_IRQ
+@@ -995,7 +993,7 @@ void irq_wake_thread(unsigned int irq, v
+ 		return;
+ 
+ 	raw_spin_lock_irqsave(&desc->lock, flags);
+-	for (action = desc->action; action; action = action->next) {
++	for_each_action_of_desc(desc, action) {
+ 		if (action->dev_id == dev_id) {
+ 			if (action->thread)
+ 				__irq_wake_thread(desc, action);
+--- a/kernel/irq/proc.c
++++ b/kernel/irq/proc.c
+@@ -291,7 +291,7 @@ static int name_unique(unsigned int irq,
+ 	int ret = 1;
+ 
+ 	raw_spin_lock_irqsave(&desc->lock, flags);
+-	for (action = desc->action ; action; action = action->next) {
++	for_each_action_of_desc(desc, action) {
+ 		if ((action != new_action) && action->name &&
+ 				!strcmp(new_action->name, action->name)) {
+ 			ret = 0;
+--- a/kernel/irq/spurious.c
++++ b/kernel/irq/spurious.c
+@@ -211,14 +211,12 @@ static void __report_bad_irq(struct irq_
+ 	 * desc->lock here. See synchronize_irq().
+ 	 */
+ 	raw_spin_lock_irqsave(&desc->lock, flags);
+-	action = desc->action;
+-	while (action) {
++	for_each_action_of_desc(desc, action) {
+ 		printk(KERN_ERR "[<%p>] %pf", action->handler, action->handler);
+ 		if (action->thread_fn)
+ 			printk(KERN_CONT " threaded [<%p>] %pf",
+ 					action->thread_fn, action->thread_fn);
+ 		printk(KERN_CONT "\n");
+-		action = action->next;
+ 	}
+ 	raw_spin_unlock_irqrestore(&desc->lock, flags);
+ }

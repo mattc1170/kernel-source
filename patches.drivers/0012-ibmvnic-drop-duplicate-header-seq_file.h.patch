@@ -1,0 +1,31 @@
+From: Geliang Tang <geliangtang@gmail.com>
+Date: Thu, 24 Nov 2016 21:58:29 +0800
+Subject: [PATCH] ibmvnic: drop duplicate header seq_file.h
+Git-commit: 4ee12efa2dbf949d72ef2f7ef2e044af5a67b515
+Patch-mainline: v4.9-rc7
+References: bsc#1015416
+
+Drop duplicate header seq_file.h from ibmvnic.c.
+
+Signed-off-by: Geliang Tang <geliangtang@gmail.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+Acked-by: Michal Suchanek <msuchanek@suse.de>
+---
+ drivers/net/ethernet/ibm/ibmvnic.c | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/drivers/net/ethernet/ibm/ibmvnic.c b/drivers/net/ethernet/ibm/ibmvnic.c
+index 4f3281a..0fbf686 100644
+--- a/drivers/net/ethernet/ibm/ibmvnic.c
++++ b/drivers/net/ethernet/ibm/ibmvnic.c
+@@ -74,7 +74,6 @@
+ #include <asm/iommu.h>
+ #include <linux/uaccess.h>
+ #include <asm/firmware.h>
+-#include <linux/seq_file.h>
+ #include <linux/workqueue.h>
+ 
+ #include "ibmvnic.h"
+-- 
+2.10.2
+

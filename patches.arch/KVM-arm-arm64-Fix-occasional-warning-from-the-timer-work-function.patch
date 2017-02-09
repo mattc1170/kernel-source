@@ -1,0 +1,66 @@
+From patchwork Thu Sep 29 16:26:12 2016
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Subject: KVM: arm/arm64: Fix occasional warning from the timer work function
+From: Christoffer Dall <christoffer.dall@linaro.org>
+X-Patchwork-Id: 9356713
+Message-Id: <20160929162612.23171-1-christoffer.dall@linaro.org>
+To: kvmarm@lists.cs.columbia.edu
+Cc: Christoffer Dall <christoffer.dall@linaro.org>, mbrugger@suse.com,
+ linux-arm-kernel@lists.infradead.org, kvm@vger.kernel.org,
+ Alexander Graf <agraf@suse.de>
+Date: Thu, 29 Sep 2016 18:26:12 +0200
+Patch-mainline: Submitted, https://patchwork.kernel.org/patch/9356713
+References: bsc#988524
+
+When a VCPU blocks (WFI) we arm (the verb, not the architecture) any
+timers scheduled to expire in the future to wake up the vcpu thread when
+appropriate.  Because such as wake up involves a vcpu kick, and the
+timer expire function can get called from interrupt context, and the
+kick may sleep, we have to schedule the kick in the work function.
+
+The work function currently has a warning that gets raised if it turns
+out that the timer shouldn't fire when it's run, which was added because
+the idea was that then the work should never have been cancelled.
+
+However, the work function can run long after a vcpu thread gets
+scheduled again and the timer conditions can have changed as a result of
+running the vcpu, which would raise this warning.  This can happen on a
+busy system, for example.
+
+The solution is to simply not raise this warning, because a kick is
+never harmful.  Also, cancel any scheduled work when the vcpu thread is
+running anyway, since there is no need to run the work function anymore.
+
+Reported-by: Matthias Brugger <mbrugger@suse.com>
+Acked-by: Marc Zyngier <marc.zyngier@arm.com>
+Signed-off-by: Christoffer Dall <christoffer.dall@linaro.org>
+Signed-off-by: Matthias Brugger <mbrugger@suse.com>
+---
+ virt/kvm/arm/arch_timer.c | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/virt/kvm/arm/arch_timer.c b/virt/kvm/arm/arch_timer.c
+index 27a1f63..e136902 100644
+--- a/virt/kvm/arm/arch_timer.c
++++ b/virt/kvm/arm/arch_timer.c
+@@ -91,8 +91,6 @@ static void kvm_timer_inject_irq_work(struct work_struct *work)
+ 	vcpu = container_of(work, struct kvm_vcpu, arch.timer_cpu.expired);
+ 	vcpu->arch.timer_cpu.armed = false;
+ 
+-	WARN_ON(!kvm_timer_should_fire(vcpu));
+-
+ 	/*
+ 	 * If the vcpu is blocked we want to wake it up so that it will see
+ 	 * the timer has expired when entering the guest.
+@@ -240,6 +238,9 @@ void kvm_timer_unschedule(struct kvm_vcpu *vcpu)
+ {
+ 	struct arch_timer_cpu *timer = &vcpu->arch.timer_cpu;
+ 	timer_disarm(timer);
++
++	/* No need for another thread to kick us if we're already running */
++	cancel_work_sync(&timer->expired);
+ }
+ 
+ /**

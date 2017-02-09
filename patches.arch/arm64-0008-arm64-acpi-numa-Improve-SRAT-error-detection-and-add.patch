@@ -3,7 +3,8 @@ From: Matthias Brugger <mbrugger@suse.com>
 Date: Mon, 27 Jun 2016 19:03:40 +0200
 Subject: arm64: acpi/numa: Improve SRAT error detection and add
  messages
-Patch-mainline: No, it is reworked to not touch generic code
+Git-commit: e0af261a437db4f4b21478ac677ccca5fc0ec07e (partial)
+Patch-mainline: v4.8-rc1
 References: fate#319981
 
 Improve out of range node detection as well as allow for Larger SRAT
@@ -17,6 +18,8 @@ messages")
 
 Signed-off-by: Matthias Brugger <mbrugger@suse.com>
 ---
+The patch is reworked to not touch generic code
+
  arch/arm64/kernel/acpi_numa.c | 15 +++++++++++----
  1 file changed, 11 insertions(+), 4 deletions(-)
 

@@ -1,0 +1,43 @@
+From: Pierre-Louis Bossart <pierre-louis.bossart@linux.intel.com>
+Date: Thu, 17 Dec 2015 20:35:48 -0600
+Subject: [PATCH 34/82] ASoC: Intel: Atom: flip logic for gain Switch
+Git-commit: 940a5a014d50e15269b5d197ab571d1ca9971c43
+Patch-mainline: 4.5-rc1
+References: bsc#1010690
+
+The upstreamed code modified the control names from Mute to
+Switch without changing the logic. To get audio working the Switch
+needs to be off which isn't aligned with normal ALSA conventions.
+
+Inverting the logic now so that Switch Off means mute and Switch On
+means active audio using the specific volume setting.
+
+Signed-off-by: Sebastien Guiriec <sebastien.guiriec@intel.com>
+Signed-off-by: Pierre-Louis Bossart <pierre-louis.bossart@linux.intel.com>
+Signed-off-by: Mark Brown <broonie@kernel.org>
+Signed-off-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ sound/soc/intel/atom/sst-atom-controls.c |    4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+--- a/sound/soc/intel/atom/sst-atom-controls.c
++++ b/sound/soc/intel/atom/sst-atom-controls.c
+@@ -443,7 +443,7 @@ static int sst_gain_get(struct snd_kcont
+ 		break;
+ 
+ 	case SST_GAIN_MUTE:
+-		ucontrol->value.integer.value[0] = gv->mute ? 1 : 0;
++		ucontrol->value.integer.value[0] = gv->mute ? 0 : 1;
+ 		break;
+ 
+ 	case SST_GAIN_RAMP_DURATION:
+@@ -479,7 +479,7 @@ static int sst_gain_put(struct snd_kcont
+ 		break;
+ 
+ 	case SST_GAIN_MUTE:
+-		gv->mute = !!ucontrol->value.integer.value[0];
++		gv->mute = !ucontrol->value.integer.value[0];
+ 		dev_dbg(cmpnt->dev, "%s: Mute %d\n", mc->pname, gv->mute);
+ 		break;
+ 

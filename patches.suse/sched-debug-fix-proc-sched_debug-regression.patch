@@ -3,7 +3,8 @@ Date: Thu, 9 Jun 2016 14:27:08 +0100
 Subject: [PATCH] sched/debug: fix /proc/sched_debug regression
 
 References: Scheduler performance -- debugging overhead, fate#320486
-Patch-mainline: No, expected 4.7 and queued in tip
+Git-commit: 9c57259117b9c25472a3fa6d5a14d6bb3b647e87
+Patch-mainline: v4.7
 
 Commit cb2517653fcc ("sched/debug: Make schedstats a runtime tunable
 that is disabled by default") introduced a bug when CONFIG_SCHEDSTATS is

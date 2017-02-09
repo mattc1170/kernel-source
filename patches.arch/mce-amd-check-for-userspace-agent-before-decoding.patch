@@ -9,6 +9,21 @@ Now that mcelog supports AMD, we want to check whether it is running in
 userspace, and, if so, to not decode to dmesg. The moment mcelog gets
 unloaded or killed or b0rked, we fallback to decoding to dmesg.
 
+This patch is not upstream because:
+
+Basically, at the time, Thomas Renninger and I decided to have only one
+RAS agent on SLE12 and that is mcelog. That's why we need a way to stop
+EDAC from decoding an error.
+
+So this small patch simply stops decoding if mcelog is running on the
+system. If not, AMD MCEs still get decoded into dmesg by edac_mce_amd.
+
+That's why, by the way, our mcelog can decode AMD MCEs too, which I've
+added.
+
+Looking at SLE13, we will move to rasdaemon, most likely and then we can
+get rid of that patch.
+
 Signed-off-by: Borislav Petkov <bp@suse.de>
 ---
  arch/x86/include/asm/mce.h       |    1 +

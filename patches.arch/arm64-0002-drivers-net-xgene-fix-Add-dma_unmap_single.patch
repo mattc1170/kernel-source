@@ -2,8 +2,7 @@ From: Iyappan Subramanian <isubramanian@apm.com>
 Date: Fri, 12 Aug 2016 22:05:38 -0700
 Subject: drivers: net: xgene: fix: Add dma_unmap_single
 Git-commit: 6e434627bce2a4ccf6d7eea50c08b4fdbb70dd3e
-Patch-mainline: Queued
-Git-repo: git://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git
+Patch-mainline: v4.9-rc1
 References: bsc#993051
 
 In addition to xgene_enet_delete_bufpool() freeing skbs, their associated

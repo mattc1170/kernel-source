@@ -1,0 +1,63 @@
+From: Mika Kuoppala <mika.kuoppala@linux.intel.com>
+Date: Wed, 20 Jul 2016 14:26:12 +0300
+Subject: [PATCH] drm/i915/gen9: Add WaInPlaceDecompressionHang
+Patch-mainline: 4.8-rc1
+Git-commit: f15f6ca1e706e11fd07611bd4c7f903625349b33
+References: bsc#1014392
+No-fix: 4ba9c1f7c7b8ca8c1d77f65d408e589dc87b9a2d
+
+Add this workaround to prevent hang when in place compression
+is used.
+
+Reference: HSD#2135774
+Cc: stable@vger.kernel.org
+Signed-off-by: Mika Kuoppala <mika.kuoppala@intel.com>
+Reviewed-by: Arun Siluvery <arun.siluvery@linux.intel.com>
+Signed-off-by: Joonas Lahtinen <joonas.lahtinen@linux.intel.com>
+(cherry picked from commit 4ba9c1f7c7b8ca8c1d77f65d408e589dc87b9a2d)
+Signed-off-by: Daniel Vetter <daniel.vetter@ffwll.ch>
+Signed-off-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/gpu/drm/i915/i915_drv.h         |    2 ++
+ drivers/gpu/drm/i915/i915_reg.h         |    3 +++
+ drivers/gpu/drm/i915/intel_ringbuffer.c |    5 +++++
+ 3 files changed, 10 insertions(+)
+
+--- a/drivers/gpu/drm/i915/i915_drv.h
++++ b/drivers/gpu/drm/i915/i915_drv.h
+@@ -2522,6 +2522,8 @@ struct drm_i915_cmd_table {
+ #define SKL_REVID_D0		0x3
+ #define SKL_REVID_E0		0x4
+ #define SKL_REVID_F0		0x5
++#define SKL_REVID_G0		0x6
++#define SKL_REVID_H0		0x7
+ 
+ #define IS_SKL_REVID(p, since, until) (IS_SKYLAKE(p) && IS_REVID(p, since, until))
+ 
+--- a/drivers/gpu/drm/i915/i915_reg.h
++++ b/drivers/gpu/drm/i915/i915_reg.h
+@@ -1585,6 +1585,9 @@ enum skl_disp_power_wells {
+ 
+ #define GEN7_TLB_RD_ADDR	0x4700
+ 
++#define GEN9_GAMT_ECO_REG_RW_IA 0x4ab0
++#define   GAMT_ECO_ENABLE_IN_PLACE_DECOMPRESS	(1<<18)
++
+ #if 0
+ #define PRB0_TAIL	0x02030
+ #define PRB0_HEAD	0x02034
+--- a/drivers/gpu/drm/i915/intel_ringbuffer.c
++++ b/drivers/gpu/drm/i915/intel_ringbuffer.c
+@@ -1090,6 +1090,11 @@ static int skl_init_workarounds(struct i
+ 	/* WaDisableGafsUnitClkGating:skl */
+ 	WA_SET_BIT(GEN7_UCGCTL4, GEN8_EU_GAUNIT_CLOCK_GATE_DISABLE);
+ 
++	/* WaInPlaceDecompressionHang:skl */
++	if (IS_SKL_REVID(dev_priv, SKL_REVID_H0, REVID_FOREVER))
++		WA_SET_BIT(GEN9_GAMT_ECO_REG_RW_IA,
++			   GAMT_ECO_ENABLE_IN_PLACE_DECOMPRESS);
++
+ 	return skl_tune_iz_hashing(ring);
+ }
+ 

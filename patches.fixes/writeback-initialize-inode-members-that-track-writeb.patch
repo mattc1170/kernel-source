@@ -1,0 +1,44 @@
+From 3d65ae4634ed8350aee98a4e6f4e41fe40c7d282 Mon Sep 17 00:00:00 2001
+From: Tahsin Erdogan <tahsin@google.com>
+Date: Tue, 16 Feb 2016 13:34:39 -0800
+Subject: [PATCH] writeback: initialize inode members that track writeback
+ history
+Git-commit: 3d65ae4634ed8350aee98a4e6f4e41fe40c7d282
+Patch-mainline: v4.5-rc5
+References: bsc#1012829
+
+inode struct members that track cgroup writeback information
+should be reinitialized when inode gets allocated from
+kmem_cache. Otherwise, their values remain and get used by the
+new inode.
+
+Signed-off-by: Tahsin Erdogan <tahsin@google.com>
+Acked-by: Tejun Heo <tj@kernel.org>
+Fixes: d10c80955265 ("writeback: implement foreign cgroup inode bdi_writeback switching")
+Signed-off-by: Jens Axboe <axboe@fb.com>
+Signed-off-by: Jan Kara <jack@suse.cz>
+
+---
+ fs/inode.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/fs/inode.c b/fs/inode.c
+index 9f62db3bcc3e..69b8b526c194 100644
+--- a/fs/inode.c
++++ b/fs/inode.c
+@@ -154,6 +154,12 @@ int inode_init_always(struct super_block *sb, struct inode *inode)
+ 	inode->i_rdev = 0;
+ 	inode->dirtied_when = 0;
+ 
++#ifdef CONFIG_CGROUP_WRITEBACK
++	inode->i_wb_frn_winner = 0;
++	inode->i_wb_frn_avg_time = 0;
++	inode->i_wb_frn_history = 0;
++#endif
++
+ 	if (security_inode_alloc(inode))
+ 		goto out;
+ 	spin_lock_init(&inode->i_lock);
+-- 
+2.6.6
+

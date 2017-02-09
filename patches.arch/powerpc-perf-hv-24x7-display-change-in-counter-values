@@ -2,9 +2,8 @@ From: Sukadev Bhattiprolu <sukadev@linux.vnet.ibm.com>
 Date: Mon, 25 Jan 2016 23:05:36 -0500
 Subject: powerpc/perf/hv-24x7: Display change in counter values
 Git-commit: 2b206ee6b0df03a89783c6a9ada363122f918800
-Patch-mainline: v3.20-rc1
+Patch-mainline: v4.6-rc1
 References: fate#320704
-Signed-off-by: Tony Jones <tonyj@suse.de>
 
 For 24x7 counters, perf displays the raw value of the 24x7 counter, which
 is a monotonically increasing value.
@@ -40,6 +39,7 @@ the event count to 0 at the beginning of the transaction.
 
 Signed-off-by: Sukadev Bhattiprolu <sukadev@linux.vnet.ibm.com>
 Signed-off-by: Michael Ellerman <mpe@ellerman.id.au>
+Signed-off-by: Tony Jones <tonyj@suse.de>
 ---
  arch/powerpc/perf/hv-24x7.c | 13 ++++++++++++-
  1 file changed, 12 insertions(+), 1 deletion(-)

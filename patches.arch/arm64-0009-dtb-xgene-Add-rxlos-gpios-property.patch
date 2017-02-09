@@ -2,8 +2,7 @@ From: Iyappan Subramanian <isubramanian@apm.com>
 Date: Fri, 12 Aug 2016 22:05:45 -0700
 Subject: dtb: xgene: Add rxlos-gpios property
 Git-commit: 72d256439fcfec43df4c498b1d9b6131c32a8994
-Patch-mainline: Queued
-Git-repo: git://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git
+Patch-mainline: v4.9-rc1
 References: bsc#993051
 
 Added rxlos GPIO mapping by adding rxlos-gpios property.

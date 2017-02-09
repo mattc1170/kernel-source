@@ -1,0 +1,176 @@
+From 0ab6faa0fc2fa5397fe321448be7b968f60f6cb4 Mon Sep 17 00:00:00 2001
+From: Peter Zijlstra <peterz@infradead.org>
+Date: Tue, 13 Sep 2016 18:37:29 +0200
+Subject: [PATCH] sched/core: Optimize __schedule()
+
+References: bnc#978907 Scheduler performance -- context switch
+Patch-mainline: v4.9
+Git-commit: 9af6528ee9b682df7f29dbee86fbba0b67eab944
+
+Oleg noted that by making do_exit() use __schedule() for the TASK_DEAD
+context switch, we can avoid the TASK_DEAD special case currently in
+__schedule() because that avoids the extra preempt_disable() from
+schedule().
+
+In order to facilitate this, create a do_task_dead() helper which we
+place in the scheduler code, such that it can access __schedule().
+
+Also add some __noreturn annotations to the functions, there's no
+coming back from do_exit().
+
+Suggested-by: Oleg Nesterov <oleg@redhat.com>
+Signed-off-by: Peter Zijlstra (Intel) <peterz@infradead.org>
+Cc: Cheng Chao <cs.os.kernel@gmail.com>
+Cc: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: Peter Zijlstra <peterz@infradead.org>
+Cc: Thomas Gleixner <tglx@linutronix.de>
+Cc: akpm@linux-foundation.org
+Cc: chris@chris-wilson.co.uk
+Cc: tj@kernel.org
+Link: http://lkml.kernel.org/r/20160913163729.GB5012@twins.programming.kicks-ass.net
+Signed-off-by: Ingo Molnar <mingo@kernel.org>
+Signed-off-by: Mel Gorman <mgorman@suse.de>
+---
+ include/linux/kernel.h |  9 +++------
+ include/linux/sched.h  |  2 ++
+ kernel/exit.c          | 26 ++------------------------
+ kernel/sched/core.c    | 38 +++++++++++++++++++++++++++-----------
+ 4 files changed, 34 insertions(+), 41 deletions(-)
+
+diff --git a/include/linux/kernel.h b/include/linux/kernel.h
+index bcbf518b2498..0fd93dc05afb 100644
+--- a/include/linux/kernel.h
++++ b/include/linux/kernel.h
+@@ -253,16 +253,13 @@ static inline void might_fault(void) { }
+ extern struct atomic_notifier_head panic_notifier_list;
+ extern long (*panic_blink)(int state);
+ __printf(1, 2)
+-void panic(const char *fmt, ...)
+-	__noreturn __cold;
++void panic(const char *fmt, ...) __noreturn __cold;
+ extern void oops_enter(void);
+ extern void oops_exit(void);
+ void print_oops_end_marker(void);
+ extern int oops_may_print(void);
+-void do_exit(long error_code)
+-	__noreturn;
+-void complete_and_exit(struct completion *, long)
+-	__noreturn;
++void do_exit(long error_code) __noreturn;
++void complete_and_exit(struct completion *, long) __noreturn;
+ 
+ /* Internal, do not use. */
+ int __must_check _kstrtoul(const char *s, unsigned int base, unsigned long *res);
+diff --git a/include/linux/sched.h b/include/linux/sched.h
+index 7d16abae4522..5ddf46a6f15d 100644
+--- a/include/linux/sched.h
++++ b/include/linux/sched.h
+@@ -434,6 +434,8 @@ static inline void io_schedule(void)
+ 	io_schedule_timeout(MAX_SCHEDULE_TIMEOUT);
+ }
+ 
++void __noreturn do_task_dead(void);
++
+ struct nsproxy;
+ struct user_namespace;
+ 
+diff --git a/kernel/exit.c b/kernel/exit.c
+index 3909fe47790c..9e84eb611dee 100644
+--- a/kernel/exit.c
++++ b/kernel/exit.c
+@@ -726,7 +726,7 @@ static void check_stack_usage(void)
+ static inline void check_stack_usage(void) {}
+ #endif
+ 
+-void do_exit(long code)
++void __noreturn do_exit(long code)
+ {
+ 	struct task_struct *tsk = current;
+ 	int group_dead;
+@@ -887,29 +887,7 @@ void do_exit(long code)
+ 	exit_rcu();
+ 	TASKS_RCU(__srcu_read_unlock(&tasks_rcu_exit_srcu, tasks_rcu_i));
+ 
+-	/*
+-	 * The setting of TASK_RUNNING by try_to_wake_up() may be delayed
+-	 * when the following two conditions become true.
+-	 *   - There is race condition of mmap_sem (It is acquired by
+-	 *     exit_mm()), and
+-	 *   - SMI occurs before setting TASK_RUNINNG.
+-	 *     (or hypervisor of virtual machine switches to other guest)
+-	 *  As a result, we may become TASK_RUNNING after becoming TASK_DEAD
+-	 *
+-	 * To avoid it, we have to wait for releasing tsk->pi_lock which
+-	 * is held by try_to_wake_up()
+-	 */
+-	smp_mb();
+-	raw_spin_unlock_wait(&tsk->pi_lock);
+-
+-	/* causes final put_task_struct in finish_task_switch(). */
+-	tsk->state = TASK_DEAD;
+-	tsk->flags |= PF_NOFREEZE;	/* tell freezer to ignore us */
+-	schedule();
+-	BUG();
+-	/* Avoid "noreturn function does return".  */
+-	for (;;)
+-		cpu_relax();	/* For when BUG is null */
++	do_task_dead();
+ }
+ EXPORT_SYMBOL_GPL(do_exit);
+ 
+diff --git a/kernel/sched/core.c b/kernel/sched/core.c
+index c6c8b34e1d1f..cbf86a1ff27b 100644
+--- a/kernel/sched/core.c
++++ b/kernel/sched/core.c
+@@ -3406,17 +3406,6 @@ static void __sched notrace __schedule(bool preempt)
+ 	rcu_note_context_switch();
+ 	prev = rq->curr;
+ 
+-	/*
+-	 * do_exit() calls schedule() with preemption disabled as an exception;
+-	 * however we must fix that up, otherwise the next task will see an
+-	 * inconsistent (higher) preempt count.
+-	 *
+-	 * It also avoids the below schedule_debug() test from complaining
+-	 * about this.
+-	 */
+-	if (unlikely(prev->state == TASK_DEAD))
+-		preempt_enable_no_resched_notrace();
+-
+ 	schedule_debug(prev);
+ 
+ 	if (sched_feat(HRTICK))
+@@ -3484,6 +3473,33 @@ static void __sched notrace __schedule(bool preempt)
+ 	balance_callback(rq);
+ }
+ 
++void __noreturn do_task_dead(void)
++{
++	/*
++	 * The setting of TASK_RUNNING by try_to_wake_up() may be delayed
++	 * when the following two conditions become true.
++	 *   - There is race condition of mmap_sem (It is acquired by
++	 *     exit_mm()), and
++	 *   - SMI occurs before setting TASK_RUNINNG.
++	 *     (or hypervisor of virtual machine switches to other guest)
++	 *  As a result, we may become TASK_RUNNING after becoming TASK_DEAD
++	 *
++	 * To avoid it, we have to wait for releasing tsk->pi_lock which
++	 * is held by try_to_wake_up()
++	 */
++	smp_mb();
++	raw_spin_unlock_wait(&current->pi_lock);
++
++	/* causes final put_task_struct in finish_task_switch(). */
++	__set_current_state(TASK_DEAD);
++	current->flags |= PF_NOFREEZE;	/* tell freezer to ignore us */
++	__schedule(false);
++	BUG();
++	/* Avoid "noreturn function does return".  */
++	for (;;)
++		cpu_relax();	/* For when BUG is null */
++}
++
+ static inline void sched_submit_work(struct task_struct *tsk)
+ {
+ 	if (!tsk->state || tsk_is_pi_blocked(tsk))

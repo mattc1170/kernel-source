@@ -1,0 +1,34 @@
+From: Dan Carpenter <dan.carpenter@oracle.com>
+Date: Fri, 26 Feb 2016 00:32:21 +0300
+Subject: mailbox/xgene-slimpro: Checking for IS_ERR instead of NULL
+Git-commit: 14d653af4e32b1ae2964e5b2847ef6be191fee64
+Patch-mainline: v4.6-rc1
+
+devm_ioremap() returns NULL, it never returns an ERR_PTR.
+
+Fixes: f700e84f417b ('mailbox: Add support for APM X-Gene platform mailbox driver')
+Signed-off-by: Dan Carpenter <dan.carpenter@oracle.com>
+Signed-off-by: Jassi Brar <jaswinder.singh@linaro.org>
+Signed-off-by: Matthias Brugger <mbrugger@suse.com>
+---
+ drivers/mailbox/mailbox-xgene-slimpro.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/mailbox/mailbox-xgene-slimpro.c b/drivers/mailbox/mailbox-xgene-slimpro.c
+index b5f5106..bd07f39 100644
+--- a/drivers/mailbox/mailbox-xgene-slimpro.c
++++ b/drivers/mailbox/mailbox-xgene-slimpro.c
+@@ -196,8 +196,8 @@ static int slimpro_mbox_probe(struct platform_device *pdev)
+ 
+ 	regs = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+ 	mb_base = devm_ioremap(&pdev->dev, regs->start, resource_size(regs));
+-	if (IS_ERR(mb_base))
+-		return PTR_ERR(mb_base);
++	if (!mb_base)
++		return -ENOMEM;
+ 
+ 	/* Setup mailbox links */
+ 	for (i = 0; i < MBOX_CNT; i++) {
+-- 
+2.10.0
+

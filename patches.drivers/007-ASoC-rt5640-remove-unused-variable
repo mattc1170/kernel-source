@@ -1,0 +1,33 @@
+From: Sudip Mukherjee <sudip.mukherjee@codethink.co.uk>
+Date: Tue, 8 Mar 2016 13:35:31 +0530
+Subject: [PATCH 07/82] ASoC: rt5640: remove unused variable
+Git-commit: c77dd678a7659d58625bd3b3a36d1329d9e7d44c
+Patch-mainline: 4.6-rc1
+References: bsc#1010690
+
+We are getting build warning about:
+sound/soc/codecs/rt5640.c:1892:11: warning: unused variable 'dai_sel'
+
+The use of the variable was removed but the variable itself was not
+removed.
+
+Fixes: c467fc0e010b ("ASoC: rt5640: Set PLL src according to source")
+Signed-off-by: Sudip Mukherjee <sudip.mukherjee@codethink.co.uk>
+Signed-off-by: Mark Brown <broonie@kernel.org>
+Signed-off-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ sound/soc/codecs/rt5640.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+--- a/sound/soc/codecs/rt5640.c
++++ b/sound/soc/codecs/rt5640.c
+@@ -1892,7 +1892,7 @@ static int rt5640_set_dai_pll(struct snd
+ 	struct snd_soc_codec *codec = dai->codec;
+ 	struct rt5640_priv *rt5640 = snd_soc_codec_get_drvdata(codec);
+ 	struct rl6231_pll_code pll_code;
+-	int ret, dai_sel;
++	int ret;
+ 
+ 	if (source == rt5640->pll_src && freq_in == rt5640->pll_in &&
+ 	    freq_out == rt5640->pll_out)

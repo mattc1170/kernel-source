@@ -1,0 +1,32 @@
+From: John Lin <john.lin@realtek.com>
+Date: Mon, 15 Feb 2016 10:40:17 +0800
+Subject: [PATCH 16/82] ASoC: rt5645: Add dmi_system_id "Google Setzer"
+Git-commit: 178ff7c6f3916aff3c3eaaec8636be3b41e93011
+Patch-mainline: 4.7-rc1
+References: bsc#1010690
+
+Add platform specific data for Setzer project.
+
+Signed-off-by: John Lin <john.lin@realtek.com>
+Signed-off-by: Mark Brown <broonie@kernel.org>
+Signed-off-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ sound/soc/codecs/rt5645.c |    6 ++++++
+ 1 file changed, 6 insertions(+)
+
+--- a/sound/soc/codecs/rt5645.c
++++ b/sound/soc/codecs/rt5645.c
+@@ -3558,6 +3558,12 @@ static const struct dmi_system_id dmi_pl
+ 			DMI_MATCH(DMI_SYS_VENDOR, "GOOGLE"),
+ 		},
+ 	},
++	{
++		.ident = "Google Setzer",
++		.matches = {
++			DMI_MATCH(DMI_PRODUCT_NAME, "Setzer"),
++		},
++	},
+ 	{ }
+ };
+ 

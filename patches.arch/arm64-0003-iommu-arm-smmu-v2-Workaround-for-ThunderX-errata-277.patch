@@ -1,47 +1,26 @@
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Subject: [V4] iommu/arm-smmu-v2: Workaround for ThunderX errata#27704
 From: Tirumalesh Chalamarla <tchalamarla@caviumnetworks.com>
-X-Patchwork-Id: 8507951
-Message-Id: <1457128569-13878-1-git-send-email-tchalamarla@caviumnetworks.com>
-To: <will.deacon@arm.com>, <robin.murphy@arm.com>, <mark.rutland@arm.com>
-Cc: iommu@lists.linux-foundation.org, Geethasowjanya.Akula@caviumnetworks.com, 
-	linux-arm-kernel@lists.infradead.org, tchalamarla@caviumnetworks.com
 Date: Fri, 4 Mar 2016 13:56:09 -0800
-Patch-mainline: Submitted, https://patchwork.kernel.org/patch/8507951
+Subject: iommu/arm-smmu: Workaround for ThunderX erratum #27704
+Git-commit: 1bd37a6835bef0ecd2138cb42f9088fd890f9939
+Patch-mainline: v4.7-rc1
 References: fate#319978
 
-Due to Errata#27704 CN88xx SMMUv2,supports  only shared ASID and VMID
-namespaces; specifically within a given node SMMU0 and SMMU1 share,
-as does SMMU2 and SMMU3.
+Due to erratum #27704, the CN88xx SMMUv2 implementation supports only
+shared ASID and VMID numberspaces.
 
-This patch make sure ASID and VMID space is unique across cavium SMMUv2.
-
-changes from V3:
-	- Removed redundent variable.
-	- Used atomic_t for maintaining running total
-
-changes from V2:
-	- removed *_base from DT, and replaced with compatible string
-
-changes from V1:
-	- rebased on top of 16 bit VMID patch
-	- removed redundent options from DT
-	- insted of transform, DT now supplies starting ASID/VMID
+This patch ensures that ASID and VMIDs are unique across all SMMU
+instances on affected Cavium systems.
 
 Signed-off-by: Tirumalesh Chalamarla <tchalamarla@caviumnetworks.com>
 Signed-off-by: Akula Geethasowjanya <Geethasowjanya.Akula@caviumnetworks.com>
+[will: commit message, comments and formatting]
+Signed-off-by: Will Deacon <will.deacon@arm.com>
+
 Signed-off-by: Matthias Brugger <mbrugger@suse.com>
-
 ---
-Documentation/arm64/silicon-errata.txt             |  1 +
  Documentation/devicetree/bindings/iommu/arm,smmu.txt |    1 
- drivers/iommu/arm-smmu.c                             |   42 ++++++++++++++-----
- 2 files changed, 32 insertions(+), 11 deletions(-)
-
---
-2.1.0
+ drivers/iommu/arm-smmu.c                             |   39 +++++++++++++------
+ 2 files changed, 29 insertions(+), 11 deletions(-)
 
 --- a/Documentation/devicetree/bindings/iommu/arm,smmu.txt
 +++ b/Documentation/devicetree/bindings/iommu/arm,smmu.txt
@@ -55,19 +34,16 @@ Documentation/arm64/silicon-errata.txt             |  1 +
                    version of the architecture implemented.
 --- a/drivers/iommu/arm-smmu.c
 +++ b/drivers/iommu/arm-smmu.c
-@@ -326,6 +326,11 @@ struct arm_smmu_device {
+@@ -326,6 +326,8 @@ struct arm_smmu_device {
  
  	struct list_head		list;
  	struct rb_root			masters;
-+	/*
-+	 *The following fields are specific to Cavium, Thunder
-+	 */
-+	u32				cavium_id_base;
 +
++	u32				cavium_id_base; /* Specific to Cavium */
  };
  
  struct arm_smmu_cfg {
-@@ -335,8 +340,8 @@ struct arm_smmu_cfg {
+@@ -335,8 +337,8 @@ struct arm_smmu_cfg {
  };
  #define INVALID_IRPTNDX			0xff
  
@@ -78,7 +54,7 @@ Documentation/arm64/silicon-errata.txt             |  1 +
  
  enum arm_smmu_domain_stage {
  	ARM_SMMU_DOMAIN_S1 = 0,
-@@ -364,6 +369,8 @@ struct arm_smmu_option_prop {
+@@ -364,6 +366,8 @@ struct arm_smmu_option_prop {
  	const char *prop;
  };
  
@@ -87,7 +63,7 @@ Documentation/arm64/silicon-errata.txt             |  1 +
  static struct arm_smmu_option_prop arm_smmu_options[] = {
  	{ ARM_SMMU_OPT_SECURE_CFG_ACCESS, "calxeda,smmu-secure-config-access" },
  	{ 0, NULL},
-@@ -575,11 +582,11 @@ static void arm_smmu_tlb_inv_context(voi
+@@ -575,11 +579,11 @@ static void arm_smmu_tlb_inv_context(voi
  
  	if (stage1) {
  		base = ARM_SMMU_CB_BASE(smmu) + ARM_SMMU_CB(smmu, cfg->cbndx);
@@ -101,7 +77,7 @@ Documentation/arm64/silicon-errata.txt             |  1 +
  			       base + ARM_SMMU_GR0_TLBIVMID);
  	}
  
-@@ -601,7 +608,7 @@ static void arm_smmu_tlb_inv_range_nosyn
+@@ -601,7 +605,7 @@ static void arm_smmu_tlb_inv_range_nosyn
  
  		if (!IS_ENABLED(CONFIG_64BIT) || smmu->version == ARM_SMMU_V1) {
  			iova &= ~12UL;
@@ -110,7 +86,7 @@ Documentation/arm64/silicon-errata.txt             |  1 +
  			do {
  				writel_relaxed(iova, reg);
  				iova += granule;
-@@ -609,7 +616,7 @@ static void arm_smmu_tlb_inv_range_nosyn
+@@ -609,7 +613,7 @@ static void arm_smmu_tlb_inv_range_nosyn
  #ifdef CONFIG_64BIT
  		} else {
  			iova >>= 12;
@@ -119,7 +95,7 @@ Documentation/arm64/silicon-errata.txt             |  1 +
  			do {
  				writeq_relaxed(iova, reg);
  				iova += granule >> 12;
-@@ -629,7 +636,7 @@ static void arm_smmu_tlb_inv_range_nosyn
+@@ -629,7 +633,7 @@ static void arm_smmu_tlb_inv_range_nosyn
  #endif
  	} else {
  		reg = ARM_SMMU_GR0(smmu) + ARM_SMMU_GR0_TLBIVMID;
@@ -128,7 +104,7 @@ Documentation/arm64/silicon-errata.txt             |  1 +
  	}
  }
  
-@@ -738,7 +745,7 @@ static void arm_smmu_init_context_bank(s
+@@ -738,7 +742,7 @@ static void arm_smmu_init_context_bank(s
  #endif
  		/* if 16bit VMID supported set VMID in CBA2R */
  		if (smmu->features & ARM_SMMU_FEAT_VMID16)
@@ -137,7 +113,7 @@ Documentation/arm64/silicon-errata.txt             |  1 +
  
  		writel_relaxed(reg, gr1_base + ARM_SMMU_GR1_CBA2R(cfg->cbndx));
  	}
-@@ -757,7 +764,7 @@ static void arm_smmu_init_context_bank(s
+@@ -757,7 +761,7 @@ static void arm_smmu_init_context_bank(s
  			(CBAR_S1_MEMATTR_WB << CBAR_S1_MEMATTR_SHIFT);
  	} else if (!(smmu->features & ARM_SMMU_FEAT_VMID16)) {
  		/*16 bit VMID is not supported set 8 bit VMID here */
@@ -146,7 +122,7 @@ Documentation/arm64/silicon-errata.txt             |  1 +
  	}
  	writel_relaxed(reg, gr1_base + ARM_SMMU_GR1_CBAR(cfg->cbndx));
  
-@@ -765,11 +772,11 @@ static void arm_smmu_init_context_bank(s
+@@ -765,11 +769,11 @@ static void arm_smmu_init_context_bank(s
  	if (stage1) {
  		reg64 = pgtbl_cfg->arm_lpae_s1_cfg.ttbr[0];
  
@@ -160,7 +136,7 @@ Documentation/arm64/silicon-errata.txt             |  1 +
  		smmu_writeq(reg64, cb_base + ARM_SMMU_CB_TTBR1);
  	} else {
  		reg64 = pgtbl_cfg->arm_lpae_s2_cfg.vttbr;
-@@ -1718,6 +1725,7 @@ static const struct of_device_id arm_smm
+@@ -1717,6 +1721,7 @@ static const struct of_device_id arm_smm
  	{ .compatible = "arm,mmu-400", .data = (void *)ARM_SMMU_V1 },
  	{ .compatible = "arm,mmu-401", .data = (void *)ARM_SMMU_V1 },
  	{ .compatible = "arm,mmu-500", .data = (void *)ARM_SMMU_V2 },
@@ -168,22 +144,22 @@ Documentation/arm64/silicon-errata.txt             |  1 +
  	{ },
  };
  MODULE_DEVICE_TABLE(of, arm_smmu_of_match);
-@@ -1827,6 +1835,18 @@ static int arm_smmu_device_dt_probe(stru
- 			goto out_free_irqs;
+@@ -1827,6 +1832,18 @@ static int arm_smmu_device_dt_probe(stru
  		}
  	}
+ 
 +	/*
-+	 * Due to Errata#27704 CN88xx SMMUv2,supports  only shared ASID and VMID
-+	 * namespaces; specifically within a given node SMMU0 and SMMU1 share,
-+	 * as does SMMU2 and SMMU3. see if this is a Cavium SMMU, if so
-+	 * set asid and vmid base such that each SMMU gets unique
-+	 * asid/vmid space.
++	 * Cavium CN88xx erratum #27704.
++	 * Ensure ASID and VMID allocation is unique across all SMMUs in
++	 * the system.
 +	 */
 +	if (of_device_is_compatible(dev->of_node, "cavium,smmu-v2")) {
-+		smmu->cavium_id_base = atomic_add_return(smmu->num_context_banks,
-+				&cavium_smmu_context_count);
++		smmu->cavium_id_base =
++			atomic_add_return(smmu->num_context_banks,
++					  &cavium_smmu_context_count);
 +		smmu->cavium_id_base -= smmu->num_context_banks;
 +	}
- 
++
  	INIT_LIST_HEAD(&smmu->list);
  	spin_lock(&arm_smmu_devices_lock);
+ 	list_add(&smmu->list, &arm_smmu_devices);

@@ -3,7 +3,8 @@ From: Ard Biesheuvel <ard.biesheuvel@linaro.org>
 Date: Thu, 10 Mar 2016 12:40:05 +0700
 Subject: [PATCH 5/7] efi: efifb: use builtin_platform_driver and drop unused
  includes
-Patch-mainline: Submitted, https://lkml.kernel.org/r/1457588408-19309-6-git-send-email-ard.biesheuvel@linaro.org
+Patch-mainline: v4.7-rc1
+Git-commit: 07ea7ec5df3ee4a9fedb3d81dc69c2f8d07d44c0
 References: bnc#974215
 
 Since efifb can only be built directly into the kernel, drop the module

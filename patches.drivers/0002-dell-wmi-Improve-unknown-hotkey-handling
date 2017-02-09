@@ -1,0 +1,76 @@
+From cbc61f114af5fb078d84dc8864152f4db1712bc5 Mon Sep 17 00:00:00 2001
+From: Andy Lutomirski <luto@kernel.org>
+Date: Mon, 30 Nov 2015 17:02:01 -0800
+Subject: [PATCH] dell-wmi: Improve unknown hotkey handling
+Mime-version: 1.0
+Content-type: text/plain; charset=UTF-8
+Content-transfer-encoding: 8bit
+Git-commit: cbc61f114af5fb078d84dc8864152f4db1712bc5
+Patch-mainline: 4.5-rc1
+References: bsc#1004052
+
+If DMI lists a hotkey that we don't recognize, log and ignore it
+instead of trying to map it to keycode 0.  I haven't seen this happen,
+but it will help maintain the key map in the future and it will help
+avoid sending bogus events.
+
+This also improves the message that we log when we get an unknown key
+event.
+
+Signed-off-by: Andy Lutomirski <luto@kernel.org>
+Reviewed-by: Pali Rohár <pali.rohar@gmail.com>
+[dvhart: remove BUILD_BUG_ON per mutual agreement on list]
+Signed-off-by: Darren Hart <dvhart@linux.intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/platform/x86/dell-wmi.c |   24 ++++++++++++++++++++----
+ 1 file changed, 20 insertions(+), 4 deletions(-)
+
+--- a/drivers/platform/x86/dell-wmi.c
++++ b/drivers/platform/x86/dell-wmi.c
+@@ -118,6 +118,7 @@ struct dell_bios_hotkey_table {
+ 
+ static const struct dell_bios_hotkey_table *dell_bios_hotkey_table;
+ 
++/* Uninitialized entries here are KEY_RESERVED == 0. */
+ static const u16 bios_to_linux_keycode[256] __initconst = {
+ 	[0]	= KEY_MEDIA,
+ 	[1]	= KEY_NEXTSONG,
+@@ -170,7 +171,8 @@ static void dell_wmi_process_key(int rep
+ 	key = sparse_keymap_entry_from_scancode(dell_wmi_input_dev,
+ 						reported_key);
+ 	if (!key) {
+-		pr_info("Unknown key %x pressed\n", reported_key);
++		pr_info("Unknown key with scancode 0x%x pressed\n",
++			reported_key);
+ 		return;
+ 	}
+ 
+@@ -328,9 +330,23 @@ static const struct key_entry * __init d
+ 	for (i = 0; i < hotkey_num; i++) {
+ 		const struct dell_bios_keymap_entry *bios_entry =
+ 					&dell_bios_hotkey_table->keymap[i];
+-		u16 keycode = bios_entry->keycode < 256 ?
+-				    bios_to_linux_keycode[bios_entry->keycode] :
+-				    KEY_RESERVED;
++
++		/* Uninitialized entries are 0 aka KEY_RESERVED. */
++		u16 keycode = (bios_entry->keycode <
++			       ARRAY_SIZE(bios_to_linux_keycode)) ?
++			bios_to_linux_keycode[bios_entry->keycode] :
++			KEY_RESERVED;
++
++		/*
++		 * Log if we find an entry in the DMI table that we don't
++		 * understand.  If this happens, we should figure out what
++		 * the entry means and add it to bios_to_linux_keycode.
++		 */
++		if (keycode == KEY_RESERVED) {
++			pr_info("firmware scancode 0x%x maps to unrecognized keycode 0x%x\n",
++				bios_entry->scancode, bios_entry->keycode);
++			continue;
++		}
+ 
+ 		if (keycode == KEY_KBDILLUMTOGGLE)
+ 			keymap[i].type = KE_IGNORE;

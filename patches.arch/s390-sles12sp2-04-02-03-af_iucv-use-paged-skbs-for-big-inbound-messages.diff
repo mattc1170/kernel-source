@@ -1,6 +1,7 @@
 From: Ursula Braun <ubraun@linux.vnet.ibm.com>
-Subject: af_iucv: use paged SKBs for big outbound messages
-Patch-mainline: Submitted, Mon Jun 13 18:46:16 2016 +0200 - Git-commit: a006353a9a8d9e28d35f94bfc97e9573d6ee28aa
+Subject: af_iucv: use paged SKBs for big inbound messages
+Patch-mainline: v4.8-rc1
+Git-commit: a006353a9a8d9e28d35f94bfc97e9573d6ee28aa
 References: bnc#988934, LTC#143715
 
 Description:  af_iucv: support buffer lists for IUCV transport
@@ -14,12 +15,11 @@ Reproduction: Run af_iucv socket program in a system with fragmented Linux
 
 Upstream-Description:
 
-              af_iucv: use paged SKBs for big outbound messages
+              af_iucv: use paged SKBs for big inbound messages
 
-              When an outbound message is bigger than a page, allocate and fill
-              a paged SKB, and subsequently use IUCV send primitive with IPBUFLST
-              flag. This relaxes the pressure to allocate big contiguous kernel
-              buffers.
+              When an inbound message is bigger than a page, allocate a paged SKB,
+              and subsequently use IUCV receive primitive with IPBUFLST flag.
+              This relaxes the pressure to allocate big contiguous kernel buffers.
 
               Signed-off-by: Eugene Crosser <Eugene.Crosser@ru.ibm.com>
               Signed-off-by: Ursula Braun <ubraun@linux.vnet.ibm.com>

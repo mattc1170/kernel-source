@@ -1,0 +1,30 @@
+From: Keith Busch <keith.busch@intel.com>
+Date: Tue, 17 May 2016 11:22:18 -0600
+Subject: x86/PCI: VMD: Initialize list item in IRQ disable
+Git-commit: 97e92306357583c1741f0a111c7befe8673b91ee
+Patch-mainline: v4.8-rc1
+References: bsc#1006827
+
+Multiple calls to disable an IRQ would have caused the driver to
+dereference a poisoned list item.  This re-initializes the list to allow
+multiple requests to disable the IRQ.
+
+Signed-off-by: Keith Busch <keith.busch@intel.com>
+Signed-off-by: Bjorn Helgaas <bhelgaas@google.com>
+Acked-by Jon Derrick: <jonathan.derrick@intel.com>
+
+Acked-by: Joerg Roedel <jroedel@suse.de>
+---
+ arch/x86/pci/vmd.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+--- a/arch/x86/pci/vmd.c
++++ b/arch/x86/pci/vmd.c
+@@ -135,6 +135,7 @@ static void vmd_irq_disable(struct irq_d
+ 
+ 	raw_spin_lock(&list_lock);
+ 	list_del_rcu(&vmdirq->node);
++	INIT_LIST_HEAD_RCU(&vmdirq->node);
+ 	raw_spin_unlock(&list_lock);
+ }
+ 

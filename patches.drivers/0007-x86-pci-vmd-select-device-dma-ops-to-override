@@ -1,0 +1,48 @@
+From: Keith Busch <keith.busch@intel.com>
+Date: Tue, 17 May 2016 11:13:24 -0600
+Subject: x86/PCI: VMD: Select device dma ops to override
+Git-commit: ca8a8fabb10459753fba73cac0382076f0aab058
+Patch-mainline: v4.8-rc1
+References: bsc#1006827
+
+VMD device doesn't usually have device archdata specific dma_ops, so we
+need to override the default ops for VMD devices.
+
+Signed-off-by: Keith Busch <keith.busch@intel.com>
+Signed-off-by: Bjorn Helgaas <bhelgaas@google.com>
+Acked-by Jon Derrick: <jonathan.derrick@intel.com>
+
+Acked-by: Joerg Roedel <jroedel@suse.de>
+---
+ arch/x86/pci/vmd.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+--- a/arch/x86/pci/vmd.c
++++ b/arch/x86/pci/vmd.c
+@@ -261,7 +261,7 @@ static struct device *to_vmd_dev(struct
+ 
+ static struct dma_map_ops *vmd_dma_ops(struct device *dev)
+ {
+-	return to_vmd_dev(dev)->archdata.dma_ops;
++	return get_dma_ops(to_vmd_dev(dev));
+ }
+ 
+ static void *vmd_alloc(struct device *dev, size_t size, dma_addr_t *addr,
+@@ -367,7 +367,7 @@ static void vmd_teardown_dma_ops(struct
+ {
+ 	struct dma_domain *domain = &vmd->dma_domain;
+ 
+-	if (vmd->dev->dev.archdata.dma_ops)
++	if (get_dma_ops(&vmd->dev->dev))
+ 		del_dma_domain(domain);
+ }
+ 
+@@ -379,7 +379,7 @@ static void vmd_teardown_dma_ops(struct
+ 
+ static void vmd_setup_dma_ops(struct vmd_dev *vmd)
+ {
+-	const struct dma_map_ops *source = vmd->dev->dev.archdata.dma_ops;
++	const struct dma_map_ops *source = get_dma_ops(&vmd->dev->dev);
+ 	struct dma_map_ops *dest = &vmd->dma_ops;
+ 	struct dma_domain *domain = &vmd->dma_domain;
+ 

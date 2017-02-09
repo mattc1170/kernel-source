@@ -1,0 +1,73 @@
+From efa29b702fcc597999e0f7f06cbc7620cba3bebd Mon Sep 17 00:00:00 2001
+From: Arnd Bergmann <arnd@arndb.de>
+Date: Fri, 26 Feb 2016 13:46:27 +0100
+Subject: [PATCH 2/9] lib/mpi: use "static inline" instead of "extern inline"
+Git-commit: 9c6bd0c2f103f4748cb4abcaf141f7d11aabfe9f
+Patch-mainline: v4.6-rc1
+References: bsc#1003581
+
+When we use CONFIG_PROFILE_ALL_BRANCHES, every 'if()' introduces
+a static variable, but that is not allowed in 'extern inline'
+functions:
+
+mpi-inline.h:116:204: warning: '______f' is static but declared in inline function 'mpihelp_sub' which is not static
+mpi-inline.h:113:184: warning: '______f' is static but declared in inline function 'mpihelp_sub' which is not static
+mpi-inline.h:70:184: warning: '______f' is static but declared in inline function 'mpihelp_add' which is not static
+mpi-inline.h:56:204: warning: '______f' is static but declared in inline function 'mpihelp_add_1' which is not static
+
+This changes the MPI code to use 'static inline' instead, to get
+rid of hundreds of warnings.
+
+Signed-off-by: Arnd Bergmann <arnd@arndb.de>
+Signed-off-by: Herbert Xu <herbert@gondor.apana.org.au>
+Acked-by: Michal Marek <mmarek@suse.com>
+
+---
+ lib/mpi/mpi-inline.h   | 2 +-
+ lib/mpi/mpi-internal.h | 8 ++++----
+ 2 files changed, 5 insertions(+), 5 deletions(-)
+
+diff --git a/lib/mpi/mpi-inline.h b/lib/mpi/mpi-inline.h
+index e2b39852b30a..c245ea31f785 100644
+--- a/lib/mpi/mpi-inline.h
++++ b/lib/mpi/mpi-inline.h
+@@ -30,7 +30,7 @@
+ #define G10_MPI_INLINE_H
+ 
+ #ifndef G10_MPI_INLINE_DECL
+-#define G10_MPI_INLINE_DECL  extern inline
++#define G10_MPI_INLINE_DECL  static inline
+ #endif
+ 
+ G10_MPI_INLINE_DECL mpi_limb_t
+diff --git a/lib/mpi/mpi-internal.h b/lib/mpi/mpi-internal.h
+index c65dd1bff45a..7eceeddb3fb8 100644
+--- a/lib/mpi/mpi-internal.h
++++ b/lib/mpi/mpi-internal.h
+@@ -168,19 +168,19 @@ void mpi_rshift_limbs(MPI a, unsigned int count);
+ int mpi_lshift_limbs(MPI a, unsigned int count);
+ 
+ /*-- mpihelp-add.c --*/
+-mpi_limb_t mpihelp_add_1(mpi_ptr_t res_ptr, mpi_ptr_t s1_ptr,
++static inline mpi_limb_t mpihelp_add_1(mpi_ptr_t res_ptr, mpi_ptr_t s1_ptr,
+ 			 mpi_size_t s1_size, mpi_limb_t s2_limb);
+ mpi_limb_t mpihelp_add_n(mpi_ptr_t res_ptr, mpi_ptr_t s1_ptr,
+ 			 mpi_ptr_t s2_ptr, mpi_size_t size);
+-mpi_limb_t mpihelp_add(mpi_ptr_t res_ptr, mpi_ptr_t s1_ptr, mpi_size_t s1_size,
++static inline mpi_limb_t mpihelp_add(mpi_ptr_t res_ptr, mpi_ptr_t s1_ptr, mpi_size_t s1_size,
+ 		       mpi_ptr_t s2_ptr, mpi_size_t s2_size);
+ 
+ /*-- mpihelp-sub.c --*/
+-mpi_limb_t mpihelp_sub_1(mpi_ptr_t res_ptr, mpi_ptr_t s1_ptr,
++static inline mpi_limb_t mpihelp_sub_1(mpi_ptr_t res_ptr, mpi_ptr_t s1_ptr,
+ 			 mpi_size_t s1_size, mpi_limb_t s2_limb);
+ mpi_limb_t mpihelp_sub_n(mpi_ptr_t res_ptr, mpi_ptr_t s1_ptr,
+ 			 mpi_ptr_t s2_ptr, mpi_size_t size);
+-mpi_limb_t mpihelp_sub(mpi_ptr_t res_ptr, mpi_ptr_t s1_ptr, mpi_size_t s1_size,
++static inline mpi_limb_t mpihelp_sub(mpi_ptr_t res_ptr, mpi_ptr_t s1_ptr, mpi_size_t s1_size,
+ 		       mpi_ptr_t s2_ptr, mpi_size_t s2_size);
+ 
+ /*-- mpihelp-cmp.c --*/
+-- 
+2.10.0
+

@@ -10,9 +10,27 @@
 
 kvm_x86_ops			FAIL
 arch/x86/kvm/*			PASS
+arch/powerpc/kvm/*		PASS
+kvmppc_do_h_enter		PASS
+kvmppc_do_h_remove		PASS
+kvmppc_h_get_tce		PASS
+kvmppc_h_put_tce		PASS
+kvmppc_add_revmap_chain		PASS
+kvmppc_clear_ref_hpte		PASS
+kvmppc_invalidate_hpte		PASS
+kvmppc_hv_find_lock_hpte	PASS
 
 arch/s390/*			PASS
 drivers/s390/*			PASS
 net/iucv/*			PASS
 
+net/ceph/libceph		PASS
+drivers/block/rbd		PASS
+
 kgr_patch_*			PASS
+
+sound/soc/intel/*		PASS
+
+amd_core_mcablock_names		PASS
+amd_df_mcablock_names		PASS
+amd_hwids			PASS

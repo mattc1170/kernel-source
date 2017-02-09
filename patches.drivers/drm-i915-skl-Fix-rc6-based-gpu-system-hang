@@ -1,0 +1,45 @@
+From: Mika Kuoppala <mika.kuoppala@linux.intel.com>
+Date: Tue, 5 Apr 2016 15:56:16 +0300
+Subject: [PATCH] drm/i915/skl: Fix rc6 based gpu/system hang
+Git-commit: d528a6a0f3fd346bd7cc2de611a4149b6ebaab41
+Patch-mainline: 4.6-rc5
+References: bsc#1015367
+
+For all gt3 and gt4 skylake variants, extend the usage of
+WaRsDisableCoarsePowerGating for all revisions. Without this
+gt3 and gt4 skylakes up to atleast rev 0xa can gpu hang or
+system hang.
+
+Cc: Abdiel Janulgue <abdiel.janulgue@linux.intel.com>
+Cc: Ben Widawsky <benjamin.widawsky@intel.com>
+Cc: Timo Aaltonen <tjaalton@ubuntu.com>
+Cc: <stable@vger.kernel.org>
+Reported-by: Mikael Djurfeldt <mikael@djurfeldt.com>
+References: https://bugs.freedesktop.org/show_bug.cgi?id=94161
+Signed-off-by: Mika Kuoppala <mika.kuoppala@intel.com>
+Reviewed-by: Ben Widawsky <benjamin.widawsky@intel.com>
+Tested-by: Timo Aaltonen <tjaalton@ubuntu.com>
+Link: http://patchwork.freedesktop.org/patch/msgid/1459860977-27751-1-git-send-email-mika.kuoppala@intel.com
+(cherry picked from commit 185c66e57ce725afeb58a3cfa48547706af3a7af)
+
+Signed-off-by: Jani Nikula <jani.nikula@intel.com>
+Signed-off-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/gpu/drm/i915/i915_drv.h |    5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+
+--- a/drivers/gpu/drm/i915/i915_drv.h
++++ b/drivers/gpu/drm/i915/i915_drv.h
+@@ -2575,8 +2575,9 @@ struct drm_i915_cmd_table {
+ 
+ /* WaRsDisableCoarsePowerGating:skl,bxt */
+ #define NEEDS_WaRsDisableCoarsePowerGating(dev) (IS_BXT_REVID(dev, 0, BXT_REVID_A1) || \
+-						 ((IS_SKL_GT3(dev) || IS_SKL_GT4(dev)) && \
+-						  IS_SKL_REVID(dev, 0, SKL_REVID_F0)))
++						 IS_SKL_GT3(dev) || \
++						 IS_SKL_GT4(dev))
++
+ /*
+  * dp aux and gmbus irq on gen4 seems to be able to generate legacy interrupts
+  * even when in MSI mode. This results in spurious interrupt warnings if the

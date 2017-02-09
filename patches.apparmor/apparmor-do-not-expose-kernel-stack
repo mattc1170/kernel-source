@@ -1,0 +1,31 @@
+From f4ee2def2d70692ccff0d55353df4ee594fd0017 Mon Sep 17 00:00:00 2001
+From: Heinrich Schuchardt <xypron.glpk@gmx.de>
+Date: Fri, 10 Jun 2016 23:34:26 +0200
+Subject: [PATCH] apparmor: do not expose kernel stack
+Git-commit: f4ee2def2d70692ccff0d55353df4ee594fd0017
+Patch-mainline: 4.8-rc1
+References: bsc#1000304
+
+Do not copy uninitalized fields th.td_hilen, th.td_data.
+
+Signed-off-by: Heinrich Schuchardt <xypron.glpk@gmx.de>
+Signed-off-by: John Johansen <john.johansen@canonical.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ security/apparmor/match.c |    4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+--- a/security/apparmor/match.c
++++ b/security/apparmor/match.c
+@@ -63,7 +63,9 @@ static struct table_header *unpack_table
+ 
+ 	table = kvzalloc(tsize);
+ 	if (table) {
+-		*table = th;
++		table->td_id = th.td_id;
++		table->td_flags = th.td_flags;
++		table->td_lolen = th.td_lolen;
+ 		if (th.td_flags == YYTD_DATA8)
+ 			UNPACK_ARRAY(table->td_data, blob, th.td_lolen,
+ 				     u8, byte_to_byte);

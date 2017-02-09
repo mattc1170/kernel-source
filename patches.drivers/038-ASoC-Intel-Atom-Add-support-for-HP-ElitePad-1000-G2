@@ -1,0 +1,59 @@
+From: Jorge Fernandez Monteagudo <jorgefm@cirsa.com>
+Date: Mon, 4 Jan 2016 17:20:30 -0600
+Subject: [PATCH 38/82] ASoC: Intel: Atom: Add support for HP ElitePad 1000 G2
+Git-commit: 55fc205600ff3b529631cfe03b58645e3844bd92
+Patch-mainline: 4.5-rc1
+References: bsc#1010690
+
+The BIOS for the HP ElitePad 1000 G2 uses an unexpected HID,
+(INTCCFFD), add it to the white list of knowns HIDs.
+
+Signed-off-by: Jorge Fernandez Monteagudo <jorgefm@cirsa.com>
+Signed-off-by: Pierre-Louis Bossart <pierre-louis.bossart@linux.intel.com>
+Signed-off-by: Mark Brown <broonie@kernel.org>
+Signed-off-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ sound/soc/codecs/rt5640.c             |    1 +
+ sound/soc/intel/atom/sst/sst_acpi.c   |    2 ++
+ sound/soc/intel/boards/bytcr_rt5640.c |    8 ++++++++
+ 3 files changed, 11 insertions(+)
+
+--- a/sound/soc/codecs/rt5640.c
++++ b/sound/soc/codecs/rt5640.c
+@@ -2311,6 +2311,7 @@ static const struct acpi_device_id rt564
+ 	{ "INT33CA", 0 },
+ 	{ "10EC5640", 0 },
+ 	{ "10EC5642", 0 },
++	{ "INTCCFFD", 0 },
+ 	{ },
+ };
+ MODULE_DEVICE_TABLE(acpi, rt5640_acpi_match);
+--- a/sound/soc/intel/atom/sst/sst_acpi.c
++++ b/sound/soc/intel/atom/sst/sst_acpi.c
+@@ -325,6 +325,8 @@ static struct sst_acpi_mach sst_acpi_byt
+ 						&byt_rvp_platform_data },
+ 	{"10EC5642", "bytcr_rt5640", "intel/fw_sst_0f28.bin", "bytcr_rt5640", NULL,
+ 						&byt_rvp_platform_data },
++	{"INTCCFFD", "bytcr_rt5640", "intel/fw_sst_0f28.bin", "bytcr_rt5640", NULL,
++						&byt_rvp_platform_data },
+ 	{},
+ };
+ 
+--- a/sound/soc/intel/boards/bytcr_rt5640.c
++++ b/sound/soc/intel/boards/bytcr_rt5640.c
+@@ -141,6 +141,14 @@ static const struct dmi_system_id byt_rt
+ 		.driver_data = (unsigned long *)(BYT_RT5640_DMIC2_MAP |
+ 						 BYT_RT5640_DMIC_EN),
+ 	},
++	{
++		.callback = byt_rt5640_quirk_cb,
++		.matches = {
++			DMI_MATCH(DMI_SYS_VENDOR, "Hewlett-Packard"),
++			DMI_MATCH(DMI_PRODUCT_NAME, "HP ElitePad 1000 G2"),
++		},
++		.driver_data = (unsigned long *)BYT_RT5640_IN1_MAP,
++	},
+ 	{}
+ };
+ 

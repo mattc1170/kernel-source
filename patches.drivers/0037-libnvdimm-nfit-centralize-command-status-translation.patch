@@ -23,19 +23,17 @@ Cc: Vishal Verma <vishal.l.verma@intel.com>
 Signed-off-by: Dan Williams <dan.j.williams@intel.com>
 Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
 ---
- drivers/acpi/nfit.c              | 179 ++++++++++++++++++++++++++-------------
- drivers/acpi/nfit.h              |  11 ++-
- drivers/nvdimm/bus.c             |   2 +-
- drivers/nvdimm/dimm_devs.c       |   6 +-
- include/linux/libnvdimm.h        |   2 +-
- tools/testing/nvdimm/test/nfit.c |   5 +-
+ drivers/acpi/nfit.c              |  179 ++++++++++++++++++++++++++-------------
+ drivers/acpi/nfit.h              |   11 +-
+ drivers/nvdimm/bus.c             |    2 
+ drivers/nvdimm/dimm_devs.c       |    6 -
+ include/linux/libnvdimm.h        |    2 
+ tools/testing/nvdimm/test/nfit.c |    5 -
  6 files changed, 138 insertions(+), 67 deletions(-)
 
-diff --git a/drivers/acpi/nfit.c b/drivers/acpi/nfit.c
-index 35947ac..4dd2b68 100644
 --- a/drivers/acpi/nfit.c
 +++ b/drivers/acpi/nfit.c
-@@ -72,9 +72,80 @@ static struct acpi_device *to_acpi_dev(struct acpi_nfit_desc *acpi_desc)
+@@ -72,9 +72,80 @@ static struct acpi_device *to_acpi_dev(s
  	return to_acpi_device(acpi_desc->dev);
  }
  
@@ -117,7 +115,7 @@ index 35947ac..4dd2b68 100644
  {
  	struct acpi_nfit_desc *acpi_desc = to_acpi_nfit_desc(nd_desc);
  	const struct nd_cmd_desc *desc = NULL;
-@@ -185,6 +256,8 @@ static int acpi_nfit_ctl(struct nvdimm_bus_descriptor *nd_desc,
+@@ -185,6 +256,8 @@ static int acpi_nfit_ctl(struct nvdimm_b
  			 * unfilled in the output buffer
  			 */
  			rc = buf_len - offset - in_buf.buffer.length;
@@ -126,7 +124,7 @@ index 35947ac..4dd2b68 100644
  		} else {
  			dev_err(dev, "%s:%s underrun cmd: %s buf_len: %d out_len: %d\n",
  					__func__, dimm_name, cmd_name, buf_len,
-@@ -1105,7 +1178,7 @@ static void write_blk_ctl(struct nfit_blk *nfit_blk, unsigned int bw,
+@@ -1106,7 +1179,7 @@ static void write_blk_ctl(struct nfit_bl
  	writeq(cmd, mmio->addr.base + offset);
  	wmb_blk(nfit_blk);
  
@@ -135,7 +133,7 @@ index 35947ac..4dd2b68 100644
  		readq(mmio->addr.base + offset);
  }
  
-@@ -1141,7 +1214,7 @@ static int acpi_nfit_blk_single_io(struct nfit_blk *nfit_blk,
+@@ -1142,7 +1215,7 @@ static int acpi_nfit_blk_single_io(struc
  			memcpy_to_pmem(mmio->addr.aperture + offset,
  					iobuf + copied, c);
  		else {
@@ -144,7 +142,7 @@ index 35947ac..4dd2b68 100644
  				mmio_flush_range((void __force *)
  					mmio->addr.aperture + offset, c);
  
-@@ -1328,13 +1401,13 @@ static int acpi_nfit_blk_get_flags(struct nvdimm_bus_descriptor *nd_desc,
+@@ -1329,13 +1402,13 @@ static int acpi_nfit_blk_get_flags(struc
  
  	memset(&flags, 0, sizeof(flags));
  	rc = nd_desc->ndctl(nd_desc, nvdimm, ND_CMD_DIMM_FLAGS, &flags,
@@ -160,7 +158,7 @@ index 35947ac..4dd2b68 100644
  		rc = 0;
  	} else
  		rc = -ENXIO;
-@@ -1473,19 +1546,27 @@ static void acpi_nfit_blk_region_disable(struct nvdimm_bus *nvdimm_bus,
+@@ -1474,19 +1547,27 @@ static void acpi_nfit_blk_region_disable
  	/* devm will free nfit_blk */
  }
  
@@ -192,7 +190,7 @@ index 35947ac..4dd2b68 100644
  	int rc;
  
  	cmd->address = addr;
-@@ -1494,52 +1575,49 @@ static int ars_do_start(struct nvdimm_bus_descriptor *nd_desc,
+@@ -1495,52 +1576,49 @@ static int ars_do_start(struct nvdimm_bu
  
  	while (1) {
  		rc = nd_desc->ndctl(nd_desc, NULL, ND_CMD_ARS_START, cmd,
@@ -271,7 +269,7 @@ index 35947ac..4dd2b68 100644
  	}
  }
  
-@@ -1590,28 +1668,11 @@ static int acpi_nfit_find_poison(struct acpi_nfit_desc *acpi_desc,
+@@ -1591,28 +1669,11 @@ static int acpi_nfit_find_poison(struct
  	start = ndr_desc->res->start;
  	len = ndr_desc->res->end - ndr_desc->res->start + 1;
  
@@ -301,7 +299,7 @@ index 35947ac..4dd2b68 100644
  
  	/*
  	 * Check if a full-range ARS has been run. If so, use those results
-@@ -1651,15 +1712,15 @@ static int acpi_nfit_find_poison(struct acpi_nfit_desc *acpi_desc,
+@@ -1652,15 +1713,15 @@ static int acpi_nfit_find_poison(struct
  		u64 done, end;
  
  		rc = ars_do_start(nd_desc, ars_start, cur, remaining);
@@ -320,8 +318,6 @@ index 35947ac..4dd2b68 100644
  			goto out;
  
  		end = min(cur + remaining,
-diff --git a/drivers/acpi/nfit.h b/drivers/acpi/nfit.h
-index 6689b0a..f45b7d9 100644
 --- a/drivers/acpi/nfit.h
 +++ b/drivers/acpi/nfit.h
 @@ -47,8 +47,15 @@ enum nfit_fic {
@@ -341,12 +337,10 @@ index 6689b0a..f45b7d9 100644
 +	NFIT_ARS_F_OVERFLOW = 1,
  };
  
- struct nfit_spa {
-diff --git a/drivers/nvdimm/bus.c b/drivers/nvdimm/bus.c
-index 5d28e94..c3ba888 100644
+ enum nfit_root_notifiers {
 --- a/drivers/nvdimm/bus.c
 +++ b/drivers/nvdimm/bus.c
-@@ -587,7 +587,7 @@ static int __nd_ioctl(struct nvdimm_bus *nvdimm_bus, struct nvdimm *nvdimm,
+@@ -587,7 +587,7 @@ static int __nd_ioctl(struct nvdimm_bus
  	if (rc)
  		goto out_unlock;
  
@@ -355,11 +349,9 @@ index 5d28e94..c3ba888 100644
  	if (rc < 0)
  		goto out_unlock;
  	if (copy_to_user(p, buf, buf_len))
-diff --git a/drivers/nvdimm/dimm_devs.c b/drivers/nvdimm/dimm_devs.c
-index 651b8d1..c56f882 100644
 --- a/drivers/nvdimm/dimm_devs.c
 +++ b/drivers/nvdimm/dimm_devs.c
-@@ -75,7 +75,7 @@ int nvdimm_init_nsarea(struct nvdimm_drvdata *ndd)
+@@ -75,7 +75,7 @@ int nvdimm_init_nsarea(struct nvdimm_drv
  	memset(cmd, 0, sizeof(*cmd));
  	nd_desc = nvdimm_bus->nd_desc;
  	return nd_desc->ndctl(nd_desc, to_nvdimm(ndd->dev),
@@ -368,7 +360,7 @@ index 651b8d1..c56f882 100644
  }
  
  int nvdimm_init_config_data(struct nvdimm_drvdata *ndd)
-@@ -120,7 +120,7 @@ int nvdimm_init_config_data(struct nvdimm_drvdata *ndd)
+@@ -120,7 +120,7 @@ int nvdimm_init_config_data(struct nvdim
  		cmd->in_offset = offset;
  		rc = nd_desc->ndctl(nd_desc, to_nvdimm(ndd->dev),
  				ND_CMD_GET_CONFIG_DATA, cmd,
@@ -377,7 +369,7 @@ index 651b8d1..c56f882 100644
  		if (rc || cmd->status) {
  			rc = -ENXIO;
  			break;
-@@ -171,7 +171,7 @@ int nvdimm_set_config_data(struct nvdimm_drvdata *ndd, size_t offset,
+@@ -171,7 +171,7 @@ int nvdimm_set_config_data(struct nvdimm
  		status = ((void *) cmd) + cmd_size - sizeof(u32);
  
  		rc = nd_desc->ndctl(nd_desc, to_nvdimm(ndd->dev),
@@ -386,8 +378,6 @@ index 651b8d1..c56f882 100644
  		if (rc || *status) {
  			rc = rc ? rc : -ENXIO;
  			break;
-diff --git a/include/linux/libnvdimm.h b/include/linux/libnvdimm.h
-index 141ffdd..f398953 100644
 --- a/include/linux/libnvdimm.h
 +++ b/include/linux/libnvdimm.h
 @@ -48,7 +48,7 @@ struct nvdimm;
@@ -399,11 +389,9 @@ index 141ffdd..f398953 100644
  
  struct nd_namespace_label;
  struct nvdimm_drvdata;
-diff --git a/tools/testing/nvdimm/test/nfit.c b/tools/testing/nvdimm/test/nfit.c
-index 27b808e..9ead779 100644
 --- a/tools/testing/nvdimm/test/nfit.c
 +++ b/tools/testing/nvdimm/test/nfit.c
-@@ -261,7 +261,7 @@ static int nfit_test_cmd_ars_status(struct nd_cmd_ars_status *nd_cmd,
+@@ -262,7 +262,7 @@ static int nfit_test_cmd_ars_status(stru
  
  static int nfit_test_ctl(struct nvdimm_bus_descriptor *nd_desc,
  		struct nvdimm *nvdimm, unsigned int cmd, void *buf,
@@ -412,7 +400,7 @@ index 27b808e..9ead779 100644
  {
  	struct acpi_nfit_desc *acpi_desc = to_acpi_desc(nd_desc);
  	struct nfit_test *t = container_of(acpi_desc, typeof(*t), acpi_desc);
-@@ -315,6 +315,9 @@ static int nfit_test_ctl(struct nvdimm_bus_descriptor *nd_desc,
+@@ -316,6 +316,9 @@ static int nfit_test_ctl(struct nvdimm_b
  		}
  	}
  
@@ -422,4 +410,3 @@ index 27b808e..9ead779 100644
  	return rc;
  }
  
-

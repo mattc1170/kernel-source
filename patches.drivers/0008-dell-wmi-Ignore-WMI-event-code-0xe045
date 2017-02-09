@@ -1,0 +1,59 @@
+From 3de59bcd3bebca6ba4827e7b6ce19568f11652b6 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Pali=20Roh=C3=A1r?= <pali.rohar@gmail.com>
+Date: Wed, 15 Jun 2016 21:49:10 +0200
+Subject: [PATCH] dell-wmi: Ignore WMI event code 0xe045
+Mime-version: 1.0
+Content-type: text/plain; charset=UTF-8
+Content-transfer-encoding: 8bit
+Git-commit: 3de59bcd3bebca6ba4827e7b6ce19568f11652b6
+Patch-mainline: 4.8-rc1
+References: bsc#1004052
+
+>From Dell we know that WMI event code 0xe045 is for Num Lock key, but it is
+unclear due to message in commit 0b3f6109f0c9 ("dell-wmi: new driver for
+hotkey control").
+
+Signed-off-by: Pali Rohár <pali.rohar@gmail.com>
+Tested-by: Michał Kępień <kernel@kempniu.pl>
+Tested-by: Gabriele Mazzotta <gabriele.mzt@gmail.com>
+Reviewed-by: Michał Kępień <kernel@kempniu.pl>
+Cc: Matthew Garrett <mjg@redhat.com>
+Cc: Mario Limonciello <mario_limonciello@dell.com>
+Link: https://lkml.org/lkml/2015/7/7/830
+Signed-off-by: Darren Hart <dvhart@linux.intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/platform/x86/dell-wmi.c |   13 ++++++++++++-
+ 1 file changed, 12 insertions(+), 1 deletion(-)
+
+--- a/drivers/platform/x86/dell-wmi.c
++++ b/drivers/platform/x86/dell-wmi.c
+@@ -61,7 +61,6 @@ MODULE_ALIAS("wmi:"DELL_DESCRIPTOR_GUID)
+ static const struct key_entry dell_wmi_legacy_keymap[] __initconst = {
+ 	{ KE_IGNORE, 0x003a, { KEY_CAPSLOCK } },
+ 
+-	{ KE_KEY, 0xe045, { KEY_PROG1 } },
+ 	{ KE_KEY, 0xe009, { KEY_EJECTCD } },
+ 
+ 	/* These also contain the brightness level at offset 6 */
+@@ -100,7 +99,19 @@ static const struct key_entry dell_wmi_l
+ 	{ KE_IGNORE, 0xe033, { KEY_KBDILLUMUP } },
+ 	{ KE_IGNORE, 0xe034, { KEY_KBDILLUMDOWN } },
+ 	{ KE_IGNORE, 0xe03a, { KEY_CAPSLOCK } },
++
++	/*
++	 * This entry is very suspicious!
++	 * Originally Matthew Garrett created this dell-wmi driver specially for
++	 * "button with a picture of a battery" which has event code 0xe045.
++	 * Later Mario Limonciello from Dell told us that event code 0xe045 is
++	 * reported by Num Lock and should be ignored because key is send also
++	 * by keyboard controller.
++	 * So for now we will ignore this event to prevent potential double
++	 * Num Lock key press.
++	 */
+ 	{ KE_IGNORE, 0xe045, { KEY_NUMLOCK } },
++
+ 	{ KE_IGNORE, 0xe046, { KEY_SCROLLLOCK } },
+ 	{ KE_IGNORE, 0xe0f7, { KEY_MUTE } },
+ 	{ KE_IGNORE, 0xe0f8, { KEY_VOLUMEDOWN } },

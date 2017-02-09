@@ -1,0 +1,58 @@
+From b13de7019c1b67f0c1b987fc9fe82fcc371ba1d2 Mon Sep 17 00:00:00 2001
+From: Andy Lutomirski <luto@kernel.org>
+Date: Mon, 15 Feb 2016 08:32:35 -0800
+Subject: [PATCH] dell-wmi: Clean up hotkey table size check
+Mime-version: 1.0
+Content-type: text/plain; charset=UTF-8
+Content-transfer-encoding: 8bit
+Git-commit: b13de7019c1b67f0c1b987fc9fe82fcc371ba1d2
+Patch-mainline: 4.6-rc1
+References: bsc#1004052
+
+Checking the table for a minimum size of 7 bytes makes no sense: any valid
+hotkey table has a size that's a multiple of 4.
+
+Clean this up: replace the hardcoded header length with a sizeof and
+change the check to ignore an empty hotkey table.  The only behavior
+change is that a 7-byte table (which is nonsensical) will now be
+treated as absent instead of as valid but empty.
+
+Reported-by: Jean Delvare <jdelvare@suse.de>
+Signed-off-by: Andy Lutomirski <luto@kernel.org>
+Acked-by: Pali Rohár <pali.rohar@gmail.com>
+Signed-off-by: Darren Hart <dvhart@linux.intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/platform/x86/dell-wmi.c |   15 +++++++++++++--
+ 1 file changed, 13 insertions(+), 2 deletions(-)
+
+--- a/drivers/platform/x86/dell-wmi.c
++++ b/drivers/platform/x86/dell-wmi.c
+@@ -351,13 +351,24 @@ static void __init handle_dmi_entry(cons
+ 	if (results->err || results->keymap)
+ 		return;		/* We already found the hotkey table. */
+ 
+-	if (dm->type != 0xb2 || dm->length <= 6)
++	if (dm->type != 0xb2)
+ 		return;
+ 
+ 	table = container_of(dm, struct dell_bios_hotkey_table, header);
+ 
+-	hotkey_num = (table->header.length - 4) /
++	hotkey_num = (table->header.length -
++		      sizeof(struct dell_bios_hotkey_table)) /
+ 				sizeof(struct dell_bios_keymap_entry);
++	if (hotkey_num < 1) {
++		/*
++		 * Historically, dell-wmi would ignore a DMI entry of
++		 * fewer than 7 bytes.  Sizes between 4 and 8 bytes are
++		 * nonsensical (both the header and all entries are 4
++		 * bytes), so we approximate the old behavior by
++		 * ignoring tables with fewer than one entry.
++		 */
++		return;
++	}
+ 
+ 	keymap = kcalloc(hotkey_num + 1, sizeof(struct key_entry), GFP_KERNEL);
+ 	if (!keymap) {

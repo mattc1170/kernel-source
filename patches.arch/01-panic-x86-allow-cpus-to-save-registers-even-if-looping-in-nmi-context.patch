@@ -182,9 +182,9 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 --- a/include/linux/kernel.h
 +++ b/include/linux/kernel.h
 @@ -255,6 +255,7 @@ extern long (*panic_blink)(int state);
+ extern long (*panic_blink)(int state);
  __printf(1, 2)
- void panic(const char *fmt, ...)
- 	__noreturn __cold;
+ void panic(const char *fmt, ...) __noreturn __cold;
 +void nmi_panic_self_stop(struct pt_regs *);
  extern void oops_enter(void);
  extern void oops_exit(void);

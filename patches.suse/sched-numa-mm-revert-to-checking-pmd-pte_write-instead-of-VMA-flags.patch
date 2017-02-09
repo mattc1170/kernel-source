@@ -5,7 +5,8 @@ Subject: [PATCH] sched,numa,mm: revert to checking pmd/pte_write instead of
  VMA flags
 
 References: Automatic NUMA Balancing (fate#315482)
-Patch-mainline: No, queued in mmotm
+Patch-mainline: v4.9
+Git-commit: d59dc7bcfa649ef2128a76b6487b16f4b3f14d23
 
 Commit 4d9424669946 ("mm: convert p[te|md]_mknonnuma and remaining
 page table manipulations") changed NUMA balancing from _PAGE_NUMA

@@ -2,9 +2,8 @@ From: Sukadev Bhattiprolu <sukadev@linux.vnet.ibm.com>
 Date: Sat, 23 Jan 2016 03:58:12 -0500
 Subject: powerpc/perf/hv-24x7: Fix usage with chip events.
 Git-commit: e5a5886d7ae32b7afebfffecca340e466e4be2d1
-Patch-mainline: v3.20-rc1
+Patch-mainline: v4.6-rc1
 References: fate#320704
-Signed-off-by: Tony Jones <tonyj@suse.de>
 
 24x7 counters can belong to different domains (core, chip, virtual CPU
 etc). For events in the 'chip' domain, sysfs entry currently looks like:
@@ -53,6 +52,7 @@ parameter correctly:
 
 Signed-off-by: Sukadev Bhattiprolu <sukadev@linux.vnet.ibm.com>
 Signed-off-by: Michael Ellerman <mpe@ellerman.id.au>
+Signed-off-by: Tony Jones <tonyj@suse.de>
 ---
  arch/powerpc/perf/hv-24x7.c | 22 ++++++++++++++++++----
  1 file changed, 18 insertions(+), 4 deletions(-)

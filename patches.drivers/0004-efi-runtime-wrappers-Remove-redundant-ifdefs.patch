@@ -1,0 +1,65 @@
+From f92c523b9a5e874e37f0de732e3636157cf6d3e4 Mon Sep 17 00:00:00 2001
+From: Mark Rutland <mark.rutland@arm.com>
+Date: Mon, 25 Apr 2016 21:07:07 +0100
+Subject: [PATCH 4/7] efi/runtime-wrappers: Remove redundant #ifdefs
+
+Git-commit: d9c6e1d0faec6d750b5cc08d036e9c3da6e8e50c
+Patch-mainline: v4.7-rc1
+References: bsc#1005745
+
+Now that all users of the EFI runtime wrappers (arm,arm64,x86) have been
+migrated to the new setup/teardown macros, we don't need to support
+overridden {__,}efi_call_virt() implementations.
+
+This patch removes the unnecessary #ifdefs.
+
+Signed-off-by: Mark Rutland <mark.rutland@arm.com>
+Signed-off-by: Matt Fleming <matt@codeblueprint.co.uk>
+Cc: Ard Biesheuvel <ard.biesheuvel@linaro.org>
+Cc: Borislav Petkov <bp@alien8.de>
+Cc: Catalin Marinas <catalin.marinas@arm.com>
+Cc: Leif Lindholm <leif.lindholm@linaro.org>
+Cc: Peter Zijlstra <peterz@infradead.org>
+Cc: Russell King <linux@arm.linux.org.uk>
+Cc: Thomas Gleixner <tglx@linutronix.de>
+Cc: Will Deacon <will.deacon@arm.com>
+Cc: linux-efi@vger.kernel.org
+Link: http://lkml.kernel.org/r/1461614832-17633-36-git-send-email-matt@codeblueprint.co.uk
+Signed-off-by: Ingo Molnar <mingo@kernel.org>
+Acked-by: Mian Yousaf Kaukab <yousaf.kaukab@suse.com>
+---
+ drivers/firmware/efi/runtime-wrappers.c | 4 ----
+ 1 file changed, 4 deletions(-)
+
+diff --git a/drivers/firmware/efi/runtime-wrappers.c b/drivers/firmware/efi/runtime-wrappers.c
+index 4f3110c..a5c5a31 100644
+--- a/drivers/firmware/efi/runtime-wrappers.c
++++ b/drivers/firmware/efi/runtime-wrappers.c
+@@ -40,7 +40,6 @@
+  *    Restores the usual kernel environment once the call has returned.
+  */
+ 
+-#ifndef efi_call_virt
+ #define efi_call_virt(f, args...)					\
+ ({									\
+ 	efi_status_t __s;						\
+@@ -49,16 +48,13 @@
+ 	arch_efi_call_virt_teardown();					\
+ 	__s;								\
+ })
+-#endif
+ 
+-#ifndef __efi_call_virt
+ #define __efi_call_virt(f, args...)					\
+ ({									\
+ 	arch_efi_call_virt_setup();					\
+ 	arch_efi_call_virt(f, args);					\
+ 	arch_efi_call_virt_teardown();					\
+ })
+-#endif
+ 
+ /*
+  * According to section 7.1 of the UEFI spec, Runtime Services are not fully
+-- 
+1.8.5.6
+

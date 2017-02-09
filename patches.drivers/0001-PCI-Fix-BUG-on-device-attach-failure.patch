@@ -1,0 +1,50 @@
+From 1e398eae8407abdc02cde8a449b14d17ed193d56 Mon Sep 17 00:00:00 2001
+From: Lukas Wunner <lukas@wunner.de>
+Date: Mon, 2 May 2016 13:48:25 -0500
+Subject: [PATCH] PCI: Fix BUG on device attach failure
+References: bnc#987641
+Git-Commit: 1e398eae8407abdc02cde8a449b14d17ed193d56
+Patch-Mainline: v4.6
+
+Previously when pci_bus_add_device() called device_attach() and it returned
+a negative value, we emitted a WARN but carried on.
+
+Commit ab1a187bba5c ("PCI: Check device_attach() return value always"),
+introduced in Linux 4.6-rc1, changed this to unwind all steps preceding
+device_attach() and to not set dev->is_added = 1.
+
+The latter leads to a BUG if pci_bus_add_device() was called from
+pci_bus_add_devices().  Fix by not recursing to a child bus if
+device_attach() failed for the bridge leading to it.
+
+This can be triggered by plugging in a PCI device (e.g. Thunderbolt) while
+the system is asleep.  The system locks up when woken because
+device_attach() returns -EPROBE_DEFER.
+
+Fixes: ab1a187bba5c ("PCI: Check device_attach() return value always")
+Signed-off-by: Lukas Wunner <lukas@wunner.de>
+Signed-off-by: Bjorn Helgaas <bhelgaas@google.com>
+Acked-by: Rafael J. Wysocki <rafael.j.wysocki@intel.com>
+Signed-off-by: Oliver Neukum <oneukum@suse.com>
+---
+ drivers/pci/bus.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/pci/bus.c b/drivers/pci/bus.c
+index 6c9f546..23a39fd 100644
+--- a/drivers/pci/bus.c
++++ b/drivers/pci/bus.c
+@@ -324,7 +324,9 @@ void pci_bus_add_devices(const struct pci_bus *bus)
+ 	}
+ 
+ 	list_for_each_entry(dev, &bus->devices, bus_list) {
+-		BUG_ON(!dev->is_added);
++		/* Skip if device attach failed */
++		if (!dev->is_added)
++			continue;
+ 		child = dev->subordinate;
+ 		if (child)
+ 			pci_bus_add_devices(child);
+-- 
+2.6.2
+

@@ -19,9 +19,9 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
 
 --- a/drivers/infiniband/hw/mlx4/ah.c
 +++ b/drivers/infiniband/hw/mlx4/ah.c
-@@ -104,6 +104,7 @@ static struct ib_ah *create_iboe_ah(stru
- 	ah->av.eth.port_pd = cpu_to_be32(to_mpd(pd)->pdn | (ah_attr->port_num << 24));
- 	ah->av.eth.gid_index = mlx4_ib_gid_index_to_real_index(ibdev, ah_attr->port_num, ah_attr->grh.sgid_index);
+@@ -107,6 +107,7 @@ static struct ib_ah *create_iboe_ah(stru
+ 		return ERR_PTR(ret);
+ 	ah->av.eth.gid_index = ret;
  	ah->av.eth.vlan = cpu_to_be16(vlan_tag);
 +	ah->av.eth.hop_limit = ah_attr->grh.hop_limit;
  	if (ah_attr->static_rate) {

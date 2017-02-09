@@ -1,0 +1,28 @@
+From: Bard Liao <bardliao@realtek.com>
+Date: Wed, 6 Jul 2016 09:55:14 +0800
+Subject: [PATCH 20/82] ASoC: rt5645: set RT5645_PRIV_INDEX as volatile
+Git-commit: 81467efcc88298ecd821c26fab04ce1b2c9d1b65
+Patch-mainline: 4.8-rc1
+References: bsc#1010690
+
+RT5645_PRIV_INDEX(0x6a) indicate the address of PR- registers. So,
+it should be volatile.
+
+Signed-off-by: Bard Liao <bardliao@realtek.com>
+Signed-off-by: Mark Brown <broonie@kernel.org>
+Signed-off-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ sound/soc/codecs/rt5645.c |    1 +
+ 1 file changed, 1 insertion(+)
+
+--- a/sound/soc/codecs/rt5645.c
++++ b/sound/soc/codecs/rt5645.c
+@@ -442,6 +442,7 @@ static bool rt5645_volatile_register(str
+ 
+ 	switch (reg) {
+ 	case RT5645_RESET:
++	case RT5645_PRIV_INDEX:
+ 	case RT5645_PRIV_DATA:
+ 	case RT5645_IN1_CTRL1:
+ 	case RT5645_IN1_CTRL2:

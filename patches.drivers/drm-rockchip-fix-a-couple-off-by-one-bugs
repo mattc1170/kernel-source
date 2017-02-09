@@ -1,0 +1,40 @@
+From 15da78084d584977547e7ba46d8253c27d17507c Mon Sep 17 00:00:00 2001
+From: Dan Carpenter <dan.carpenter@oracle.com>
+Date: Wed, 13 Jul 2016 13:15:04 +0300
+Subject: [PATCH] drm/rockchip: fix a couple off by one bugs
+Git-commit: 15da78084d584977547e7ba46d8253c27d17507c
+Patch-mainline: 4.8-rc1
+References: bsc#1005545
+
+The priv->crtc_funcs[] array has ROCKCHIP_MAX_CRTC elements so > should
+be >= here.
+
+Fixes: 2048e3286f34 ('drm: rockchip: Add basic drm driver')
+Signed-off-by: Dan Carpenter <dan.carpenter@oracle.com>
+Reviewed-by: Sean Paul <seanpaul@chromium.org>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/gpu/drm/rockchip/rockchip_drm_drv.c |    4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+--- a/drivers/gpu/drm/rockchip/rockchip_drm_drv.c
++++ b/drivers/gpu/drm/rockchip/rockchip_drm_drv.c
+@@ -70,7 +70,7 @@ int rockchip_register_crtc_funcs(struct
+ {
+ 	struct rockchip_drm_private *priv = dev->dev_private;
+ 
+-	if (pipe > ROCKCHIP_MAX_CRTC)
++	if (pipe >= ROCKCHIP_MAX_CRTC)
+ 		return -EINVAL;
+ 
+ 	priv->crtc_funcs[pipe] = crtc_funcs;
+@@ -83,7 +83,7 @@ void rockchip_unregister_crtc_funcs(stru
+ {
+ 	struct rockchip_drm_private *priv = dev->dev_private;
+ 
+-	if (pipe > ROCKCHIP_MAX_CRTC)
++	if (pipe >= ROCKCHIP_MAX_CRTC)
+ 		return;
+ 
+ 	priv->crtc_funcs[pipe] = NULL;

@@ -198,7 +198,7 @@ index 4d568ac9319e..ec72de234feb 100644
 -	rcu_note_context_switch();
  	prev = rq->curr;
  
- 	/*
+ 	schedule_debug(prev);
 @@ -3104,13 +3103,16 @@ static void __sched notrace __schedule(bool preempt)
  	if (sched_feat(HRTICK))
  		hrtick_clear(rq);

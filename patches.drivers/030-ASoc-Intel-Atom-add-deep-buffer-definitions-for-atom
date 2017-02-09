@@ -1,0 +1,79 @@
+From: Pierre-Louis Bossart <pierre-louis.bossart@linux.intel.com>
+Date: Thu, 17 Dec 2015 20:35:44 -0600
+Subject: [PATCH 30/82] ASoc: Intel: Atom: add deep buffer definitions for atom platforms
+Git-commit: 8788f83929ca1dbfa640ac17aec78b2e36cf493d
+Patch-mainline: 4.5-rc1
+References: bsc#1010690
+
+Add definitions for MERR_DPCM_DEEP_BUFFER AND PIPE_MEDIA3_IN
+Add relevant cpu-dai and dai link names
+
+Signed-off-by: Pierre-Louis Bossart <pierre-louis.bossart@linux.intel.com>
+Signed-off-by: Mark Brown <broonie@kernel.org>
+Signed-off-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ arch/x86/include/asm/platform_sst_audio.h    |    1 +
+ sound/soc/intel/atom/sst-atom-controls.c     |    1 +
+ sound/soc/intel/atom/sst-atom-controls.h     |    1 +
+ sound/soc/intel/atom/sst-mfld-platform-pcm.c |   12 ++++++++++++
+ 4 files changed, 15 insertions(+)
+
+--- a/arch/x86/include/asm/platform_sst_audio.h
++++ b/arch/x86/include/asm/platform_sst_audio.h
+@@ -55,6 +55,7 @@ enum sst_audio_device_id_mrfld {
+ 	PIPE_MEDIA0_IN = 0x8F,
+ 	PIPE_MEDIA1_IN = 0x90,
+ 	PIPE_MEDIA2_IN = 0x91,
++	PIPE_MEDIA3_IN = 0x9C,
+ 	PIPE_RSVD = 0xFF,
+ };
+ 
+--- a/sound/soc/intel/atom/sst-atom-controls.c
++++ b/sound/soc/intel/atom/sst-atom-controls.c
+@@ -1109,6 +1109,7 @@ static const struct snd_soc_dapm_route i
+ 	{"media0_in", NULL, "Compress Playback"},
+ 	{"media1_in", NULL, "Headset Playback"},
+ 	{"media2_in", NULL, "pcm0_out"},
++	{"media3_in", NULL, "Deepbuffer Playback"},
+ 
+ 	{"media0_out mix 0", "media0_in Switch", "media0_in"},
+ 	{"media0_out mix 0", "media1_in Switch", "media1_in"},
+--- a/sound/soc/intel/atom/sst-atom-controls.h
++++ b/sound/soc/intel/atom/sst-atom-controls.h
+@@ -28,6 +28,7 @@
+ 
+ enum {
+ 	MERR_DPCM_AUDIO = 0,
++	MERR_DPCM_DEEP_BUFFER,
+ 	MERR_DPCM_COMPR,
+ };
+ 
+--- a/sound/soc/intel/atom/sst-mfld-platform-pcm.c
++++ b/sound/soc/intel/atom/sst-mfld-platform-pcm.c
+@@ -98,6 +98,7 @@ static struct sst_dev_stream_map dpcm_st
+ 	{MERR_DPCM_AUDIO, 0, SNDRV_PCM_STREAM_PLAYBACK, PIPE_MEDIA1_IN, SST_TASK_ID_MEDIA, 0},
+ 	{MERR_DPCM_COMPR, 0, SNDRV_PCM_STREAM_PLAYBACK, PIPE_MEDIA0_IN, SST_TASK_ID_MEDIA, 0},
+ 	{MERR_DPCM_AUDIO, 0, SNDRV_PCM_STREAM_CAPTURE, PIPE_PCM1_OUT, SST_TASK_ID_MEDIA, 0},
++	{MERR_DPCM_DEEP_BUFFER, 0, SNDRV_PCM_STREAM_PLAYBACK, PIPE_MEDIA3_IN, SST_TASK_ID_MEDIA, 0},
+ };
+ 
+ static int sst_media_digital_mute(struct snd_soc_dai *dai, int mute, int stream)
+@@ -509,6 +510,17 @@ static struct snd_soc_dai_driver sst_pla
+ 		.rates = SNDRV_PCM_RATE_44100|SNDRV_PCM_RATE_48000,
+ 		.formats = SNDRV_PCM_FMTBIT_S16_LE,
+ 	},
++},
++{
++	.name = "deepbuffer-cpu-dai",
++	.ops = &sst_media_dai_ops,
++	.playback = {
++		.stream_name = "Deepbuffer Playback",
++		.channels_min = SST_STEREO,
++		.channels_max = SST_STEREO,
++		.rates = SNDRV_PCM_RATE_44100|SNDRV_PCM_RATE_48000,
++		.formats = SNDRV_PCM_FMTBIT_S16_LE,
++	},
+ },
+ {
+ 	.name = "compress-cpu-dai",

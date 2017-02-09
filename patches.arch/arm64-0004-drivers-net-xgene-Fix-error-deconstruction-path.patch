@@ -2,8 +2,7 @@ From: Iyappan Subramanian <isubramanian@apm.com>
 Date: Fri, 12 Aug 2016 22:05:40 -0700
 Subject: drivers: net: xgene: Fix error deconstruction path
 Git-commit: cecd6e510c65b25c9a3fcc09480f561189a7c3b8
-Patch-mainline: Queued
-Git-repo: git://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git
+Patch-mainline: v4.9-rc1
 References: bsc#993051
 
 Since register_netdev() call in xgene_enet_probe() was moved down to

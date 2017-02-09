@@ -1,0 +1,42 @@
+From: Julia Lawall <Julia.Lawall@lip6.fr>
+Date: Sun, 20 Dec 2015 12:15:53 +0100
+Subject: [PATCH 39/82] ASoC: Intel: add NULL test
+Git-commit: 3f317c9faabc546a503bc62e806fa2e8e93e76be
+Patch-mainline: 4.5-rc1
+References: bsc#1010690
+
+Add NULL test on call to devm_kzalloc.
+
+The semantic match that finds this problem is as follows:
+(http://coccinelle.lip6.fr/)
+
+// <smpl>
+@@
+expression x;
+identifier fld;
+@@
+
+* x = devm_kzalloc(...);
+  ... when != x == NULL
+  x->fld
+// </smpl>
+
+Signed-off-by: Julia Lawall <Julia.Lawall@lip6.fr>
+Signed-off-by: Mark Brown <broonie@kernel.org>
+Signed-off-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ sound/soc/intel/baytrail/sst-baytrail-pcm.c |    2 ++
+ 1 file changed, 2 insertions(+)
+
+--- a/sound/soc/intel/baytrail/sst-baytrail-pcm.c
++++ b/sound/soc/intel/baytrail/sst-baytrail-pcm.c
+@@ -377,6 +377,8 @@ static int sst_byt_pcm_probe(struct snd_
+ 
+ 	priv_data = devm_kzalloc(platform->dev, sizeof(*priv_data),
+ 				 GFP_KERNEL);
++	if (!priv_data)
++		return -ENOMEM;
+ 	priv_data->byt = plat_data->dsp;
+ 	snd_soc_platform_set_drvdata(platform, priv_data);
+ 

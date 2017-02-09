@@ -1,0 +1,36 @@
+From: Mustafa Ismail <mustafa.ismail@intel.com>
+Date: Tue, 23 Aug 2016 16:50:13 -0500
+Subject: [PATCH] i40iw: Fix double free of allocated_buffer
+Patch-mainline: v4.8-rc4
+Git-commit: d41d0910d97f05be987d2d60de7e8685c108963b
+References: bsc#974842 FATE#319831 bsc#974843 FATE#319832
+
+Memory allocated for iwqp; iwqp->allocated_buffer is freed twice in
+the create_qp error path. Correct this by having it freed only once in
+i40iw_free_qp_resources().
+
+Fixes: d37498417947 ("i40iw: add files for iwarp interface")
+
+Signed-off-by: Mustafa Ismail <mustafa.ismail@intel.com>
+Signed-off-by: Shiraz Saleem <shiraz.saleem@intel.com>
+Signed-off-by: Doug Ledford <dledford@redhat.com>
+Acked-by: David Chang <dchang@suse.com>
+---
+ drivers/infiniband/hw/i40iw/i40iw_verbs.c | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/drivers/infiniband/hw/i40iw/i40iw_verbs.c b/drivers/infiniband/hw/i40iw/i40iw_verbs.c
+index 1fe3b84a06e4..08ef76720610 100644
+--- a/drivers/infiniband/hw/i40iw/i40iw_verbs.c
++++ b/drivers/infiniband/hw/i40iw/i40iw_verbs.c
+@@ -788,7 +788,6 @@ static struct ib_qp *i40iw_create_qp(struct ib_pd *ibpd,
+ 	return &iwqp->ibqp;
+ error:
+ 	i40iw_free_qp_resources(iwdev, iwqp, qp_num);
+-	kfree(mem);
+ 	return ERR_PTR(err_code);
+ }
+ 
+-- 
+2.6.6
+

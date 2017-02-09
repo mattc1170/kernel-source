@@ -1,0 +1,50 @@
+From 1e8817b7f603464369b3f70895946254bf62ba8e Mon Sep 17 00:00:00 2001
+From: Lyude <cpaul@redhat.com>
+Date: Fri, 11 Mar 2016 10:57:01 -0500
+Subject: [PATCH] drm/i915: Call intel_dp_mst_resume() before resuming displays
+Git-commit: 1e8817b7f603464369b3f70895946254bf62ba8e
+Patch-mainline: 4.6-rc4
+References: bsc#1015359
+No-Fix: a16b7658f4e0d4aec9bc3e75a5f0cc3f7a3a0422
+
+Since we need MST devices ready before we try to resume displays,
+calling this after intel_display_resume() can result in some issues with
+various laptop docks where the monitor won't turn back on after
+suspending the system.
+
+This order was originally changed in
+
+	commit e7d6f7d70829 ("drm/i915: resume MST after reading back hw state")
+
+In order to fix some unclaimed register errors, however the actual cause
+of those has since been fixed.
+
+Cc: stable@vger.kernel.org
+Signed-off-by: Lyude <cpaul@redhat.com>
+[danvet: Resolve conflicts with locking changes.]
+Signed-off-by: Daniel Vetter <daniel.vetter@ffwll.ch>
+(cherry picked from commit a16b7658f4e0d4aec9bc3e75a5f0cc3f7a3a0422)
+Signed-off-by: Jani Nikula <jani.nikula@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/gpu/drm/i915/i915_drv.c |    4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+--- a/drivers/gpu/drm/i915/i915_drv.c
++++ b/drivers/gpu/drm/i915/i915_drv.c
+@@ -783,12 +783,12 @@ static int i915_drm_resume(struct drm_de
+ 		dev_priv->display.hpd_irq_setup(dev);
+ 	spin_unlock_irq(&dev_priv->irq_lock);
+ 
++	intel_dp_mst_resume(dev);
++
+ 	drm_modeset_lock_all(dev);
+ 	intel_display_resume(dev);
+ 	drm_modeset_unlock_all(dev);
+ 
+-	intel_dp_mst_resume(dev);
+-
+ 	/*
+ 	 * ... but also need to make sure that hotplug processing
+ 	 * doesn't cause havoc. Like in the driver load code we don't

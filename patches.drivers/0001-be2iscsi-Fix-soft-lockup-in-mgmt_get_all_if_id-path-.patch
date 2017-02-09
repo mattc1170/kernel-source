@@ -3,7 +3,7 @@ Date: Wed, 20 Jan 2016 14:10:45 +0530
 Subject: [PATCH 01/33] be2iscsi: Fix soft lockup in mgmt_get_all_if_id path
  using bmbx
 Git-commit: 6ac999efeeff98f203eda8cf46d5016e99f58b0c
-Patch-mainline: v3.6 or v3.5-rc2 (next release)
+Patch-mainline: v4.6-rc1
 References: bsc#963621 fate#320193
 
 We are taking mbox_lock spinlock which disables pre-emption before we

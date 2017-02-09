@@ -1,0 +1,48 @@
+From: Pierre-Louis Bossart <pierre-louis.bossart@linux.intel.com>
+Date: Tue, 16 Aug 2016 18:28:22 -0500
+Subject: [PATCH 78/82] ASoC: Intel: bytcr_rt5640: quirk for Acer Aspire SWS-012
+Git-commit: 8f98307d023810669391555e370a8c2a8e2af9b6
+Patch-mainline: 4.9-rc1
+References: bsc#1010690
+
+Baytrail-CR platform needing SSP0-AIF1 routing
+Also fix SSP0 while we are at it.
+
+Suggested-by: Andrei Lavreniyuk <andy.lavr@gmail.com>
+Signed-off-by: Pierre-Louis Bossart <pierre-louis.bossart@linux.intel.com>
+Signed-off-by: Mark Brown <broonie@kernel.org>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ sound/soc/intel/boards/bytcr_rt5640.c |   13 ++++++++++++-
+ 1 file changed, 12 insertions(+), 1 deletion(-)
+
+--- a/sound/soc/intel/boards/bytcr_rt5640.c
++++ b/sound/soc/intel/boards/bytcr_rt5640.c
+@@ -380,6 +380,17 @@ static const struct dmi_system_id byt_rt
+ 						BYT_RT5640_MCLK_EN |
+ 						BYT_RT5640_SSP0_AIF1),
+ 	},
++	{
++		.callback = byt_rt5640_quirk_cb,
++		.matches = {
++			DMI_MATCH(DMI_SYS_VENDOR, "Acer"),
++			DMI_MATCH(DMI_PRODUCT_NAME, "Aspire SW5-012"),
++		},
++		.driver_data = (unsigned long *)(BYT_RT5640_IN1_MAP |
++						 BYT_RT5640_MCLK_EN |
++						 BYT_RT5640_SSP0_AIF1),
++
++	},
+ 	{}
+ };
+ 
+@@ -529,7 +540,7 @@ static int byt_rt5640_codec_fixup(struct
+ 	if ((byt_rt5640_quirk & BYT_RT5640_SSP0_AIF1) ||
+ 		(byt_rt5640_quirk & BYT_RT5640_SSP0_AIF2)) {
+ 
+-		/* set SSP2 to 16-bit */
++		/* set SSP0 to 16-bit */
+ 		params_set_format(params, SNDRV_PCM_FORMAT_S16_LE);
+ 
+ 		/*

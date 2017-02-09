@@ -1,0 +1,46 @@
+From: Jon Derrick <jonathan.derrick@intel.com>
+Date: Fri, 8 Apr 2016 14:44:24 -0500
+Subject: PCI/ACPI: Allow all PCIe services on non-ACPI host bridges
+Git-commit: 52966bd1c2a09fdd3149f00568cc18f45cc09785
+Patch-mainline: v4.7-rc1
+References: bsc#1006827
+
+Host bridges we discover via ACPI, i.e., PNP0A03 and PNP0A08 devices, may
+have an _OSC method by which the OS can ask the platform for control of
+PCIe features like native hotplug, power management events, AER, etc.
+
+Previously, if we found a bridge without an ACPI device, we assumed we did
+not have permission to use any of these PCIe features.  That seems
+unreasonably restrictive.
+
+If we find no ACPI device, assume we can take control of all PCIe features.
+
+The Intel Volume Management Device (VMD) is one such bridge with no ACPI
+device.  Prior to this change, users had to boot with "pcie_ports=native"
+to get hotplug and other services to work below the VMD Root Port.
+
+[bhelgaas: changelog]
+Suggested-by: Bjorn Helgaas <helgaas@kernel.org>
+Signed-off-by: Jon Derrick <jonathan.derrick@intel.com>
+Signed-off-by: Bjorn Helgaas <bhelgaas@google.com>
+Acked-by: Joerg Roedel <jroedel@suse.de>
+---
+ drivers/pci/pcie/portdrv_acpi.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+--- a/drivers/pci/pcie/portdrv_acpi.c
++++ b/drivers/pci/pcie/portdrv_acpi.c
+@@ -43,11 +43,11 @@ int pcie_port_acpi_setup(struct pci_dev
+ 
+ 	handle = acpi_find_root_bridge_handle(port);
+ 	if (!handle)
+-		return -EINVAL;
++		return 0;
+ 
+ 	root = acpi_pci_find_root(handle);
+ 	if (!root)
+-		return -ENODEV;
++		return 0;
+ 
+ 	flags = root->osc_control_set;
+ 

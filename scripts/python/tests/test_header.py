@@ -25,18 +25,16 @@ from suse_git import header
 # please follow this pattern when the test case is expecting to fail.
 
 class TestHeaderChecker(unittest.TestCase):
-    def setUp(self):
-        self.header = header.Checker()
-
     def test_empty(self):
         try:
-            self.header.do_patch("")
+            self.header = header.Checker("")
         except header.HeaderException, e:
-            self.assertTrue(e.errors(header.MissingTagError) == 3)
+            self.assertTrue(e.errors(header.MissingTagError) == 4)
             self.assertTrue(e.tag_is_missing('patch-mainline'))
             self.assertTrue(e.tag_is_missing('from'))
             self.assertTrue(e.tag_is_missing('subject'))
-            self.assertTrue(e.errors() == 3)
+            self.assertTrue(e.tag_is_missing('references'))
+            self.assertTrue(e.errors() == 4)
 
     def test_subject_dupe(self):
         text = """
@@ -45,10 +43,11 @@ Subject: some patch
 Subject: some patch
 Patch-mainline: v4.2-rc2
 Git-commit: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+References: bsc#12345
 Acked-by: developer@suse.com
 """
         try:
-            self.header.do_patch(text)
+            self.header = header.Checker(text)
             self.assertTrue(False)
         except header.HeaderException, e:
             self.assertTrue(e.errors(header.DuplicateTagError) == 1)
@@ -61,10 +60,11 @@ Subject: some patch
 Patch-mainline: v4.2-rc1
 Patch-mainline: v4.2-rc2
 Git-commit: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+References: bsc#12345
 Acked-by: developer@suse.com
 """
         try:
-            self.header.do_patch(text)
+            self.header = header.Checker(text)
             self.assertTrue(False)
         except header.HeaderException, e:
             self.assertTrue(e.errors(header.DuplicateTagError) == 1)
@@ -75,10 +75,11 @@ Acked-by: developer@suse.com
 From: developer@site.com
 Subject: some patch
 Patch-mainline:
+References: bsc#12345
 Acked-by: developer@suse.com
 """
         try:
-            self.header.do_patch(text)
+            self.header = header.Checker(text)
             self.assertTrue(False)
         except header.HeaderException, e:
             self.assertTrue(e.errors(header.EmptyTagError) == 1)
@@ -91,11 +92,12 @@ Acked-by: developer@suse.com
 From: developer@site.com
 Subject: some patch
 Patch-mainline: v4.2-rc1
+References: bsc#12345
 Git-commit: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 """
 
         try:
-            self.header.do_patch(text)
+            self.header = header.Checker(text)
         except header.HeaderException, e:
             self.assertTrue(e.errors(header.MissingTagError) == 1)
             self.assertTrue(e.tag_is_missing('acked-by'))
@@ -108,10 +110,11 @@ From: developer@site.com
 Subject: some patch
 Patch-mainline: v4.2-rc1
 Git-commit: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+References: bsc#12345
 Acked-by: developer@external.com
 Acked-by: developer@suse.com
 """
-        self.header.do_patch(text)
+        self.header = header.Checker(text)
 
     def test_patch_mainline_version_correct_multi_ack_ext_last(self):
         text = """
@@ -119,10 +122,11 @@ From: developer@site.com
 Subject: some patch
 Patch-mainline: v4.2-rc1
 Git-commit: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+References: bsc#12345
 Acked-by: developer@suse.com
 Acked-by: developer@external.com
 """
-        self.header.do_patch(text)
+        self.header = header.Checker(text)
 
     def test_patch_mainline_version_correct_mixed_ack_sob(self):
         text = """
@@ -130,10 +134,11 @@ From: developer@site.com
 Subject: some patch
 Patch-mainline: v4.2-rc1
 Git-commit: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+References: bsc#12345
 Signed-off-by: developer@external.com
 Acked-by: developer@suse.com
 """
-        self.header.do_patch(text)
+        self.header = header.Checker(text)
 
     def test_patch_mainline_version_correct_ack(self):
         text = """
@@ -141,9 +146,10 @@ From: developer@site.com
 Subject: some patch
 Patch-mainline: v4.2-rc1
 Git-commit: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+References: bsc#12345
 Acked-by: developer@suse.com
 """
-        self.header.do_patch(text)
+        self.header = header.Checker(text)
 
     def test_patch_mainline_version_correct_from(self):
         text = """
@@ -151,8 +157,9 @@ From: developer@suse.com
 Subject: some patch
 Patch-mainline: v4.2-rc1
 Git-commit: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+References: bsc#12345
 """
-        self.header.do_patch(text)
+        self.header = header.Checker(text)
 
     def test_patch_mainline_version_correct_review(self):
         text = """
@@ -160,10 +167,11 @@ From: developer@external.com
 Subject: some patch
 Patch-mainline: v4.2-rc1
 Git-commit: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+References: bsc#12345
 
 Reviewed-by: developer@suse.com
 """
-        self.header.do_patch(text)
+        self.header = header.Checker(text)
 
     def test_patch_mainline_version_correct_sob(self):
         text = """
@@ -171,9 +179,10 @@ From: developer@site.com
 Subject: some patch
 Patch-mainline: v4.2-rc1
 Git-commit: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+References: bsc#12345
 Signed-off-by: developer@suse.com
 """
-        self.header.do_patch(text)
+        self.header = header.Checker(text)
 
     def test_patch_mainline_version_correct_multi_sob(self):
         text = """
@@ -181,10 +190,11 @@ From: developer@site.com
 Subject: some patch
 Patch-mainline: v4.2-rc1
 Git-commit: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+References: bsc#12345
 Signed-off-by: developer2@external.com
 Signed-off-by: developer@suse.com
 """
-        self.header.do_patch(text)
+        self.header = header.Checker(text)
 
     def test_patch_mainline_version_correct_multi_sob_ext_last(self):
         text = """
@@ -192,20 +202,22 @@ From: developer@site.com
 Subject: some patch
 Patch-mainline: v4.2-rc1
 Git-commit: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+References: bsc#12345
 Signed-off-by: developer@suse.com
 Signed-off-by: developer2@external.com
 """
-        self.header.do_patch(text)
+        self.header = header.Checker(text)
 
     def test_patch_mainline_na(self):
         text = """
 From: developer@site.com
 Subject: some patch
 Patch-mainline: n/a
+References: bsc#12345
 Acked-by: developer@suse.com
 """
         try:
-            self.header.do_patch(text)
+            self.header = header.Checker(text)
             self.assertTrue(False)
         except header.HeaderException, e:
             self.assertTrue(e.errors(header.FormatError) == 1)
@@ -216,28 +228,31 @@ Acked-by: developer@suse.com
 From: developer@site.com
 Subject: some patch
 Patch-mainline: Submitted, 19 July 2015 - linux-btrfs
+References: bsc#12345
 Acked-by: developer@suse.com
 """
-        errors = self.header.do_patch(text)
+        errors = self.header = header.Checker(text)
 
     def test_patch_mainline_submitted_correct_url(self):
         text = """
 From: developer@site.com
 Subject: some patch
 Patch-mainline: Submitted, https://lkml.org/archive/link-to-post
+References: bsc#12345
 Acked-by: developer@suse.com
 """
-        errors = self.header.do_patch(text)
+        errors = self.header = header.Checker(text)
 
     def test_patch_mainline_submitted_no_detail(self):
         text = """
 From: developer@site.com
 Subject: some patch
 Patch-mainline: Submitted
+References: bsc#12345
 Acked-by: developer@suse.com
 """
         try:
-            self.header.do_patch(text)
+            self.header = header.Checker(text)
             self.assertTrue(False)
         except header.HeaderException, e:
             self.assertTrue(e.errors(header.FormatError) == 1)
@@ -249,10 +264,11 @@ From: developer@site.com
 Subject: some patch
 Patch-mainline: Submitted, https://lkml.org/archive/link-to-post
 Git-repo: git://host/valid/path/to/repo
+References: bsc#12345
 Acked-by: developer@suse.com
 """
         try:
-            self.header.do_patch(text)
+            self.header = header.Checker(text)
             self.assertTrue(False)
         except header.HeaderException, e:
             self.assertTrue(e.errors(header.ExcludedTagError) == 1)
@@ -266,10 +282,11 @@ From: developer@site.com
 Subject: some patch
 Patch-mainline: Submitted, https://lkml.org/archive/link-to-post
 Git-commit: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+References: bsc#12345
 Acked-by: developer@suse.com
 """
         try:
-            self.header.do_patch(text)
+            self.header = header.Checker(text)
             self.assertTrue(False)
         except header.HeaderException, e:
             self.assertTrue(e.errors(header.MissingTagError) == 1)
@@ -281,10 +298,11 @@ Acked-by: developer@suse.com
 From: developer@site.com
 Subject: some patch
 Patch-mainline: Submitted
+References: bsc#12345
 Acked-by: developer@suse.com
 """
         try:
-            self.header.do_patch(text)
+            self.header = header.Checker(text)
             self.assertTrue(False)
         except header.HeaderException, e:
             self.assertTrue(e.errors(header.FormatError) == 1)
@@ -295,10 +313,11 @@ Acked-by: developer@suse.com
 From: developer@site.com
 Subject: some patch
 Patch-mainline: Never
+References: bsc#12345
 Acked-by: developer@suse.com
 """
         try:
-            self.header.do_patch(text)
+            self.header = header.Checker(text)
         except header.HeaderException, e:
             self.assertTrue(e.errors(header.FormatError) == 1)
             self.assertTrue(e.errors() == 1)
@@ -308,10 +327,11 @@ Acked-by: developer@suse.com
 From: developer@site.com
 Subject: some patch
 Patch-mainline: Yes, v4.1-rc1
+References: bsc#12345
 Acked-by: developer@suse.com
 """
         try:
-            self.header.do_patch(text)
+            self.header = header.Checker(text)
             self.assertTrue(False)
         except header.HeaderException, e:
             self.assertTrue(e.errors(header.FormatError) == 1)
@@ -322,10 +342,11 @@ Acked-by: developer@suse.com
 From: developer@site.com
 Subject: some patch
 Patch-mainline: Yes
+References: bsc#12345
 Acked-by: developer@suse.com
 """
         try:
-            self.header.do_patch(text)
+            self.header = header.Checker(text)
             self.assertTrue(False)
         except header.HeaderException, e:
             self.assertTrue(e.errors(header.FormatError) == 1)
@@ -336,10 +357,11 @@ Acked-by: developer@suse.com
 From: developer@site.com
 Subject: some patch
 Patch-mainline: Not yet
+References: bsc#12345
 Acked-by: developer@suse.com
 """
         try:
-            self.header.do_patch(text)
+            self.header = header.Checker(text)
             self.assertTrue(False)
         except header.HeaderException, e:
             self.assertTrue(e.errors(header.FormatError) == 1)
@@ -350,37 +372,41 @@ Acked-by: developer@suse.com
 From: developer@site.com
 Subject: some patch
 Patch-mainline: Never, SLES-specific feature
+References: FATE#123456
 Acked-by: developer@suse.com
 """
-        self.header.do_patch(text)
+        self.header = header.Checker(text)
 
     def test_patch_mainline_no_detail(self):
         text = """
 From: developer@site.com
 Subject: some patch
 Patch-mainline: No, handled differently upstream
+References: bsc#12345
 Acked-by: developer@suse.com
 """
-        self.header.do_patch(text)
+        self.header = header.Checker(text)
 
     def test_patch_mainline_not_yet_detail(self):
         text = """
 From: developer@site.com
 Subject: some patch
 Patch-mainline: Not yet, rare reason
+References: bsc#12345
 Acked-by: developer@suse.com
 """
-        self.header.do_patch(text)
+        self.header = header.Checker(text)
 
     def test_git_commit_standalone(self):
         text = """
 From: developer@site.com
 Subject: some patch
 Git-commit: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+References: bsc#12345
 Acked-by: developer@suse.com
 """
         try:
-            self.header.do_patch(text)
+            self.header = header.Checker(text)
         except header.HeaderException, e:
             # Both policy and Git-commit require Patch-mainline
             self.assertTrue(e.errors(header.MissingTagError) == 2)
@@ -394,19 +420,21 @@ Subject: some patch
 Patch-mainline: Queued
 Git-repo: git://path/to/git/repo
 Git-commit: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+References: bsc#12345
 Acked-by: developer@suse.com
 """
-        self.header.do_patch(text)
+        self.header = header.Checker(text)
 
     def test_patch_mainline_queued_standalone(self):
         text = """
 From: developer@site.com
 Subject: some patch
 Patch-mainline: Queued
+References: bsc#12345
 Acked-by: developer@suse.com
 """
         try:
-            self.header.do_patch(text)
+            self.header = header.Checker(text)
             self.assertTrue(False)
         except header.HeaderException, e:
             self.assertTrue(e.errors(header.MissingTagError) == 2)
@@ -420,10 +448,11 @@ From: developer@site.com
 Subject: some patch
 Patch-mainline: Queued
 Git-repo: git://path/to/git/repo
+References: bsc#12345
 Acked-by: developer@suse.com
 """
         try:
-            self.header.do_patch(text)
+            self.header = header.Checker(text)
             self.assertTrue(False)
         except header.HeaderException, e:
             # Required by both Patch-mainline (Queued) and
@@ -438,10 +467,11 @@ From: developer@site.com
 Subject: some patch
 Patch-mainline: Queued
 Git-commit: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+References: bsc#12345
 Acked-by: developer@suse.com
 """
         try:
-            self.header.do_patch(text)
+            self.header = header.Checker(text)
             self.assertTrue(False)
         except header.HeaderException, e:
             self.assertTrue(e.errors(header.MissingTagError) == 1)
@@ -453,10 +483,11 @@ Acked-by: developer@suse.com
 From: developer@site.com
 Subject: some patch
 Patch-mainline: n/a
+References: bsc#12345
 Acked-by: developer@suse.com
 """
         try:
-            self.header.do_patch(text)
+            self.header = header.Checker(text)
             self.assertTrue(False)
         except header.HeaderException, e:
             self.assertTrue(e.errors(header.FormatError) == 1)
@@ -468,13 +499,14 @@ From: developer@external.com
 Subject: blablah
 Patch-mainline: v4.2-rc1
 Git-commit: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+References: bsc#12345
 
 This is a thing. I ran across it:
 *** Testing resulted in failure
 
 Acked-by: developer@suse.com
 """
-        self.header.do_patch(text)
+        self.header = header.Checker(text)
 
     def test_diff_like_description2(self):
         text = """
@@ -482,10 +514,205 @@ From: developer@external.com
 Subject: blablah
 Patch-mainline: v4.2-rc1
 Git-commit: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+References: bsc#12345
 
 This is a thing. I ran across it:
 --- Testing resulted in failure
 
 Acked-by: developer@suse.com
 """
-        self.header.do_patch(text)
+        self.header = header.Checker(text)
+
+    def test_patch_references_empty(self):
+        text = """
+From: developer@site.com
+Subject: some patch
+Patch-mainline: v4.2-rc1
+Git-commit: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+References:
+Acked-by: developer@suse.com
+"""
+        try:
+            self.header = header.Checker(text)
+            self.assertTrue(False)
+        except header.HeaderException, e:
+            self.assertTrue(e.errors(header.EmptyTagError) == 1)
+            self.assertTrue(e.errors(header.MissingTagError) == 1)
+            self.assertTrue(e.tag_is_missing('references'))
+            self.assertTrue(e.errors() == 2)
+
+    def test_patch_references_missing(self):
+        text = """
+From: developer@site.com
+Subject: some patch
+Patch-mainline: v4.2-rc1
+Git-commit: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+Acked-by: developer@suse.com
+"""
+        try:
+            self.header = header.Checker(text)
+            self.assertTrue(False)
+        except header.HeaderException, e:
+            self.assertTrue(e.errors(header.MissingTagError) == 1)
+            self.assertTrue(e.tag_is_missing('references'))
+            self.assertTrue(e.errors() == 1)
+
+    def test_patch_references_multi(self):
+        text = """
+From: developer@site.com
+Subject: some patch
+Patch-mainline: v4.2-rc1
+Git-commit: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+References: bsc#12345
+References: bsc#12354
+Acked-by: developer@suse.com
+"""
+        self.header = header.Checker(text)
+
+    def test_patch_references_multi2(self):
+        text = """
+From: developer@site.com
+Subject: some patch
+Patch-mainline: v4.2-rc1
+Git-commit: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+References: bsc#12345 bsc#12354
+Acked-by: developer@suse.com
+"""
+        self.header = header.Checker(text)
+
+    def test_patch_references_multi3(self):
+        text = """
+From: developer@site.com
+Subject: some patch
+Patch-mainline: v4.2-rc1
+Git-commit: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+References: bsc#12345, bsc#12354
+Acked-by: developer@suse.com
+"""
+        self.header = header.Checker(text)
+
+
+    def test_patch_references_multi3(self):
+        text = """
+From: developer@site.com
+Subject: some patch
+Patch-mainline: v4.2-rc1
+Git-commit: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+References: bsc#12345, bsc#12354
+References: fix for blahblah
+Acked-by: developer@suse.com
+"""
+        self.header = header.Checker(text)
+
+
+# Enable this check when we want to require a real References tag
+#    def test_patch_references_only_freeform(self):
+#        text = """
+#From: developer@site.com
+#Subject: some patch
+#Patch-mainline: v4.2-rc1
+#Git-commit: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+#References: fix for blahblah
+#Acked-by: developer@suse.com
+#"""
+#        try:
+#            self.header = header.Checker(text)
+#            self.assertTrue(False)
+#        except header.HeaderException, e:
+#            self.assertTrue(e.errors(header.MissingTagError) == 1)
+#            self.assertTrue(e.tag_is_missing('references'))
+#            self.assertTrue(e.errors() == 1)
+#
+
+    def test_patch_references_empty_update(self):
+        text = """
+From: developer@site.com
+Subject: some patch
+Patch-mainline: v4.2-rc1
+Git-commit: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+References:
+Acked-by: developer@suse.com
+"""
+        try:
+            self.header = header.Checker(text, True)
+            self.assertTrue(False)
+        except header.HeaderException, e:
+            self.assertTrue(e.errors(header.EmptyTagError) == 1)
+            self.assertTrue(e.errors() == 1)
+
+    def test_patch_references_missing_update(self):
+        text = """
+From: developer@site.com
+Subject: some patch
+Patch-mainline: v4.2-rc1
+Git-commit: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+Acked-by: developer@suse.com
+"""
+        self.header = header.Checker(text, True)
+
+    def test_patch_references_multi_update(self):
+        text = """
+From: developer@site.com
+Subject: some patch
+Patch-mainline: v4.2-rc1
+Git-commit: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+References: bsc#12345
+References: bsc#12354
+Acked-by: developer@suse.com
+"""
+        self.header = header.Checker(text, True)
+
+    def test_patch_references_multi2_update(self):
+        text = """
+From: developer@site.com
+Subject: some patch
+Patch-mainline: v4.2-rc1
+Git-commit: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+References: bsc#12345 bsc#12354
+Acked-by: developer@suse.com
+"""
+        self.header = header.Checker(text, True)
+
+    def test_patch_references_multi3_update(self):
+        text = """
+From: developer@site.com
+Subject: some patch
+Patch-mainline: v4.2-rc1
+Git-commit: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+References: bsc#12345, bsc#12354
+Acked-by: developer@suse.com
+"""
+        self.header = header.Checker(text, True)
+
+
+    def test_patch_references_multi3_update(self):
+        text = """
+From: developer@site.com
+Subject: some patch
+Patch-mainline: v4.2-rc1
+Git-commit: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+References: bsc#12345, bsc#12354
+References: fix for blahblah
+Acked-by: developer@suse.com
+"""
+        self.header = header.Checker(text, True)
+
+
+# Enable this check when we want to require a real References tag
+#    def test_patch_references_only_freeform_update(self):
+#        text = """
+#From: developer@site.com
+#Subject: some patch
+#Patch-mainline: v4.2-rc1
+#Git-commit: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+#References: fix for blahblah
+#Acked-by: developer@suse.com
+#"""
+#        try:
+#            self.header = header.Checker(text, True)
+#            self.assertTrue(False)
+#        except header.HeaderException, e:
+#            self.assertTrue(e.errors(header.MissingTagError) == 1)
+#            self.assertTrue(e.tag_is_missing('references'))
+#            self.assertTrue(e.errors() == 1)
+#

@@ -1,0 +1,235 @@
+From 5166c7ae0b6f0e203f5b478f16669c13c7fe232e Mon Sep 17 00:00:00 2001
+From: Jan Kara <jack@suse.cz>
+Date: Thu, 26 May 2016 14:46:43 +0200
+Subject: [PATCH 1/4] xfs: Propagate dentry down to inode_change_ok()
+Git-commit: 69bca80744eef58fa155e8042996b968fec17b26
+Patch-mainline: v4.9-rc1
+References: bsc#914939 CVE-2015-1350
+
+To avoid clearing of capabilities or security related extended
+attributes too early, inode_change_ok() will need to take dentry instead
+of inode. Propagate dentry down to functions calling inode_change_ok().
+This is rather straightforward except for xfs_set_mode() function which
+does not have dentry easily available. Luckily that function does not
+call inode_change_ok() anyway so we just have to do a little dance with
+function prototypes.
+
+Acked-by: Dave Chinner <dchinner@redhat.com>
+Reviewed-by: Christoph Hellwig <hch@lst.de>
+Signed-off-by: Jan Kara <jack@suse.cz>
+
+---
+ fs/xfs/xfs_file.c  |  2 +-
+ fs/xfs/xfs_inode.c |  2 +-
+ fs/xfs/xfs_ioctl.c |  2 +-
+ fs/xfs/xfs_iops.c  | 94 ++++++++++++++++++++++++++++++++++++------------------
+ fs/xfs/xfs_iops.h  |  2 ++
+ 5 files changed, 68 insertions(+), 34 deletions(-)
+
+diff --git a/fs/xfs/xfs_file.c b/fs/xfs/xfs_file.c
+index a6efffa612ff..09a250d7b541 100644
+--- a/fs/xfs/xfs_file.c
++++ b/fs/xfs/xfs_file.c
+@@ -1117,7 +1117,7 @@ xfs_file_fallocate(
+ 
+ 		iattr.ia_valid = ATTR_SIZE;
+ 		iattr.ia_size = new_size;
+-		error = xfs_setattr_size(ip, &iattr);
++		error = xfs_vn_setattr_size(file_dentry(file), &iattr);
+ 		if (error)
+ 			goto out_unlock;
+ 	}
+diff --git a/fs/xfs/xfs_inode.c b/fs/xfs/xfs_inode.c
+index 53e474defca5..a1e1571ac792 100644
+--- a/fs/xfs/xfs_inode.c
++++ b/fs/xfs/xfs_inode.c
+@@ -1782,7 +1782,7 @@ xfs_inactive_truncate(
+ 	/*
+ 	 * Log the inode size first to prevent stale data exposure in the event
+ 	 * of a system crash before the truncate completes. See the related
+-	 * comment in xfs_setattr_size() for details.
++	 * comment in xfs_vn_setattr_size() for details.
+ 	 */
+ 	ip->i_d.di_size = 0;
+ 	xfs_trans_log_inode(tp, ip, XFS_ILOG_CORE);
+diff --git a/fs/xfs/xfs_ioctl.c b/fs/xfs/xfs_ioctl.c
+index 892937b7127b..0373459c62b8 100644
+--- a/fs/xfs/xfs_ioctl.c
++++ b/fs/xfs/xfs_ioctl.c
+@@ -737,7 +737,7 @@ xfs_ioc_space(
+ 		iattr.ia_valid = ATTR_SIZE;
+ 		iattr.ia_size = bf->l_start;
+ 
+-		error = xfs_setattr_size(ip, &iattr);
++		error = xfs_vn_setattr_size(file_dentry(filp), &iattr);
+ 		break;
+ 	default:
+ 		ASSERT(0);
+diff --git a/fs/xfs/xfs_iops.c b/fs/xfs/xfs_iops.c
+index 441c9f608c43..6d0ba4974750 100644
+--- a/fs/xfs/xfs_iops.c
++++ b/fs/xfs/xfs_iops.c
+@@ -536,6 +536,30 @@ xfs_setattr_time(
+ 	}
+ }
+ 
++static int
++xfs_vn_change_ok(
++	struct dentry	*dentry,
++	struct iattr	*iattr)
++{
++	struct inode		*inode = d_inode(dentry);
++	struct xfs_inode	*ip = XFS_I(inode);
++	struct xfs_mount	*mp = ip->i_mount;
++
++	if (mp->m_flags & XFS_MOUNT_RDONLY)
++		return -EROFS;
++
++	if (XFS_FORCED_SHUTDOWN(mp))
++		return -EIO;
++
++	return inode_change_ok(inode, iattr);
++}
++
++/*
++ * Set non-size attributes of an inode.
++ *
++ * Caution: The caller of this function is responsible for calling
++ * inode_change_ok() or otherwise verifying the change is fine.
++ */
+ int
+ xfs_setattr_nonsize(
+ 	struct xfs_inode	*ip,
+@@ -552,21 +576,6 @@ xfs_setattr_nonsize(
+ 	struct xfs_dquot	*udqp = NULL, *gdqp = NULL;
+ 	struct xfs_dquot	*olddquot1 = NULL, *olddquot2 = NULL;
+ 
+-	trace_xfs_setattr(ip);
+-
+-	/* If acls are being inherited, we already have this checked */
+-	if (!(flags & XFS_ATTR_NOACL)) {
+-		if (mp->m_flags & XFS_MOUNT_RDONLY)
+-			return -EROFS;
+-
+-		if (XFS_FORCED_SHUTDOWN(mp))
+-			return -EIO;
+-
+-		error = inode_change_ok(inode, iattr);
+-		if (error)
+-			return error;
+-	}
+-
+ 	ASSERT((mask & ATTR_SIZE) == 0);
+ 
+ 	/*
+@@ -751,8 +760,27 @@ out_trans_cancel:
+ 	return error;
+ }
+ 
++int
++xfs_vn_setattr_nonsize(
++	struct dentry		*dentry,
++	struct iattr		*iattr)
++{
++	struct xfs_inode	*ip = XFS_I(d_inode(dentry));
++	int error;
++
++	trace_xfs_setattr(ip);
++
++	error = xfs_vn_change_ok(dentry, iattr);
++	if (error)
++		return error;
++	return xfs_setattr_nonsize(ip, iattr, 0);
++}
++
+ /*
+  * Truncate file.  Must have write permission and not be a directory.
++ *
++ * Caution: The caller of this function is responsible for calling
++ * inode_change_ok() or otherwise verifying the change is fine.
+  */
+ int
+ xfs_setattr_size(
+@@ -767,18 +795,6 @@ xfs_setattr_size(
+ 	uint			lock_flags = 0;
+ 	bool			did_zeroing = false;
+ 
+-	trace_xfs_setattr(ip);
+-
+-	if (mp->m_flags & XFS_MOUNT_RDONLY)
+-		return -EROFS;
+-
+-	if (XFS_FORCED_SHUTDOWN(mp))
+-		return -EIO;
+-
+-	error = inode_change_ok(inode, iattr);
+-	if (error)
+-		return error;
+-
+ 	ASSERT(xfs_isilocked(ip, XFS_IOLOCK_EXCL));
+ 	ASSERT(xfs_isilocked(ip, XFS_MMAPLOCK_EXCL));
+ 	ASSERT(S_ISREG(ip->i_d.di_mode));
+@@ -979,16 +995,32 @@ out_trans_cancel:
+ 	goto out_unlock;
+ }
+ 
++int
++xfs_vn_setattr_size(
++	struct dentry		*dentry,
++	struct iattr		*iattr)
++{
++	struct xfs_inode	*ip = XFS_I(d_inode(dentry));
++	int error;
++
++	trace_xfs_setattr(ip);
++
++	error = xfs_vn_change_ok(dentry, iattr);
++	if (error)
++		return error;
++	return xfs_setattr_size(ip, iattr);
++}
++
+ STATIC int
+ xfs_vn_setattr(
+ 	struct dentry		*dentry,
+ 	struct iattr		*iattr)
+ {
+-	struct xfs_inode	*ip = XFS_I(d_inode(dentry));
+ 	int			error;
+ 
+ 	if (iattr->ia_valid & ATTR_SIZE) {
+-		uint		iolock = XFS_IOLOCK_EXCL;
++		struct xfs_inode	*ip = XFS_I(d_inode(dentry));
++		uint			iolock = XFS_IOLOCK_EXCL;
+ 
+ 		xfs_ilock(ip, iolock);
+ 		error = xfs_break_layouts(d_inode(dentry), &iolock, true);
+@@ -996,11 +1028,11 @@ xfs_vn_setattr(
+ 			xfs_ilock(ip, XFS_MMAPLOCK_EXCL);
+ 			iolock |= XFS_MMAPLOCK_EXCL;
+ 
+-			error = xfs_setattr_size(ip, iattr);
++			error = xfs_vn_setattr_size(dentry, iattr);
+ 		}
+ 		xfs_iunlock(ip, iolock);
+ 	} else {
+-		error = xfs_setattr_nonsize(ip, iattr, 0);
++		error = xfs_vn_setattr_nonsize(dentry, iattr);
+ 	}
+ 
+ 	return error;
+diff --git a/fs/xfs/xfs_iops.h b/fs/xfs/xfs_iops.h
+index a0f84abb0d09..e73a136cceb3 100644
+--- a/fs/xfs/xfs_iops.h
++++ b/fs/xfs/xfs_iops.h
+@@ -34,5 +34,7 @@ extern void xfs_setattr_time(struct xfs_inode *ip, struct iattr *iattr);
+ extern int xfs_setattr_nonsize(struct xfs_inode *ip, struct iattr *vap,
+ 			       int flags);
+ extern int xfs_setattr_size(struct xfs_inode *ip, struct iattr *vap);
++extern int xfs_vn_setattr_nonsize(struct dentry *dentry, struct iattr *vap);
++extern int xfs_vn_setattr_size(struct dentry *dentry, struct iattr *vap);
+ 
+ #endif /* __XFS_IOPS_H__ */
+-- 
+1.7.12.4
+

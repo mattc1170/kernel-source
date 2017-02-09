@@ -1,0 +1,106 @@
+From e3b086b37863193dc0de63ef9439a1a462146826 Mon Sep 17 00:00:00 2001
+From: Ilya Dryomov <idryomov@gmail.com>
+Date: Mon, 8 Feb 2016 13:39:46 +0100
+Subject: [PATCH 1/5] libceph: rename ceph_osd_req_op::payload_len to
+ indata_len
+References: bsc#988715
+Git-commit: de2aa102ea464a54dba14b9588e0bc188bd94707
+Patch-mainline: v4.6-rc1
+
+Follow userspace nomenclature on this - the next commit adds
+outdata_len.
+
+Signed-off-by: Ilya Dryomov <idryomov@gmail.com>
+[ddiss@suse.de: include writesame and notify]
+Acked-by: David Disseldorp <ddiss@suse.de>
+
+---
+ include/linux/ceph/osd_client.h |    2 +-
+ net/ceph/osd_client.c           |   16 ++++++++--------
+ 2 files changed, 9 insertions(+), 9 deletions(-)
+
+--- a/include/linux/ceph/osd_client.h
++++ b/include/linux/ceph/osd_client.h
+@@ -83,7 +83,7 @@ struct ceph_osd_data {
+ struct ceph_osd_req_op {
+ 	u16 op;           /* CEPH_OSD_OP_* */
+ 	u32 flags;        /* CEPH_OSD_OP_FLAG_* */
+-	u32 payload_len;
++	u32 indata_len;   /* request */
+ 	union {
+ 		struct ceph_osd_data raw_data_in;
+ 		struct {
+--- a/net/ceph/osd_client.c
++++ b/net/ceph/osd_client.c
+@@ -638,7 +638,7 @@ void osd_req_op_writesame_init(struct ce
+ 	op->writesame.offset = offset;
+ 	op->writesame.length = length;
+ 	op->writesame.data_length = data_length;
+-	op->payload_len = data_length;
++	op->indata_len = data_length;
+ }
+ EXPORT_SYMBOL(osd_req_op_writesame_init);
+ 
+@@ -663,7 +663,7 @@ void osd_req_op_extent_init(struct ceph_
+ 	    opcode == CEPH_OSD_OP_CMPEXT)
+ 		payload_len += length;
+ 
+-	op->payload_len = payload_len;
++	op->indata_len = payload_len;
+ }
+ EXPORT_SYMBOL(osd_req_op_extent_init);
+ 
+@@ -682,7 +682,7 @@ void osd_req_op_extent_update(struct cep
+ 	BUG_ON(length > previous);
+ 
+ 	op->extent.length = length;
+-	op->payload_len -= previous - length;
++	op->indata_len -= previous - length;
+ }
+ EXPORT_SYMBOL(osd_req_op_extent_update);
+ 
+@@ -719,7 +719,7 @@ void osd_req_op_cls_init(struct ceph_osd
+ 
+ 	op->cls.argc = 0;	/* currently unused */
+ 
+-	op->payload_len = payload_len;
++	op->indata_len = payload_len;
+ }
+ EXPORT_SYMBOL(osd_req_op_cls_init);
+ 
+@@ -760,7 +760,7 @@ int osd_req_op_xattr_init(struct ceph_os
+ 	op->xattr.cmp_mode = cmp_mode;
+ 
+ 	ceph_osd_data_pagelist_init(&op->xattr.request_data, req_pagelist);
+-	op->payload_len = payload_len;
++	op->indata_len = payload_len;
+ 
+ 	return 0;
+ 
+@@ -907,7 +907,7 @@ static u64 osd_req_encode_op(struct ceph
+ 			BUG_ON(osd_data->type == CEPH_OSD_DATA_TYPE_NONE);
+ 			dst->cls.indata_len = cpu_to_le32(data_length);
+ 			ceph_osdc_msg_data_add(req->r_request, osd_data);
+-			src->payload_len += data_length;
++			src->indata_len += data_length;
+ 			request_data_len += data_length;
+ 		}
+ 		osd_data = &src->cls.response_data;
+@@ -923,7 +923,7 @@ static u64 osd_req_encode_op(struct ceph
+ 		if (data_length) {
+ 			BUG_ON(osd_data->type == CEPH_OSD_DATA_TYPE_NONE);
+ 			ceph_osdc_msg_data_add(req->r_request, osd_data);
+-			src->payload_len += data_length;
++			src->indata_len += data_length;
+ 			request_data_len += data_length;
+ 		}
+ 		osd_data = &src->notify.response_data;
+@@ -978,7 +978,7 @@ static u64 osd_req_encode_op(struct ceph
+ 
+ 	dst->op = cpu_to_le16(src->op);
+ 	dst->flags = cpu_to_le32(src->flags);
+-	dst->payload_len = cpu_to_le32(src->payload_len);
++	dst->payload_len = cpu_to_le32(src->indata_len);
+ 
+ 	return request_data_len;
+ }

@@ -1,7 +1,7 @@
 From: Nick Piggin <npiggin@suse.de>
 References: FATE309111
 Subject: uninline add_to_page_cache
-Patch-mainline: no
+Patch-mainline: no, [js] has no idea
 
 11sp3->sle12 porting remarks by mhocko@suse.cz:
 add_to_page_cache has to stay in mm/filemap.c otherwise we would need
@@ -21,7 +21,7 @@ Signed-off-by: Nick Piggin <npiggin@suse.de>
 --- a/include/linux/pagemap.h
 +++ b/include/linux/pagemap.h
 @@ -653,6 +653,8 @@ static inline int fault_in_multipages_re
- 	return ret;
+ 	return 0;
  }
  
 +int add_to_page_cache(struct page *page, struct address_space *mapping,

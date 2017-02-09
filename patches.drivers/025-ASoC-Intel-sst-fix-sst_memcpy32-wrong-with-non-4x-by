@@ -1,0 +1,47 @@
+From: Jie Yang <yang.jie@intel.com>
+Date: Mon, 14 Dec 2015 22:27:13 +0800
+Subject: [PATCH 25/82] ASoC: Intel: sst: fix sst_memcpy32 wrong with non-4x bytes issue
+Git-commit: 1cf8dfd90fe50ac660f79d4b94f47b8e721a1178
+Patch-mainline: 4.5-rc1
+References: bsc#1010690
+
+sst_memcpy32() only copied bytes/4 32bits, which means it dropped
+the remaining bytes%4 bytes wrongly.
+
+Here add copying those missing bytes, first to a 32bits tmp, and
+then write the tmp to 32bits iomem.
+
+Signed-off-by: Jie Yang <yang.jie@intel.com>
+Signed-off-by: Mark Brown <broonie@kernel.org>
+Signed-off-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ sound/soc/intel/common/sst-firmware.c |   16 +++++++++++++++-
+ 1 file changed, 15 insertions(+), 1 deletion(-)
+
+--- a/sound/soc/intel/common/sst-firmware.c
++++ b/sound/soc/intel/common/sst-firmware.c
+@@ -51,8 +51,22 @@ struct sst_dma {
+ 
+ static inline void sst_memcpy32(volatile void __iomem *dest, void *src, u32 bytes)
+ {
++	u32 tmp = 0;
++	int i, m, n;
++	const u8 *src_byte = src;
++
++	m = bytes / 4;
++	n = bytes % 4;
++
+ 	/* __iowrite32_copy use 32bit size values so divide by 4 */
+-	__iowrite32_copy((void *)dest, src, bytes/4);
++	__iowrite32_copy((void *)dest, src, m);
++
++	if (n) {
++		for (i = 0; i < n; i++)
++			tmp |= (u32)*(src_byte + m * 4 + i) << (i * 8);
++		__iowrite32_copy((void *)(dest + m * 4), &tmp, 1);
++	}
++
+ }
+ 
+ static void sst_dma_transfer_complete(void *arg)

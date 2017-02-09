@@ -1,0 +1,33 @@
+From: Thomas Falcon <tlfalcon@linux.vnet.ibm.com>
+Date: Mon, 17 Oct 2016 15:56:29 -0500
+Subject: [PATCH] ibmvnic: Driver Version 1.0.1
+Git-commit: 9fa2f2cca21b14d17b1c1a37babb639a48a5a29f
+Patch-mainline: v4.9-rc4
+References: bsc#1015416
+
+Increment driver version to reflect features that have
+been added since release.
+
+Signed-off-by: Thomas Falcon <tlfalcon@linux.vnet.ibm.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+Acked-by: Michal Suchanek <msuchanek@suse.de>
+---
+ drivers/net/ethernet/ibm/ibmvnic.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/net/ethernet/ibm/ibmvnic.h b/drivers/net/ethernet/ibm/ibmvnic.h
+index bfc84c7..878e2c0 100644
+--- a/drivers/net/ethernet/ibm/ibmvnic.h
++++ b/drivers/net/ethernet/ibm/ibmvnic.h
+@@ -27,7 +27,7 @@
+ /**************************************************************************/
+ 
+ #define IBMVNIC_NAME		"ibmvnic"
+-#define IBMVNIC_DRIVER_VERSION	"1.0"
++#define IBMVNIC_DRIVER_VERSION	"1.0.1"
+ #define IBMVNIC_INVALID_MAP	-1
+ #define IBMVNIC_STATS_TIMEOUT	1
+ /* basic structures plus 100 2k buffers */
+-- 
+2.10.2
+

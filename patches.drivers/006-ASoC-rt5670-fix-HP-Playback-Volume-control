@@ -1,0 +1,29 @@
+From: Bard Liao <bardliao@realtek.com>
+Date: Tue, 7 Jun 2016 11:03:08 +0800
+Subject: [PATCH 06/82] ASoC: rt5670: fix HP Playback Volume control
+Git-commit: e1f42a2f255f30c270500f1e6a69970ab45b0b6f
+Patch-mainline: 4.8-rc1
+References: bsc#1010690
+
+The register setting for HP Playback Volume is inverted. So, set
+the invert flag in SOC_DOUBLE_TLV.
+
+Signed-off-by: Bard Liao <bardliao@realtek.com>
+Signed-off-by: Mark Brown <broonie@kernel.org>
+Signed-off-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ sound/soc/codecs/rt5670.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+--- a/sound/soc/codecs/rt5670.c
++++ b/sound/soc/codecs/rt5670.c
+@@ -619,7 +619,7 @@ static const struct snd_kcontrol_new rt5
+ 		RT5670_L_MUTE_SFT, RT5670_R_MUTE_SFT, 1, 1),
+ 	SOC_DOUBLE_TLV("HP Playback Volume", RT5670_HP_VOL,
+ 		RT5670_L_VOL_SFT, RT5670_R_VOL_SFT,
+-		39, 0, out_vol_tlv),
++		39, 1, out_vol_tlv),
+ 	/* OUTPUT Control */
+ 	SOC_DOUBLE("OUT Channel Switch", RT5670_LOUT1,
+ 		RT5670_VOL_L_SFT, RT5670_VOL_R_SFT, 1, 1),

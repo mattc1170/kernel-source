@@ -1,0 +1,49 @@
+From a5dab991398996aaef658641a707ae09e002db6b Mon Sep 17 00:00:00 2001
+From: Arnd Bergmann <arnd@arndb.de>
+Date: Mon, 22 Feb 2016 22:33:31 +0100
+Subject: [PATCH] drm/layerscape: reduce excessive stack usage
+Git-commit: a5dab991398996aaef658641a707ae09e002db6b
+Patch-mainline: 4.7-rc1
+References: bsc#1005545
+
+The fsl-dcu driver copies a drm_mode_config object to its
+stack but then only accesses a single member (dpms_property)
+once. The data structure is large enough to trigger a warning
+about the amount of kernel stack being used:
+
+Drivers/gpu/drm/fsl-dcu/fsl_dcu_drm_rgb.c: In function 'fsl_dcu_drm_connector_create':
+drivers/gpu/drm/fsl-dcu/fsl_dcu_drm_rgb.c:182:1: error: the frame size of 1040 bytes is larger than 1024 bytes [-Werror=frame-larger-than=]
+
+This changes the fsl_dcu_drm_connector_create() function to
+only access the drm_mode_config by reference, which is also
+more efficient.
+
+Signed-off-by: Arnd Bergmann <arnd@arndb.de>
+Fixes: 109eee2f2a18 ("drm/layerscape: Add Freescale DCU DRM driver")
+Signed-off-by: Stefan Agner <stefan@agner.ch>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/gpu/drm/fsl-dcu/fsl_dcu_drm_rgb.c |    4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+--- a/drivers/gpu/drm/fsl-dcu/fsl_dcu_drm_rgb.c
++++ b/drivers/gpu/drm/fsl-dcu/fsl_dcu_drm_rgb.c
+@@ -131,7 +131,7 @@ int fsl_dcu_drm_connector_create(struct
+ 				 struct drm_encoder *encoder)
+ {
+ 	struct drm_connector *connector = &fsl_dev->connector.base;
+-	struct drm_mode_config mode_config = fsl_dev->drm->mode_config;
++	struct drm_mode_config *mode_config = &fsl_dev->drm->mode_config;
+ 	struct device_node *panel_node;
+ 	int ret;
+ 
+@@ -153,7 +153,7 @@ int fsl_dcu_drm_connector_create(struct
+ 		goto err_sysfs;
+ 
+ 	drm_object_property_set_value(&connector->base,
+-				      mode_config.dpms_property,
++				      mode_config->dpms_property,
+ 				      DRM_MODE_DPMS_OFF);
+ 
+ 	panel_node = of_parse_phandle(fsl_dev->np, "fsl,panel", 0);

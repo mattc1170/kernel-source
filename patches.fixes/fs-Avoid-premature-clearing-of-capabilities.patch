@@ -1,0 +1,86 @@
+From 9653f7dca1b45ed98177f6181b0d2d79d5a17b76 Mon Sep 17 00:00:00 2001
+From: Jan Kara <jack@suse.cz>
+Date: Thu, 26 May 2016 17:21:32 +0200
+Subject: [PATCH 4/4] fs: Avoid premature clearing of capabilities
+Git-commit: 030b533c4fd4d2ec3402363323de4bb2983c9cee
+Patch-mainline: v4.9-rc1
+References: bsc#914939 CVE-2015-1350
+
+Currently, notify_change() clears capabilities or IMA attributes by
+calling security_inode_killpriv() before calling into ->setattr. Thus it
+happens before any other permission checks in inode_change_ok() and user
+is thus allowed to trigger clearing of capabilities or IMA attributes
+for any file he can look up e.g. by calling chown for that file. This is
+unexpected and can lead to user DoSing a system.
+
+Fix the problem by calling security_inode_killpriv() at the end of
+inode_change_ok() instead of from notify_change(). At that moment we are
+sure user has permissions to do the requested change.
+
+References: CVE-2015-1350
+Reviewed-by: Christoph Hellwig <hch@lst.de>
+Signed-off-by: Jan Kara <jack@suse.cz>
+
+---
+ fs/attr.c | 29 +++++++++++++++++++++++------
+ 1 file changed, 23 insertions(+), 6 deletions(-)
+
+diff --git a/fs/attr.c b/fs/attr.c
+index e8ec39d188ab..2efcfcd0f3ed 100644
+--- a/fs/attr.c
++++ b/fs/attr.c
+@@ -85,7 +85,18 @@ EXPORT_SYMBOL(inode_change_ok);
+  */
+ int setattr_prepare(struct dentry *dentry, struct iattr *attr)
+ {
+-	return inode_change_ok(d_inode(dentry), attr);
++	int error;
++
++	error = inode_change_ok(d_inode(dentry), attr);
++	if (error)
++		return error;
++	/* User has permission for the change */
++	if (attr->ia_valid & ATTR_KILL_PRIV) {
++		error = security_inode_killpriv(dentry);
++		attr->ia_valid &= ~ATTR_KILL_PRIV;
++	}
++	return error;
++
+ }
+ EXPORT_SYMBOL(setattr_prepare);
+ 
+@@ -225,13 +236,11 @@ int notify_change(struct dentry * dentry, struct iattr * attr, struct inode **de
+ 	if (!(ia_valid & ATTR_MTIME_SET))
+ 		attr->ia_mtime = now;
+ 	if (ia_valid & ATTR_KILL_PRIV) {
+-		attr->ia_valid &= ~ATTR_KILL_PRIV;
+-		ia_valid &= ~ATTR_KILL_PRIV;
+ 		error = security_inode_need_killpriv(dentry);
+-		if (error > 0)
+-			error = security_inode_killpriv(dentry);
+-		if (error)
++		if (error < 0)
+ 			return error;
++		if (error == 0)
++			ia_valid = attr->ia_valid &= ~ATTR_KILL_PRIV;
+ 	}
+ 
+ 	/*
+@@ -276,6 +285,14 @@ int notify_change(struct dentry * dentry, struct iattr * attr, struct inode **de
+ 		error = simple_setattr(dentry, attr);
+ 
+ 	if (!error) {
++		/*
++		 * Backward compatibility hack for out of tree filesystems that
++		 * don't call setattr_prepare().
++		 */
++		if (attr->ia_valid & ATTR_KILL_PRIV) {
++			error = security_inode_killpriv(dentry);
++			attr->ia_valid &= ~ATTR_KILL_PRIV;
++		}
+ 		fsnotify_change(dentry, ia_valid);
+ 		ima_inode_post_setattr(dentry);
+ 		evm_inode_post_setattr(dentry, ia_valid);
+-- 
+1.7.12.4
+

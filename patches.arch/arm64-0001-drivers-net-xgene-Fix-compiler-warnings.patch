@@ -5,8 +5,7 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 8bit
 Git-commit: ee0f95440dc16dd0db9c2856bed1e7806d1839de
-Patch-mainline: Queued
-Git-repo: git://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git
+Patch-mainline: v4.9-rc1
 References: bsc#993051
 
 Fixed compiler warnings reported with -Wmaybe-uninitialized W=1,

@@ -1,0 +1,54 @@
+From: Mika Kuoppala <mika.kuoppala@linux.intel.com>
+Date: Tue, 7 Jun 2016 17:18:53 +0300
+Subject: [PATCH] drm/i915/skl: Add WaDisableGafsUnitClkGating
+Mime-version: 1.0
+Content-type: text/plain; charset=UTF-8
+Content-transfer-encoding: 8bit
+Git-commit: c000456c8c642c6474cd7b94344ff1c39e91c575
+No-fix: eee8efb02a0f9284d85e6b3688f944ca765d7ad3
+References: bsc#1014392
+Patch-mainline: 4.7
+
+We need to disable clock gating in this unit to work around
+hardware issue causing possible corruption/hang.
+
+V2: name the bit (Ville)
+V3: leave the fix enabled for 2227050 and set correct bit (Matthew)
+
+References: HSD#2227156, HSD#2227050
+Cc: Ville Syrjälä <ville.syrjala@linux.intel.com>
+Cc: Matthew Auld <matthew.william.auld@gmail.com>
+Reviewed-by: Matthew Auld <matthew.auld@intel.com>
+Signed-off-by: Mika Kuoppala <mika.kuoppala@intel.com>
+Link: http://patchwork.freedesktop.org/patch/msgid/1465309159-30531-2-git-send-email-mika.kuoppala@intel.com
+(cherry picked from commit eee8efb02a0f9284d85e6b3688f944ca765d7ad3)
+
+Signed-off-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/gpu/drm/i915/i915_reg.h         |    1 +
+ drivers/gpu/drm/i915/intel_ringbuffer.c |    3 +++
+ 2 files changed, 4 insertions(+)
+
+--- a/drivers/gpu/drm/i915/i915_reg.h
++++ b/drivers/gpu/drm/i915/i915_reg.h
+@@ -6762,6 +6762,7 @@ enum skl_disp_power_wells {
+ 
+ #define GEN7_UCGCTL4				0x940c
+ #define  GEN7_L3BANK2X_CLOCK_GATE_DISABLE	(1<<25)
++#define  GEN8_EU_GAUNIT_CLOCK_GATE_DISABLE	(1<<14)
+ 
+ #define GEN6_RCGCTL1				0x9410
+ #define GEN6_RCGCTL2				0x9414
+--- a/drivers/gpu/drm/i915/intel_ringbuffer.c
++++ b/drivers/gpu/drm/i915/intel_ringbuffer.c
+@@ -1087,6 +1087,9 @@ static int skl_init_workarounds(struct i
+ 			GEN7_HALF_SLICE_CHICKEN1,
+ 			GEN7_SBE_SS_CACHE_DISPATCH_PORT_SHARING_DISABLE);
+ 
++	/* WaDisableGafsUnitClkGating:skl */
++	WA_SET_BIT(GEN7_UCGCTL4, GEN8_EU_GAUNIT_CLOCK_GATE_DISABLE);
++
+ 	return skl_tune_iz_hashing(ring);
+ }
+ 

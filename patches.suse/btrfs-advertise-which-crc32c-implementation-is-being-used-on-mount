@@ -1,7 +1,8 @@
 From: Jeff Mahoney <jeffm@suse.com>
 Subject: btrfs: advertise which crc32c implementation is being used on mount
 References: bsc#946057
-Patch-mainline: Submitted to linux-btrfs, 16 Sep 2015
+Patch-mainline: v4.7-rc3
+Git-commit: 5f9e1059d9347191b271bf7d13bd83db57594d2a
 
 Since several architectures support hardware-accelerated crc32c 
 calculation, it would be nice to confirm that btrfs is actually using it.

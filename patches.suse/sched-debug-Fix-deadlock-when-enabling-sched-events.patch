@@ -3,7 +3,8 @@ Date: Tue, 14 Jun 2016 14:30:39 +0100
 Subject: [PATCH] sched/debug: Fix deadlock when enabling sched events
 
 References: Scheduler performance -- debugging overhead, fate#320486
-Patch-mainline: No, expected 4.7 and queued in tip
+Git-commit: eda8dca519269c92a0771668b3d5678792de7b78
+Patch-mainline: v4.7
 
 I see a hang when enabling sched events:
 

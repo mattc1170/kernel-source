@@ -324,7 +324,7 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  	dev_put(dev);
 --- a/drivers/infiniband/core/cm.c
 +++ b/drivers/infiniband/core/cm.c
-@@ -1646,8 +1646,11 @@ static int cm_req_handler(struct cm_work
+@@ -1709,8 +1709,11 @@ static int cm_req_handler(struct cm_work
  				cm_id_priv->av.ah_attr.grh.sgid_index,
  				&gid, &gid_attr);
  	if (!ret) {
@@ -335,9 +335,9 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  			dev_put(gid_attr.ndev);
 +		}
  		work->path[0].gid_type = gid_attr.gid_type;
- 		ret = cm_init_av_by_path(&work->path[0], &cm_id_priv->av);
- 	}
-@@ -1656,8 +1659,11 @@ static int cm_req_handler(struct cm_work
+ 		ret = cm_init_av_by_path(&work->path[0], &cm_id_priv->av,
+ 					 cm_id_priv);
+@@ -1720,8 +1723,11 @@ static int cm_req_handler(struct cm_work
  					    work->port->port_num, 0,
  					    &work->path[0].sgid,
  					    &gid_attr);

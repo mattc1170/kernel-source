@@ -1,0 +1,57 @@
+From ac563c4ea5a91398bc2cae952b4404af11dd1396 Mon Sep 17 00:00:00 2001
+From: Mark Rutland <mark.rutland@arm.com>
+Date: Mon, 25 Apr 2016 21:07:09 +0100
+Subject: [PATCH 6/7] arm64/efi: Enable runtime call flag checking
+
+Git-commit: ee6cab5d4aba1df12e0386d22c5a1c4e71d34b31
+Patch-mainline: v4.7-rc1
+References: bsc#1005745
+
+Define ARCH_EFI_IRQ_FLAGS_MASK for arm64, which will enable the generic
+runtime wrapper code to detect when firmware erroneously modifies flags
+over a runtime services function call.
+
+Signed-off-by: Mark Rutland <mark.rutland@arm.com>
+Signed-off-by: Matt Fleming <matt@codeblueprint.co.uk>
+Acked-by: Will Deacon <will.deacon@arm.com>
+Cc: Ard Biesheuvel <ard.biesheuvel@linaro.org>
+Cc: Borislav Petkov <bp@alien8.de>
+Cc: Catalin Marinas <catalin.marinas@arm.com>
+Cc: Dan Williams <dan.j.williams@intel.com>
+Cc: Leif Lindholm <leif.lindholm@linaro.org>
+Cc: Peter Zijlstra <peterz@infradead.org>
+Cc: Russell King <linux@arm.linux.org.uk>
+Cc: Thomas Gleixner <tglx@linutronix.de>
+Cc: linux-arm-kernel@lists.infradead.org
+Cc: linux-efi@vger.kernel.org
+Link: http://lkml.kernel.org/r/1461614832-17633-38-git-send-email-matt@codeblueprint.co.uk
+Signed-off-by: Ingo Molnar <mingo@kernel.org>
+Acked-by: Mian Yousaf Kaukab <yousaf.kaukab@suse.com>
+---
+ arch/arm64/include/asm/efi.h | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/arch/arm64/include/asm/efi.h b/arch/arm64/include/asm/efi.h
+index 1b50d76..6043e56 100644
+--- a/arch/arm64/include/asm/efi.h
++++ b/arch/arm64/include/asm/efi.h
+@@ -4,6 +4,7 @@
+ #include <asm/boot.h>
+ #include <asm/io.h>
+ #include <asm/neon.h>
++#include <asm/ptrace.h>
+ 
+ #ifdef CONFIG_EFI
+ extern void efi_init_fdt(void *fdt);
+@@ -30,6 +31,8 @@ extern void efi_init_fdt(void *fdt);
+ 	kernel_neon_end();						\
+ })
+ 
++#define ARCH_EFI_IRQ_FLAGS_MASK (PSR_D_BIT | PSR_A_BIT | PSR_I_BIT | PSR_F_BIT)
++
+ /* arch specific definitions used by the stub code */
+ 
+ #define EFI_FDT_ALIGN		MIN_FDT_ALIGN
+-- 
+1.8.5.6
+

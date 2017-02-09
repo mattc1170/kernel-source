@@ -1,0 +1,33 @@
+From: Paul Blakey <paulb@mellanox.com>
+Date: Tue, 25 Oct 2016 18:36:27 +0300
+Subject: net/mlx5: Fix autogroups groups num not decreasing
+Patch-mainline: v4.9-rc4
+Git-commit: 32dba76a7a3104b2815f31b1755f4c0ba1f01a78
+References: bsc#966170 FATE#320225 bsc#966172 FATE#320226
+
+Autogroups groups num is increased when creating a new flow group,
+but is never decreased.
+
+Now decreasing it when deleting a flow group.
+
+Fixes: f0d22d187473 ('net/mlx5_core: Introduce flow steering autogrouped flow table')
+Signed-off-by: Paul Blakey <paulb@mellanox.com>
+Signed-off-by: Saeed Mahameed <saeedm@mellanox.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+Acked-by: Benjamin Poirier <bpoirier@suse.com>
+---
+ drivers/net/ethernet/mellanox/mlx5/core/fs_core.c |    3 +++
+ 1 file changed, 3 insertions(+)
+
+--- a/drivers/net/ethernet/mellanox/mlx5/core/fs_core.c
++++ b/drivers/net/ethernet/mellanox/mlx5/core/fs_core.c
+@@ -416,6 +416,9 @@ static void del_flow_group(struct fs_nod
+ 	fs_get_obj(ft, fg->node.parent);
+ 	dev = get_dev(&ft->node);
+ 
++	if (ft->autogroup.active)
++		ft->autogroup.num_groups--;
++
+ 	if (mlx5_cmd_destroy_flow_group(dev, ft, fg->id))
+ 		pr_warn("flow steering can't destroy fg %d of ft %d\n",
+ 			fg->id, ft->id);

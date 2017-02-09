@@ -1,0 +1,38 @@
+From ecb2caae6aa7e33a8b413479d802a6b818316f97 Mon Sep 17 00:00:00 2001
+From: Nicholas Mc Guire <hofrat@osadl.org>
+Date: Tue, 19 Jul 2016 21:54:06 +0200
+Subject: [PATCH] drm/radeon/ci add comment to document intentionally unreachable code
+Git-commit: ecb2caae6aa7e33a8b413479d802a6b818316f97
+Patch-mainline: 4.8-rc1
+References: bsc#1005545
+
+ commit d967be9b80a5 ("drm/radeon/ci: disable needless sclk changes")
+ introduces an unreachable if(C != C) conditional code section
+ flagged by coccinelle script bad_conditional.cocci:
+
+ Add a comment to make it clear that this is intentional.
+
+ Fixes: d967be9b80a5 ("drm/radeon/ci: disable needless sclk changes")
+
+Signed-off-by: Nicholas Mc Guire <hofrat@osadl.org>
+Signed-off-by: Alex Deucher <alexander.deucher@amd.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/gpu/drm/radeon/ci_dpm.c |    5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+--- a/drivers/gpu/drm/radeon/ci_dpm.c
++++ b/drivers/gpu/drm/radeon/ci_dpm.c
+@@ -3843,7 +3843,10 @@ static void ci_find_dpm_states_clocks_in
+ 	if (i >= sclk_table->count) {
+ 		pi->need_update_smu7_dpm_table |= DPMTABLE_OD_UPDATE_SCLK;
+ 	} else {
+-		/* XXX check display min clock requirements */
++		/* XXX The current code always reprogrammed the sclk levels,
++		 * but we don't currently handle disp sclk requirements
++		 * so just skip it.
++		 */
+ 		if (CISLAND_MINIMUM_ENGINE_CLOCK != CISLAND_MINIMUM_ENGINE_CLOCK)
+ 			pi->need_update_smu7_dpm_table |= DPMTABLE_UPDATE_SCLK;
+ 	}

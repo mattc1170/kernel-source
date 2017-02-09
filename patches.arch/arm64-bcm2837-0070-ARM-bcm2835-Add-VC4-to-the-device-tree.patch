@@ -17,20 +17,18 @@ Conflicts: arch/arm/boot/dts/bcm2835-rpi-a.dts
 	arch/arm/boot/dts/bcm2836-rpi-2-b.dts
 
 ---
- arch/arm/boot/dts/bcm2835-rpi-a-plus.dts |  4 +++
- arch/arm/boot/dts/bcm2835-rpi-a.dts      | 28 +++++++++++++++++++
- arch/arm/boot/dts/bcm2835-rpi-b-plus.dts |  4 +++
- arch/arm/boot/dts/bcm2835-rpi-b-rev2.dts |  4 +++
- arch/arm/boot/dts/bcm2835-rpi-b.dts      |  4 +++
- arch/arm/boot/dts/bcm2835-rpi.dtsi       |  9 ++++++
- arch/arm/boot/dts/bcm2836-rpi-2-b.dts    | 39 ++++++++++++++++++++++++++
- arch/arm/boot/dts/bcm283x.dtsi           | 47 ++++++++++++++++++++++++++++++++
- 8 files changed, 139 insertions(+)
+ arch/arm/boot/dts/bcm2835-rpi-a-plus.dts |    4 ++
+ arch/arm/boot/dts/bcm2835-rpi-a.dts      |   28 ++++++++++++++++++
+ arch/arm/boot/dts/bcm2835-rpi-b-plus.dts |    4 ++
+ arch/arm/boot/dts/bcm2835-rpi-b-rev2.dts |    4 ++
+ arch/arm/boot/dts/bcm2835-rpi-b.dts      |    4 ++
+ arch/arm/boot/dts/bcm2835-rpi.dtsi       |    9 +++++
+ arch/arm/boot/dts/bcm2836-rpi-2-b.dts    |    4 ++
+ arch/arm/boot/dts/bcm283x.dtsi           |   47 +++++++++++++++++++++++++++++++
+ 8 files changed, 104 insertions(+)
  create mode 100644 arch/arm/boot/dts/bcm2835-rpi-a.dts
  create mode 100644 arch/arm/boot/dts/bcm2836-rpi-2-b.dts
 
-diff --git a/arch/arm/boot/dts/bcm2835-rpi-a-plus.dts b/arch/arm/boot/dts/bcm2835-rpi-a-plus.dts
-index 228614f..35ff4e7a 100644
 --- a/arch/arm/boot/dts/bcm2835-rpi-a-plus.dts
 +++ b/arch/arm/boot/dts/bcm2835-rpi-a-plus.dts
 @@ -29,3 +29,7 @@
@@ -41,9 +39,6 @@ index 228614f..35ff4e7a 100644
 +&hdmi {
 +	hpd-gpios = <&gpio 46 GPIO_ACTIVE_LOW>;
 +};
-diff --git a/arch/arm/boot/dts/bcm2835-rpi-a.dts b/arch/arm/boot/dts/bcm2835-rpi-a.dts
-new file mode 100644
-index 0000000..306a84e
 --- /dev/null
 +++ b/arch/arm/boot/dts/bcm2835-rpi-a.dts
 @@ -0,0 +1,28 @@
@@ -75,8 +70,6 @@ index 0000000..306a84e
 +&hdmi {
 +	hpd-gpios = <&gpio 46 GPIO_ACTIVE_HIGH>;
 +};
-diff --git a/arch/arm/boot/dts/bcm2835-rpi-b-plus.dts b/arch/arm/boot/dts/bcm2835-rpi-b-plus.dts
-index ef54050..57d313b 100644
 --- a/arch/arm/boot/dts/bcm2835-rpi-b-plus.dts
 +++ b/arch/arm/boot/dts/bcm2835-rpi-b-plus.dts
 @@ -29,3 +29,7 @@
@@ -87,8 +80,6 @@ index ef54050..57d313b 100644
 +&hdmi {
 +	hpd-gpios = <&gpio 46 GPIO_ACTIVE_LOW>;
 +};
-diff --git a/arch/arm/boot/dts/bcm2835-rpi-b-rev2.dts b/arch/arm/boot/dts/bcm2835-rpi-b-rev2.dts
-index 86f1f2f..cf2774e 100644
 --- a/arch/arm/boot/dts/bcm2835-rpi-b-rev2.dts
 +++ b/arch/arm/boot/dts/bcm2835-rpi-b-rev2.dts
 @@ -22,3 +22,7 @@
@@ -99,8 +90,6 @@ index 86f1f2f..cf2774e 100644
 +&hdmi {
 +	hpd-gpios = <&gpio 46 GPIO_ACTIVE_LOW>;
 +};
-diff --git a/arch/arm/boot/dts/bcm2835-rpi-b.dts b/arch/arm/boot/dts/bcm2835-rpi-b.dts
-index 4859e9d..8b15f9c 100644
 --- a/arch/arm/boot/dts/bcm2835-rpi-b.dts
 +++ b/arch/arm/boot/dts/bcm2835-rpi-b.dts
 @@ -16,3 +16,7 @@
@@ -111,8 +100,6 @@ index 4859e9d..8b15f9c 100644
 +&hdmi {
 +	hpd-gpios = <&gpio 46 GPIO_ACTIVE_HIGH>;
 +};
-diff --git a/arch/arm/boot/dts/bcm2835-rpi.dtsi b/arch/arm/boot/dts/bcm2835-rpi.dtsi
-index 76bdbca..caf2707 100644
 --- a/arch/arm/boot/dts/bcm2835-rpi.dtsi
 +++ b/arch/arm/boot/dts/bcm2835-rpi.dtsi
 @@ -74,3 +74,12 @@
@@ -128,53 +115,16 @@ index 76bdbca..caf2707 100644
 +	power-domains = <&power RPI_POWER_DOMAIN_HDMI>;
 +	status = "okay";
 +};
-diff --git a/arch/arm/boot/dts/bcm2836-rpi-2-b.dts b/arch/arm/boot/dts/bcm2836-rpi-2-b.dts
-new file mode 100644
-index 0000000..c4743f4
---- /dev/null
+--- a/arch/arm/boot/dts/bcm2836-rpi-2-b.dts
 +++ b/arch/arm/boot/dts/bcm2836-rpi-2-b.dts
-@@ -0,0 +1,39 @@
-+/dts-v1/;
-+#include "bcm2836.dtsi"
-+#include "bcm2835-rpi.dtsi"
-+
-+/ {
-+	compatible = "raspberrypi,2-model-b", "brcm,bcm2836";
-+	model = "Raspberry Pi 2 Model B";
-+
-+	memory {
-+		reg = <0 0x40000000>;
-+	};
-+
-+	leds {
-+		act {
-+			gpios = <&gpio 47 0>;
-+		};
-+
-+		pwr {
-+			label = "PWR";
-+			gpios = <&gpio 35 0>;
-+			default-state = "keep";
-+			linux,default-trigger = "default-on";
-+		};
-+	};
-+};
-+
-+&gpio {
-+	pinctrl-0 = <&gpioout &alt0 &i2s_alt0 &alt3>;
-+
-+	/* I2S interface */
-+	i2s_alt0: i2s_alt0 {
-+		brcm,pins = <18 19 20 21>;
-+		brcm,function = <BCM2835_FSEL_ALT0>;
-+	};
-+};
+@@ -33,3 +33,7 @@
+ 		brcm,function = <BCM2835_FSEL_ALT0>;
+ 	};
+ };
 +
 +&hdmi {
 +	hpd-gpios = <&gpio 46 GPIO_ACTIVE_LOW>;
 +};
-diff --git a/arch/arm/boot/dts/bcm283x.dtsi b/arch/arm/boot/dts/bcm283x.dtsi
-index e69a6cf..181bad3 100644
 --- a/arch/arm/boot/dts/bcm283x.dtsi
 +++ b/arch/arm/boot/dts/bcm283x.dtsi
 @@ -1,6 +1,7 @@
@@ -185,7 +135,7 @@ index e69a6cf..181bad3 100644
  #include "skeleton.dtsi"
  
  /* This include file covers the common peripherals and configuration between
-@@ -153,6 +154,18 @@
+@@ -173,6 +174,18 @@
  			status = "disabled";
  		};
  
@@ -204,7 +154,7 @@ index e69a6cf..181bad3 100644
  		aux: aux@0x7e215000 {
  			compatible = "brcm,bcm2835-aux";
  			#clock-cells = <1>;
-@@ -198,6 +211,12 @@
+@@ -218,6 +231,12 @@
  			status = "disabled";
  		};
  
@@ -217,7 +167,7 @@ index e69a6cf..181bad3 100644
  		i2c1: i2c@7e804000 {
  			compatible = "brcm,bcm2835-i2c";
  			reg = <0x7e804000 0x1000>;
-@@ -218,11 +237,39 @@
+@@ -238,11 +257,39 @@
  			status = "disabled";
  		};
  
@@ -257,6 +207,3 @@ index e69a6cf..181bad3 100644
  	};
  
  	clocks {
--- 
-1.8.5.6
-

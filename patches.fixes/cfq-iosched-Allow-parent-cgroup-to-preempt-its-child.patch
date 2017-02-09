@@ -30,14 +30,12 @@ Signed-off-by: Jan Kara <jack@suse.com>
 Signed-off-by: Jens Axboe <axboe@fb.com>
 
 ---
- block/cfq-iosched.c | 19 ++++++++++++++++++-
+ block/cfq-iosched.c |   19 ++++++++++++++++++-
  1 file changed, 18 insertions(+), 1 deletion(-)
 
-diff --git a/block/cfq-iosched.c b/block/cfq-iosched.c
-index 98569c2f373e..e3c591dd8f19 100644
 --- a/block/cfq-iosched.c
 +++ b/block/cfq-iosched.c
-@@ -632,6 +632,13 @@ static inline struct cfq_group *cfqg_parent(struct cfq_group *cfqg)
+@@ -632,6 +632,13 @@ static inline struct cfq_group *cfqg_par
  	return pblkg ? blkg_to_cfqg(pblkg) : NULL;
  }
  
@@ -51,7 +49,7 @@ index 98569c2f373e..e3c591dd8f19 100644
  static inline void cfqg_get(struct cfq_group *cfqg)
  {
  	return blkg_get(cfqg_to_blkg(cfqg));
-@@ -758,6 +765,11 @@ static void cfqg_stats_xfer_dead(struct cfq_group *cfqg)
+@@ -758,6 +765,11 @@ static void cfqg_stats_xfer_dead(struct
  #else	/* CONFIG_CFQ_GROUP_IOSCHED */
  
  static inline struct cfq_group *cfqg_parent(struct cfq_group *cfqg) { return NULL; }
@@ -63,8 +61,8 @@ index 98569c2f373e..e3c591dd8f19 100644
  static inline void cfqg_get(struct cfq_group *cfqg) { }
  static inline void cfqg_put(struct cfq_group *cfqg) { }
  
-@@ -3953,7 +3965,12 @@ cfq_should_preempt(struct cfq_data *cfqd, struct cfq_queue *new_cfqq,
- 	if (rq_is_sync(rq) && !cfq_cfqq_sync(cfqq))
+@@ -3960,7 +3972,12 @@ cfq_should_preempt(struct cfq_data *cfqd
+ 	if (rq_is_sync(rq) && !cfq_cfqq_sync(cfqq) && !cfq_cfqq_must_dispatch(cfqq))
  		return true;
  
 -	if (new_cfqq->cfqg != cfqq->cfqg)
@@ -77,6 +75,3 @@ index 98569c2f373e..e3c591dd8f19 100644
  		return false;
  
  	if (cfq_slice_used(cfqq))
--- 
-2.6.2
-

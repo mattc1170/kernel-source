@@ -1,0 +1,43 @@
+From 6ce213575cf37c50667850b4372272b4f1660b51 Mon Sep 17 00:00:00 2001
+From: Chris Wilson <chris@chris-wilson.co.uk>
+Date: Fri, 29 Jul 2016 00:45:35 +0100
+Subject: [PATCH] drm/i915: Add missing ring_mask to Pineview
+Git-commit: 6ce213575cf37c50667850b4372272b4f1660b51
+Patch-mainline: 4.9-rc1
+References: bsc#1005917
+
+It appears that we never told Pineview it has a RENDER_RING. This was
+all fine until we started using the ring_mask for determining all the
+available rings to initialise for legacy ringbuffer submission in commit
+88d2ba2e95c8 ("drm/i915: Unify engine init loop"). Though really it is a
+latent bug since the ring_mask inception in commit 73ae478cdf6a
+("drm/i915: Replace has_bsd/blt/vebox with a mask").
+
+To prevent similar mishaps in future, add a WARN_ON() if we find
+ourselves with a device without any rings.
+
+Fixes: 73ae478cdf6a ("drm/i915: Replace has_bsd/blt/vebox with a mask")
+Fixes: 88d2ba2e95c8 ("drm/i915: Unify engine init loop")
+Signed-off-by: Chris Wilson <chris@chris-wilson.co.uk>
+Cc: Tvrtko Ursulin <tvrtko.ursulin@intel.com>
+Cc: Daniel Vetter <daniel.vetter@ffwll.ch>
+Cc: Ben Widawsky <ben@bwidawsk.net>
+Link: http://patchwork.freedesktop.org/patch/msgid/1469749535-2382-1-git-send-email-chris@chris-wilson.co.uk
+Reviewed-by: Joonas Lahtinen <joonas.lahtinen@linux.intel.com>
+Cc: drm-intel-fixes@lists.freedesktop.org
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/gpu/drm/i915/i915_drv.c |    1 +
+ 1 file changed, 1 insertion(+)
+
+--- a/drivers/gpu/drm/i915/i915_drv.c
++++ b/drivers/gpu/drm/i915/i915_drv.c
+@@ -182,6 +182,7 @@ static const struct intel_device_info in
+ 	.gen = 3, .is_g33 = 1, .is_pineview = 1, .is_mobile = 1, .num_pipes = 2,
+ 	.need_gfx_hws = 1, .has_hotplug = 1,
+ 	.has_overlay = 1,
++	.ring_mask = RENDER_RING,
+ 	GEN_DEFAULT_PIPEOFFSETS,
+ 	CURSOR_OFFSETS,
+ };

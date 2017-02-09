@@ -3,7 +3,8 @@ From: Ard Biesheuvel <ard.biesheuvel@linaro.org>
 Date: Thu, 10 Mar 2016 12:40:07 +0700
 Subject: [PATCH 7/7] efi/arm*: efifb: expose efifb platform device if GOP is
  available
-Patch-mainline: Submitted, https://lkml.kernel.org/r/1457588408-19309-8-git-send-email-ard.biesheuvel@linaro.org
+Patch-mainline: v4.7-rc1
+Git-commit: 9822504c1fa5c557ea8776765f03fd16eb4de4c9
 References: bnc#974215
 
 This allows the efifb driver to be built for ARM and arm64, and adds the

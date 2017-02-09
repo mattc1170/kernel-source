@@ -1,0 +1,48 @@
+From: Juergen Gross <jgross@suse.com>
+Date: Wed, 12 Oct 2016 13:11:45 +0200
+Subject: ACPI / PAD: don't register acpi_pad driver if running as Xen dom0
+Patch-mainline: 4.9-rc1
+Git-commit: e311404f7925f6879817ebf471651c0bb5935604
+References: bnc#995278
+
+When running as Xen dom0 a special processor_aggregator driver is
+needed.  Don't register the standard driver in this case.
+
+Without that check an error message:
+
+"Error: Driver 'processor_aggregator' is already registered,
+aborting..."
+
+will be displayed.
+
+Signed-off-by: Juergen Gross <jgross@suse.com>
+---
+ drivers/acpi/acpi_pad.c | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/drivers/acpi/acpi_pad.c b/drivers/acpi/acpi_pad.c
+index 8ea8211..eb76a4c 100644
+--- a/drivers/acpi/acpi_pad.c
++++ b/drivers/acpi/acpi_pad.c
+@@ -26,6 +26,7 @@
+ #include <linux/slab.h>
+ #include <linux/acpi.h>
+ #include <asm/mwait.h>
++#include <xen/xen.h>
+ 
+ #define ACPI_PROCESSOR_AGGREGATOR_CLASS	"acpi_pad"
+ #define ACPI_PROCESSOR_AGGREGATOR_DEVICE_NAME "Processor Aggregator"
+@@ -477,6 +478,10 @@ static struct acpi_driver acpi_pad_driver = {
+ 
+ static int __init acpi_pad_init(void)
+ {
++	/* Xen ACPI PAD is used when running as Xen Dom0. */
++	if (xen_initial_domain())
++		return -ENODEV;
++
+ 	power_saving_mwait_init();
+ 	if (power_saving_mwait_eax == 0)
+ 		return -EINVAL;
+-- 
+cgit v0.12
+

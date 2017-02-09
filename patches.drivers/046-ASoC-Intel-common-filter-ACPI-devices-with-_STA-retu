@@ -1,0 +1,56 @@
+From: Pierre-Louis Bossart <pierre-louis.bossart@linux.intel.com>
+Date: Thu, 3 Mar 2016 21:36:34 -0600
+Subject: [PATCH 46/82] ASoC: Intel: common: filter ACPI devices with _STA return value
+Git-commit: cab473850226c3e41823453b5b80eb294dae6e0c
+Patch-mainline: 4.6-rc1
+References: bsc#1010690
+
+BIOS vendors typically list multiple audio codecs in the DSDT
+table and enable the relevant one by changing the return value
+of the _STA method.
+
+With the current code, all devices are reported by
+acpi_dev_present(), regardless of the _STA return values. This
+causes errors on probe with the wrong machine driver being loaded.
+
+This patch essentially reverts 'commit 6f08cbdaac5a
+("asoc: Intel: Use acpi_dev_present()")' and adds code to
+force the evaluation of the _STA method.
+
+A better solution might be to make sure the ACPI subsystem only
+reports devices with a _STA value of 0xf but apparently it's
+problematic so dealing with this in the audio subsystem directly.
+
+Signed-off-by: Pierre-Louis Bossart <pierre-louis.bossart@linux.intel.com>
+Signed-off-by: Mark Brown <broonie@kernel.org>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ sound/soc/intel/common/sst-match-acpi.c |    8 +++++++-
+ 1 file changed, 7 insertions(+), 1 deletion(-)
+
+--- a/sound/soc/intel/common/sst-match-acpi.c
++++ b/sound/soc/intel/common/sst-match-acpi.c
+@@ -23,7 +23,14 @@
+ static acpi_status sst_acpi_mach_match(acpi_handle handle, u32 level,
+ 				       void *context, void **ret)
+ {
++	unsigned long long sta;
++	acpi_status status;
++
+ 	*(bool *)context = true;
++	status = acpi_evaluate_integer(handle, "_STA", NULL, &sta);
++	if (ACPI_FAILURE(status) || !(sta & ACPI_STA_DEVICE_PRESENT))
++		*(bool *)context = false;
++
+ 	return AE_OK;
+ }
+ 
+@@ -37,7 +44,6 @@ struct sst_acpi_mach *sst_acpi_find_mach
+ 						  sst_acpi_mach_match,
+ 						  &found, NULL)) && found)
+ 			return mach;
+-
+ 	return NULL;
+ }
+ EXPORT_SYMBOL_GPL(sst_acpi_find_machine);

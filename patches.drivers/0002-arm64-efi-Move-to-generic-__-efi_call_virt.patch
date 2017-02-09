@@ -1,0 +1,74 @@
+From f481354a8272291718500d57ca170be6b887f320 Mon Sep 17 00:00:00 2001
+From: Mark Rutland <mark.rutland@arm.com>
+Date: Mon, 25 Apr 2016 21:07:04 +0100
+Subject: [PATCH 2/7] arm64/efi: Move to generic {__,}efi_call_virt()
+
+Git-commit: 489f80f72f7528d2a1b10346657a1a1a42533cea
+Patch-mainline: v4.7-rc1
+References: bsc#1005745
+
+Now there's a common template for {__,}efi_call_virt(), remove the
+duplicate logic from the arm64 EFI code.
+
+Signed-off-by: Mark Rutland <mark.rutland@arm.com>
+Signed-off-by: Matt Fleming <matt@codeblueprint.co.uk>
+Reviewed-by: Ard Biesheuvel <ard.biesheuvel@linaro.org>
+Acked-by: Will Deacon <will.deacon@arm.com>
+Cc: Borislav Petkov <bp@alien8.de>
+Cc: Catalin Marinas <catalin.marinas@arm.com>
+Cc: Leif Lindholm <leif.lindholm@linaro.org>
+Cc: Peter Zijlstra <peterz@infradead.org>
+Cc: Russell King <linux@arm.linux.org.uk>
+Cc: Thomas Gleixner <tglx@linutronix.de>
+Cc: linux-arm-kernel@lists.infradead.org
+Cc: linux-efi@vger.kernel.org
+Link: http://lkml.kernel.org/r/1461614832-17633-33-git-send-email-matt@codeblueprint.co.uk
+Signed-off-by: Ingo Molnar <mingo@kernel.org>
+Acked-by: Mian Yousaf Kaukab <yousaf.kaukab@suse.com>
+---
+ arch/arm64/include/asm/efi.h | 21 +++++++--------------
+ 1 file changed, 7 insertions(+), 14 deletions(-)
+
+diff --git a/arch/arm64/include/asm/efi.h b/arch/arm64/include/asm/efi.h
+index a348f9d..1b50d76 100644
+--- a/arch/arm64/include/asm/efi.h
++++ b/arch/arm64/include/asm/efi.h
+@@ -11,28 +11,21 @@ extern void efi_init_fdt(void *fdt);
+ #define efi_init_fdt(x)
+ #endif
+ 
+-#define efi_call_virt(f, ...)						\
++#define arch_efi_call_virt_setup()					\
+ ({									\
+-	efi_##f##_t *__f;						\
+-	efi_status_t __s;						\
+-									\
+ 	kernel_neon_begin();						\
+ 	efi_virtmap_load();						\
+-	__f = efi.systab->runtime->f;					\
+-	__s = __f(__VA_ARGS__);						\
+-	efi_virtmap_unload();						\
+-	kernel_neon_end();						\
+-	__s;								\
+ })
+ 
+-#define __efi_call_virt(f, ...)						\
++#define arch_efi_call_virt(f, args...)					\
+ ({									\
+ 	efi_##f##_t *__f;						\
+-									\
+-	kernel_neon_begin();						\
+-	efi_virtmap_load();						\
+ 	__f = efi.systab->runtime->f;					\
+-	__f(__VA_ARGS__);						\
++	__f(args);							\
++})
++
++#define arch_efi_call_virt_teardown()					\
++({									\
+ 	efi_virtmap_unload();						\
+ 	kernel_neon_end();						\
+ })
+-- 
+1.8.5.6
+

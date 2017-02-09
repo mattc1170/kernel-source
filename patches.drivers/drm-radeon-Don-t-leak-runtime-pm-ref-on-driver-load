@@ -1,0 +1,50 @@
+From b875194679b0f88ffdb2e2d68435572296628551 Mon Sep 17 00:00:00 2001
+From: Lukas Wunner <lukas@wunner.de>
+Date: Wed, 8 Jun 2016 18:47:27 +0200
+Subject: [PATCH] drm/radeon: Don't leak runtime pm ref on driver load
+Git-commit: b875194679b0f88ffdb2e2d68435572296628551
+Patch-mainline: 4.8-rc1
+References: bsc#1005545
+
+radeon_device_init() returns an error if either of the two calls to
+radeon_init() fail. One level up in the call stack,
+radeon_driver_load_kms() will then skip runtime pm initialization and
+call radeon_driver_unload_kms(), which acquires a runtime pm ref that
+is leaked.
+
+Balance by releasing a runtime pm ref in the error path of
+radeon_device_init().
+
+Fixes: 10ebc0bc0934 ("drm/radeon: add runtime PM support (v2)")
+Cc: Dave Airlie <airlied@redhat.com>
+Cc: Alex Deucher <alexander.deucher@amd.com>
+Signed-off-by: Lukas Wunner <lukas@wunner.de>
+Acked-by: Alex Deucher <alexander.deucher@amd.com>
+Signed-off-by: Daniel Vetter <daniel.vetter@ffwll.ch>
+Link: http://patchwork.freedesktop.org/patch/msgid/fa5bb977c1fe00474acedae5b03232dbf0b49410.1465392124.git.lukas@wunner.de
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/gpu/drm/radeon/radeon_device.c |    4 ++++
+ 1 file changed, 4 insertions(+)
+
+--- a/drivers/gpu/drm/radeon/radeon_device.c
++++ b/drivers/gpu/drm/radeon/radeon_device.c
+@@ -30,6 +30,7 @@
+ #include <drm/drmP.h>
+ #include <drm/drm_crtc_helper.h>
+ #include <drm/radeon_drm.h>
++#include <linux/pm_runtime.h>
+ #include <linux/vgaarb.h>
+ #include <linux/vga_switcheroo.h>
+ #include <linux/efi.h>
+@@ -1526,6 +1527,9 @@ int radeon_device_init(struct radeon_dev
+ 	return 0;
+ 
+ failed:
++	/* balance pm_runtime_get_sync() in radeon_driver_unload_kms() */
++	if (radeon_is_px(ddev))
++		pm_runtime_put_noidle(ddev->dev);
+ 	if (runtime)
+ 		vga_switcheroo_fini_domain_pm_ops(rdev->dev);
+ 	return r;

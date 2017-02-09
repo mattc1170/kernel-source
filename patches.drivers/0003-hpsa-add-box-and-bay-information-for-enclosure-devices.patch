@@ -15,9 +15,9 @@ Signed-off-by: Don Brace <don.brace@pmcs.com>
 Signed-off-by: Martin K. Petersen <martin.petersen@oracle.com>
 Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
 ---
- drivers/scsi/hpsa.c     |  107 ++++++++++++++++++++++++++++++++++++++++++++----
- drivers/scsi/hpsa_cmd.h |   13 +++++
- 2 files changed, 113 insertions(+), 7 deletions(-)
+ drivers/scsi/hpsa.c     |  104 +++++++++++++++++++++++++++++++++++++++++++++---
+ drivers/scsi/hpsa_cmd.h |   13 ++++++
+ 2 files changed, 111 insertions(+), 6 deletions(-)
 
 --- a/drivers/scsi/hpsa.c
 +++ b/drivers/scsi/hpsa.c
@@ -138,17 +138,7 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
  static u64 hpsa_get_sas_address_from_report_physical(struct ctlr_info *h,
  						unsigned char *scsi3addr)
  {
-@@ -4043,7 +4120,8 @@ static void hpsa_update_scsi_devices(str
- 
- 		/* skip masked non-disk devices */
- 		if (MASKED_DEVICE(lunaddrbytes) && physical_device &&
--			(physdev_list->LUN[phys_dev_index].device_flags & 0x01))
-+		   (physdev_list->LUN[phys_dev_index].device_type != 0x06) &&
-+		   (physdev_list->LUN[phys_dev_index].device_flags & 0x01))
- 			continue;
- 
- 		/* Get device type, vendor, model, device id */
-@@ -4127,7 +4205,12 @@ static void hpsa_update_scsi_devices(str
+@@ -4197,7 +4274,12 @@ static void hpsa_update_scsi_devices(str
  			break;
  		case TYPE_TAPE:
  		case TYPE_MEDIUM_CHANGER:
@@ -161,7 +151,7 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
  			ncurrent++;
  			break;
  		case TYPE_RAID:
-@@ -6640,6 +6723,16 @@ static int fill_cmd(struct CommandList *
+@@ -6710,6 +6792,16 @@ static int fill_cmd(struct CommandList *
  			c->Request.CDB[7] = (size >> 16) & 0xFF;
  			c->Request.CDB[8] = (size >> 8) & 0XFF;
  			break;

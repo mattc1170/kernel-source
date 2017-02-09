@@ -3,7 +3,7 @@ Date: Wed, 20 Jan 2016 14:10:46 +0530
 Subject: [PATCH 02/33] be2iscsi: Fix mbox synchronization replacing spinlock
  with mutex
 Git-commit: c03a50f7098bed9150a9ac0468f699a93bc7b081
-Patch-mainline: v3.6 or v3.5-rc2 (next release)
+Patch-mainline: v4.6-rc1
 References: bsc#963621 fate#320193
 
 This is second part of actual fix for soft lockup.

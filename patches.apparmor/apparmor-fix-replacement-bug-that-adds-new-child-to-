@@ -1,0 +1,37 @@
+From ec34fa24a934f4c8fd68f39b84abf34c42e5b06a Mon Sep 17 00:00:00 2001
+From: John Johansen <john.johansen@canonical.com>
+Date: Mon, 11 Apr 2016 16:57:19 -0700
+Subject: [PATCH] apparmor: fix replacement bug that adds new child to old parent
+Git-commit: ec34fa24a934f4c8fd68f39b84abf34c42e5b06a
+Patch-mainline: 4.8-rc1
+References: bsc#1000304
+
+When set atomic replacement is used and the parent is updated before the
+child, and the child did not exist in the old parent so there is no
+direct replacement then the new child is incorrectly added to the old
+parent. This results in the new parent not having the child(ren) that
+it should and the old parent when being destroyed asserting the
+following error.
+
+Apparmor: policy_destroy: internal error, policy '<profile/name>' still
+contains profiles
+
+Signed-off-by: John Johansen <john.johansen@canonical.com>
+Acked-by: Seth Arnold <seth.arnold@canonical.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ security/apparmor/policy.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+--- a/security/apparmor/policy.c
++++ b/security/apparmor/policy.c
+@@ -1192,7 +1192,7 @@ ssize_t aa_replace_profiles(void *udata,
+ 			/* aafs interface uses replacedby */
+ 			rcu_assign_pointer(ent->new->replacedby->profile,
+ 					   aa_get_profile(ent->new));
+-			__list_add_profile(&parent->base.profiles, ent->new);
++			__list_add_profile(&newest->base.profiles, ent->new);
+ 			aa_put_profile(newest);
+ 		} else {
+ 			/* aafs interface uses replacedby */

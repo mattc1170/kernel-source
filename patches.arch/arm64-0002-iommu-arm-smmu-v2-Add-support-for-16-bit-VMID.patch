@@ -1,23 +1,16 @@
 From: Tirumalesh Chalamarla <tchalamarla@caviumnetworks.com>
-X-Patchwork-Id: 8395321
 Date: Tue, 23 Feb 2016 10:19:00 -0800
-Subject: [PATCH 2/3] iommu/arm-smmu-v2: Add support for 16 bit VMID
-Patch-mainline: Submitted, https://patchwork.kernel.org/patch/8395321
+Subject: iommu/arm-smmu: Add support for 16 bit VMID
+Git-commit: 4e3e9b6997b24383264031198bf8905b3746221e
+Patch-mainline: v4.7-rc1
 References: fate#319978
 
-ARM-SMMUv2 supports upto 16 bit VMID. This patch enables
-16 bit VMID when HW supports.
-
-Changes from V2:
-	- Bug fix.
-	- Removed not needed prints and comments.
-
-changes from V1:
-	- Remove DT Property and enable 16 bit VMID if ID says.
+This patch adds support for 16-bit VMIDs on implementations of SMMUv2
+that support it.
 
 Signed-off-by: Tirumalesh Chalamarla <tchalamarla@caviumnetworks.com>
-Message-Id: <1456251540-1269-1-git-send-email-tchalamarla@caviumnetworks.com>
-Signed-off-by: Robert Richter <rrichter@cavium.com>
+[will: commit messsage and comments]
+Signed-off-by: Will Deacon <will.deacon@arm.com>
 Signed-off-by: Matthias Brugger <mbrugger@suse.com>
 ---
  drivers/iommu/arm-smmu.c | 24 ++++++++++++++++++------
@@ -101,11 +94,10 @@ index a55c8f9..66d4cd0 100644
  	/* Push the button */
  	__arm_smmu_tlb_sync(smmu);
  	writel(reg, ARM_SMMU_GR0_NS(smmu) + ARM_SMMU_GR0_sCR0);
-@@ -1659,6 +1667,10 @@ static int arm_smmu_device_cfg_probe(struct arm_smmu_device *smmu)
+@@ -1659,6 +1667,9 @@ static int arm_smmu_device_cfg_probe(struct arm_smmu_device *smmu)
  	size = arm_smmu_id_size_to_bits((id >> ID2_OAS_SHIFT) & ID2_OAS_MASK);
  	smmu->pa_size = size;
  
-+	/* See if 16bit VMID is supported */
 +	if (id & ID2_VMID16)
 +		smmu->features |= ARM_SMMU_FEAT_VMID16;
 +

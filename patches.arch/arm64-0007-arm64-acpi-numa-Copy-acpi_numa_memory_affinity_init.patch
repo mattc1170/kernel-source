@@ -2,7 +2,8 @@ From c6a64ba8a1b6a8735b5c501c6a28cb8c06139fee Mon Sep 17 00:00:00 2001
 From: Matthias Brugger <mbrugger@suse.com>
 Date: Mon, 27 Jun 2016 18:55:44 +0200
 Subject: arm64: acpi/numa: Copy acpi_numa_memory_affinity_init()
-Patch-mainline: No, it is reworked to not touch generic code
+Git-commit: 3770442e79380cf105c8e272622c565cf63524d6 (partial)
+Patch-mainline: v4.8-rc1
 References: fate#319981
 
 Copy acpi_numa_memory_affinity_init() function to the architecutal code.
@@ -13,6 +14,8 @@ Based on:
 
 Signed-off-by: Matthias Brugger <mbrugger@suse.com>
 ---
+The patch is reworked to not touch generic code
+
  arch/arm64/kernel/acpi_numa.c | 53 +++++++++++++++++++++++++++++++++++++++++++
  1 file changed, 53 insertions(+)
 

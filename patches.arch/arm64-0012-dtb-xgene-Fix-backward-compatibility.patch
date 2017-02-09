@@ -2,8 +2,7 @@ From: Iyappan Subramanian <isubramanian@apm.com>
 Date: Fri, 12 Aug 2016 22:05:48 -0700
 Subject: dtb: xgene: Fix backward compatibility
 Git-commit: 5ac6caab224921fd3331a7e4b19d34623c752d09
-Patch-mainline: Queued
-Git-repo: git://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git
+Patch-mainline: v4.9-rc1
 References: bsc#993051
 
 This patch fixes the backward compatibility when used with older kernel.

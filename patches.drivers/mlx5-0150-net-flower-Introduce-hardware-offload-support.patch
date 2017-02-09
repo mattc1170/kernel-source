@@ -29,7 +29,7 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
 
 --- a/include/linux/netdevice.h
 +++ b/include/linux/netdevice.h
-@@ -787,6 +787,7 @@ typedef u16 (*select_queue_fallback_t)(s
+@@ -786,6 +786,7 @@ typedef u16 (*select_queue_fallback_t)(s
  enum {
  	TC_SETUP_MQPRIO,
  	TC_SETUP_CLSU32,
@@ -37,7 +37,7 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  };
  
  struct tc_cls_u32_offload;
-@@ -796,6 +797,7 @@ struct tc_to_netdev {
+@@ -795,6 +796,7 @@ struct tc_to_netdev {
  	union {
  		u8 tc;
  		struct tc_cls_u32_offload *cls_u32;
@@ -79,8 +79,8 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  
 --- a/net/sched/cls_flower.c
 +++ b/net/sched/cls_flower.c
-@@ -165,6 +165,51 @@ static void fl_destroy_filter(struct rcu
- 	kfree(f);
+@@ -187,6 +187,51 @@ static void fl_destroy_rcu(struct rcu_he
+ 	schedule_work(&head->work);
  }
  
 +static void fl_hw_destroy_filter(struct tcf_proto *tp, u64 cookie)
@@ -131,7 +131,7 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  static bool fl_destroy(struct tcf_proto *tp, bool force)
  {
  	struct cls_fl_head *head = rtnl_dereference(tp->root);
-@@ -174,6 +219,7 @@ static bool fl_destroy(struct tcf_proto
+@@ -196,6 +241,7 @@ static bool fl_destroy(struct tcf_proto
  		return false;
  
  	list_for_each_entry_safe(f, next, &head->filters, list) {
@@ -139,7 +139,7 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  		list_del_rcu(&f->list);
  		call_rcu(&f->rcu, fl_destroy_filter);
  	}
-@@ -459,6 +505,7 @@ static int fl_change(struct net *net, st
+@@ -480,6 +526,7 @@ static int fl_change(struct net *net, st
  	struct cls_fl_filter *fnew;
  	struct nlattr *tb[TCA_FLOWER_MAX + 1];
  	struct fl_flow_mask mask = {};
@@ -147,7 +147,7 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  	int err;
  
  	if (!tca[TCA_OPTIONS])
-@@ -486,6 +533,9 @@ static int fl_change(struct net *net, st
+@@ -507,6 +554,9 @@ static int fl_change(struct net *net, st
  	}
  	fnew->handle = handle;
  
@@ -157,7 +157,7 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  	err = fl_set_parms(net, tp, fnew, &mask, base, tb, tca[TCA_RATE], ovr);
  	if (err)
  		goto errout;
-@@ -498,9 +548,20 @@ static int fl_change(struct net *net, st
+@@ -519,9 +569,20 @@ static int fl_change(struct net *net, st
  				     head->ht_params);
  	if (err)
  		goto errout;
@@ -179,7 +179,7 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  
  	*arg = (unsigned long) fnew;
  
-@@ -527,6 +588,7 @@ static int fl_delete(struct tcf_proto *t
+@@ -548,6 +609,7 @@ static int fl_delete(struct tcf_proto *t
  	rhashtable_remove_fast(&head->ht, &f->ht_node,
  			       head->ht_params);
  	list_del_rcu(&f->list);

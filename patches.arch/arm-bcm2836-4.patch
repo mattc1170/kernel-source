@@ -1,0 +1,38 @@
+From 54c773f2b641f9ea108c2c1c25d7efc29caa1890 Mon Sep 17 00:00:00 2001
+From: Stefan Wahren <stefan.wahren@i2se.com>
+Date: Thu, 31 Mar 2016 17:25:17 +0000
+Git-commit: 1b2f8973c3bda7a100a8f3e1b4bc1c8ea9bf92d8
+Patch-mainline: v4.5
+References: boo#1012094
+Subject: [PATCH] ARM: bcm2835: add CPU node for ARM core
+
+This patch adds the CPU node of the BCM2835 into the DT.
+
+Signed-off-by: Stefan Wahren <stefan.wahren@i2se.com>
+Acked-by: Mark Rutland <mark.rutland@arm.com>
+Acked-by: Stephen Warren <swarren@wwwdotorg.org>
+Reviewed-by: Eric Anholt <eric@anholt.net>
+Signed-off-by: Alexander Graf <agraf@suse.de>
+
+diff --git a/arch/arm/boot/dts/bcm2835.dtsi b/arch/arm/boot/dts/bcm2835.dtsi
+index b83b326..a78759e 100644
+--- a/arch/arm/boot/dts/bcm2835.dtsi
++++ b/arch/arm/boot/dts/bcm2835.dtsi
+@@ -3,6 +3,17 @@
+ / {
+ 	compatible = "brcm,bcm2835";
+ 
++	cpus {
++		#address-cells = <1>;
++		#size-cells = <0>;
++
++		cpu@0 {
++			device_type = "cpu";
++			compatible = "arm,arm1176jzf-s";
++			reg = <0x0>;
++		};
++	};
++
+ 	soc {
+ 		ranges = <0x7e000000 0x20000000 0x02000000>;
+ 		dma-ranges = <0x40000000 0x00000000 0x20000000>;

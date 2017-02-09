@@ -1,0 +1,87 @@
+From bf15cf0c641be8e57d45f110a9d91464f5bb461a Mon Sep 17 00:00:00 2001
+From: John Johansen <john.johansen@canonical.com>
+Date: Sat, 16 Apr 2016 14:16:50 -0700
+Subject: [PATCH] apparmor: fix log failures for all profiles in a set
+Git-commit: bf15cf0c641be8e57d45f110a9d91464f5bb461a
+Patch-mainline: 4.8-rc1
+References: bsc#1000304
+
+currently only the profile that is causing the failure is logged. This
+makes it more confusing than necessary about which profiles loaded
+and which didn't. So make sure to log success and failure messages for
+all profiles in the set being loaded.
+
+Signed-off-by: John Johansen <john.johansen@canonical.com>
+Acked-by: Seth Arnold <seth.arnold@canonical.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ security/apparmor/policy.c |   29 +++++++++++++++++++----------
+ 1 file changed, 19 insertions(+), 10 deletions(-)
+
+--- a/security/apparmor/policy.c
++++ b/security/apparmor/policy.c
+@@ -1066,7 +1066,7 @@ static int __lookup_replace(struct aa_na
+  */
+ ssize_t aa_replace_profiles(void *udata, size_t size, bool noreplace)
+ {
+-	const char *ns_name, *name = NULL, *info = NULL;
++	const char *ns_name, *info = NULL;
+ 	struct aa_namespace *ns = NULL;
+ 	struct aa_load_ent *ent, *tmp;
+ 	int op = OP_PROF_REPL;
+@@ -1081,18 +1081,15 @@ ssize_t aa_replace_profiles(void *udata,
+ 	/* released below */
+ 	ns = aa_prepare_namespace(ns_name);
+ 	if (!ns) {
+-		info = "failed to prepare namespace";
+-		error = -ENOMEM;
+-		name = ns_name;
+-		goto fail;
++		error = audit_policy(op, GFP_KERNEL, ns_name,
++				     "failed to prepare namespace", -ENOMEM);
++		goto free;
+ 	}
+ 
+ 	mutex_lock(&ns->lock);
+ 	/* setup parent and ns info */
+ 	list_for_each_entry(ent, &lh, list) {
+ 		struct aa_policy *policy;
+-
+-		name = ent->new->base.hname;
+ 		error = __lookup_replace(ns, ent->new->base.hname, noreplace,
+ 					 &ent->old, &info);
+ 		if (error)
+@@ -1120,7 +1117,6 @@ ssize_t aa_replace_profiles(void *udata,
+ 			if (!p) {
+ 				error = -ENOENT;
+ 				info = "parent does not exist";
+-				name = ent->new->base.hname;
+ 				goto fail_lock;
+ 			}
+ 			rcu_assign_pointer(ent->new->parent, aa_get_profile(p));
+@@ -1213,9 +1209,22 @@ out:
+ 
+ fail_lock:
+ 	mutex_unlock(&ns->lock);
+-fail:
+-	error = audit_policy(op, GFP_KERNEL, name, info, error);
+ 
++	/* audit cause of failure */
++	op = (!ent->old) ? OP_PROF_LOAD : OP_PROF_REPL;
++	audit_policy(op, GFP_KERNEL, ent->new->base.hname, info, error);
++	/* audit status that rest of profiles in the atomic set failed too */
++	info = "valid profile in failed atomic policy load";
++	list_for_each_entry(tmp, &lh, list) {
++		if (tmp == ent) {
++			info = "unchecked profile in failed atomic policy load";
++			/* skip entry that caused failure */
++			continue;
++		}
++		op = (!ent->old) ? OP_PROF_LOAD : OP_PROF_REPL;
++		audit_policy(op, GFP_KERNEL, tmp->new->base.hname, info, error);
++	}
++free:
+ 	list_for_each_entry_safe(ent, tmp, &lh, list) {
+ 		list_del_init(&ent->list);
+ 		aa_load_ent_free(ent);

@@ -1,0 +1,32 @@
+From 8d22f309384cc410da91543f1eb30fe5daf91c3b Mon Sep 17 00:00:00 2001
+From: Baruch Siach <baruch@tkos.co.il>
+Date: Wed, 23 Dec 2015 18:43:24 +0200
+Subject: [PATCH] i2c: designware: retry transfer on transient failure
+Git-commit: 8d22f309384cc410da91543f1eb30fe5daf91c3b
+Patch-mainline: 4.5-rc1
+References: bsc#1011913
+
+Set the i2c_adapter retries field to a sensible value. This allows the i2c core
+to retry master_xfer() when it returns -EAGAIN. Currently the i2c-designware
+driver returns -EAGAIN only on Tx arbitration failure (DW_IC_TX_ARB_LOST).
+
+Reported-by: Rolland Chau <zourongrong@gmail.com>
+Signed-off-by: Baruch Siach <baruch@tkos.co.il>
+Acked-by: Andy Shevchenko <andriy.shevchenko@linux.intel.com>
+Signed-off-by: Wolfram Sang <wsa@the-dreams.de>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/i2c/busses/i2c-designware-core.c |    1 +
+ 1 file changed, 1 insertion(+)
+
+--- a/drivers/i2c/busses/i2c-designware-core.c
++++ b/drivers/i2c/busses/i2c-designware-core.c
+@@ -860,6 +860,7 @@ int i2c_dw_probe(struct dw_i2c_dev *dev)
+ 
+ 	snprintf(adap->name, sizeof(adap->name),
+ 		 "Synopsys DesignWare I2C adapter");
++	adap->retries = 3;
+ 	adap->algo = &i2c_dw_algo;
+ 	adap->dev.parent = dev->dev;
+ 	i2c_set_adapdata(adap, dev);

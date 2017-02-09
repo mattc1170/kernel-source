@@ -5,6 +5,7 @@ Subject: [PATCH 05/41] usb: host: xhci-plat: add struct xhci_plat_priv
 References: FATE#319959
 Git-Commit: 4efb2f69411456d35051e9047c15157c9a5ba217
 Patch-Mainline: v4.5
+No-Fix: f9a85f6e61c695daeb427dfc6c1d5a279654207b
 
 This patch adds struct xhci_plat_priv to simplify the code to match
 platform specific variables. For now, this patch adds a member "type"

@@ -1,0 +1,61 @@
+From: Bard Liao <bardliao@realtek.com>
+Date: Thu, 7 Jul 2016 18:56:31 +0800
+Subject: [PATCH 21/82] ASoC: rt5645: add DAC1 soft volume func control
+Git-commit: 467b147982bb063369a1222523fa503e0c077c30
+Patch-mainline: 4.8-rc1
+References: bsc#1010690
+
+This patch add an alsa control for DAC1 digital volume control function
+selection. The options are:
+0: Gain update immediately
+1: Gain update when a zero crossing
+2: Gain update when a zero crossing with a soft ramp
+
+Signed-off-by: Bard Liao <bardliao@realtek.com>
+Signed-off-by: Mark Brown <broonie@kernel.org>
+Signed-off-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ sound/soc/codecs/rt5645.c |   11 +++++++++++
+ sound/soc/codecs/rt5645.h |    3 +++
+ 2 files changed, 14 insertions(+)
+
+--- a/sound/soc/codecs/rt5645.c
++++ b/sound/soc/codecs/rt5645.c
+@@ -743,6 +743,14 @@ static int rt5645_spk_put_volsw(struct s
+ 	return ret;
+ }
+ 
++static const char * const rt5645_dac1_vol_ctrl_mode_text[] = {
++	"immediately", "zero crossing", "soft ramp"
++};
++
++static SOC_ENUM_SINGLE_DECL(
++	rt5645_dac1_vol_ctrl_mode, RT5645_PR_BASE,
++	RT5645_DA1_ZDET_SFT, rt5645_dac1_vol_ctrl_mode_text);
++
+ static const struct snd_kcontrol_new rt5645_snd_controls[] = {
+ 	/* Speaker Output Volume */
+ 	SOC_DOUBLE("Speaker Channel Switch", RT5645_SPK_VOL,
+@@ -809,6 +817,9 @@ static const struct snd_kcontrol_new rt5
+ 	SOC_SINGLE("I2S2 Func Switch", RT5645_GPIO_CTRL1, RT5645_I2S2_SEL_SFT,
+ 		1, 1),
+ 	RT5645_HWEQ("Speaker HWEQ"),
++
++	/* Digital Soft Volume Control */
++	SOC_ENUM("DAC1 Digital Volume Control Func", rt5645_dac1_vol_ctrl_mode),
+ };
+ 
+ /**
+--- a/sound/soc/codecs/rt5645.h
++++ b/sound/soc/codecs/rt5645.h
+@@ -2018,6 +2018,9 @@
+ 
+ 
+ /* Codec Private Register definition */
++/* DAC ADC Digital Volume (0x00) */
++#define RT5645_DA1_ZDET_SFT			6
++
+ /* 3D Speaker Control (0x63) */
+ #define RT5645_3D_SPK_MASK			(0x1 << 15)
+ #define RT5645_3D_SPK_SFT			15

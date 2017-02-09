@@ -1,0 +1,42 @@
+From: Arnd Bergmann <arnd@arndb.de>
+Date: Mon, 18 Apr 2016 10:34:19 +0200
+Subject: efi: ARM: avoid warning about phys_addr_t cast
+Git-commit: 7464b6e3a5fb213e7826d2fde4a2daf05abb6822
+Patch-mainline: v4.7-rc1
+
+memblock_remove() takes a phys_addr_t, which may be narrower than 64 bits,
+causing a harmless warning:
+
+drivers/firmware/efi/arm-init.c: In function 'reserve_regions':
+include/linux/kernel.h:29:20: error: large integer implicitly truncated to unsigned type [-Werror=overflow]
+ #define ULLONG_MAX (~0ULL)
+                    ^
+drivers/firmware/efi/arm-init.c:152:21: note: in expansion of macro 'ULLONG_MAX'
+  memblock_remove(0, ULLONG_MAX);
+
+This adds an explicit typecast to avoid the warning
+
+Fixes: 500899c2cc3e ("efi: ARM/arm64: ignore DT memory nodes instead of removing them")
+Acked-by Ard Biesheuvel <ard.biesheuvel@linaro.org>
+Reviewed-by: Matt Fleming <matt@codeblueprint.co.uk>
+Signed-off-by: Arnd Bergmann <arnd@arndb.de>
+Signed-off-by: Will Deacon <will.deacon@arm.com>
+
+Signed-off-by: Matthias Brugger <mbrugger@suse.com>
+---
+Hunk1 moved to arch/arm64/kernel/efi.c
+
+ arch/arm64/kernel/efi.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+--- a/arch/arm64/kernel/efi.c
++++ b/arch/arm64/kernel/efi.c
+@@ -176,7 +176,7 @@ static __init void reserve_regions(void)
+ 	 * uses its own memory map instead.
+ 	 */
+ 	memblock_dump_all();
+-	memblock_remove(0, ULLONG_MAX);
++	memblock_remove(0, (phys_addr_t)ULLONG_MAX);
+ 
+ 	for_each_efi_memory_desc(&memmap, md) {
+ 		paddr = md->phys_addr;

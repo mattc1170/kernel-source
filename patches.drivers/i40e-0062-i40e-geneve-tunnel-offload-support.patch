@@ -354,7 +354,7 @@ Acked-by: David Chang <dchang@suse.com>
  				 struct netdev_phys_item_id *ppid)
  {
 @@ -8761,7 +8855,10 @@ static int i40e_ndo_bridge_getlink(struc
- 				       nlflags, 0, 0, filter_mask, NULL);
+ 				       0, 0, nlflags, filter_mask, NULL);
  }
  
 -#define I40E_MAX_TUNNEL_HDR_LEN 80
@@ -419,7 +419,7 @@ Acked-by: David Chang <dchang@suse.com>
  	 * it in the driver, hardware does not do it for us.
  	 * Since L3L4P bit was set we assume a valid IHL value (>=5)
  	 * so the total length of IPv4 header is IHL*4 bytes
-@@ -2001,7 +2001,7 @@ static void i40e_atr(struct i40e_ring *t
+@@ -2005,7 +2005,7 @@ static void i40e_atr(struct i40e_ring *t
  	if (!(tx_flags & (I40E_TX_FLAGS_IPV4 | I40E_TX_FLAGS_IPV6)))
  		return;
  
@@ -428,7 +428,7 @@ Acked-by: David Chang <dchang@suse.com>
  		/* snag network header to get L4 type and address */
  		hdr.network = skb_network_header(skb);
  
-@@ -2086,7 +2086,7 @@ static void i40e_atr(struct i40e_ring *t
+@@ -2090,7 +2090,7 @@ static void i40e_atr(struct i40e_ring *t
  		     I40E_TXD_FLTR_QW1_FD_STATUS_SHIFT;
  
  	dtype_cmd |= I40E_TXD_FLTR_QW1_CNT_ENA_MASK;
@@ -437,7 +437,7 @@ Acked-by: David Chang <dchang@suse.com>
  		dtype_cmd |=
  			((u32)I40E_FD_ATR_STAT_IDX(pf->hw.pf_id) <<
  			I40E_TXD_FLTR_QW1_CNTINDEX_SHIFT) &
-@@ -2319,7 +2319,7 @@ static void i40e_tx_enable_csum(struct s
+@@ -2323,7 +2323,7 @@ static void i40e_tx_enable_csum(struct s
  			oudph = udp_hdr(skb);
  			oiph = ip_hdr(skb);
  			l4_tunnel = I40E_TXD_CTX_UDP_TUNNELING;

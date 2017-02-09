@@ -1,0 +1,29 @@
+From: John Lin <john.lin@realtek.com>
+Date: Thu, 25 Feb 2016 13:18:27 +0800
+Subject: [PATCH 15/82] ASoC: rt5645: extend delay time for headphone pop noise
+Git-commit: 3524be4b21ef911ff37f7d401b743cfb4e30cf98
+Patch-mainline: 4.6-rc1
+References: bsc#1010690
+
+Headphone needs enough delay time before unmuting for avoiding pop sound.
+We extend the delay time to make sure headphone doesn't pop.
+
+Signed-off-by: John Lin <john.lin@realtek.com>
+Signed-off-by: Mark Brown <broonie@kernel.org>
+Signed-off-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ sound/soc/codecs/rt5645.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+--- a/sound/soc/codecs/rt5645.c
++++ b/sound/soc/codecs/rt5645.c
+@@ -1675,7 +1675,7 @@ static void hp_amp_power(struct snd_soc_
+ 				regmap_write(rt5645->regmap, RT5645_PR_BASE +
+ 					RT5645_MAMP_INT_REG2, 0xfc00);
+ 				snd_soc_write(codec, RT5645_DEPOP_M2, 0x1140);
+-				msleep(70);
++				msleep(90);
+ 				rt5645->hp_on = true;
+ 			} else {
+ 				/* depop parameters */

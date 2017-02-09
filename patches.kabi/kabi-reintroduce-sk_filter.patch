@@ -1,0 +1,48 @@
+From: Jiri Slaby <jslaby@suse.cz>
+Subject: kABI: reintroduce sk_filter
+Patch-mainline: never, kabi
+References: kabi
+
+In 4.4.34, commit 225a24ae97331f3b9d97c1bb97b1e30b3633bcf4 (tcp: take
+care of truncations done by sk_filter()), upstream commit
+ac6e780070e30e4c35bd395acfe9191e6268bdd3 made an inline from
+sk_filter.
+
+Restore the old function, because it is a part of kABI. The function
+is now only a wrapper to sk_filter_trim_cap.
+
+Signed-off-by: Jiri Slaby <jslaby@suse.cz>
+---
+ include/linux/filter.h |    5 +----
+ net/core/filter.c      |    6 ++++++
+ 2 files changed, 7 insertions(+), 4 deletions(-)
+
+--- a/include/linux/filter.h
++++ b/include/linux/filter.h
+@@ -422,10 +422,7 @@ static inline void bpf_prog_unlock_ro(st
+ #endif /* CONFIG_DEBUG_SET_MODULE_RONX */
+ 
+ int sk_filter_trim_cap(struct sock *sk, struct sk_buff *skb, unsigned int cap);
+-static inline int sk_filter(struct sock *sk, struct sk_buff *skb)
+-{
+-	return sk_filter_trim_cap(sk, skb, 1);
+-}
++int sk_filter(struct sock *sk, struct sk_buff *skb);
+ 
+ int bpf_prog_select_runtime(struct bpf_prog *fp);
+ void bpf_prog_free(struct bpf_prog *fp);
+--- a/net/core/filter.c
++++ b/net/core/filter.c
+@@ -93,6 +93,12 @@ int sk_filter_trim_cap(struct sock *sk,
+ }
+ EXPORT_SYMBOL(sk_filter_trim_cap);
+ 
++int sk_filter(struct sock *sk, struct sk_buff *skb)
++{
++	return sk_filter_trim_cap(sk, skb, 1);
++}
++EXPORT_SYMBOL(sk_filter);
++
+ static u64 __skb_get_pay_offset(u64 ctx, u64 a, u64 x, u64 r4, u64 r5)
+ {
+ 	return skb_get_poff((struct sk_buff *)(unsigned long) ctx);

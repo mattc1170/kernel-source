@@ -1,0 +1,33 @@
+From: Yazen Ghannam <Yazen.Ghannam@amd.com>
+Date: Mon, 12 Sep 2016 09:59:27 +0200
+Subject: x86/mce/AMD: Use msr_ops.misc() in allocate_threshold_blocks()
+Git-commit: 74ab0e7a836a7df772af50cac21267eb43688841
+Patch-mainline: v4.9-rc1
+References: fate#320474, bsc#1013700
+
+Change MSR_IA32_MCx_MISC() macro to msr_ops.misc() because SMCA machines
+define a different set of MSRs and msr_ops will give you the correct
+MISC register.
+
+Signed-off-by: Yazen Ghannam <Yazen.Ghannam@amd.com>
+Signed-off-by: Borislav Petkov <bp@suse.de>
+Link: http://lkml.kernel.org/r/1468269447-8808-1-git-send-email-Yazen.Ghannam@amd.com
+Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
+---
+ arch/x86/kernel/cpu/mcheck/mce_amd.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/arch/x86/kernel/cpu/mcheck/mce_amd.c b/arch/x86/kernel/cpu/mcheck/mce_amd.c
+index 7b7f3be783d4..78b7681f7f66 100644
+--- a/arch/x86/kernel/cpu/mcheck/mce_amd.c
++++ b/arch/x86/kernel/cpu/mcheck/mce_amd.c
+@@ -869,7 +869,7 @@ static int threshold_create_bank(unsigned int cpu, unsigned int bank)
+ 		}
+ 	}
+ 
+-	err = allocate_threshold_blocks(cpu, bank, 0, MSR_IA32_MCx_MISC(bank));
++	err = allocate_threshold_blocks(cpu, bank, 0, msr_ops.misc(bank));
+ 	if (!err)
+ 		goto out;
+ 
+

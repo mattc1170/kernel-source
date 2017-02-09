@@ -1,9 +1,10 @@
 From: Filipe Manana <fdmanana@suse.com>
 Date: Thu, 9 Jun 2016 17:53:11 +0100
-Patch-mainline: submitted upstream, https://patchwork.kernel.org/patch/9167447/
-References: bsc#981038
 Subject: [PATCH] Btrfs: improve performance on fsync against new inode
  after rename/unlink
+Git-commit: 44f714dae50a2e795d3268a6831762aa6fa54f55
+Patch-mainline: v4.8-rc5
+References: bsc#981038
 
 With commit 56f23fdbb600 ("Btrfs: fix file/data loss caused by fsync after
 rename and new inode") we got simple fix for a functional issue when the

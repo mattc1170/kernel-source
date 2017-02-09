@@ -2,7 +2,7 @@ From: Huang Rui <ray.huang@amd.com>
 Date: Fri, 29 Jan 2016 16:29:56 +0800
 Subject: perf/x86/msr: Add AMD PTSC (Performance Time-Stamp Counter) support
 Git-commit: 8a22426184774d7ced9c1d3aa4d95d34101fb3be
-Patch-mainline: v3.20-rc1
+Patch-mainline: v4.7-rc1
 References: fate#320473
 
 AMD Carrizo (Family 15h, Model 60h) introduces a time-stamp counter

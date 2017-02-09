@@ -1,0 +1,40 @@
+From: Pierre-Louis Bossart <pierre-louis.bossart@linux.intel.com>
+Date: Tue, 16 Aug 2016 18:28:21 -0500
+Subject: [PATCH 77/82] ASoC: Intel: atom: fix 0-day warnings
+Git-commit: cac17731df11e076850c46f50a17266181a10b7c
+Patch-mainline: 4.9-rc1
+References: bsc#1010690
+
+spurious __initconst copy/pasted from other drivers
+
+Signed-off-by: Pierre-Louis Bossart <pierre-louis.bossart@linux.intel.com>
+Signed-off-by: Mark Brown <broonie@kernel.org>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ sound/soc/intel/atom/sst/sst_acpi.c   |    2 +-
+ sound/soc/intel/boards/bytcr_rt5640.c |    2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+--- a/sound/soc/intel/atom/sst/sst_acpi.c
++++ b/sound/soc/intel/atom/sst/sst_acpi.c
+@@ -245,7 +245,7 @@ static int is_byt_cr(struct device *dev,
+ 	int status = 0;
+ 
+ 	if (IS_ENABLED(CONFIG_IOSF_MBI)) {
+-		static const struct x86_cpu_id cpu_ids[] __initconst = {
++		static const struct x86_cpu_id cpu_ids[] = {
+ 			{ X86_VENDOR_INTEL, 6, 55 }, /* Valleyview, Bay Trail */
+ 			{}
+ 		};
+--- a/sound/soc/intel/boards/bytcr_rt5640.c
++++ b/sound/soc/intel/boards/bytcr_rt5640.c
+@@ -670,7 +670,7 @@ static char byt_rt5640_cpu_dai_name[10];
+ 
+ static bool is_valleyview(void)
+ {
+-	static const struct x86_cpu_id cpu_ids[] __initconst = {
++	static const struct x86_cpu_id cpu_ids[] = {
+ 		{ X86_VENDOR_INTEL, 6, 55 }, /* Valleyview, Bay Trail */
+ 		{}
+ 	};

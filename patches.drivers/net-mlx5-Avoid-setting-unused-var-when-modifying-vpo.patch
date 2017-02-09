@@ -1,0 +1,43 @@
+From: Or Gerlitz <ogerlitz@mellanox.com>
+Date: Tue, 5 Jul 2016 12:17:12 +0300
+Subject: [PATCH] net/mlx5: Avoid setting unused var when modifying vport node
+ GUID
+Patch-mainline: v4.7-rc7
+Git-commit: eae033c1b86721ec54511607fc26bfb94a0e004b
+References: bsc#966170 FATE#320225 bsc#966172 FATE#320226
+
+GCC complains on unused-but-set-variable, clean this up.
+
+Fixes: 23898c763f4a ('net/mlx5: E-Switch, Modify node guid on vf set MAC')
+Signed-off-by: Or Gerlitz <ogerlitz@mellanox.com>
+Acked-by: Saeed Mahameed <saeedm@mellanox.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+Acked-by: David Chang <dchang@suse.com>
+---
+ drivers/net/ethernet/mellanox/mlx5/core/vport.c | 3 ---
+ 1 file changed, 3 deletions(-)
+
+diff --git a/drivers/net/ethernet/mellanox/mlx5/core/vport.c b/drivers/net/ethernet/mellanox/mlx5/core/vport.c
+index daf44cd4c566..91846dfcbe9c 100644
+--- a/drivers/net/ethernet/mellanox/mlx5/core/vport.c
++++ b/drivers/net/ethernet/mellanox/mlx5/core/vport.c
+@@ -513,7 +513,6 @@ int mlx5_modify_nic_vport_node_guid(struct mlx5_core_dev *mdev,
+ {
+ 	int inlen = MLX5_ST_SZ_BYTES(modify_nic_vport_context_in);
+ 	void *nic_vport_context;
+-	u8 *guid;
+ 	void *in;
+ 	int err;
+ 
+@@ -535,8 +534,6 @@ int mlx5_modify_nic_vport_node_guid(struct mlx5_core_dev *mdev,
+ 
+ 	nic_vport_context = MLX5_ADDR_OF(modify_nic_vport_context_in,
+ 					 in, nic_vport_context);
+-	guid = MLX5_ADDR_OF(nic_vport_context, nic_vport_context,
+-			    node_guid);
+ 	MLX5_SET64(nic_vport_context, nic_vport_context, node_guid, node_guid);
+ 
+ 	err = mlx5_modify_nic_vport_context(mdev, in, inlen);
+-- 
+2.6.6
+

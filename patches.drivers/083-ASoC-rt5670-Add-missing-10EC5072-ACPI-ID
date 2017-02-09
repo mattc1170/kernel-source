@@ -1,0 +1,26 @@
+From: Takashi Iwai <tiwai@suse.de>
+Subject: [PATCH] ASoC: rt5670: Add missing 10EC5072 ACPI ID
+Date: Wed, 30 Nov 2016 14:55:29 +0100
+Message-id: <20161130135529.22163-1-tiwai@suse.de>
+References: bsc#1010690
+Patch-mainline: Submitted, alsa-devel ML Wed, 30 Nov 2016
+
+rt5670 driver supports also RT5672 codec, but its ACPI ID is missing.
+This was found on Dell Wyse 3040 box.
+
+Signed-off-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ sound/soc/codecs/rt5670.c |    1 +
+ 1 file changed, 1 insertion(+)
+
+--- a/sound/soc/codecs/rt5670.c
++++ b/sound/soc/codecs/rt5670.c
+@@ -2811,6 +2811,7 @@ MODULE_DEVICE_TABLE(i2c, rt5670_i2c_id);
+ #ifdef CONFIG_ACPI
+ static const struct acpi_device_id rt5670_acpi_match[] = {
+ 	{ "10EC5670", 0},
++	{ "10EC5672", 0},
+ 	{ },
+ };
+ MODULE_DEVICE_TABLE(acpi, rt5670_acpi_match);

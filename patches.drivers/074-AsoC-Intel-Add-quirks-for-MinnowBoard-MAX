@@ -1,0 +1,40 @@
+From: Irina Tirdea <irina.tirdea@intel.com>
+Date: Fri, 12 Aug 2016 16:27:58 -0500
+Subject: [PATCH 74/82] AsoC: Intel: Add quirks for MinnowBoard MAX
+Git-commit: 0565e773c272038dc917dde9ed3fb53f72692685
+Patch-mainline: 4.9-rc1
+References: bsc#1010690
+
+I2S MCLK has been routed to LSE connector on the MinnowBoard
+starting with HW version 3. Older versions of the board do
+not have MCLK wired.
+
+Add dmi quirk to disable MCLK for MinnowBoard MAX (v2).
+
+Signed-off-by: Irina Tirdea <irina.tirdea@intel.com>
+Signed-off-by: Pierre-Louis Bossart <pierre-louis.bossart@linux.intel.com>
+Signed-off-by: Mark Brown <broonie@kernel.org>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ sound/soc/intel/boards/bytcr_rt5640.c |    9 +++++++++
+ 1 file changed, 9 insertions(+)
+
+--- a/sound/soc/intel/boards/bytcr_rt5640.c
++++ b/sound/soc/intel/boards/bytcr_rt5640.c
+@@ -332,6 +332,15 @@ static const struct dmi_system_id byt_rt
+ 		.driver_data = (unsigned long *)(BYT_RT5640_IN1_MAP |
+ 						 BYT_RT5640_MCLK_EN),
+ 	},
++	{
++		.callback = byt_rt5640_quirk_cb,
++		.matches = {
++			DMI_MATCH(DMI_SYS_VENDOR, "Circuitco"),
++			DMI_MATCH(DMI_PRODUCT_NAME, "Minnowboard Max B3 PLATFORM"),
++		},
++		.driver_data = (unsigned long *)(BYT_RT5640_DMIC1_MAP |
++						 BYT_RT5640_DMIC_EN),
++	},
+ 	{}
+ };
+ 

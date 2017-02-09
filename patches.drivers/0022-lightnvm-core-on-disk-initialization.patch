@@ -41,16 +41,14 @@ Signed-off-by: Matias Bjørling <m@bjorling.me>
 Signed-off-by: Jens Axboe <axboe@fb.com>
 Signed-off-by: Coly Li <colyli@suse.de>
 ---
- drivers/lightnvm/Makefile     |   2 +-
- drivers/lightnvm/core.c       |   1 +
- drivers/lightnvm/sysblk.c     | 562 ++++++++++++++++++++++++++++++++++++++++++
- include/linux/lightnvm.h      |  35 +++
- include/uapi/linux/lightnvm.h |   1 +
+ drivers/lightnvm/Makefile     |    2 
+ drivers/lightnvm/core.c       |    1 
+ drivers/lightnvm/sysblk.c     |  562 ++++++++++++++++++++++++++++++++++++++++++
+ include/linux/lightnvm.h      |   35 ++
+ include/uapi/linux/lightnvm.h |    1 
  5 files changed, 600 insertions(+), 1 deletion(-)
  create mode 100644 drivers/lightnvm/sysblk.c
 
-diff --git a/drivers/lightnvm/Makefile b/drivers/lightnvm/Makefile
-index 7e0f42a..a7a0a22 100644
 --- a/drivers/lightnvm/Makefile
 +++ b/drivers/lightnvm/Makefile
 @@ -2,6 +2,6 @@
@@ -61,11 +59,9 @@ index 7e0f42a..a7a0a22 100644
 +obj-$(CONFIG_NVM)		:= core.o sysblk.o
  obj-$(CONFIG_NVM_GENNVM) 	+= gennvm.o
  obj-$(CONFIG_NVM_RRPC)		+= rrpc.o
-diff --git a/drivers/lightnvm/core.c b/drivers/lightnvm/core.c
-index 1f302cc..73b8ae1 100644
 --- a/drivers/lightnvm/core.c
 +++ b/drivers/lightnvm/core.c
-@@ -466,6 +466,7 @@ static int nvm_core_init(struct nvm_dev *dev)
+@@ -466,6 +466,7 @@ static int nvm_core_init(struct nvm_dev
  				dev->nr_chnls;
  	dev->total_pages = dev->total_blocks * dev->pgs_per_blk;
  	INIT_LIST_HEAD(&dev->online_targets);
@@ -73,9 +69,6 @@ index 1f302cc..73b8ae1 100644
  
  	return 0;
  }
-diff --git a/drivers/lightnvm/sysblk.c b/drivers/lightnvm/sysblk.c
-new file mode 100644
-index 0000000..b8489f4
 --- /dev/null
 +++ b/drivers/lightnvm/sysblk.c
 @@ -0,0 +1,562 @@
@@ -641,19 +634,17 @@ index 0000000..b8489f4
 +	mutex_unlock(&dev->mlock);
 +	return ret;
 +}
-diff --git a/include/linux/lightnvm.h b/include/linux/lightnvm.h
-index 678fd91..7ad22d3 100644
 --- a/include/linux/lightnvm.h
 +++ b/include/linux/lightnvm.h
-@@ -17,6 +17,7 @@ enum {
- #include <linux/types.h>
+@@ -80,6 +80,7 @@ struct nvm_dev_ops {
+ #include <linux/blkdev.h>
  #include <linux/file.h>
  #include <linux/dmapool.h>
 +#include <uapi/linux/lightnvm.h>
  
  enum {
  	/* HW Responsibilities */
-@@ -281,6 +282,15 @@ struct nvm_block {
+@@ -288,6 +289,15 @@ struct nvm_block {
  	int state;
  };
  
@@ -669,7 +660,7 @@ index 678fd91..7ad22d3 100644
  struct nvm_dev {
  	struct nvm_dev_ops *ops;
  
-@@ -329,6 +339,8 @@ struct nvm_dev {
+@@ -336,6 +346,8 @@ struct nvm_dev {
  	/* Backend device */
  	struct request_queue *q;
  	char name[DISK_NAME_LEN];
@@ -678,7 +669,7 @@ index 678fd91..7ad22d3 100644
  };
  
  static inline struct ppa_addr generic_to_dev_addr(struct nvm_dev *dev,
-@@ -394,6 +406,11 @@ static inline struct ppa_addr block_to_ppa(struct nvm_dev *dev,
+@@ -401,6 +413,11 @@ static inline struct ppa_addr block_to_p
  	return ppa;
  }
  
@@ -690,7 +681,7 @@ index 678fd91..7ad22d3 100644
  typedef blk_qc_t (nvm_tgt_make_rq_fn)(struct request_queue *, struct bio *);
  typedef sector_t (nvm_tgt_capacity_fn)(void *);
  typedef void *(nvm_tgt_init_fn)(struct nvm_dev *, struct gendisk *, int, int);
-@@ -489,6 +506,24 @@ extern int nvm_erase_blk(struct nvm_dev *, struct nvm_block *);
+@@ -496,6 +513,24 @@ extern int nvm_erase_blk(struct nvm_dev
  extern void nvm_end_io(struct nvm_rq *, int);
  extern int nvm_submit_ppa(struct nvm_dev *, struct ppa_addr *, int, int, int,
  								void *, int);
@@ -715,8 +706,6 @@ index 678fd91..7ad22d3 100644
  #else /* CONFIG_NVM */
  struct nvm_dev_ops;
  
-diff --git a/include/uapi/linux/lightnvm.h b/include/uapi/linux/lightnvm.h
-index 928f989..0171b85 100644
 --- a/include/uapi/linux/lightnvm.h
 +++ b/include/uapi/linux/lightnvm.h
 @@ -33,6 +33,7 @@
@@ -727,6 +716,3 @@ index 928f989..0171b85 100644
  
  #define NVM_CTRL_FILE "/dev/lightnvm/control"
  
--- 
-2.6.6
-

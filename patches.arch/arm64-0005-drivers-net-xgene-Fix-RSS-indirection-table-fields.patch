@@ -2,8 +2,7 @@ From: Iyappan Subramanian <isubramanian@apm.com>
 Date: Fri, 12 Aug 2016 22:05:41 -0700
 Subject: drivers: net: xgene: Fix RSS indirection table fields
 Git-commit: 29b4eafbae9cc5eec19377f4e5637a6e2dedd6bc
-Patch-mainline: Queued
-Git-repo: git://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git
+Patch-mainline: v4.9-rc1
 References: bsc#993051
 
 This patch fixes FPSel and NxtFPSel fields length to 5-bit value.

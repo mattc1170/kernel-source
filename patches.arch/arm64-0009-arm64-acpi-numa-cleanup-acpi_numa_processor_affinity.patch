@@ -3,7 +3,8 @@ From: Matthias Brugger <mbrugger@suse.com>
 Date: Mon, 27 Jun 2016 19:08:36 +0200
 Subject: arm64: acpi/numa: cleanup
  acpi_numa_processor_affinity_init()
-Patch-mainline: No, it is reworked to not touch generic code
+Git-commit: 2faeff1d507c21d262e8afca862243909970d567 (partial)
+Patch-mainline: v4.8-rc1
 References: fate#319981
 
 Cleanup acpi_numa_processor_affinity_init() in preparation for its
@@ -16,6 +17,8 @@ acpi_numa_processor_affinity_init()")
 
 Signed-off-by: Matthias Brugger <mbrugger@suse.com>
 ---
+The patch is reworked to not touch generic code
+
  arch/arm64/kernel/acpi_numa.c | 6 +++---
  1 file changed, 3 insertions(+), 3 deletions(-)
 

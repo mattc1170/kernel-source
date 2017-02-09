@@ -1,0 +1,28 @@
+From: Bard Liao <bardliao@realtek.com>
+Date: Fri, 1 Jul 2016 09:49:05 +0800
+Subject: [PATCH 18/82] ASoC: rt5645: fix reg-2f default value.
+Git-commit: fdfe3b32db70aa49d1d60a1ddd2280099174bddb
+Patch-mainline: 4.7-rc7
+References: bsc#1010690
+
+The default value of reg-2f in codec rt5650 is 0x5002, not 0x1002.
+
+Signed-off-by: Bard Liao <bardliao@realtek.com>
+Signed-off-by: Mark Brown <broonie@kernel.org>
+Signed-off-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ sound/soc/codecs/rt5645.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+--- a/sound/soc/codecs/rt5645.c
++++ b/sound/soc/codecs/rt5645.c
+@@ -254,7 +254,7 @@ static const struct reg_default rt5650_r
+ 	{ 0x2b, 0x5454 },
+ 	{ 0x2c, 0xaaa0 },
+ 	{ 0x2d, 0x0000 },
+-	{ 0x2f, 0x1002 },
++	{ 0x2f, 0x5002 },
+ 	{ 0x31, 0x5000 },
+ 	{ 0x32, 0x0000 },
+ 	{ 0x33, 0x0000 },

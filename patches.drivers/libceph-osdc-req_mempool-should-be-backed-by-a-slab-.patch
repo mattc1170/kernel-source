@@ -1,0 +1,33 @@
+From 83db6c9a3023be9a8567c45704cb712e0bc48a74 Mon Sep 17 00:00:00 2001
+From: Ilya Dryomov <idryomov@gmail.com>
+Date: Tue, 9 Feb 2016 17:25:31 +0100
+Subject: [PATCH 4/5] libceph: osdc->req_mempool should be backed by a slab
+ pool
+References: bsc#988715
+Git-commit: 9e767adbd3961760af5d56efe45fa8217cce7db6
+Patch-mainline: v4.6-rc1
+
+ceph_osd_request_cache was introduced a long time ago.  Also, osd_req
+is about to get a flexible array member, which ceph_osd_request_cache
+is going to be aware of.
+
+Signed-off-by: Ilya Dryomov <idryomov@gmail.com>
+Acked-by: David Disseldorp <ddiss@suse.de>
+
+---
+ net/ceph/osd_client.c |    4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+--- a/net/ceph/osd_client.c
++++ b/net/ceph/osd_client.c
+@@ -2900,8 +2900,8 @@ int ceph_osdc_init(struct ceph_osd_clien
+ 	    round_jiffies_relative(osdc->client->options->osd_idle_ttl));
+ 
+ 	err = -ENOMEM;
+-	osdc->req_mempool = mempool_create_kmalloc_pool(10,
+-					sizeof(struct ceph_osd_request));
++	osdc->req_mempool = mempool_create_slab_pool(10,
++						     ceph_osd_request_cache);
+ 	if (!osdc->req_mempool)
+ 		goto out;
+ 

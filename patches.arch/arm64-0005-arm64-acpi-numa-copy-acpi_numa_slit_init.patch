@@ -2,7 +2,8 @@ From fe92e50dac341f060441f617772c9b2c64735054 Mon Sep 17 00:00:00 2001
 From: Matthias Brugger <mbrugger@suse.com>
 Date: Mon, 27 Jun 2016 18:40:00 +0200
 Subject: arm64: acpi/numa: copy acpi_numa_slit_init()
-Patch-mainline: No, it is reworked to not touch generic code
+Git-commit: 6525afdf53b39968f1a109b1ce1607ca6c98d300 (partial)
+Patch-mainline: v4.8-rc1
 References: fate#319981
 
 This patch copies acpi_numa_slit_init() to arm64 code, so that no
@@ -14,6 +15,8 @@ drivers/acpi/numa.c")
 
 Signed-off-by: Matthias Brugger <mbrugger@suse.com>
 ---
+The patch is reworked to not touch generic code
+
  arch/arm64/kernel/acpi_numa.c | 27 +++++++++++++++++++++++++++
  1 file changed, 27 insertions(+)
 

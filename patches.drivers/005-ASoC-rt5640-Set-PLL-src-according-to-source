@@ -1,0 +1,50 @@
+From: Bard Liao <bardliao@realtek.com>
+Date: Mon, 7 Mar 2016 15:09:37 +0800
+Subject: [PATCH 05/82] ASoC: rt5640: Set PLL src according to source
+References: bsc#1010690
+Git-commit: c467fc0e010b66069c0d5bb3e8e869adf267115f
+Git-repo: git://git.kernel.org/pub/scm/linux/kernel/git/tiwai/sound.git
+Patch-mainline: Queued in subsystem maintainer repository
+
+rt5640_set_dai_pll set pll source according to given source and
+dai id. However, the pll source should be set according to given
+source only.
+
+Signed-off-by: Jack Yu <jack.yu@realtek.com>
+Signed-off-by: Bard Liao <bardliao@realtek.com>
+Signed-off-by: Mark Brown <broonie@kernel.org>
+Signed-off-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ sound/soc/codecs/rt5640.c |   19 +++++--------------
+ 1 file changed, 5 insertions(+), 14 deletions(-)
+
+--- a/sound/soc/codecs/rt5640.c
++++ b/sound/soc/codecs/rt5640.c
+@@ -1914,21 +1914,12 @@ static int rt5640_set_dai_pll(struct snd
+ 			RT5640_PLL1_SRC_MASK, RT5640_PLL1_SRC_MCLK);
+ 		break;
+ 	case RT5640_PLL1_S_BCLK1:
++		snd_soc_update_bits(codec, RT5640_GLB_CLK,
++			RT5640_PLL1_SRC_MASK, RT5640_PLL1_SRC_BCLK1);
++		break;
+ 	case RT5640_PLL1_S_BCLK2:
+-		dai_sel = get_sdp_info(codec, dai->id);
+-		if (dai_sel < 0) {
+-			dev_err(codec->dev,
+-				"Failed to get sdp info: %d\n", dai_sel);
+-			return -EINVAL;
+-		}
+-		if (dai_sel & RT5640_U_IF1) {
+-			snd_soc_update_bits(codec, RT5640_GLB_CLK,
+-				RT5640_PLL1_SRC_MASK, RT5640_PLL1_SRC_BCLK1);
+-		}
+-		if (dai_sel & RT5640_U_IF2) {
+-			snd_soc_update_bits(codec, RT5640_GLB_CLK,
+-				RT5640_PLL1_SRC_MASK, RT5640_PLL1_SRC_BCLK2);
+-		}
++		snd_soc_update_bits(codec, RT5640_GLB_CLK,
++			RT5640_PLL1_SRC_MASK, RT5640_PLL1_SRC_BCLK2);
+ 		break;
+ 	default:
+ 		dev_err(codec->dev, "Unknown PLL source %d\n", source);

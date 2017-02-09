@@ -4,7 +4,8 @@ To: linux-btrfs@vger.kernel.org
 Cc: Mark Fasheh <mfasheh@suse.de>
 Date: Tue,  9 Aug 2016 16:30:20 +0800
 References: bsc983087, bsc986255
-Patch-mainline: Submitted, https://patchwork.kernel.org/patch/9280257/
+Git-commit: 62b99540a1d91e46422f0e04de50fc723812c421
+Patch-mainline: v4.8-rc5
 
 When balancing data extents, qgroup will leak all its numbers for
 relocated data extents.

@@ -1,0 +1,42 @@
+From: Shiraz Saleem <shiraz.saleem@intel.com>
+Date: Mon, 22 Aug 2016 18:16:37 -0500
+Subject: [PATCH] i40iw: Add missing NULL check for MPA private data
+Patch-mainline: v4.8-rc4
+Git-commit: 5dfd5e5e3bc68ab3912acc712c8180942094fc69
+References: bsc#974842 FATE#319831 bsc#974843 FATE#319832
+
+Add NULL check for pdata and pdata->addr before the memcpy in
+i40iw_form_cm_frame(). This fixes a NULL pointer de-reference
+which occurs when the MPA private data pointer is NULL. Also
+only copy pdata->size bytes in the memcpy to prevent reading
+past the length of the private data buffer provided by upper layer.
+
+Fixes: f27b4746f378 ("i40iw: add connection management code")
+
+Reported-by: Stefan Assmann <sassmann@redhat.com>
+Signed-off-by: Mustafa Ismail <mustafa.ismail@intel.com>
+Signed-off-by: Shiraz Saleem <shiraz.saleem@intel.com>
+Signed-off-by: Doug Ledford <dledford@redhat.com>
+Acked-by: David Chang <dchang@suse.com>
+---
+ drivers/infiniband/hw/i40iw/i40iw_cm.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/infiniband/hw/i40iw/i40iw_cm.c b/drivers/infiniband/hw/i40iw/i40iw_cm.c
+index 38f917a6c778..4581ae722b2d 100644
+--- a/drivers/infiniband/hw/i40iw/i40iw_cm.c
++++ b/drivers/infiniband/hw/i40iw/i40iw_cm.c
+@@ -535,8 +535,8 @@ static struct i40iw_puda_buf *i40iw_form_cm_frame(struct i40iw_cm_node *cm_node,
+ 		buf += hdr_len;
+ 	}
+ 
+-	if (pd_len)
+-		memcpy(buf, pdata->addr, pd_len);
++	if (pdata && pdata->addr)
++		memcpy(buf, pdata->addr, pdata->size);
+ 
+ 	atomic_set(&sqbuf->refcount, 1);
+ 
+-- 
+2.6.6
+

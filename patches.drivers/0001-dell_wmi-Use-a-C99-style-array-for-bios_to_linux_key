@@ -1,0 +1,95 @@
+From 394cb778ca2b9627e5189076e7299e8ab3969c7e Mon Sep 17 00:00:00 2001
+From: Andy Lutomirski <luto@kernel.org>
+Date: Fri, 13 Nov 2015 21:49:31 -0800
+Subject: [PATCH] dell_wmi: Use a C99-style array for bios_to_linux_keycode
+Mime-version: 1.0
+Content-type: text/plain; charset=UTF-8
+Content-transfer-encoding: 8bit
+Git-commit: 394cb778ca2b9627e5189076e7299e8ab3969c7e
+Patch-mainline: 4.5-rc1
+References: bsc#1004052
+
+It's currently hard to follow what maps to what, and it's hard to edit
+the array.  Redo it as a C99-style array.
+
+I generated this using emacs regexes and a python one-liner.
+
+Signed-off-by: Andy Lutomirski <luto@kernel.org>
+Acked-by: Pali Rohár <pali.rohar@gmail.com>
+Signed-off-by: Darren Hart <dvhart@linux.intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/platform/x86/dell-wmi.c |   61 ++++++++++++++++++++++++++--------------
+ 1 file changed, 40 insertions(+), 21 deletions(-)
+
+--- a/drivers/platform/x86/dell-wmi.c
++++ b/drivers/platform/x86/dell-wmi.c
+@@ -119,27 +119,46 @@ struct dell_bios_hotkey_table {
+ static const struct dell_bios_hotkey_table *dell_bios_hotkey_table;
+ 
+ static const u16 bios_to_linux_keycode[256] __initconst = {
+-
+-	KEY_MEDIA,	KEY_NEXTSONG,	KEY_PLAYPAUSE, KEY_PREVIOUSSONG,
+-	KEY_STOPCD,	KEY_UNKNOWN,	KEY_UNKNOWN,	KEY_UNKNOWN,
+-	KEY_WWW,	KEY_UNKNOWN,	KEY_VOLUMEDOWN, KEY_MUTE,
+-	KEY_VOLUMEUP,	KEY_UNKNOWN,	KEY_BATTERY,	KEY_EJECTCD,
+-	KEY_UNKNOWN,	KEY_SLEEP,	KEY_PROG1, KEY_BRIGHTNESSDOWN,
+-	KEY_BRIGHTNESSUP,	KEY_UNKNOWN,	KEY_KBDILLUMTOGGLE,
+-	KEY_UNKNOWN,	KEY_SWITCHVIDEOMODE,	KEY_UNKNOWN, KEY_UNKNOWN,
+-	KEY_SWITCHVIDEOMODE,	KEY_UNKNOWN,	KEY_UNKNOWN, KEY_PROG2,
+-	KEY_UNKNOWN,	KEY_UNKNOWN,	KEY_UNKNOWN,	KEY_UNKNOWN,
+-	KEY_UNKNOWN,	KEY_UNKNOWN,	KEY_UNKNOWN,	KEY_MICMUTE,
+-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+-	0, 0, 0, 0, 0, 0, 0, 0, 0, KEY_PROG3
++	[0]	= KEY_MEDIA,
++	[1]	= KEY_NEXTSONG,
++	[2]	= KEY_PLAYPAUSE,
++	[3]	= KEY_PREVIOUSSONG,
++	[4]	= KEY_STOPCD,
++	[5]	= KEY_UNKNOWN,
++	[6]	= KEY_UNKNOWN,
++	[7]	= KEY_UNKNOWN,
++	[8]	= KEY_WWW,
++	[9]	= KEY_UNKNOWN,
++	[10]	= KEY_VOLUMEDOWN,
++	[11]	= KEY_MUTE,
++	[12]	= KEY_VOLUMEUP,
++	[13]	= KEY_UNKNOWN,
++	[14]	= KEY_BATTERY,
++	[15]	= KEY_EJECTCD,
++	[16]	= KEY_UNKNOWN,
++	[17]	= KEY_SLEEP,
++	[18]	= KEY_PROG1,
++	[19]	= KEY_BRIGHTNESSDOWN,
++	[20]	= KEY_BRIGHTNESSUP,
++	[21]	= KEY_UNKNOWN,
++	[22]	= KEY_KBDILLUMTOGGLE,
++	[23]	= KEY_UNKNOWN,
++	[24]	= KEY_SWITCHVIDEOMODE,
++	[25]	= KEY_UNKNOWN,
++	[26]	= KEY_UNKNOWN,
++	[27]	= KEY_SWITCHVIDEOMODE,
++	[28]	= KEY_UNKNOWN,
++	[29]	= KEY_UNKNOWN,
++	[30]	= KEY_PROG2,
++	[31]	= KEY_UNKNOWN,
++	[32]	= KEY_UNKNOWN,
++	[33]	= KEY_UNKNOWN,
++	[34]	= KEY_UNKNOWN,
++	[35]	= KEY_UNKNOWN,
++	[36]	= KEY_UNKNOWN,
++	[37]	= KEY_UNKNOWN,
++	[38]	= KEY_MICMUTE,
++	[255]	= KEY_PROG3,
+ };
+ 
+ static struct input_dev *dell_wmi_input_dev;

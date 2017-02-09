@@ -2,7 +2,7 @@ From: Jitendra Bhivare <jitendra.bhivare@avagotech.com>
 Date: Wed, 20 Jan 2016 14:10:47 +0530
 Subject: [PATCH 03/33] be2iscsi: Fix to use atomic bit operations for tag_state
 Git-commit: cdde6682ab61d24aae4e7f75757a2073e4bff3a3
-Patch-mainline: v3.6 or v3.5-rc2 (next release)
+Patch-mainline: v4.6-rc1
 References: bsc#963621 fate#320193
 
 beiscsi_mccq_compl sets MCC_TAG_STATE_TIMEOUT before setting up

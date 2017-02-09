@@ -1,0 +1,84 @@
+From 18bd5bafbe8a1e39c3f5c5882073ad0a192560ce Mon Sep 17 00:00:00 2001
+From: Nicolai Stange <nicstange@gmail.com>
+Date: Tue, 22 Mar 2016 13:12:41 +0100
+Subject: [PATCH 8/9] lib/mpi: mpi_read_buffer(): replace open coded endian
+ conversion
+Git-commit: 90f864e20029600a8dc33e27b1192af4636100d4
+Patch-mainline: v4.7-rc1
+References: bsc#1003581
+
+Currently, the endian conversion from CPU order to BE is open coded in
+mpi_read_buffer().
+
+Replace this by the centrally provided cpu_to_be*() macros.
+Copy from the temporary storage on stack to the destination buffer
+by means of memcpy().
+
+Signed-off-by: Nicolai Stange <nicstange@gmail.com>
+Signed-off-by: Herbert Xu <herbert@gondor.apana.org.au>
+Acked-by: Michal Marek <mmarek@suse.com>
+
+---
+ lib/mpi/mpicoder.c | 27 ++++++++++++---------------
+ 1 file changed, 12 insertions(+), 15 deletions(-)
+
+diff --git a/lib/mpi/mpicoder.c b/lib/mpi/mpicoder.c
+index 2fd8d418526c..a999ee1cddc5 100644
+--- a/lib/mpi/mpicoder.c
++++ b/lib/mpi/mpicoder.c
+@@ -21,6 +21,7 @@
+ #include <linux/bitops.h>
+ #include <linux/count_zeros.h>
+ #include <linux/byteorder/generic.h>
++#include <linux/string.h>
+ #include "mpi-internal.h"
+ 
+ #define MAX_EXTERN_MPI_BITS 16384
+@@ -164,7 +165,13 @@ int mpi_read_buffer(MPI a, uint8_t *buf, unsigned buf_len, unsigned *nbytes,
+ 		    int *sign)
+ {
+ 	uint8_t *p;
+-	mpi_limb_t alimb;
++#if BYTES_PER_MPI_LIMB == 4
++	__be32 alimb;
++#elif BYTES_PER_MPI_LIMB == 8
++	__be64 alimb;
++#else
++#error please implement for this limb size.
++#endif
+ 	unsigned int n = mpi_get_size(a);
+ 	int i, lzeros;
+ 
+@@ -187,25 +194,15 @@ int mpi_read_buffer(MPI a, uint8_t *buf, unsigned buf_len, unsigned *nbytes,
+ 	for (i = a->nlimbs - 1 - lzeros / BYTES_PER_MPI_LIMB,
+ 			lzeros %= BYTES_PER_MPI_LIMB;
+ 		i >= 0; i--) {
+-		alimb = a->d[i];
+ #if BYTES_PER_MPI_LIMB == 4
+-		*p++ = alimb >> 24;
+-		*p++ = alimb >> 16;
+-		*p++ = alimb >> 8;
+-		*p++ = alimb;
++		alimb = cpu_to_be32(a->d[i]);
+ #elif BYTES_PER_MPI_LIMB == 8
+-		*p++ = alimb >> 56;
+-		*p++ = alimb >> 48;
+-		*p++ = alimb >> 40;
+-		*p++ = alimb >> 32;
+-		*p++ = alimb >> 24;
+-		*p++ = alimb >> 16;
+-		*p++ = alimb >> 8;
+-		*p++ = alimb;
++		alimb = cpu_to_be64(a->d[i]);
+ #else
+ #error please implement for this limb size.
+ #endif
+-
++		memcpy(p, &alimb, BYTES_PER_MPI_LIMB);
++		p += BYTES_PER_MPI_LIMB;
+ 		if (lzeros > 0) {
+ 			mpi_limb_t *limb1 = (void *)p - sizeof(alimb);
+ 			mpi_limb_t *limb2 = (void *)p - sizeof(alimb)
+-- 
+2.10.0
+

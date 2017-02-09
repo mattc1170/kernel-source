@@ -1,7 +1,7 @@
 #
 # spec file for package kernel-@FLAVOR@
 #
-# Copyright (c) @YEAR@ SUSE LINUX Products GmbH, Nuernberg, Germany.
+# Copyright (c) @YEAR@ SUSE LINUX GmbH, Nuernberg, Germany.
 #
 # All modifications and additions to the file contributed by third parties
 # remain the property of their copyright owners, unless otherwise agreed
@@ -14,10 +14,8 @@
 
 # Please submit bugfixes or comments via http://bugs.opensuse.org/
 #
-
-
-# This makes the OBS store the project cert as %_sourcedir/_projectcert.crt
 # needssslcertforbuild
+
 
 %define srcversion @SRCVERSION@
 %define patchversion @PATCHVERSION@
@@ -46,10 +44,9 @@
 
 # Define some CONFIG variables as rpm macros as well. (rpm cannot handle
 # defining them all at once.)
-%define config_vars CONFIG_MODULES CONFIG_MODULE_SIG CONFIG_KMSG_IDS CONFIG_SPLIT_PACKAGE CONFIG_SUSE_KERNEL_SUPPORTED CONFIG_EFI_STUB
+%define config_vars CONFIG_MODULES CONFIG_MODULE_SIG CONFIG_KMSG_IDS CONFIG_SUSE_KERNEL_SUPPORTED CONFIG_EFI_STUB
 %{expand:%(eval "$(test -n "%cpu_arch_flavor" && tar -xjf %_sourcedir/config.tar.bz2 --to-stdout config/%cpu_arch_flavor)"; for config in %config_vars; do echo "%%global $config ${!config:-n}"; done)}
-%define split_base (%CONFIG_SPLIT_PACKAGE == "y")
-%define split_extra (%CONFIG_SPLIT_PACKAGE == "y" && %CONFIG_SUSE_KERNEL_SUPPORTED == "y")
+%define split_extra (%CONFIG_MODULES == "y" && %CONFIG_SUSE_KERNEL_SUPPORTED == "y")
 
 %ifarch %ix86 x86_64
 %define install_vdso 1
@@ -85,9 +82,8 @@ Provides:       %name = %version-%source_rel
 # bnc#901925
 Provides:       %name-%version-%source_rel
 Provides:       %{name}_%_target_cpu = %version-%release
-Provides:       multiversion(kernel)
-%if %split_base
 Provides:       kernel-base = %version-%source_rel
+Provides:       multiversion(kernel)
 # In SLE11, kernel-$flavor complemented kernel-$flavor-base. With SLE12,
 # kernel-$flavor itself contains all the needed files and kernel-$flavor-base
 # is a subset that can replace kernel-$flavor in some scenarios. We need to
@@ -95,7 +91,6 @@ Provides:       kernel-base = %version-%source_rel
 # owned by multiple packages now. The dependency is not correct wrt openSUSE
 # 11.2 - 11.4, but we primarily care about the supported upgrade path.
 Obsoletes:      %name-base < 3.1
-%endif
 # The following is copied to the -base subpackage as well
 # BEGIN COMMON DEPS
 Requires(pre):  coreutils awk
@@ -336,8 +331,7 @@ fi
 	--set-str CONFIG_LOCALVERSION -%source_rel-%build_flavor \
 	--enable  CONFIG_SUSE_KERNEL \
 %if 0%{?__debug_package:1}
-	--enable  CONFIG_DEBUG_INFO \
-	--disable  CONFIG_DEBUG_INFO_REDUCED
+	--enable  CONFIG_DEBUG_INFO
 %else
 	--disable CONFIG_DEBUG_INFO
 %endif
@@ -654,7 +648,6 @@ if [ %CONFIG_MODULES = y ]; then
 	exit 1
     fi
 
-%if %split_base
     %_sourcedir/split-modules -d %buildroot \
 	-o %my_builddir \
 	-b %kernel_build_dir \
@@ -666,12 +659,6 @@ if [ %CONFIG_MODULES = y ]; then
 %endif
 %if ! %split_extra
     cat %my_builddir/unsupported-modules >>%my_builddir/main-modules
-%endif
-
-%else
-    (   cd %buildroot
-	find lib/modules/%kernelrelease-%build_flavor -type f -name '*.ko' -printf '/%%p\n'
-    ) > %my_builddir/base-modules
 %endif
 
     # The modules.dep file is sorted randomly which produces strange file
@@ -787,26 +774,20 @@ done | add_dirs_to_filelist >%my_builddir/kernel-devel.files
         find etc/uefi/certs -type f -printf '/%%p\n'
     fi
     if test -d lib/firmware/%kernelrelease-%build_flavor; then
-%if %split_base
         echo "%%dir /lib/firmware/%kernelrelease-%build_flavor"
         cat %my_builddir/base-firmware
-%else
-        echo "/lib/firmware/%kernelrelease-%build_flavor"
-%endif
     fi
     if [ -e .%_docdir/%name ]; then
 	echo "%%doc %_docdir/%name"
     fi
 } | sort -u | add_dirs_to_filelist >%my_builddir/kernel-base.files
 
-%if %split_base
 {
     add_dirs_to_filelist %my_builddir/{kernel-base.files,main-modules}
     if test -d %buildroot/lib/firmware/%kernelrelease-%build_flavor; then
 	echo "/lib/firmware/%kernelrelease-%build_flavor"
     fi
 } > %my_builddir/kernel-main.files
-%endif
 %if %split_extra
     add_dirs_to_filelist %my_builddir/unsupported-modules > %my_builddir/kernel-extra.files
 %endif
@@ -814,7 +795,6 @@ for f in %my_builddir/*-kmp-modules; do
 	f2=${f%%-modules}.files
 	add_dirs_to_filelist "$f" >"$f2"
 done
-
 
 # Hardlink duplicate files automatically (from package fdupes): It doesn't save
 # much, but it keeps rpmlint from breaking the package build. Note that we skip
@@ -829,16 +809,10 @@ done
 
 %post -f post.sh
 
-%if %split_base
-
 %files -f kernel-main.files
 %defattr(-, root, root)
-%else
 
-%files -f kernel-base.files
-%defattr(-, root, root)
-%endif
-
+%if %CONFIG_MODULES == "y"
 %package base
 Summary:        @SUMMARY@ - base modules
 Group:          System/Kernel
@@ -867,8 +841,6 @@ This package contains only the base modules, required in all installs.
 %pre base -f pre-base.sh
 
 %post base -f post-base.sh
-
-%if %split_base
 
 %files base -f kernel-base.files
 %defattr(-, root, root)
@@ -938,9 +910,9 @@ Provides:       %name-devel = %version-%source_rel
 Provides:       multiversion(kernel)
 %if ! %build_vanilla
 Requires:       kernel-devel%variant = %version-%source_rel
-Recommends:	make
-Recommends:	gcc
-Recommends:	perl
+Recommends:     make
+Recommends:     gcc
+Recommends:     perl
 Supplements:    packageand(%name:kernel-devel%variant)
 %else
 Requires:       kernel-source-vanilla = %version-%source_rel
@@ -956,6 +928,7 @@ kernel module packages) against the %build_flavor flavor of the kernel.
 
 
 %source_timestamp
+
 %if %CONFIG_MODULES == "y"
 
 %pre devel -f devel-pre.sh
@@ -974,9 +947,8 @@ kernel module packages) against the %build_flavor flavor of the kernel.
 %obj_install_dir/%kmp_target_cpu
 /usr/src/linux-obj/%kmp_target_cpu
 %endif
-%endif
 
-%if %CONFIG_MODULES == "y" && %CONFIG_SUSE_KERNEL_SUPPORTED == "y"
+%if %CONFIG_SUSE_KERNEL_SUPPORTED == "y"
 %package kgraft
 Summary:        Metapackage to pull in matching kgraft-patch package
 Group:          System/Kernel
@@ -994,14 +966,13 @@ static, unlike the kgraft-patch-<kernel-version>-flavor package names.
 %dir /lib/modules/%kernelrelease-%build_flavor
 %endif
 
-%if %split_base
 # BEGIN KMP
 %package -n @KMP_NAME@-%build_flavor
 Summary:        @KMP_SUMMARY@
 Group:          System/Kernel
 Requires:       %name = %version-%release
-Provides:       multiversion(kernel)
 Provides:       @KMP_NAME@ = %version-%release
+Provides:       multiversion(kernel)
 # tell weak-modules2 to ignore this package
 Provides:       kmp_in_kernel
 Requires(post): suse-module-tools >= 12.4
@@ -1035,8 +1006,7 @@ rm -f "/var/run/rpm-$nvr-modules"
 
 %files -n @KMP_NAME@-%build_flavor -f @KMP_NAME@.files
 %defattr(-, root, root)
-
 # END KMP
-%endif
+%endif # %CONFIG_MODULES
 
 %changelog

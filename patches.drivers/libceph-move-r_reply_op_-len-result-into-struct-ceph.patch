@@ -1,0 +1,84 @@
+From 89b8885808f9217d00ebd5d04bd00564ac26748a Mon Sep 17 00:00:00 2001
+From: "Yan, Zheng" <zyan@redhat.com>
+Date: Thu, 7 Jan 2016 16:48:57 +0800
+Subject: [PATCH 2/5] libceph: move r_reply_op_{len,result} into struct
+ ceph_osd_req_op
+References: bsc#988715
+Git-commit: 7665d85b7307fa0218881bc2009de067c42dc52e
+Patch-mainline: v4.6-rc1
+
+This avoids defining large array of r_reply_op_{len,result} in
+in struct ceph_osd_request.
+
+Signed-off-by: Yan, Zheng <zyan@redhat.com>
+Signed-off-by: Ilya Dryomov <idryomov@gmail.com>
+[ddiss@suse.de: convert cmpext too]
+Acked-by: David Disseldorp <ddiss@suse.de>
+
+---
+ drivers/block/rbd.c             |    4 ++--
+ include/linux/ceph/osd_client.h |    5 +++--
+ net/ceph/osd_client.c           |    4 ++--
+ 3 files changed, 7 insertions(+), 6 deletions(-)
+
+--- a/drivers/block/rbd.c
++++ b/drivers/block/rbd.c
+@@ -1763,7 +1763,7 @@ static void rbd_osd_cmpext_callback(stru
+ 		 * on mismatch reply buf will contain offset and mismatched
+ 		 * data
+ 		 */
+-		obj_request->xferred = osd_req->r_reply_op_len[1];
++		obj_request->xferred = osd_req->r_ops[1].outdata_len;
+ 	else
+ 		obj_request->xferred = obj_request->length;
+ 	obj_request_done_set(obj_request);
+@@ -1829,7 +1829,7 @@ static void rbd_osd_req_callback(struct
+ 	 * passed to the block layer, which just supports a 32-bit
+ 	 * length field.
+ 	 */
+-	obj_request->xferred = osd_req->r_reply_op_len[0];
++	obj_request->xferred = osd_req->r_ops[0].outdata_len;
+ 	rbd_assert(obj_request->xferred < (u64)UINT_MAX);
+ 
+ 	opcode = osd_req->r_ops[0].op;
+--- a/include/linux/ceph/osd_client.h
++++ b/include/linux/ceph/osd_client.h
+@@ -84,6 +84,9 @@ struct ceph_osd_req_op {
+ 	u16 op;           /* CEPH_OSD_OP_* */
+ 	u32 flags;        /* CEPH_OSD_OP_FLAG_* */
+ 	u32 indata_len;   /* request */
++	u32 outdata_len;  /* reply */
++	s32 rval;
++
+ 	union {
+ 		struct ceph_osd_data raw_data_in;
+ 		struct {
+@@ -166,8 +169,6 @@ struct ceph_osd_request {
+ 	struct ceph_eversion *r_request_reassert_version;
+ 
+ 	int               r_result;
+-	int               r_reply_op_len[CEPH_OSD_MAX_OP];
+-	s32               r_reply_op_result[CEPH_OSD_MAX_OP];
+ 	int               r_got_reply;
+ 	int		  r_linger;
+ 
+--- a/net/ceph/osd_client.c
++++ b/net/ceph/osd_client.c
+@@ -2050,7 +2050,7 @@ static void handle_reply(struct ceph_osd
+ 		int len;
+ 
+ 		len = le32_to_cpu(op->payload_len);
+-		req->r_reply_op_len[i] = len;
++		req->r_ops[i].outdata_len = len;
+ 		dout(" op %d has %d bytes\n", i, len);
+ 		payload_len += len;
+ 		p += sizeof(*op);
+@@ -2065,7 +2065,7 @@ static void handle_reply(struct ceph_osd
+ 	ceph_decode_need(&p, end, 4 + numops * 4, bad_put);
+ 	retry_attempt = ceph_decode_32(&p);
+ 	for (i = 0; i < numops; i++)
+-		req->r_reply_op_result[i] = ceph_decode_32(&p);
++		req->r_ops[i].rval = ceph_decode_32(&p);
+ 
+ 	if (le16_to_cpu(msg->hdr.version) >= 6) {
+ 		p += 8 + 4; /* skip replay_version */

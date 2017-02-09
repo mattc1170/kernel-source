@@ -1,0 +1,31 @@
+From: Hadar Hen Zion <hadarh@mellanox.com>
+Date: Thu, 18 Aug 2016 21:09:07 +0300
+Subject: net/mlx5e: Use correct flow dissector key on flower offloading
+Patch-mainline: v4.8-rc5
+Git-commit: 1dbd0d373ac338903d27fab5204b13122cc5accd
+References: bsc#966170 FATE#320225 bsc#966172 FATE#320226
+
+The wrong key is used when extracting the address type field set by
+the flower offload code. We have to use the control key and not the
+basic key, fix that.
+
+Fixes: e3a2b7ed018e ('net/mlx5e: Support offload cls_flower with drop action')
+Signed-off-by: Hadar Hen Zion <hadarh@mellanox.com>
+Signed-off-by: Saeed Mahameed <saeedm@mellanox.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+Acked-by: Benjamin Poirier <bpoirier@suse.com>
+---
+ drivers/net/ethernet/mellanox/mlx5/core/en_tc.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+--- a/drivers/net/ethernet/mellanox/mlx5/core/en_tc.c
++++ b/drivers/net/ethernet/mellanox/mlx5/core/en_tc.c
+@@ -122,7 +122,7 @@ static int parse_cls_flower(struct mlx5e
+ 	if (dissector_uses_key(f->dissector, FLOW_DISSECTOR_KEY_CONTROL)) {
+ 		struct flow_dissector_key_control *key =
+ 			skb_flow_dissector_target(f->dissector,
+-						  FLOW_DISSECTOR_KEY_BASIC,
++						  FLOW_DISSECTOR_KEY_CONTROL,
+ 						  f->key);
+ 		addr_type = key->addr_type;
+ 	}

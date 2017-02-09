@@ -1,0 +1,35 @@
+From: Maor Gottlieb <maorg@mellanox.com>
+Date: Mon, 12 Sep 2016 19:16:24 +0300
+Subject: IB/mlx5: Set source mac address in FTE
+Patch-mainline: v4.8-rc7
+Git-commit: ee3da804ad1b1dd4c766199a6e8443542b0aaaef
+References: bsc#966170 FATE#320225 bsc#966172 FATE#320226
+
+Set the source mac address in the FTE when L2 specification
+is provided.
+
+Fixes: 038d2ef87572 ('IB/mlx5: Add flow steering support')
+Signed-off-by: Maor Gottlieb <maorg@mellanox.com>
+Signed-off-by: Leon Romanovsky <leon@kernel.org>
+Signed-off-by: Doug Ledford <dledford@redhat.com>
+Acked-by: Benjamin Poirier <bpoirier@suse.com>
+---
+ drivers/infiniband/hw/mlx5/main.c |    7 +++++++
+ 1 file changed, 7 insertions(+)
+
+--- a/drivers/infiniband/hw/mlx5/main.c
++++ b/drivers/infiniband/hw/mlx5/main.c
+@@ -1215,6 +1215,13 @@ static int parse_flow_attr(u32 *match_c,
+ 					     dmac_47_16),
+ 				ib_spec->eth.val.dst_mac);
+ 
++		ether_addr_copy(MLX5_ADDR_OF(fte_match_set_lyr_2_4, outer_headers_c,
++					     smac_47_16),
++				ib_spec->eth.mask.src_mac);
++		ether_addr_copy(MLX5_ADDR_OF(fte_match_set_lyr_2_4, outer_headers_v,
++					     smac_47_16),
++				ib_spec->eth.val.src_mac);
++
+ 		if (ib_spec->eth.mask.vlan_tag) {
+ 			MLX5_SET(fte_match_set_lyr_2_4, outer_headers_c,
+ 				 vlan_tag, 1);

@@ -1,0 +1,29 @@
+From: Takashi Iwai <tiwai@suse.de>
+Subject: [PATCH] ASoC: Intel: Add missing 10EC5672 ACPI ID matching for Cherry Trail
+Date: Wed, 30 Nov 2016 14:57:47 +0100
+Message-id: <20161130135747.22485-1-tiwai@suse.de>
+References: bsc#1010690
+Patch-mainline: Submitted, alsa-devel Wed, 30 Nov 2016
+
+Add the missing ACPI ID 10EC5672 for Cherry Trail, which bounds with
+cht-bsw-rt5672 driver.  This combination was found on Dell Wyse 3040.
+
+Signed-off-by: Takashi Iwai <tiwai@suse.de>
+
+---
+Resent, as I forgot Cc to alsa-devel ML, sorry!
+
+ sound/soc/intel/atom/sst/sst_acpi.c |    2 ++
+ 1 file changed, 2 insertions(+)
+
+--- a/sound/soc/intel/atom/sst/sst_acpi.c
++++ b/sound/soc/intel/atom/sst/sst_acpi.c
+@@ -451,6 +451,8 @@ static struct sst_acpi_mach sst_acpi_byt
+ static struct sst_acpi_mach sst_acpi_chv[] = {
+ 	{"10EC5670", "cht-bsw-rt5672", "intel/fw_sst_22a8.bin", "cht-bsw", NULL,
+ 						&chv_platform_data },
++	{"10EC5672", "cht-bsw-rt5672", "intel/fw_sst_22a8.bin", "cht-bsw", NULL,
++						&chv_platform_data },
+ 	{"10EC5645", "cht-bsw-rt5645", "intel/fw_sst_22a8.bin", "cht-bsw", NULL,
+ 						&chv_platform_data },
+ 	{"10EC5650", "cht-bsw-rt5645", "intel/fw_sst_22a8.bin", "cht-bsw", NULL,

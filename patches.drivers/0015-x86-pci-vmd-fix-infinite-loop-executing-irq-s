@@ -1,0 +1,69 @@
+From: Keith Busch <keith.busch@intel.com>
+Date: Tue, 23 Aug 2016 16:36:42 -0500
+Subject: x86/PCI: VMD: Fix infinite loop executing irq's
+Git-commit: 21c80c9fefc3db10b530a96eb0478c29eb28bf77
+Patch-mainline: v4.8-rc4
+References: bsc#1006827
+
+We can't initialize the list head on deletion as this causes the node to
+point to itself, which causes an infinite loop if vmd_irq() happens to be
+servicing that node.
+
+The list initialization was trying to fix a bug from multiple calls to
+disable the same IRQ.  Fix this instead by having the VMD driver track if
+the interrupt is enabled.
+
+[bhelgaas: changelog, add "Fixes"]
+Fixes: 97e923063575 ("x86/PCI: VMD: Initialize list item in IRQ disable")
+Reported-by: Grzegorz Koczot <grzegorz.koczot@intel.com>
+Tested-by: Miroslaw Drost <miroslaw.drost@intel.com>
+Signed-off-by: Keith Busch <keith.busch@intel.com>
+Signed-off-by: Bjorn Helgaas <bhelgaas@google.com>
+Acked-by Jon Derrick: <jonathan.derrick@intel.com>
+
+Acked-by: Joerg Roedel <jroedel@suse.de>
+---
+ arch/x86/pci/vmd.c | 10 ++++++++--
+ 1 file changed, 8 insertions(+), 2 deletions(-)
+
+--- a/arch/x86/pci/vmd.c
++++ b/arch/x86/pci/vmd.c
+@@ -41,6 +41,7 @@ static DEFINE_RAW_SPINLOCK(list_lock);
+  * @node:	list item for parent traversal.
+  * @rcu:	RCU callback item for freeing.
+  * @irq:	back pointer to parent.
++ * @enabled:	true if driver enabled IRQ
+  * @virq:	the virtual IRQ value provided to the requesting driver.
+  *
+  * Every MSI/MSI-X IRQ requested for a device in a VMD domain will be mapped to
+@@ -50,6 +51,7 @@ struct vmd_irq {
+ 	struct list_head	node;
+ 	struct rcu_head		rcu;
+ 	struct vmd_irq_list	*irq;
++	bool			enabled;
+ 	unsigned int		virq;
+ };
+ 
+@@ -122,7 +124,9 @@ static void vmd_irq_enable(struct irq_da
+ 	unsigned long flags;
+ 
+ 	raw_spin_lock_irqsave(&list_lock, flags);
++	WARN_ON(vmdirq->enabled);
+ 	list_add_tail_rcu(&vmdirq->node, &vmdirq->irq->irq_list);
++	vmdirq->enabled = true;
+ 	raw_spin_unlock_irqrestore(&list_lock, flags);
+ 
+ 	data->chip->irq_unmask(data);
+@@ -136,8 +140,10 @@ static void vmd_irq_disable(struct irq_d
+ 	data->chip->irq_mask(data);
+ 
+ 	raw_spin_lock_irqsave(&list_lock, flags);
+-	list_del_rcu(&vmdirq->node);
+-	INIT_LIST_HEAD_RCU(&vmdirq->node);
++	if (vmdirq->enabled) {
++		list_del_rcu(&vmdirq->node);
++		vmdirq->enabled = false;
++	}
+ 	raw_spin_unlock_irqrestore(&list_lock, flags);
+ }
+ 

@@ -1,0 +1,29 @@
+From: Keith Busch <keith.busch@intel.com>
+Date: Mon, 20 Jun 2016 09:39:52 -0600
+Subject: x86/PCI: VMD: Use x86_vector_domain as parent domain
+Git-commit: e382dffc904d14cb6e2c31e2eefebdca41343943
+Patch-mainline: v4.8-rc1
+References: bsc#1006827
+
+Otherwise APIC code assumes VMD's IRQ domain can be managed by the APIC,
+resulting in an invalid cast of irq_data during irq_force_complete_move().
+
+Signed-off-by: Jon Derrick <jonathan.derrick@intel.com>
+Signed-off-by: Keith Busch <keith.busch@intel.com>
+Signed-off-by: Bjorn Helgaas <bhelgaas@google.com>
+Acked-by: Joerg Roedel <jroedel@suse.de>
+---
+ arch/x86/pci/vmd.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+--- a/arch/x86/pci/vmd.c
++++ b/arch/x86/pci/vmd.c
+@@ -599,7 +599,7 @@ static int vmd_enable_domain(struct vmd_
+ 	sd->node = pcibus_to_node(vmd->dev->bus);
+ 
+ 	vmd->irq_domain = pci_msi_create_irq_domain(NULL, &vmd_msi_domain_info,
+-						    NULL);
++						    x86_vector_domain);
+ 	if (!vmd->irq_domain)
+ 		return -ENODEV;
+ 

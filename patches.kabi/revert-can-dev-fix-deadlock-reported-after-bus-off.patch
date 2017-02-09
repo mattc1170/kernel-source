@@ -1,0 +1,140 @@
+From: Jiri Slaby <jslaby@suse.cz>
+Date: Mon, 10 Oct 2016 10:03:23 +0200
+Subject: Revert "can: dev: fix deadlock reported after bus-off"
+Patch-mainline: never, kabi
+
+This reverts commit 7677956e4094595732df548681ea9c4d66821bdb, upstream
+commit 9abefcb1aaa58b9d5aa40a8bb12c87d02415e4c8. It adds net_device to
+struct can_priv and changes restart_timer to restart_work.  It changed
+the layout of that structure and breaks kABI.
+
+The structure is inlined to can driver's private structures.
+Therefore, we cannot ignore the change by __GENKSYMS__ et al. So
+instead revert this and wait if somebody can come up with a work
+around.
+
+Signed-off-by: Jiri Slaby <jslaby@suse.cz>
+---
+ drivers/net/can/dev.c   | 27 ++++++++++-----------------
+ include/linux/can/dev.h |  3 +--
+ 2 files changed, 11 insertions(+), 19 deletions(-)
+
+diff --git a/drivers/net/can/dev.c b/drivers/net/can/dev.c
+index eab132778e67..ad535a854e5c 100644
+--- a/drivers/net/can/dev.c
++++ b/drivers/net/can/dev.c
+@@ -21,7 +21,6 @@
+ #include <linux/slab.h>
+ #include <linux/netdevice.h>
+ #include <linux/if_arp.h>
+-#include <linux/workqueue.h>
+ #include <linux/can.h>
+ #include <linux/can/dev.h>
+ #include <linux/can/skb.h>
+@@ -472,8 +471,9 @@ EXPORT_SYMBOL_GPL(can_free_echo_skb);
+ /*
+  * CAN device restart for bus-off recovery
+  */
+-static void can_restart(struct net_device *dev)
++static void can_restart(unsigned long data)
+ {
++	struct net_device *dev = (struct net_device *)data;
+ 	struct can_priv *priv = netdev_priv(dev);
+ 	struct net_device_stats *stats = &dev->stats;
+ 	struct sk_buff *skb;
+@@ -513,14 +513,6 @@ restart:
+ 		netdev_err(dev, "Error %d during restart", err);
+ }
+ 
+-static void can_restart_work(struct work_struct *work)
+-{
+-	struct delayed_work *dwork = to_delayed_work(work);
+-	struct can_priv *priv = container_of(dwork, struct can_priv, restart_work);
+-
+-	can_restart(priv->dev);
+-}
+-
+ int can_restart_now(struct net_device *dev)
+ {
+ 	struct can_priv *priv = netdev_priv(dev);
+@@ -534,8 +526,8 @@ int can_restart_now(struct net_device *dev)
+ 	if (priv->state != CAN_STATE_BUS_OFF)
+ 		return -EBUSY;
+ 
+-	cancel_delayed_work_sync(&priv->restart_work);
+-	can_restart(dev);
++	/* Runs as soon as possible in the timer context */
++	mod_timer(&priv->restart_timer, jiffies);
+ 
+ 	return 0;
+ }
+@@ -556,8 +548,8 @@ void can_bus_off(struct net_device *dev)
+ 	netif_carrier_off(dev);
+ 
+ 	if (priv->restart_ms)
+-		schedule_delayed_work(&priv->restart_work,
+-				      msecs_to_jiffies(priv->restart_ms));
++		mod_timer(&priv->restart_timer,
++			  jiffies + (priv->restart_ms * HZ) / 1000);
+ }
+ EXPORT_SYMBOL_GPL(can_bus_off);
+ 
+@@ -666,7 +658,6 @@ struct net_device *alloc_candev(int sizeof_priv, unsigned int echo_skb_max)
+ 		return NULL;
+ 
+ 	priv = netdev_priv(dev);
+-	priv->dev = dev;
+ 
+ 	if (echo_skb_max) {
+ 		priv->echo_skb_max = echo_skb_max;
+@@ -676,7 +667,7 @@ struct net_device *alloc_candev(int sizeof_priv, unsigned int echo_skb_max)
+ 
+ 	priv->state = CAN_STATE_STOPPED;
+ 
+-	INIT_DELAYED_WORK(&priv->restart_work, can_restart_work);
++	init_timer(&priv->restart_timer);
+ 
+ 	return dev;
+ }
+@@ -757,6 +748,8 @@ int open_candev(struct net_device *dev)
+ 	if (!netif_carrier_ok(dev))
+ 		netif_carrier_on(dev);
+ 
++	setup_timer(&priv->restart_timer, can_restart, (unsigned long)dev);
++
+ 	return 0;
+ }
+ EXPORT_SYMBOL_GPL(open_candev);
+@@ -771,7 +764,7 @@ void close_candev(struct net_device *dev)
+ {
+ 	struct can_priv *priv = netdev_priv(dev);
+ 
+-	cancel_delayed_work_sync(&priv->restart_work);
++	del_timer_sync(&priv->restart_timer);
+ 	can_flush_echo_skb(dev);
+ }
+ EXPORT_SYMBOL_GPL(close_candev);
+diff --git a/include/linux/can/dev.h b/include/linux/can/dev.h
+index 5f5270941ba0..5261751f6bd4 100644
+--- a/include/linux/can/dev.h
++++ b/include/linux/can/dev.h
+@@ -32,7 +32,6 @@ enum can_mode {
+  * CAN common private data
+  */
+ struct can_priv {
+-	struct net_device *dev;
+ 	struct can_device_stats can_stats;
+ 
+ 	struct can_bittiming bittiming, data_bittiming;
+@@ -48,7 +47,7 @@ struct can_priv {
+ 	u32 ctrlmode_static;	/* static enabled options for driver/hardware */
+ 
+ 	int restart_ms;
+-	struct delayed_work restart_work;
++	struct timer_list restart_timer;
+ 
+ 	int (*do_set_bittiming)(struct net_device *dev);
+ 	int (*do_set_data_bittiming)(struct net_device *dev);
+-- 
+2.10.1
+

@@ -3,7 +3,8 @@ From: Ard Biesheuvel <ard.biesheuvel@linaro.org>
 Date: Thu, 10 Mar 2016 12:40:04 +0700
 Subject: [PATCH 4/7] efi/x86: efifb: move DMI based quirks handling out of
  generic code
-Patch-mainline: Submitted, https://lkml.kernel.org/r/1457588408-19309-5-git-send-email-ard.biesheuvel@linaro.org
+Patch-mainline: v4.7-rc1
+Git-commit: 21289ec02b41c4b928a0b3de1778b325d714eea3
 References: bnc#974215
 
 The efifb quirks handling based on DMI identification of the platform is

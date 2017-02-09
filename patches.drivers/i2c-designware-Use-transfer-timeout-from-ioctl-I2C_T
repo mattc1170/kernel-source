@@ -1,0 +1,35 @@
+From d0bcd8df9aea2bcdbfcb074d408bdc7136031bc5 Mon Sep 17 00:00:00 2001
+From: Weifeng Voon <weifeng.voon@intel.com>
+Date: Fri, 17 Jun 2016 09:46:35 +0800
+Subject: [PATCH] i2c: designware: Use transfer timeout from ioctl I2C_TIMEOUT
+Mime-version: 1.0
+Content-type: text/plain; charset=UTF-8
+Content-transfer-encoding: 8bit
+Git-commit: d0bcd8df9aea2bcdbfcb074d408bdc7136031bc5
+Patch-mainline: 4.8-rc1
+References: bsc#1011913
+
+This allows applications to set the transfer timeout in 10ms increments via
+ioctl I2C_TIMEOUT.
+
+Signed-off-by: Weifeng Voon <weifeng.voon@intel.com>
+Acked-by: Jarkko Nikula <jarkko.nikula@linux.intel.com>
+Acked-by: Uwe Kleine-König <u.kleine-koenig@pengutronix.de>
+Signed-off-by: Wolfram Sang <wsa@the-dreams.de>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/i2c/busses/i2c-designware-core.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+--- a/drivers/i2c/busses/i2c-designware-core.c
++++ b/drivers/i2c/busses/i2c-designware-core.c
+@@ -656,7 +656,7 @@ i2c_dw_xfer(struct i2c_adapter *adap, st
+ 	i2c_dw_xfer_init(dev);
+ 
+ 	/* wait for tx to complete */
+-	if (!wait_for_completion_timeout(&dev->cmd_complete, HZ)) {
++	if (!wait_for_completion_timeout(&dev->cmd_complete, adap->timeout)) {
+ 		dev_err(dev->dev, "controller timed out\n");
+ 		/* i2c_dw_init implicitly disables the adapter */
+ 		i2c_dw_init(dev);

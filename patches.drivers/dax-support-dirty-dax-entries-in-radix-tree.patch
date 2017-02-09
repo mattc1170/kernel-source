@@ -47,22 +47,20 @@ Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 Signed-off-by: Linus Torvalds <torvalds@linux-foundation.org>
 Acked-by: Jeff Mahoney <jeffm@suse.com>
 ---
- fs/block_dev.c             |  2 +-
- fs/inode.c                 |  2 +-
- include/linux/dax.h        |  5 ++++
- include/linux/fs.h         |  3 +-
- include/linux/radix-tree.h |  9 ++++++
- mm/filemap.c               | 17 ++++++++----
- mm/truncate.c              | 69 ++++++++++++++++++++++++++--------------------
- mm/vmscan.c                |  9 +++++-
- mm/workingset.c            |  4 +--
+ fs/block_dev.c             |    2 -
+ fs/inode.c                 |    2 -
+ include/linux/dax.h        |    5 +++
+ include/linux/fs.h         |    3 +
+ include/linux/radix-tree.h |    9 +++++
+ mm/filemap.c               |   17 +++++++----
+ mm/truncate.c              |   69 +++++++++++++++++++++++++--------------------
+ mm/vmscan.c                |    9 +++++
+ mm/workingset.c            |    4 +-
  9 files changed, 78 insertions(+), 42 deletions(-)
 
-diff --git a/fs/block_dev.c b/fs/block_dev.c
-index ba762ea..60895e5 100644
 --- a/fs/block_dev.c
 +++ b/fs/block_dev.c
-@@ -75,7 +75,7 @@ void kill_bdev(struct block_device *bdev)
+@@ -75,7 +75,7 @@ void kill_bdev(struct block_device *bdev
  {
  	struct address_space *mapping = bdev->bd_inode->i_mapping;
  
@@ -71,8 +69,6 @@ index ba762ea..60895e5 100644
  		return;
  
  	invalidate_bh_lrus();
-diff --git a/fs/inode.c b/fs/inode.c
-index e491e54..1e6dd38 100644
 --- a/fs/inode.c
 +++ b/fs/inode.c
 @@ -495,7 +495,7 @@ void clear_inode(struct inode *inode)
@@ -84,11 +80,9 @@ index e491e54..1e6dd38 100644
  	spin_unlock_irq(&inode->i_data.tree_lock);
  	BUG_ON(!list_empty(&inode->i_data.private_list));
  	BUG_ON(!(inode->i_state & I_FREEING));
-diff --git a/include/linux/dax.h b/include/linux/dax.h
-index b415e52..e9d57f68 100644
 --- a/include/linux/dax.h
 +++ b/include/linux/dax.h
-@@ -36,4 +36,9 @@ static inline bool vma_is_dax(struct vm_area_struct *vma)
+@@ -36,4 +36,9 @@ static inline bool vma_is_dax(struct vm_
  {
  	return vma->vm_file && IS_DAX(vma->vm_file->f_mapping->host);
  }
@@ -98,8 +92,6 @@ index b415e52..e9d57f68 100644
 +	return mapping->host && IS_DAX(mapping->host);
 +}
  #endif
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index eb73d74..0d75703 100644
 --- a/include/linux/fs.h
 +++ b/include/linux/fs.h
 @@ -433,7 +433,8 @@ struct address_space {
@@ -112,8 +104,6 @@ index eb73d74..0d75703 100644
  	pgoff_t			writeback_index;/* writeback starts here */
  	const struct address_space_operations *a_ops;	/* methods */
  	unsigned long		flags;		/* error bits/gfp mask */
-diff --git a/include/linux/radix-tree.h b/include/linux/radix-tree.h
-index 57e7d87..7c88ad1 100644
 --- a/include/linux/radix-tree.h
 +++ b/include/linux/radix-tree.h
 @@ -51,6 +51,15 @@
@@ -132,8 +122,6 @@ index 57e7d87..7c88ad1 100644
  static inline int radix_tree_is_indirect_ptr(void *ptr)
  {
  	return (int)((unsigned long)ptr & RADIX_TREE_INDIRECT_PTR);
-diff --git a/mm/filemap.c b/mm/filemap.c
-index 847ee43..7b8be78 100644
 --- a/mm/filemap.c
 +++ b/mm/filemap.c
 @@ -11,6 +11,7 @@
@@ -144,19 +132,7 @@ index 847ee43..7b8be78 100644
  #include <linux/fs.h>
  #include <linux/uaccess.h>
  #include <linux/capability.h>
-@@ -123,9 +124,9 @@ static void page_cache_tree_delete(struct address_space *mapping,
- 	__radix_tree_lookup(&mapping->page_tree, page->index, &node, &slot);
- 
- 	if (shadow) {
--		mapping->nrshadows++;
-+		mapping->nrexceptional++;
- 		/*
--		 * Make sure the nrshadows update is committed before
-+		 * Make sure the nrexceptional update is committed before
- 		 * the nrpages update so that final truncate racing
- 		 * with reclaim does not see both counters 0 at the
- 		 * same time and miss a shadow entry.
-@@ -579,9 +580,13 @@ static int page_cache_tree_insert(struct address_space *mapping,
+@@ -126,9 +127,13 @@ static int page_cache_tree_insert(struct
  		p = radix_tree_deref_slot_protected(slot, &mapping->tree_lock);
  		if (!radix_tree_exceptional_entry(p))
  			return -EEXIST;
@@ -171,7 +147,19 @@ index 847ee43..7b8be78 100644
  		if (node)
  			workingset_node_shadows_dec(node);
  	}
-@@ -1245,9 +1250,9 @@ repeat:
+@@ -173,9 +178,9 @@ static void page_cache_tree_delete(struc
+ 	}
+ 
+ 	if (shadow) {
+-		mapping->nrshadows++;
++		mapping->nrexceptional++;
+ 		/*
+-		 * Make sure the nrshadows update is committed before
++		 * Make sure the nrexceptional update is committed before
+ 		 * the nrpages update so that final truncate racing
+ 		 * with reclaim does not see both counters 0 at the
+ 		 * same time and miss a shadow entry.
+@@ -1269,9 +1274,9 @@ repeat:
  			if (radix_tree_deref_retry(page))
  				goto restart;
  			/*
@@ -184,8 +172,6 @@ index 847ee43..7b8be78 100644
  			 */
  			goto export;
  		}
-diff --git a/mm/truncate.c b/mm/truncate.c
-index 76e35ad..e3ee0e2 100644
 --- a/mm/truncate.c
 +++ b/mm/truncate.c
 @@ -9,6 +9,7 @@
@@ -196,7 +182,7 @@ index 76e35ad..e3ee0e2 100644
  #include <linux/gfp.h>
  #include <linux/mm.h>
  #include <linux/swap.h>
-@@ -34,31 +35,39 @@ static void clear_exceptional_entry(struct address_space *mapping,
+@@ -34,31 +35,39 @@ static void clear_exceptional_entry(stru
  		return;
  
  	spin_lock_irq(&mapping->tree_lock);
@@ -261,7 +247,7 @@ index 76e35ad..e3ee0e2 100644
  unlock:
  	spin_unlock_irq(&mapping->tree_lock);
  }
-@@ -228,7 +237,7 @@ void truncate_inode_pages_range(struct address_space *mapping,
+@@ -228,7 +237,7 @@ void truncate_inode_pages_range(struct a
  	int		i;
  
  	cleancache_invalidate_inode(mapping);
@@ -279,7 +265,7 @@ index 76e35ad..e3ee0e2 100644
  	unsigned long nrpages;
  
  	/*
-@@ -416,14 +425,14 @@ void truncate_inode_pages_final(struct address_space *mapping)
+@@ -416,14 +425,14 @@ void truncate_inode_pages_final(struct a
  
  	/*
  	 * When reclaim installs eviction entries, it increases
@@ -297,8 +283,6 @@ index 76e35ad..e3ee0e2 100644
  		/*
  		 * As truncation uses a lockless tree lookup, cycle
  		 * the tree lock to make sure any ongoing tree
-diff --git a/mm/vmscan.c b/mm/vmscan.c
-index bd620b6..eb3dd37 100644
 --- a/mm/vmscan.c
 +++ b/mm/vmscan.c
 @@ -46,6 +46,7 @@
@@ -309,7 +293,7 @@ index bd620b6..eb3dd37 100644
  
  #include <asm/tlbflush.h>
  #include <asm/div64.h>
-@@ -671,9 +672,15 @@ static int __remove_mapping(struct address_space *mapping, struct page *page,
+@@ -675,9 +676,15 @@ static int __remove_mapping(struct addre
  		 * inode reclaim needs to empty out the radix tree or
  		 * the nodes are lost.  Don't plant shadows behind its
  		 * back.
@@ -326,20 +310,16 @@ index bd620b6..eb3dd37 100644
  			shadow = workingset_eviction(mapping, page);
  		__delete_from_page_cache(page, shadow, memcg);
  		spin_unlock_irqrestore(&mapping->tree_lock, flags);
-diff --git a/mm/workingset.c b/mm/workingset.c
-index aa01713..61ead9e 100644
 --- a/mm/workingset.c
 +++ b/mm/workingset.c
-@@ -351,8 +351,8 @@ static enum lru_status shadow_lru_isolate(struct list_head *item,
+@@ -349,8 +349,8 @@ static enum lru_status shadow_lru_isolat
+ 			BUG_ON(!radix_tree_exceptional_entry(node->slots[i]));
  			node->slots[i] = NULL;
- 			BUG_ON(node->count < (1U << RADIX_TREE_COUNT_SHIFT));
- 			node->count -= 1U << RADIX_TREE_COUNT_SHIFT;
+ 			workingset_node_shadows_dec(node);
 -			BUG_ON(!mapping->nrshadows);
 -			mapping->nrshadows--;
 +			BUG_ON(!mapping->nrexceptional);
 +			mapping->nrexceptional--;
  		}
  	}
- 	BUG_ON(node->count);
-
-
+ 	BUG_ON(workingset_node_shadows(node));

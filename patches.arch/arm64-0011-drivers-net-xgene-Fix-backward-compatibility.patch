@@ -2,8 +2,7 @@ From: Iyappan Subramanian <isubramanian@apm.com>
 Date: Fri, 12 Aug 2016 22:05:47 -0700
 Subject: drivers: net: xgene: Fix backward compatibility
 Git-commit: 03377e381bf48d7aaa797577789551b04bce7006
-Patch-mainline: Queued
-Git-repo: git://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git
+Patch-mainline: v4.9-rc1
 References: bsc#993051
 
 This patch fixes the backward compatibility on handling phy_connect(), by

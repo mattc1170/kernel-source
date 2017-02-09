@@ -1,0 +1,77 @@
+From: Rodrigo Vivi <rodrigo.vivi@intel.com>
+Date: Tue, 5 Jan 2016 11:18:55 -0800
+Subject: [PATCH] drm/i915: Cleaning up DDI translation tables
+Mime-version: 1.0
+Content-type: text/plain; charset=UTF-8
+Content-transfer-encoding: 8bit
+Git-commit: d7097cffdbc06e7d1c71bfc53151160237241f48
+References: bsc#1014392
+Patch-mainline: 4.6-rc1
+
+No functional changes.
+
+That state the obvious and just duplicate the place we
+need to change whenever the table is updated. So let's clean it.
+
+Cc: Ville Syrjälä <ville.syrjala@linux.intel.com>
+Signed-off-by: Rodrigo Vivi <rodrigo.vivi@intel.com>
+Reviewed-by: Ville Syrjälä <ville.syrjala@linux.intel.com>
+Link: http://patchwork.freedesktop.org/patch/msgid/1452021535-22641-1-git-send-email-rodrigo.vivi@intel.com
+Signed-off-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/gpu/drm/i915/intel_ddi.c |   22 +++++++++++-----------
+ 1 file changed, 11 insertions(+), 11 deletions(-)
+
+--- a/drivers/gpu/drm/i915/intel_ddi.c
++++ b/drivers/gpu/drm/i915/intel_ddi.c
+@@ -133,12 +133,12 @@ static const struct ddi_buf_trans skl_dd
+ 	{ 0x00002016, 0x000000A0, 0x0 },
+ 	{ 0x00005012, 0x0000009B, 0x0 },
+ 	{ 0x00007011, 0x00000088, 0x0 },
+-	{ 0x80009010, 0x000000C0, 0x1 },	/* Uses I_boost level 0x1 */
++	{ 0x80009010, 0x000000C0, 0x1 },
+ 	{ 0x00002016, 0x0000009B, 0x0 },
+ 	{ 0x00005012, 0x00000088, 0x0 },
+-	{ 0x80007011, 0x000000C0, 0x1 },	/* Uses I_boost level 0x1 */
++	{ 0x80007011, 0x000000C0, 0x1 },
+ 	{ 0x00002016, 0x000000DF, 0x0 },
+-	{ 0x80005012, 0x000000C0, 0x1 },	/* Uses I_boost level 0x1 */
++	{ 0x80005012, 0x000000C0, 0x1 },
+ };
+ 
+ /* Skylake U */
+@@ -146,12 +146,12 @@ static const struct ddi_buf_trans skl_u_
+ 	{ 0x0000201B, 0x000000A2, 0x0 },
+ 	{ 0x00005012, 0x00000088, 0x0 },
+ 	{ 0x80007011, 0x000000CD, 0x0 },
+-	{ 0x80009010, 0x000000C0, 0x1 },	/* Uses I_boost level 0x1 */
++	{ 0x80009010, 0x000000C0, 0x1 },
+ 	{ 0x0000201B, 0x0000009D, 0x0 },
+-	{ 0x80005012, 0x000000C0, 0x1 },	/* Uses I_boost level 0x1 */
+-	{ 0x80007011, 0x000000C0, 0x1 },	/* Uses I_boost level 0x1 */
++	{ 0x80005012, 0x000000C0, 0x1 },
++	{ 0x80007011, 0x000000C0, 0x1 },
+ 	{ 0x00002016, 0x00000088, 0x0 },
+-	{ 0x80005012, 0x000000C0, 0x1 },	/* Uses I_boost level 0x1 */
++	{ 0x80005012, 0x000000C0, 0x1 },
+ };
+ 
+ /* Skylake Y */
+@@ -159,12 +159,12 @@ static const struct ddi_buf_trans skl_y_
+ 	{ 0x00000018, 0x000000A2, 0x0 },
+ 	{ 0x00005012, 0x00000088, 0x0 },
+ 	{ 0x80007011, 0x000000CD, 0x0 },
+-	{ 0x80009010, 0x000000C0, 0x3 },	/* Uses I_boost level 0x3 */
++	{ 0x80009010, 0x000000C0, 0x3 },
+ 	{ 0x00000018, 0x0000009D, 0x0 },
+-	{ 0x80005012, 0x000000C0, 0x3 },	/* Uses I_boost level 0x3 */
+-	{ 0x80007011, 0x000000C0, 0x3 },	/* Uses I_boost level 0x3 */
++	{ 0x80005012, 0x000000C0, 0x3 },
++	{ 0x80007011, 0x000000C0, 0x3 },
+ 	{ 0x00000018, 0x00000088, 0x0 },
+-	{ 0x80005012, 0x000000C0, 0x3 },	/* Uses I_boost level 0x3 */
++	{ 0x80005012, 0x000000C0, 0x3 },
+ };
+ 
+ /*

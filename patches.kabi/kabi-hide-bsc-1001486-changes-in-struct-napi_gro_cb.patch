@@ -1,0 +1,42 @@
+From: Michal Kubecek <mkubecek@suse.cz>
+Date: Mon, 31 Oct 2016 13:46:23 +0100
+Subject: kabi: hide bsc#1001486 changes in struct napi_gro_cb
+Patch-mainline: Never, kabi workaround
+References: bsc#1001486
+
+Backported fixes for bsc#1001486 (mainline commits a0ca153f98db and
+fcd91dd44986) insert two bitfields into a hole in struct napi_gro_cb.
+Hide these from genksyms and switch their order so that
+recursion_counter is in the same place as after the preliminary version
+of CVE-2016-7039.
+
+Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
+---
+ include/linux/netdevice.h | 8 +++++---
+ 1 file changed, 5 insertions(+), 3 deletions(-)
+
+diff --git a/include/linux/netdevice.h b/include/linux/netdevice.h
+index 47b14bf55cd3..5a9a15dc84a8 100644
+--- a/include/linux/netdevice.h
++++ b/include/linux/netdevice.h
+@@ -2079,12 +2079,14 @@ struct napi_gro_cb {
+ 	/* Used in foo-over-udp, set in udp[46]_gro_receive */
+ 	u8	is_ipv6:1;
+ 
+-	/* Used in GRE, set in fou/gue_gro_receive */
+-	u8	is_fou:1;
+-
++#ifndef __GENKSYMS__
+ 	/* Number of gro_receive callbacks this packet already went through */
+ 	u8 recursion_counter:4;
+ 
++	/* Used in GRE, set in fou/gue_gro_receive */
++	u8	is_fou:1;
++#endif
++
+ 	/* 2 bit hole */
+ 
+ 	/* used to support CHECKSUM_COMPLETE for tunneling protocols */
+-- 
+2.10.1
+

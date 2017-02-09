@@ -1,0 +1,41 @@
+From: Pierre-Louis Bossart <pierre-louis.bossart@linux.intel.com>
+Date: Tue, 2 Feb 2016 12:49:49 -0600
+Subject: [PATCH 40/82] ASoC: Intel: Atom: fix regression on compress DAI
+Mime-version: 1.0
+Content-type: text/plain; charset=UTF-8
+Content-transfer-encoding: 8bit
+Git-commit: 292d4200a90715ac29f3763df27adb38a243868c
+Patch-mainline: 4.5-rc4
+References: bsc#1010690
+
+Commit a106804 ("ASoC: compress: Fix compress device direction check")
+added a dependency on the compress-cpu-dai channel_min field
+which was removed earlier by commit 77095796
+("asoc: Intel: Atom: clean-up compressed DAI definition")
+as part of the baytrail cleanups.
+
+The net result was a regression at probe on all Atom platforms
+with no sound card created.
+
+Fix by adding explicit initialization for channel_min to 1
+for the compress-cpu-dai.
+
+Reported-by: Tobias Mädel <alsa-devel@tbspace.de>
+Signed-off-by: Pierre-Louis Bossart <pierre-louis.bossart@linux.intel.com>
+Signed-off-by: Mark Brown <broonie@kernel.org>
+Signed-off-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ sound/soc/intel/atom/sst-mfld-platform-pcm.c |    1 +
+ 1 file changed, 1 insertion(+)
+
+--- a/sound/soc/intel/atom/sst-mfld-platform-pcm.c
++++ b/sound/soc/intel/atom/sst-mfld-platform-pcm.c
+@@ -528,6 +528,7 @@ static struct snd_soc_dai_driver sst_pla
+ 	.ops = &sst_compr_dai_ops,
+ 	.playback = {
+ 		.stream_name = "Compress Playback",
++		.channels_min = 1,
+ 	},
+ },
+ /* BE CPU  Dais */

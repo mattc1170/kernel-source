@@ -1,0 +1,53 @@
+From: Imre Deak <imre.deak@intel.com>
+Date: Tue, 3 May 2016 15:54:20 +0300
+Subject: [PATCH] drm/i915: Clean up L3 SQC register field definitions
+Mime-version: 1.0
+Content-type: text/plain; charset=UTF-8
+Content-transfer-encoding: 8bit
+Patch-mainline: 4.8-rc1
+Git-commit: 36579cb63b87b7a4406b9b19c8ff376ca701083b
+References: bsc#1014392
+
+No need for hard-coding the register value, the corresponding fields are
+defined properly in BSpec.
+
+No functional change.
+
+V2: 
+- Rebased on BXT L3 SQC tuning patch merged meanwhile.
+
+Cc: Ville Syrjälä <ville.syrjala@linux.intel.com>
+Signed-off-by: Imre Deak <imre.deak@intel.com>
+Reviewed-by: Ville Syrjälä <ville.syrjala@linux.intel.com> (v1)
+Link: http://patchwork.freedesktop.org/patch/msgid/1462280061-1457-3-git-send-email-imre.deak@intel.com
+Signed-off-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/gpu/drm/i915/i915_reg.h |    3 ++-
+ drivers/gpu/drm/i915/intel_pm.c |    3 ++-
+ 2 files changed, 4 insertions(+), 2 deletions(-)
+
+--- a/drivers/gpu/drm/i915/i915_reg.h
++++ b/drivers/gpu/drm/i915/i915_reg.h
+@@ -5938,7 +5938,8 @@ enum skl_disp_power_wells {
+ #define  VLV_B0_WA_L3SQCREG1_VALUE		0x00D30000
+ 
+ #define GEN8_L3SQCREG1				0xB100
+-#define  BDW_WA_L3SQCREG1_DEFAULT		0x784000
++#define  L3_GENERAL_PRIO_CREDITS(x)		(((x) >> 1) << 19)
++#define  L3_HIGH_PRIO_CREDITS(x)		(((x) >> 1) << 14)
+ 
+ #define GEN7_L3CNTLREG1				0xB01C
+ #define  GEN7_WA_FOR_GEN7_L3_CONTROL			0x3C47FF8C
+--- a/drivers/gpu/drm/i915/intel_pm.c
++++ b/drivers/gpu/drm/i915/intel_pm.c
+@@ -6618,7 +6618,8 @@ static void broadwell_init_clock_gating(
+ 	 */
+ 	misccpctl = I915_READ(GEN7_MISCCPCTL);
+ 	I915_WRITE(GEN7_MISCCPCTL, misccpctl & ~GEN7_DOP_CLOCK_GATE_ENABLE);
+-	I915_WRITE(GEN8_L3SQCREG1, BDW_WA_L3SQCREG1_DEFAULT);
++	I915_WRITE(GEN8_L3SQCREG1, L3_GENERAL_PRIO_CREDITS(30) |
++				   L3_HIGH_PRIO_CREDITS(2));
+ 	/*
+ 	 * Wait at least 100 clocks before re-enabling clock gating. See
+ 	 * the definition of L3SQCREG1 in BSpec.

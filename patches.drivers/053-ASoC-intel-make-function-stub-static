@@ -1,0 +1,37 @@
+From: Randy Dunlap <rdunlap@infradead.org>
+Date: Fri, 20 May 2016 08:38:54 -0700
+Subject: [PATCH 53/82] ASoC: intel: make function stub static
+Git-commit: 2d0b29dca8d6fe49a73cfc16888c1d2e55111d7b
+Patch-mainline: 4.8-rc1
+References: bsc#1010690
+
+This function stub should have been 'static' in the original patch
+so that multiple uses of the header file (in different drivers)
+will not cause multiple function definitions.
+
+Sound/soc/intel/boards/built-in.o: In function `sst_acpi_find_name_from_hid':
+(.text+0x560): multiple definition of `sst_acpi_find_name_from_hid'
+sound/soc/intel/atom/built-in.o:(.text+0x10610): first defined here
+../scripts/Makefile.build:369: recipe for target 'sound/soc/intel/built-in.o' failed
+
+Fixes: f17131a93f43: add function stub when ACPI is not enabled
+
+Signed-off-by: Randy Dunlap <rdunlap@infradead.org>
+Signed-off-by: Mark Brown <broonie@kernel.org>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ sound/soc/intel/common/sst-acpi.h |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+--- a/sound/soc/intel/common/sst-acpi.h
++++ b/sound/soc/intel/common/sst-acpi.h
+@@ -20,7 +20,7 @@
+ #if IS_ENABLED(CONFIG_ACPI)
+ const char *sst_acpi_find_name_from_hid(const u8 hid[ACPI_ID_LEN]);
+ #else
+-inline const char *sst_acpi_find_name_from_hid(const u8 hid[ACPI_ID_LEN])
++static inline const char *sst_acpi_find_name_from_hid(const u8 hid[ACPI_ID_LEN])
+ {
+ 	return NULL;
+ }

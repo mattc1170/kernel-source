@@ -3,7 +3,7 @@ Date: Fri, 29 Jan 2016 16:29:57 +0800
 Subject: perf/x86/msr: Add AMD IRPERF (Instructions Retired) performance
  counter
 Git-commit: aaf248848db503927644d28e239bc399ed45959f
-Patch-mainline: v3.20-rc1
+Patch-mainline: v4.7-rc1
 References: fate#320473
 
 AMD Zeppelin (Family 17h, Model 00h) introduces an instructions

@@ -13,14 +13,12 @@ Signed-off-by: Matias Bjørling <m@bjorling.me>
 Signed-off-by: Jens Axboe <axboe@fb.com>
 Signed-off-by: Coly Li <colyli@suse.de>
 ---
- drivers/lightnvm/core.c   | 3 ++-
- drivers/lightnvm/gennvm.c | 6 +++---
- drivers/lightnvm/rrpc.c   | 2 +-
- include/linux/lightnvm.h  | 4 +++-
+ drivers/lightnvm/core.c   |    3 ++-
+ drivers/lightnvm/gennvm.c |    6 +++---
+ drivers/lightnvm/rrpc.c   |    2 +-
+ include/linux/lightnvm.h  |    4 +++-
  4 files changed, 9 insertions(+), 6 deletions(-)
 
-diff --git a/drivers/lightnvm/core.c b/drivers/lightnvm/core.c
-index cd674af..dad84dd 100644
 --- a/drivers/lightnvm/core.c
 +++ b/drivers/lightnvm/core.c
 @@ -291,7 +291,8 @@ EXPORT_SYMBOL(nvm_erase_ppa);
@@ -33,11 +31,9 @@ index cd674af..dad84dd 100644
  }
  EXPORT_SYMBOL(nvm_end_io);
  
-diff --git a/drivers/lightnvm/gennvm.c b/drivers/lightnvm/gennvm.c
-index 262da6d..4c15846 100644
 --- a/drivers/lightnvm/gennvm.c
 +++ b/drivers/lightnvm/gennvm.c
-@@ -363,11 +363,11 @@ static void gennvm_mark_blk_bad(struct nvm_dev *dev, struct nvm_rq *rqd)
+@@ -363,11 +363,11 @@ static void gennvm_mark_blk_bad(struct n
  		gennvm_blk_set_type(dev, &rqd->ppa_addr, 2);
  }
  
@@ -51,7 +47,7 @@ index 262da6d..4c15846 100644
  	case NVM_RSP_SUCCESS:
  	case NVM_RSP_ERR_EMPTYPAGE:
  		break;
-@@ -375,7 +375,7 @@ static void gennvm_end_io(struct nvm_rq *rqd, int error)
+@@ -375,7 +375,7 @@ static void gennvm_end_io(struct nvm_rq
  		gennvm_mark_blk_bad(rqd->dev, rqd);
  	}
  
@@ -60,11 +56,9 @@ index 262da6d..4c15846 100644
  }
  
  static int gennvm_submit_io(struct nvm_dev *dev, struct nvm_rq *rqd)
-diff --git a/drivers/lightnvm/rrpc.c b/drivers/lightnvm/rrpc.c
-index ec7aacf..9a5d940 100644
 --- a/drivers/lightnvm/rrpc.c
 +++ b/drivers/lightnvm/rrpc.c
-@@ -658,7 +658,7 @@ static void rrpc_end_io_write(struct rrpc *rrpc, struct rrpc_rq *rrqd,
+@@ -660,7 +660,7 @@ static void rrpc_end_io_write(struct rrp
  	}
  }
  
@@ -73,12 +67,10 @@ index ec7aacf..9a5d940 100644
  {
  	struct rrpc *rrpc = container_of(rqd->ins, struct rrpc, instance);
  	struct rrpc_rq *rrqd = nvm_rq_to_pdu(rqd);
-diff --git a/include/linux/lightnvm.h b/include/linux/lightnvm.h
-index a83298f..9acc71a 100644
 --- a/include/linux/lightnvm.h
 +++ b/include/linux/lightnvm.h
-@@ -149,7 +149,7 @@ struct ppa_addr {
- };
+@@ -190,7 +190,7 @@ struct nvm_tgt_instance {
+ #define NVM_VERSION_PATCH 0
  
  struct nvm_rq;
 -typedef void (nvm_end_io_fn)(struct nvm_rq *, int);
@@ -86,7 +78,7 @@ index a83298f..9acc71a 100644
  
  struct nvm_rq {
  	struct nvm_tgt_instance *ins;
-@@ -173,6 +173,8 @@ struct nvm_rq {
+@@ -214,6 +214,8 @@ struct nvm_rq {
  	uint8_t opcode;
  	uint16_t nr_pages;
  	uint16_t flags;
@@ -95,6 +87,3 @@ index a83298f..9acc71a 100644
  };
  
  static inline struct nvm_rq *nvm_rq_from_pdu(void *pdu)
--- 
-2.6.6
-

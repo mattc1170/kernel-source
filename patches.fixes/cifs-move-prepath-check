@@ -1,0 +1,36 @@
+From: Sachin Prabhu <sprabhu@redhat.com>
+Subject: Move check for prefix path to within cifs_get_root()
+Patch-mainline: v4.8-rc7
+Git-commit: 348c1bfa84dfc47da1f1234b7f2bf09fa798edea
+References: bsc#799133
+
+Signed-off-by: Sachin Prabhu <sprabhu@redhat.com>
+Tested-by: Aurelien Aptel <aaptel@suse.com>
+Signed-off-by: Steve French <smfrench@gmail.com>
+Acked-by: Aurelien Aptel <aaptel@suse.com>
+
+--- a/fs/cifs/cifsfs.c
++++ b/fs/cifs/cifsfs.c
+@@ -586,6 +586,9 @@ cifs_get_root(struct smb_vol *vol, struc
+ 	char *s, *p;
+ 	char sep;
+ 
++	if (cifs_sb->mnt_cifs_flags & CIFS_MOUNT_USE_PREFIX_PATH)
++		return dget(sb->s_root);
++
+ 	full_path = cifs_build_path_to_root(vol, cifs_sb,
+ 					    cifs_sb_master_tcon(cifs_sb));
+ 	if (full_path == NULL)
+@@ -710,11 +713,7 @@ cifs_do_mount(struct file_system_type *f
+ 		sb->s_flags |= MS_ACTIVE;
+ 	}
+ 
+-	if (cifs_sb->mnt_cifs_flags & CIFS_MOUNT_USE_PREFIX_PATH)
+-		root = dget(sb->s_root);
+-	else
+-		root = cifs_get_root(volume_info, sb);
+-
++	root = cifs_get_root(volume_info, sb);
+ 	if (IS_ERR(root))
+ 		goto out_super;
+ 

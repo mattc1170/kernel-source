@@ -3,7 +3,8 @@ From: Ard Biesheuvel <ard.biesheuvel@linaro.org>
 Date: Thu, 10 Mar 2016 12:40:01 +0700
 Subject: [PATCH 1/7] efi: make install_configuration_table() boot service
  usable
-Patch-mainline: Submitted, https://lkml.kernel.org/r/1457588408-19309-2-git-send-email-ard.biesheuvel@linaro.org
+Patch-mainline: v4.7-rc1
+Git-commit: 801820bee9bccb7c156af2b95c7208f428a06ae7
 References: bnc#974215
 
 This patch redeclares efi_boot_services_t::install_configuration_table

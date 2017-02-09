@@ -1,0 +1,62 @@
+From 6bade17c6ee8d2f4c4f8ea52e9982dfdf71e333e Mon Sep 17 00:00:00 2001
+From: Nicolai Stange <nicstange@gmail.com>
+Date: Tue, 22 Mar 2016 13:12:42 +0100
+Subject: [PATCH 9/9] lib/mpi: mpi_read_buffer(): fix buffer overflow
+Git-commit: 462696fd0fd2aae2fd38d22d19b2d08a55606014
+Patch-mainline: v4.7-rc1
+References: bsc#1003581
+
+Currently, mpi_read_buffer() writes full limbs to the output buffer
+and moves memory around to purge leading zero limbs afterwards.
+
+However, with
+
+  commit 9cbe21d8f89d ("lib/mpi: only require buffers as big as needed for
+                        the integer")
+
+the caller is only required to provide a buffer large enough to hold the
+result without the leading zeros.
+
+This might result in a buffer overflow for small MP numbers with leading
+zeros.
+
+Fix this by coping the result to its final destination within the output
+buffer and not copying the leading zeros at all.
+
+Fixes: 9cbe21d8f89d ("lib/mpi: only require buffers as big as needed for
+                      the integer")
+Signed-off-by: Nicolai Stange <nicstange@gmail.com>
+Signed-off-by: Herbert Xu <herbert@gondor.apana.org.au>
+Acked-by: Michal Marek <mmarek@suse.com>
+
+---
+ lib/mpi/mpicoder.c | 13 +++----------
+ 1 file changed, 3 insertions(+), 10 deletions(-)
+
+diff --git a/lib/mpi/mpicoder.c b/lib/mpi/mpicoder.c
+index a999ee1cddc5..d995a4c0f1b6 100644
+--- a/lib/mpi/mpicoder.c
++++ b/lib/mpi/mpicoder.c
+@@ -201,16 +201,9 @@ int mpi_read_buffer(MPI a, uint8_t *buf, unsigned buf_len, unsigned *nbytes,
+ #else
+ #error please implement for this limb size.
+ #endif
+-		memcpy(p, &alimb, BYTES_PER_MPI_LIMB);
+-		p += BYTES_PER_MPI_LIMB;
+-		if (lzeros > 0) {
+-			mpi_limb_t *limb1 = (void *)p - sizeof(alimb);
+-			mpi_limb_t *limb2 = (void *)p - sizeof(alimb)
+-				+ lzeros;
+-			*limb1 = *limb2;
+-			p -= lzeros;
+-			lzeros -= sizeof(alimb);
+-		}
++		memcpy(p, (u8 *)&alimb + lzeros, BYTES_PER_MPI_LIMB - lzeros);
++		p += BYTES_PER_MPI_LIMB - lzeros;
++		lzeros = 0;
+ 	}
+ 	return 0;
+ }
+-- 
+2.10.0
+

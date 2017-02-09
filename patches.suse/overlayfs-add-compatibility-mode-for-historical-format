@@ -267,7 +267,7 @@ Signed-off-by: Jeff Mahoney <jeffm@suse.com>
  
  #define OVL_COPY_UP_CHUNK_SIZE (1 << 20)
  
-@@ -305,10 +306,14 @@ int ovl_copy_up_one(struct dentry *paren
+@@ -317,10 +318,14 @@ int ovl_copy_up_one(struct dentry *paren
  	const struct cred *old_cred;
  	struct cred *override_cred;
  	char *link = NULL;
@@ -282,7 +282,7 @@ Signed-off-by: Jeff Mahoney <jeffm@suse.com>
  	ovl_path_upper(parent, &parentpath);
  	upperdir = parentpath.dentry;
  
-@@ -346,7 +351,9 @@ int ovl_copy_up_one(struct dentry *paren
+@@ -358,7 +363,9 @@ int ovl_copy_up_one(struct dentry *paren
  	old_cred = override_creds(override_cred);
  
  	err = -EIO;
@@ -295,15 +295,15 @@ Signed-off-by: Jeff Mahoney <jeffm@suse.com>
  	}
 --- a/fs/overlayfs/dir.c
 +++ b/fs/overlayfs/dir.c
-@@ -13,6 +13,7 @@
- #include <linux/security.h>
+@@ -14,6 +14,7 @@
  #include <linux/cred.h>
+ #include <linux/atomic.h>
  #include "overlayfs.h"
 +#include "compat.h"
  
  void ovl_cleanup(struct inode *wdir, struct dentry *wdentry)
  {
-@@ -60,7 +61,10 @@ static struct dentry *ovl_whiteout(struc
+@@ -63,7 +64,10 @@ static struct dentry *ovl_whiteout(struc
  	if (IS_ERR(whiteout))
  		return whiteout;
  
@@ -315,7 +315,7 @@ Signed-off-by: Jeff Mahoney <jeffm@suse.com>
  	if (err) {
  		dput(whiteout);
  		whiteout = ERR_PTR(err);
-@@ -190,14 +194,24 @@ out_unlock:
+@@ -193,14 +197,24 @@ out_unlock:
  }
  
  static int ovl_lock_rename_workdir(struct dentry *workdir,
@@ -343,7 +343,7 @@ Signed-off-by: Jeff Mahoney <jeffm@suse.com>
  		goto err_unlock;
  
  	return 0;
-@@ -225,7 +239,7 @@ static struct dentry *ovl_clear_empty(st
+@@ -228,7 +242,7 @@ static struct dentry *ovl_clear_empty(st
  	if (WARN_ON(!workdir))
  		return ERR_PTR(-EROFS);
  
@@ -352,7 +352,7 @@ Signed-off-by: Jeff Mahoney <jeffm@suse.com>
  	if (err)
  		goto out;
  
-@@ -328,7 +342,7 @@ static int ovl_create_over_whiteout(stru
+@@ -331,7 +345,7 @@ static int ovl_create_over_whiteout(stru
  	if (WARN_ON(!workdir))
  		return -EROFS;
  
@@ -361,7 +361,7 @@ Signed-off-by: Jeff Mahoney <jeffm@suse.com>
  	if (err)
  		goto out;
  
-@@ -537,7 +551,7 @@ static int ovl_remove_and_whiteout(struc
+@@ -540,7 +554,7 @@ static int ovl_remove_and_whiteout(struc
  		}
  	}
  
@@ -370,7 +370,7 @@ Signed-off-by: Jeff Mahoney <jeffm@suse.com>
  	if (err)
  		goto out_dput;
  
-@@ -868,7 +882,7 @@ static int ovl_rename2(struct inode *old
+@@ -871,7 +885,7 @@ static int ovl_rename2(struct inode *old
  	} else {
  		new_create = true;
  		if (!d_is_negative(newdentry) &&
@@ -484,7 +484,7 @@ Signed-off-by: Jeff Mahoney <jeffm@suse.com>
  	return inode && IS_WHITEOUT(inode);
  }
  
-@@ -478,7 +491,7 @@ struct dentry *ovl_lookup(struct inode *
+@@ -479,7 +492,7 @@ struct dentry *ovl_lookup(struct inode *
  				err = -EREMOTE;
  				goto out;
  			}
@@ -493,7 +493,7 @@ Signed-off-by: Jeff Mahoney <jeffm@suse.com>
  				dput(this);
  				this = NULL;
  				upperopaque = true;
-@@ -512,7 +525,7 @@ struct dentry *ovl_lookup(struct inode *
+@@ -513,7 +526,7 @@ struct dentry *ovl_lookup(struct inode *
  		}
  		if (!this)
  			continue;
@@ -502,7 +502,7 @@ Signed-off-by: Jeff Mahoney <jeffm@suse.com>
  			dput(this);
  			break;
  		}
-@@ -831,7 +844,8 @@ static void ovl_unescape(char *s)
+@@ -851,7 +864,8 @@ static void ovl_unescape(char *s)
  	}
  }
  
@@ -512,7 +512,7 @@ Signed-off-by: Jeff Mahoney <jeffm@suse.com>
  {
  	int err = -EINVAL;
  
-@@ -840,6 +854,9 @@ static int ovl_mount_dir_noesc(const cha
+@@ -860,6 +874,9 @@ static int ovl_mount_dir_noesc(const cha
  		goto out;
  	}
  	err = kern_path(name, LOOKUP_FOLLOW, path);
@@ -522,7 +522,7 @@ Signed-off-by: Jeff Mahoney <jeffm@suse.com>
  	if (err) {
  		pr_err("overlayfs: failed to resolve '%s': %i\n", name, err);
  		goto out;
-@@ -861,14 +878,15 @@ out:
+@@ -881,14 +898,15 @@ out:
  	return err;
  }
  
@@ -540,7 +540,7 @@ Signed-off-by: Jeff Mahoney <jeffm@suse.com>
  
  		if (!err)
  			if (ovl_dentry_remote(path->dentry)) {
-@@ -883,12 +901,12 @@ static int ovl_mount_dir(const char *nam
+@@ -903,12 +921,12 @@ static int ovl_mount_dir(const char *nam
  }
  
  static int ovl_lower_dir(const char *name, struct path *path, long *namelen,
@@ -555,7 +555,7 @@ Signed-off-by: Jeff Mahoney <jeffm@suse.com>
  	if (err)
  		goto out;
  
-@@ -911,13 +929,21 @@ out:
+@@ -931,13 +949,21 @@ out:
  	return err;
  }
  
@@ -580,7 +580,7 @@ Signed-off-by: Jeff Mahoney <jeffm@suse.com>
  		unlock_rename(workdir, upperdir);
  	}
  	return ok;
-@@ -943,6 +969,8 @@ static unsigned int ovl_split_lowerdirs(
+@@ -963,6 +989,8 @@ static unsigned int ovl_split_lowerdirs(
  	return ctr;
  }
  
@@ -589,7 +589,7 @@ Signed-off-by: Jeff Mahoney <jeffm@suse.com>
  static int ovl_fill_super(struct super_block *sb, void *data, int silent)
  {
  	struct path upperpath = { NULL, NULL };
-@@ -964,6 +992,8 @@ static int ovl_fill_super(struct super_b
+@@ -984,6 +1012,8 @@ static int ovl_fill_super(struct super_b
  	if (!ufs)
  		goto out;
  
@@ -598,7 +598,7 @@ Signed-off-by: Jeff Mahoney <jeffm@suse.com>
  	err = ovl_parse_opt((char *) data, &ufs->config);
  	if (err)
  		goto out_free_config;
-@@ -974,6 +1004,24 @@ static int ovl_fill_super(struct super_b
+@@ -994,6 +1024,24 @@ static int ovl_fill_super(struct super_b
  		goto out_free_config;
  	}
  
@@ -623,7 +623,7 @@ Signed-off-by: Jeff Mahoney <jeffm@suse.com>
  	sb->s_stack_depth = 0;
  	sb->s_maxbytes = MAX_LFS_FILESIZE;
  	if (ufs->config.upperdir) {
-@@ -982,7 +1030,7 @@ static int ovl_fill_super(struct super_b
+@@ -1002,7 +1050,7 @@ static int ovl_fill_super(struct super_b
  			goto out_free_config;
  		}
  
@@ -632,7 +632,7 @@ Signed-off-by: Jeff Mahoney <jeffm@suse.com>
  		if (err)
  			goto out_free_config;
  
-@@ -993,7 +1041,7 @@ static int ovl_fill_super(struct super_b
+@@ -1013,7 +1061,7 @@ static int ovl_fill_super(struct super_b
  			goto out_put_upperpath;
  		}
  
@@ -641,7 +641,7 @@ Signed-off-by: Jeff Mahoney <jeffm@suse.com>
  		if (err)
  			goto out_put_upperpath;
  
-@@ -1002,11 +1050,17 @@ static int ovl_fill_super(struct super_b
+@@ -1022,11 +1070,17 @@ static int ovl_fill_super(struct super_b
  			pr_err("overlayfs: workdir and upperdir must reside under the same mount\n");
  			goto out_put_workpath;
  		}
@@ -661,7 +661,7 @@ Signed-off-by: Jeff Mahoney <jeffm@suse.com>
  	}
  	err = -ENOMEM;
  	lowertmp = kstrdup(ufs->config.lowerdir, GFP_KERNEL);
-@@ -1022,6 +1076,9 @@ static int ovl_fill_super(struct super_b
+@@ -1042,6 +1096,9 @@ static int ovl_fill_super(struct super_b
  	} else if (!ufs->config.upperdir && stacklen == 1) {
  		pr_err("overlayfs: at least 2 lowerdir are needed while upperdir nonexistent\n");
  		goto out_free_lowertmp;
@@ -671,7 +671,7 @@ Signed-off-by: Jeff Mahoney <jeffm@suse.com>
  	}
  
  	stack = kcalloc(stacklen, sizeof(struct path), GFP_KERNEL);
-@@ -1032,7 +1089,7 @@ static int ovl_fill_super(struct super_b
+@@ -1052,7 +1109,7 @@ static int ovl_fill_super(struct super_b
  	for (numlower = 0; numlower < stacklen; numlower++) {
  		err = ovl_lower_dir(lower, &stack[numlower],
  				    &ufs->lower_namelen, &sb->s_stack_depth,
@@ -680,7 +680,7 @@ Signed-off-by: Jeff Mahoney <jeffm@suse.com>
  		if (err)
  			goto out_put_lowerpath;
  
-@@ -1127,6 +1184,9 @@ static int ovl_fill_super(struct super_b
+@@ -1147,6 +1204,9 @@ static int ovl_fill_super(struct super_b
  	sb->s_root = root_dentry;
  	sb->s_fs_info = ufs;
  
@@ -690,7 +690,7 @@ Signed-off-by: Jeff Mahoney <jeffm@suse.com>
  	return 0;
  
  out_free_oe:
-@@ -1171,13 +1231,45 @@ static struct file_system_type ovl_fs_ty
+@@ -1191,13 +1251,45 @@ static struct file_system_type ovl_fs_ty
  };
  MODULE_ALIAS_FS("overlay");
  

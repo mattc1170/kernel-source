@@ -1,0 +1,28 @@
+From: Keith Busch <keith.busch@intel.com>
+Date: Wed, 2 Mar 2016 15:31:04 -0700
+Subject: x86/PCI: VMD: Set bus resource start to 0
+Git-commit: d068c350c0486ba9011abb6f91cdc0c12b522155
+Patch-mainline: v4.6-rc1
+References: bsc#1006827
+
+The bus always starts at 0.  Due to alignment and down-casting, this
+happened to work before, but looked alarmingly incorrect in kernel logs.
+
+Signed-off-by: Keith Busch <keith.busch@intel.com>
+Signed-off-by: Bjorn Helgaas <bhelgaas@google.com>
+Acked-by: Joerg Roedel <jroedel@suse.de>
+---
+ arch/x86/pci/vmd.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+--- a/arch/x86/pci/vmd.c
++++ b/arch/x86/pci/vmd.c
+@@ -527,7 +527,7 @@ static int vmd_enable_domain(struct vmd_
+ 	res = &vmd->dev->resource[VMD_CFGBAR];
+ 	vmd->resources[0] = (struct resource) {
+ 		.name  = "VMD CFGBAR",
+-		.start = res->start,
++		.start = 0,
+ 		.end   = (resource_size(res) >> 20) - 1,
+ 		.flags = IORESOURCE_BUS | IORESOURCE_PCI_FIXED,
+ 	};

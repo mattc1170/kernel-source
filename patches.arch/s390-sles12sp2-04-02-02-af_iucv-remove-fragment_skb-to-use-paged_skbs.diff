@@ -1,6 +1,7 @@
 From: Ursula Braun <ubraun@linux.vnet.ibm.com>
 Subject: af_iucv: remove fragment_skb() to use paged SKBs
-Patch-mainline: Submitted, Mon Jun 13 18:46:15 2016 +0200 - Git-commit: 291759a57532b7940b6e52c54ceebd6b8d9e113e
+Patch-mainline: v4.8-rc1
+Git-commit: 291759a57532b7940b6e52c54ceebd6b8d9e113e
 References: bnc#988934, LTC#143715
 
 Description:  af_iucv: support buffer lists for IUCV transport

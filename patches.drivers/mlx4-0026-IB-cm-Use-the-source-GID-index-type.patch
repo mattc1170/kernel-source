@@ -16,13 +16,13 @@ Signed-off-by: Matan Barak <matanb@mellanox.com>
 Signed-off-by: Doug Ledford <dledford@redhat.com>
 Acked-by: Benjamin Poirier <bpoirier@suse.com>
 ---
- drivers/infiniband/core/cm.c  |   25 ++++++++++++++++++++-----
+ drivers/infiniband/core/cm.c  |   27 +++++++++++++++++++++------
  drivers/infiniband/core/cma.c |    2 ++
- 2 files changed, 22 insertions(+), 5 deletions(-)
+ 2 files changed, 23 insertions(+), 6 deletions(-)
 
 --- a/drivers/infiniband/core/cm.c
 +++ b/drivers/infiniband/core/cm.c
-@@ -364,7 +364,7 @@ static int cm_init_av_by_path(struct ib_
+@@ -405,7 +405,7 @@ static int cm_init_av_by_path(struct ib_
  	read_lock_irqsave(&cm.device_lock, flags);
  	list_for_each_entry(cm_dev, &cm.device_list, list) {
  		if (!ib_find_cached_gid(cm_dev->ib_device, &path->sgid,
@@ -31,7 +31,7 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  			port = cm_dev->port[p-1];
  			break;
  		}
-@@ -1600,6 +1600,8 @@ static int cm_req_handler(struct cm_work
+@@ -1663,6 +1663,8 @@ static int cm_req_handler(struct cm_work
  	struct ib_cm_id *cm_id;
  	struct cm_id_private *cm_id_priv, *listen_cm_id_priv;
  	struct cm_req_msg *req_msg;
@@ -40,11 +40,12 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  	int ret;
  
  	req_msg = (struct cm_req_msg *)work->mad_recv_wc->recv_buf.mad;
-@@ -1639,11 +1641,24 @@ static int cm_req_handler(struct cm_work
+@@ -1702,12 +1704,25 @@ static int cm_req_handler(struct cm_work
  	cm_format_paths_from_req(req_msg, &work->path[0], &work->path[1]);
  
  	memcpy(work->path[0].dmac, cm_id_priv->av.ah_attr.dmac, ETH_ALEN);
--	ret = cm_init_av_by_path(&work->path[0], &cm_id_priv->av);
+-	ret = cm_init_av_by_path(&work->path[0], &cm_id_priv->av,
+-				 cm_id_priv);
 +	ret = ib_get_cached_gid(work->port->cm_dev->ib_device,
 +				work->port->port_num,
 +				cm_id_priv->av.ah_attr.grh.sgid_index,
@@ -53,7 +54,8 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
 +		if (gid_attr.ndev)
 +			dev_put(gid_attr.ndev);
 +		work->path[0].gid_type = gid_attr.gid_type;
-+		ret = cm_init_av_by_path(&work->path[0], &cm_id_priv->av);
++		ret = cm_init_av_by_path(&work->path[0], &cm_id_priv->av,
++					 cm_id_priv);
 +	}
  	if (ret) {
 -		ib_get_cached_gid(work->port->cm_dev->ib_device,

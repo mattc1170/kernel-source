@@ -1,0 +1,91 @@
+From: Keith Busch <keith.busch@intel.com>
+Date: Thu, 21 Jul 2016 21:40:28 -0600
+Subject: PCI: Allow additional bus numbers for hotplug bridges
+Git-commit: e16b46605960bd071a3e26f316e0bb600ae91e37
+Patch-mainline: v4.8-rc1
+References: bsc#1006827
+
+A user may hot add a switch requiring more than one bus to enumerate.  This
+previously required a system reboot if BIOS did not sufficiently pad the
+bus resource, which they frequently don't do.
+
+Add a kernel parameter so a user can specify the minimum number of bus
+numbers to reserve for a hotplug bridge's subordinate buses so rebooting
+won't be necessary.
+
+The default is 1, which is equivalent to previous behavior.
+
+Signed-off-by: Keith Busch <keith.busch@intel.com>
+Signed-off-by: Bjorn Helgaas <bhelgaas@google.com>
+Acked-by: Joerg Roedel <jroedel@suse.de>
+---
+ Documentation/kernel-parameters.txt | 3 +++
+ drivers/pci/pci.c                   | 8 ++++++++
+ drivers/pci/probe.c                 | 9 +++++++++
+ include/linux/pci.h                 | 1 +
+ 4 files changed, 21 insertions(+)
+
+--- a/Documentation/kernel-parameters.txt
++++ b/Documentation/kernel-parameters.txt
+@@ -2909,6 +2909,9 @@ bytes respectively. Such letter suffixes
+ 		hpmemsize=nn[KMG]	The fixed amount of bus space which is
+ 				reserved for hotplug bridge's memory window.
+ 				Default size is 2 megabytes.
++		hpbussize=nn	The minimum amount of additional bus numbers
++				reserved for buses below a hotplug bridge.
++				Default is 1.
+ 		realloc=	Enable/disable reallocating PCI bridge resources
+ 				if allocations done by BIOS are too small to
+ 				accommodate resources required by all child
+--- a/drivers/pci/pci.c
++++ b/drivers/pci/pci.c
+@@ -84,6 +84,9 @@ unsigned long pci_cardbus_mem_size = DEF
+ unsigned long pci_hotplug_io_size  = DEFAULT_HOTPLUG_IO_SIZE;
+ unsigned long pci_hotplug_mem_size = DEFAULT_HOTPLUG_MEM_SIZE;
+ 
++#define DEFAULT_HOTPLUG_BUS_SIZE	1
++unsigned long pci_hotplug_bus_size = DEFAULT_HOTPLUG_BUS_SIZE;
++
+ enum pcie_bus_config_types pcie_bus_config = PCIE_BUS_DEFAULT;
+ 
+ /*
+@@ -5038,6 +5041,11 @@ static int __init pci_setup(char *str)
+ 				pci_hotplug_io_size = memparse(str + 9, &str);
+ 			} else if (!strncmp(str, "hpmemsize=", 10)) {
+ 				pci_hotplug_mem_size = memparse(str + 10, &str);
++			} else if (!strncmp(str, "hpbussize=", 10)) {
++				pci_hotplug_bus_size =
++					simple_strtoul(str + 10, &str, 0);
++				if (pci_hotplug_bus_size > 0xff)
++					pci_hotplug_bus_size = DEFAULT_HOTPLUG_BUS_SIZE;
+ 			} else if (!strncmp(str, "pcie_bus_tune_off", 17)) {
+ 				pcie_bus_config = PCIE_BUS_TUNE_OFF;
+ 			} else if (!strncmp(str, "pcie_bus_safe", 13)) {
+--- a/drivers/pci/probe.c
++++ b/drivers/pci/probe.c
+@@ -2074,6 +2074,15 @@ unsigned int pci_scan_child_bus(struct p
+ 		}
+ 
+ 	/*
++	 * Make sure a hotplug bridge has at least the minimum requested
++	 * number of buses.
++	 */
++	if (bus->self && bus->self->is_hotplug_bridge && pci_hotplug_bus_size) {
++		if (max - bus->busn_res.start < pci_hotplug_bus_size - 1)
++			max = bus->busn_res.start + pci_hotplug_bus_size - 1;
++	}
++
++	/*
+ 	 * We've scanned the bus and so we know all about what's on
+ 	 * the other side of any bridges that may be on this bus plus
+ 	 * any devices.
+--- a/include/linux/pci.h
++++ b/include/linux/pci.h
+@@ -1708,6 +1708,7 @@ extern u8 pci_cache_line_size;
+ 
+ extern unsigned long pci_hotplug_io_size;
+ extern unsigned long pci_hotplug_mem_size;
++extern unsigned long pci_hotplug_bus_size;
+ 
+ /* Architecture-specific versions may override these (weak) */
+ void pcibios_disable_device(struct pci_dev *dev);

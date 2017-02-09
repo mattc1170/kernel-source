@@ -1,0 +1,57 @@
+From cc2cd84afbf244c29aebd590d962ede44ea4f1da Mon Sep 17 00:00:00 2001
+From: Ilya Dryomov <idryomov@gmail.com>
+Date: Thu, 11 Feb 2016 13:09:15 +0100
+Subject: [PATCH 3/5] libceph: make r_request msg_size calculation clearer
+References: bsc#988715
+Git-commit: ae458f5a171badcce60bba9024dbdc5488e5e387
+Patch-mainline: v4.6-rc1
+
+Although msg_size is calculated correctly, the terms are grouped in
+a misleading way - snaps appears to not have room for a u32 length.
+Move calculation closer to its use and regroup terms.
+
+No functional change.
+
+Signed-off-by: Ilya Dryomov <idryomov@gmail.com>
+Acked-by: David Disseldorp <ddiss@suse.de>
+---
+ net/ceph/osd_client.c |   21 +++++++++++----------
+ 1 file changed, 11 insertions(+), 10 deletions(-)
+
+--- a/net/ceph/osd_client.c
++++ b/net/ceph/osd_client.c
+@@ -520,16 +520,6 @@ struct ceph_osd_request *ceph_osdc_alloc
+ 	BUILD_BUG_ON(CEPH_OSD_MAX_OP > U16_MAX);
+ 	BUG_ON(num_ops > CEPH_OSD_MAX_OP);
+ 
+-	msg_size = 4 + 4 + 8 + 8 + 4+8;
+-	msg_size += 2 + 4 + 8 + 4 + 4; /* oloc */
+-	msg_size += 1 + 8 + 4 + 4;     /* pg_t */
+-	msg_size += 4 + CEPH_MAX_OID_NAME_LEN; /* oid */
+-	msg_size += 2 + num_ops*sizeof(struct ceph_osd_op);
+-	msg_size += 8;  /* snapid */
+-	msg_size += 8;  /* snap_seq */
+-	msg_size += 8 * (snapc ? snapc->num_snaps : 0);  /* snaps */
+-	msg_size += 4;
+-
+ 	if (use_mempool) {
+ 		req = mempool_alloc(osdc->req_mempool, gfp_flags);
+ 		memset(req, 0, sizeof(*req));
+@@ -568,6 +558,17 @@ struct ceph_osd_request *ceph_osdc_alloc
+ 	}
+ 	req->r_reply = msg;
+ 
++	msg_size = 4 + 4 + 4; /* client_inc, osdmap_epoch, flags */
++	msg_size += 4 + 4 + 4 + 8; /* mtime, reassert_version */
++	msg_size += 2 + 4 + 8 + 4 + 4; /* oloc */
++	msg_size += 1 + 8 + 4 + 4; /* pgid */
++	msg_size += 4 + CEPH_MAX_OID_NAME_LEN; /* oid */
++	msg_size += 2 + num_ops * sizeof(struct ceph_osd_op);
++	msg_size += 8; /* snapid */
++	msg_size += 8; /* snap_seq */
++	msg_size += 4 + 8 * (snapc ? snapc->num_snaps : 0); /* snaps */
++	msg_size += 4; /* retry_attempt */
++
+ 	/* create request message; allow space for oid */
+ 	if (use_mempool)
+ 		msg = ceph_msgpool_get(&osdc->msgpool_op, 0);

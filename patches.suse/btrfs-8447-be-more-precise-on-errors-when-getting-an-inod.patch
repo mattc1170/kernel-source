@@ -1,7 +1,8 @@
 From: Filipe Manana <fdmanana@suse.com>
 Date: Thu, 9 Jun 2016 17:53:10 +0100
-Patch-mainline: submitted upstream, https://patchwork.kernel.org/patch/9167449/
 References: bsc#981038
+Git-commit: 67710892ec983aa79ad1e2a2642fe8e3a4a194ea
+Patch-mainline: v4.8-rc5
 Subject: [PATCH] Btrfs: be more precise on errors when getting an inode
  from disk
 

@@ -1,0 +1,67 @@
+From: Pierre-Louis Bossart <pierre-louis.bossart@linux.intel.com>
+Date: Mon, 8 Feb 2016 10:45:38 +0530
+Subject: [PATCH 42/82] ASoC: Intel: Load the atom DPCM driver only
+Git-commit: cfffcc66a89ab6d9961b2cde6cdab2ba056451ad
+Patch-mainline: 4.5-rc4
+References: bsc#1010690
+
+DPCM driver is recommended for BYT, CHT based platforms, so if
+CONFIG_SND_SST_IPC_ACPI is selected then don't compile the BYT
+Device IDs in common ACPI driver to avoid probe conflicts.
+
+Signed-off-by: Pierre-Louis Bossart <pierre-louis.bossart@linux.intel.com>
+Acked-by: Jie Yang <yang.jie@intel.com>
+Signed-off-by: Vinod Koul <vinod.koul@intel.com>
+Signed-off-by: Mark Brown <broonie@kernel.org>
+Signed-off-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ sound/soc/intel/Kconfig           |    4 ++--
+ sound/soc/intel/common/sst-acpi.c |    4 ++++
+ 2 files changed, 6 insertions(+), 2 deletions(-)
+
+--- a/sound/soc/intel/Kconfig
++++ b/sound/soc/intel/Kconfig
+@@ -61,7 +61,7 @@ config SND_SOC_INTEL_HASWELL_MACH
+ config SND_SOC_INTEL_BYT_RT5640_MACH
+ 	tristate "ASoC Audio driver for Intel Baytrail with RT5640 codec"
+ 	depends on X86_INTEL_LPSS && I2C
+-	depends on DW_DMAC_CORE
++	depends on DW_DMAC_CORE && (SND_SST_IPC_ACPI = n)
+ 	select SND_SOC_INTEL_SST
+ 	select SND_SOC_INTEL_BAYTRAIL
+ 	select SND_SOC_RT5640
+@@ -72,7 +72,7 @@ config SND_SOC_INTEL_BYT_RT5640_MACH
+ config SND_SOC_INTEL_BYT_MAX98090_MACH
+ 	tristate "ASoC Audio driver for Intel Baytrail with MAX98090 codec"
+ 	depends on X86_INTEL_LPSS && I2C
+-	depends on DW_DMAC_CORE
++	depends on DW_DMAC_CORE && (SND_SST_IPC_ACPI = n)
+ 	select SND_SOC_INTEL_SST
+ 	select SND_SOC_INTEL_BAYTRAIL
+ 	select SND_SOC_MAX98090
+--- a/sound/soc/intel/common/sst-acpi.c
++++ b/sound/soc/intel/common/sst-acpi.c
+@@ -215,6 +215,7 @@ static struct sst_acpi_desc sst_acpi_bro
+ 	.dma_size = SST_LPT_DSP_DMA_SIZE,
+ };
+ 
++#if !IS_ENABLED(CONFIG_SND_SST_IPC_ACPI)
+ static struct sst_acpi_mach baytrail_machines[] = {
+ 	{ "10EC5640", "byt-rt5640", "intel/fw_sst_0f28.bin-48kHz_i2s_master", NULL, NULL, NULL },
+ 	{ "193C9890", "byt-max98090", "intel/fw_sst_0f28.bin-48kHz_i2s_master", NULL, NULL, NULL },
+@@ -231,11 +232,14 @@ static struct sst_acpi_desc sst_acpi_bay
+ 	.sst_id = SST_DEV_ID_BYT,
+ 	.resindex_dma_base = -1,
+ };
++#endif
+ 
+ static const struct acpi_device_id sst_acpi_match[] = {
+ 	{ "INT33C8", (unsigned long)&sst_acpi_haswell_desc },
+ 	{ "INT3438", (unsigned long)&sst_acpi_broadwell_desc },
++#if !IS_ENABLED(CONFIG_SND_SST_IPC_ACPI)
+ 	{ "80860F28", (unsigned long)&sst_acpi_baytrail_desc },
++#endif
+ 	{ }
+ };
+ MODULE_DEVICE_TABLE(acpi, sst_acpi_match);

@@ -1,0 +1,29 @@
+From 7d188478742ff0398fcd14817310b4d054397af5 Mon Sep 17 00:00:00 2001
+From: Xiaolong Wang <xiaolong.wang@linux.intel.com>
+Date: Fri, 24 Jun 2016 11:28:20 +0800
+Subject: [PATCH] powercap / RAPL: Add support for Ivy Bridge server
+Git-commit: 7d188478742ff0398fcd14817310b4d054397af5
+Patch-mainline: 4.8-rc1
+References: bsc#1003566
+
+It's confirmed that RAPL works as expected on Ivy Bridge servers.
+Tested against processor: Intel(R) Xeon(R) CPU E5-2697 v2 @2.70GHz
+
+Signed-off-by: Xiaolong Wang <xiaolong.wang@linux.intel.com>
+Signed-off-by: Rafael J. Wysocki <rafael.j.wysocki@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/powercap/intel_rapl.c |    1 +
+ 1 file changed, 1 insertion(+)
+
+--- a/drivers/powercap/intel_rapl.c
++++ b/drivers/powercap/intel_rapl.c
+@@ -1092,6 +1092,7 @@ static const struct x86_cpu_id rapl_ids[
+ 	RAPL_CPU(INTEL_FAM6_SANDYBRIDGE_X,	rapl_defaults_core),
+ 
+ 	RAPL_CPU(INTEL_FAM6_IVYBRIDGE,		rapl_defaults_core),
++	RAPL_CPU(INTEL_FAM6_IVYBRIDGE_X,	rapl_defaults_core),
+ 
+ 	RAPL_CPU(INTEL_FAM6_HASWELL_CORE,	rapl_defaults_core),
+ 	RAPL_CPU(INTEL_FAM6_HASWELL_ULT,	rapl_defaults_core),

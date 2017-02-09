@@ -1,0 +1,71 @@
+From: Chris Wilson <chris@chris-wilson.co.uk>
+Date: Tue, 5 Apr 2016 15:00:00 +0100
+Subject: [PATCH] drm/i915/userptr: Hold mmref whilst calling get-user-pages
+Mime-version: 1.0
+Content-type: text/plain; charset=UTF-8
+Content-transfer-encoding: 8bit
+Git-commit: db9f9203e27495b2d151b695504e286eec026e9b
+Patch-mainline: 4.6-rc5
+References: bsc#1015367
+
+Holding a reference to the containing task_struct is not sufficient to
+prevent the mm_struct from being reaped under memory pressure. If this
+happens whilst we are calling get_user_pages(), explosions erupt -
+sometimes an immediate GPF, sometimes page flag corruption. To prevent
+the target mm from being reaped as we are reading from it, acquire a
+reference before we begin.
+
+Testcase: igt/gem_shrink/*userptr
+Signed-off-by: Chris Wilson <chris@chris-wilson.co.uk>
+Cc: Tvrtko Ursulin <tvrtko.ursulin@intel.com>
+Cc: Michał Winiarski <michal.winiarski@intel.com>
+Cc: stable@vger.kernel.org
+Reviewed-by: Michał Winiarski <michal.winiarski@intel.com>
+Link: http://patchwork.freedesktop.org/patch/msgid/1459864801-28606-2-git-send-email-chris@chris-wilson.co.uk
+(cherry picked from commit 40313f0cd0b711a7a5905e5182422799e157d8aa)
+
+Signed-off-by: Jani Nikula <jani.nikula@intel.com>
+Signed-off-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/gpu/drm/i915/i915_gem_userptr.c |   27 ++++++++++++++++-----------
+ 1 file changed, 16 insertions(+), 11 deletions(-)
+
+--- a/drivers/gpu/drm/i915/i915_gem_userptr.c
++++ b/drivers/gpu/drm/i915/i915_gem_userptr.c
+@@ -582,19 +582,24 @@ __i915_gem_userptr_get_pages_worker(stru
+ 	if (pvec != NULL) {
+ 		struct mm_struct *mm = obj->userptr.mm->mm;
+ 
+-		down_read(&mm->mmap_sem);
+-		while (pinned < npages) {
+-			ret = get_user_pages(work->task, mm,
+-					     obj->userptr.ptr + pinned * PAGE_SIZE,
+-					     npages - pinned,
+-					     !obj->userptr.read_only, 0,
+-					     pvec + pinned, NULL);
+-			if (ret < 0)
+-				break;
++		ret = -EFAULT;
++		if (atomic_inc_not_zero(&mm->mm_users)) {
++			down_read(&mm->mmap_sem);
++			while (pinned < npages) {
++				ret = get_user_pages
++					(work->task, mm,
++					 obj->userptr.ptr + pinned * PAGE_SIZE,
++					 npages - pinned,
++					 !obj->userptr.read_only, 0,
++					 pvec + pinned, NULL);
++				if (ret < 0)
++					break;
+ 
+-			pinned += ret;
++				pinned += ret;
++			}
++			up_read(&mm->mmap_sem);
++			mmput(mm);
+ 		}
+-		up_read(&mm->mmap_sem);
+ 	}
+ 
+ 	mutex_lock(&dev->struct_mutex);

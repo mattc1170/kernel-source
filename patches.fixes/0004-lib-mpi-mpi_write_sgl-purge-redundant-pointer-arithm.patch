@@ -1,0 +1,52 @@
+From f6bf37365e59d37ad9feb2f9c8ede9b39e448bfc Mon Sep 17 00:00:00 2001
+From: Nicolai Stange <nicstange@gmail.com>
+Date: Tue, 22 Mar 2016 13:12:37 +0100
+Subject: [PATCH 4/9] lib/mpi: mpi_write_sgl(): purge redundant pointer
+ arithmetic
+Git-commit: ea122be0b8f788b30e71ed5536fddc05f5ddff86
+Patch-mainline: v4.7-rc1
+References: bsc#1003581
+
+Within the copying loop in mpi_write_sgl(), we have
+
+  if (lzeros) {
+    ...
+    p -= lzeros;
+    y = lzeros;
+  }
+  p = p - (sizeof(alimb) - y);
+
+If lzeros == 0, then y == 0, too. Thus, lzeros gets subtracted and added
+back again to p.
+
+Purge this redundancy.
+
+Signed-off-by: Nicolai Stange <nicstange@gmail.com>
+Signed-off-by: Herbert Xu <herbert@gondor.apana.org.au>
+Acked-by: Michal Marek <mmarek@suse.com>
+
+---
+ lib/mpi/mpicoder.c | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
+
+diff --git a/lib/mpi/mpicoder.c b/lib/mpi/mpicoder.c
+index d8b372b9cc11..78ec4e1131b9 100644
+--- a/lib/mpi/mpicoder.c
++++ b/lib/mpi/mpicoder.c
+@@ -407,12 +407,11 @@ int mpi_write_to_sgl(MPI a, struct scatterlist *sgl, unsigned *nbytes,
+ 			mpi_limb_t *limb2 = (void *)p - sizeof(alimb)
+ 				+ lzeros;
+ 			*limb1 = *limb2;
+-			p -= lzeros;
+ 			y = lzeros;
+ 			lzeros = 0;
+ 		}
+ 
+-		p = p - (sizeof(alimb) - y);
++		p = p - sizeof(alimb);
+ 
+ 		for (x = 0; x < sizeof(alimb) - y; x++) {
+ 			if (!buf_len) {
+-- 
+2.10.0
+

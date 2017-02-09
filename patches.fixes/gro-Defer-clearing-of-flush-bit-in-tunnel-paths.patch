@@ -19,17 +19,15 @@ Signed-off-by: David S. Miller <davem@davemloft.net>
 Acked-by: Michal Kubecek <mkubecek@suse.cz>
 
 ---
- drivers/net/geneve.c   | 7 ++-----
- drivers/net/vxlan.c    | 3 +--
- net/ipv4/fou.c         | 3 +--
- net/ipv4/gre_offload.c | 3 +--
+ drivers/net/geneve.c   |    7 ++-----
+ drivers/net/vxlan.c    |    3 +--
+ net/ipv4/fou.c         |    3 +--
+ net/ipv4/gre_offload.c |    3 +--
  4 files changed, 5 insertions(+), 11 deletions(-)
 
-diff --git a/drivers/net/geneve.c b/drivers/net/geneve.c
-index 74bb63fac56f..c91661529112 100644
 --- a/drivers/net/geneve.c
 +++ b/drivers/net/geneve.c
-@@ -426,8 +426,6 @@ static struct sk_buff **geneve_gro_receive(struct sk_buff **head,
+@@ -415,8 +415,6 @@ static struct sk_buff **geneve_gro_recei
  			goto out;
  	}
  
@@ -38,7 +36,7 @@ index 74bb63fac56f..c91661529112 100644
  	for (p = *head; p; p = p->next) {
  		if (!NAPI_GRO_CB(p)->same_flow)
  			continue;
-@@ -444,14 +442,13 @@ static struct sk_buff **geneve_gro_receive(struct sk_buff **head,
+@@ -433,14 +431,13 @@ static struct sk_buff **geneve_gro_recei
  
  	rcu_read_lock();
  	ptype = gro_find_receive_by_type(type);
@@ -50,16 +48,14 @@ index 74bb63fac56f..c91661529112 100644
  
  	skb_gro_pull(skb, gh_len);
  	skb_gro_postpull_rcsum(skb, gh, gh_len);
- 	pp = ptype->callbacks.gro_receive(head, skb);
+ 	pp = call_gro_receive(ptype->callbacks.gro_receive, head, skb);
 +	flush = 0;
  
  out_unlock:
  	rcu_read_unlock();
-diff --git a/drivers/net/vxlan.c b/drivers/net/vxlan.c
-index 003780901628..e5161225a062 100644
 --- a/drivers/net/vxlan.c
 +++ b/drivers/net/vxlan.c
-@@ -579,8 +579,6 @@ static struct sk_buff **vxlan_gro_receive(struct sk_buff **head,
+@@ -579,8 +579,6 @@ static struct sk_buff **vxlan_gro_receiv
  
  	skb_gro_pull(skb, sizeof(struct vxlanhdr)); /* pull vxlan header */
  
@@ -68,19 +64,17 @@ index 003780901628..e5161225a062 100644
  	for (p = *head; p; p = p->next) {
  		if (!NAPI_GRO_CB(p)->same_flow)
  			continue;
-@@ -594,6 +592,7 @@ static struct sk_buff **vxlan_gro_receive(struct sk_buff **head,
+@@ -594,6 +592,7 @@ static struct sk_buff **vxlan_gro_receiv
  	}
  
- 	pp = eth_gro_receive(head, skb);
+ 	pp = call_gro_receive(eth_gro_receive, head, skb);
 +	flush = 0;
  
  out:
  	skb_gro_remcsum_cleanup(skb, &grc);
-diff --git a/net/ipv4/fou.c b/net/ipv4/fou.c
-index bd903fe0f750..d7e0a956e6e4 100644
 --- a/net/ipv4/fou.c
 +++ b/net/ipv4/fou.c
-@@ -319,8 +319,6 @@ static struct sk_buff **gue_gro_receive(struct sk_buff **head,
+@@ -328,8 +328,6 @@ static struct sk_buff **gue_gro_receive(
  
  	skb_gro_pull(skb, hdrlen);
  
@@ -89,19 +83,17 @@ index bd903fe0f750..d7e0a956e6e4 100644
  	for (p = *head; p; p = p->next) {
  		const struct guehdr *guehdr2;
  
-@@ -352,6 +350,7 @@ static struct sk_buff **gue_gro_receive(struct sk_buff **head,
+@@ -361,6 +359,7 @@ static struct sk_buff **gue_gro_receive(
  		goto out_unlock;
  
- 	pp = ops->callbacks.gro_receive(head, skb);
+ 	pp = call_gro_receive(ops->callbacks.gro_receive, head, skb);
 +	flush = 0;
  
  out_unlock:
  	rcu_read_unlock();
-diff --git a/net/ipv4/gre_offload.c b/net/ipv4/gre_offload.c
-index e603004c1af8..738f4c6b424a 100644
 --- a/net/ipv4/gre_offload.c
 +++ b/net/ipv4/gre_offload.c
-@@ -182,8 +182,6 @@ static struct sk_buff **gre_gro_receive(struct sk_buff **head,
+@@ -182,8 +182,6 @@ static struct sk_buff **gre_gro_receive(
  					     null_compute_pseudo);
  	}
  
@@ -110,14 +102,11 @@ index e603004c1af8..738f4c6b424a 100644
  	for (p = *head; p; p = p->next) {
  		const struct gre_base_hdr *greh2;
  
-@@ -220,6 +218,7 @@ static struct sk_buff **gre_gro_receive(struct sk_buff **head,
+@@ -220,6 +218,7 @@ static struct sk_buff **gre_gro_receive(
  	skb_gro_postpull_rcsum(skb, greh, grehlen);
  
- 	pp = ptype->callbacks.gro_receive(head, skb);
+ 	pp = call_gro_receive(ptype->callbacks.gro_receive, head, skb);
 +	flush = 0;
  
  out_unlock:
  	rcu_read_unlock();
--- 
-2.10.0
-

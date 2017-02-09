@@ -1,0 +1,37 @@
+From: Keith Busch <keith.busch@intel.com>
+Date: Fri, 17 Jun 2016 16:00:21 -0600
+Subject: x86/PCI/VMD: Use untracked irq handler
+Git-commit: 30ce0350381351646ef86b64e6d3840b3869833b
+Patch-mainline: v4.8-rc1
+References: bsc#1006827
+
+There is no way to know which device in a VMD triggered an interrupt
+without invoking every registered driver's actions. This uses the
+untracked irq handler so that a less used device does not trigger
+spurious interrupt.
+
+We have been previously recommending users to enable "noirqdebug", but do
+not want to force a system setting just to keep this domain functional.
+
+Signed-off-by: Keith Busch <keith.busch@intel.com>
+Acked-by: Bjorn Helgaas <bhelgaas@google.com>
+Cc: linux-pci@vger.kernel.org
+Cc: Jon Derrick <jonathan.derrick@intel.com>
+Link: http://lkml.kernel.org/r/1466200821-29159-2-git-send-email-keith.busch@intel.com
+Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
+Acked-by: Joerg Roedel <jroedel@suse.de>
+---
+ arch/x86/pci/vmd.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+--- a/arch/x86/pci/vmd.c
++++ b/arch/x86/pci/vmd.c
+@@ -196,7 +196,7 @@ static int vmd_msi_init(struct irq_domai
+ 	vmdirq->virq = virq;
+ 
+ 	irq_domain_set_info(domain, virq, vmdirq->irq->vmd_vector, info->chip,
+-			    vmdirq, handle_simple_irq, vmd, NULL);
++			    vmdirq, handle_untracked_irq, vmd, NULL);
+ 	return 0;
+ }
+ 

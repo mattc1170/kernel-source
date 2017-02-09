@@ -30,8 +30,8 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  	struct fl_flow_key *key;
 --- a/net/sched/cls_flower.c
 +++ b/net/sched/cls_flower.c
-@@ -165,7 +165,7 @@ static void fl_destroy_filter(struct rcu
- 	kfree(f);
+@@ -187,7 +187,7 @@ static void fl_destroy_rcu(struct rcu_he
+ 	schedule_work(&head->work);
  }
  
 -static void fl_hw_destroy_filter(struct tcf_proto *tp, u64 cookie)
@@ -39,7 +39,7 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  {
  	struct net_device *dev = tp->q->dev_queue->dev;
  	struct tc_cls_flower_offload offload = {0};
-@@ -188,7 +188,7 @@ static void fl_hw_replace_filter(struct
+@@ -210,7 +210,7 @@ static void fl_hw_replace_filter(struct
  				 struct fl_flow_key *mask,
  				 struct fl_flow_key *key,
  				 struct tcf_exts *actions,
@@ -48,7 +48,7 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  {
  	struct net_device *dev = tp->q->dev_queue->dev;
  	struct tc_cls_flower_offload offload = {0};
-@@ -219,7 +219,7 @@ static bool fl_destroy(struct tcf_proto
+@@ -241,7 +241,7 @@ static bool fl_destroy(struct tcf_proto
  		return false;
  
  	list_for_each_entry_safe(f, next, &head->filters, list) {
@@ -57,7 +57,7 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  		list_del_rcu(&f->list);
  		call_rcu(&f->rcu, fl_destroy_filter);
  	}
-@@ -554,13 +554,13 @@ static int fl_change(struct net *net, st
+@@ -575,13 +575,13 @@ static int fl_change(struct net *net, st
  			     &mask.key,
  			     &fnew->key,
  			     &fnew->exts,
@@ -73,7 +73,7 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  	}
  
  	*arg = (unsigned long) fnew;
-@@ -588,7 +588,7 @@ static int fl_delete(struct tcf_proto *t
+@@ -609,7 +609,7 @@ static int fl_delete(struct tcf_proto *t
  	rhashtable_remove_fast(&head->ht, &f->ht_node,
  			       head->ht_params);
  	list_del_rcu(&f->list);

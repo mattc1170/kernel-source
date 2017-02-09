@@ -1,0 +1,40 @@
+From: Bard Liao <bardliao@realtek.com>
+Date: Fri, 17 Jun 2016 12:08:02 +0800
+Subject: [PATCH 08/82] ASoC: rt5670: patch reg-0x8a
+Git-commit: 874352a763ba2df55093d2651158be40999e9cbe
+Patch-mainline: 4.8-rc1
+References: bsc#1010690
+
+reg-8a assign the tracking source for each ASRC tracker. The default
+value is 0x0000 which means all ASRC trackers will track LRCK1. But
+in most case, we wish each ASRC tracker track the corresponding LRCK.
+i.e. ASRC1 tracks LRCK1, ASRC2 tracks LRCK2 and so on. So, we rewrite
+reg-8a as 0x0123.
+
+Signed-off-by: Bard Liao <bardliao@realtek.com>
+Signed-off-by: Mark Brown <broonie@kernel.org>
+Signed-off-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ sound/soc/codecs/rt5670.c |    3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+--- a/sound/soc/codecs/rt5670.c
++++ b/sound/soc/codecs/rt5670.c
+@@ -55,6 +55,7 @@ static const struct reg_sequence init_li
+ 	{ RT5670_PR_BASE + 0x14, 0x9a8a },
+ 	{ RT5670_PR_BASE + 0x38, 0x3ba1 },
+ 	{ RT5670_PR_BASE + 0x3d, 0x3640 },
++	{ 0x8a, 0x0123 },
+ };
+ 
+ static const struct reg_default rt5670_reg[] = {
+@@ -131,7 +132,7 @@ static const struct reg_default rt5670_r
+ 	{ 0x87, 0x0000 },
+ 	{ 0x88, 0x0000 },
+ 	{ 0x89, 0x0000 },
+-	{ 0x8a, 0x0000 },
++	{ 0x8a, 0x0123 },
+ 	{ 0x8b, 0x0000 },
+ 	{ 0x8c, 0x0003 },
+ 	{ 0x8d, 0x0000 },

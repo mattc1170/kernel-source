@@ -1,0 +1,38 @@
+From: Pierre-Louis Bossart <pierre-louis.bossart@linux.intel.com>
+Date: Fri, 12 Aug 2016 16:27:59 -0500
+Subject: [PATCH 75/82] ASoC: Intel: bytcr_rt5640: Add quirk for Teclast X98 Air 3G tablet
+Git-commit: ec1c90e777e5a555632747527fae142aa238e583
+Patch-mainline: 4.9-rc1
+References: bsc#1010690
+
+Add DMI-based quirk, routing from SSP0 to AIF1 is not very
+usual
+
+Suggested-by: Antonio Ospite <ao2@ao2.it>
+Signed-off-by: Pierre-Louis Bossart <pierre-louis.bossart@linux.intel.com>
+Signed-off-by: Mark Brown <broonie@kernel.org>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ sound/soc/intel/boards/bytcr_rt5640.c |   10 ++++++++++
+ 1 file changed, 10 insertions(+)
+
+--- a/sound/soc/intel/boards/bytcr_rt5640.c
++++ b/sound/soc/intel/boards/bytcr_rt5640.c
+@@ -341,6 +341,16 @@ static const struct dmi_system_id byt_rt
+ 		.driver_data = (unsigned long *)(BYT_RT5640_DMIC1_MAP |
+ 						 BYT_RT5640_DMIC_EN),
+ 	},
++	{
++		.callback = byt_rt5640_quirk_cb,
++		.matches = {
++			DMI_MATCH(DMI_BOARD_VENDOR, "TECLAST"),
++			DMI_MATCH(DMI_BOARD_NAME, "tPAD"),
++		},
++		.driver_data = (unsigned long *)(BYT_RT5640_IN3_MAP |
++						BYT_RT5640_MCLK_EN |
++						BYT_RT5640_SSP0_AIF1),
++	},
+ 	{}
+ };
+ 

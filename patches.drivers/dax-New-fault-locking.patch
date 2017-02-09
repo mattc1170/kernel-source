@@ -758,7 +758,17 @@ Signed-off-by: Jan Kara <jack@suse.cz>
  struct page *read_dax_sector(struct block_device *bdev, sector_t n);
 --- a/mm/filemap.c
 +++ b/mm/filemap.c
-@@ -160,13 +160,15 @@ static void page_cache_tree_delete(struc
+@@ -142,6 +142,9 @@ static int page_cache_tree_insert(struct
+ 			/* DAX accounts exceptional entries as normal pages */
+ 			if (node)
+ 				workingset_node_pages_dec(node);
++			/* Wakeup waiters for exceptional entry lock */
++			dax_wake_mapping_entry_waiter(mapping, page->index,
++						      false);
+ 		}
+ 	}
+ 	radix_tree_replace_slot(slot, page);
+@@ -221,13 +224,15 @@ static void page_cache_tree_delete(struc
  			return;
  
  	/*
@@ -776,16 +786,6 @@ Signed-off-by: Jan Kara <jack@suse.cz>
  	    list_empty(&node->private_list)) {
  		node->private_data = mapping;
  		list_lru_add(&workingset_shadow_nodes, &node->private_list);
-@@ -597,6 +599,9 @@ static int page_cache_tree_insert(struct
- 			/* DAX accounts exceptional entries as normal pages */
- 			if (node)
- 				workingset_node_pages_dec(node);
-+			/* Wakeup waiters for exceptional entry lock */
-+			dax_wake_mapping_entry_waiter(mapping, page->index,
-+						      false);
- 		}
- 	}
- 	radix_tree_replace_slot(slot, page);
 --- a/mm/truncate.c
 +++ b/mm/truncate.c
 @@ -34,40 +34,38 @@ static void clear_exceptional_entry(stru

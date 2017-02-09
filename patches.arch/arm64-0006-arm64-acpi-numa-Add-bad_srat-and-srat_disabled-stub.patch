@@ -3,7 +3,8 @@ From: Matthias Brugger <mbrugger@suse.com>
 Date: Mon, 27 Jun 2016 18:49:02 +0200
 Subject: arm64: acpi/numa: Add bad_srat() and srat_disabled()
  stub
-Patch-mainline: No, it is reworked to not touch generic code
+Git-commit: e84025e274e66986277e11f0dda03373e246ffad (partial)
+Patch-mainline: v4.8-rc1
 References: fate#319981
 
 Add bad_srat() and srat_diabled() stubs.
@@ -13,6 +14,8 @@ e84025e274e6 ("ACPI / NUMA: move bad_srat() and srat_disabled() to drivers/acpi/
 
 Signed-off-by: Matthias Brugger <mbrugger@suse.com>
 ---
+The patch is reworked to not touch generic code
+
  arch/arm64/kernel/acpi_numa.c | 12 ++++++++++++
  1 file changed, 12 insertions(+)
 

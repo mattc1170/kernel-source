@@ -1,0 +1,105 @@
+From 0ed321ed30ffe022fcd6db78242b857c23e6ecd3 Mon Sep 17 00:00:00 2001
+From: Mark Rutland <mark.rutland@arm.com>
+Date: Mon, 25 Apr 2016 21:07:06 +0100
+Subject: [PATCH 3/7] x86/efi: Move to generic {__,}efi_call_virt()
+
+Git-commit: bc25f9dba149a1392b016a6d35300c8d79177298
+Patch-mainline: v4.7-rc1
+References: bsc#1005745
+
+Now there's a common template for {__,}efi_call_virt(), remove the
+duplicate logic from the x86 EFI code.
+
+Signed-off-by: Mark Rutland <mark.rutland@arm.com>
+Signed-off-by: Matt Fleming <matt@codeblueprint.co.uk>
+Cc: Ard Biesheuvel <ard.biesheuvel@linaro.org>
+Cc: Borislav Petkov <bp@alien8.de>
+Cc: Catalin Marinas <catalin.marinas@arm.com>
+Cc: Leif Lindholm <leif.lindholm@linaro.org>
+Cc: Peter Zijlstra <peterz@infradead.org>
+Cc: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
+Cc: Russell King <linux@arm.linux.org.uk>
+Cc: Thomas Gleixner <tglx@linutronix.de>
+Cc: Will Deacon <will.deacon@arm.com>
+Cc: linux-efi@vger.kernel.org
+Link: http://lkml.kernel.org/r/1461614832-17633-35-git-send-email-matt@codeblueprint.co.uk
+Signed-off-by: Ingo Molnar <mingo@kernel.org>
+Acked-by: Mian Yousaf Kaukab <yousaf.kaukab@suse.com>
+---
+ arch/x86/include/asm/efi.h | 39 ++++++++++++---------------------------
+ 1 file changed, 12 insertions(+), 27 deletions(-)
+
+diff --git a/arch/x86/include/asm/efi.h b/arch/x86/include/asm/efi.h
+index fc2d1bf..51ca622 100644
+--- a/arch/x86/include/asm/efi.h
++++ b/arch/x86/include/asm/efi.h
+@@ -30,28 +30,16 @@
+ 
+ extern unsigned long asmlinkage efi_call_phys(void *, ...);
+ 
++#define arch_efi_call_virt_setup()	kernel_fpu_begin()
++#define arch_efi_call_virt_teardown()	kernel_fpu_end()
++
+ /*
+  * Wrap all the virtual calls in a way that forces the parameters on the stack.
+  */
+-
+-/* Use this macro if your virtual returns a non-void value */
+-#define efi_call_virt(f, args...) \
++#define arch_efi_call_virt(f, args...)					\
+ ({									\
+-	efi_status_t __s;						\
+-	kernel_fpu_begin();						\
+-	__s = ((efi_##f##_t __attribute__((regparm(0)))*)		\
+-		efi.systab->runtime->f)(args);				\
+-	kernel_fpu_end();						\
+-	__s;								\
+-})
+-
+-/* Use this macro if your virtual call does not return any value */
+-#define __efi_call_virt(f, args...) \
+-({									\
+-	kernel_fpu_begin();						\
+ 	((efi_##f##_t __attribute__((regparm(0)))*)			\
+ 		efi.systab->runtime->f)(args);				\
+-	kernel_fpu_end();						\
+ })
+ 
+ #define efi_ioremap(addr, size, type, attr)	ioremap_cache(addr, size)
+@@ -64,25 +52,22 @@ extern u64 asmlinkage efi_call(void *fp, ...);
+ 
+ #define efi_call_phys(f, args...)		efi_call((f), args)
+ 
+-#define efi_call_virt(f, ...)						\
++#define arch_efi_call_virt_setup()					\
+ ({									\
+-	efi_status_t __s;						\
+-									\
+ 	efi_sync_low_kernel_mappings();					\
+ 	preempt_disable();						\
+ 	__kernel_fpu_begin();						\
+-	__s = efi_call((void *)efi.systab->runtime->f, __VA_ARGS__);	\
++})
++
++#define arch_efi_call_virt(f, args...)					\
++	efi_call((void *)efi.systab->runtime->f, args)			\
++
++#define arch_efi_call_virt_teardown()					\
++({									\
+ 	__kernel_fpu_end();						\
+ 	preempt_enable();						\
+-	__s;								\
+ })
+ 
+-/*
+- * All X86_64 virt calls return non-void values. Thus, use non-void call for
+- * virt calls that would be void on X86_32.
+- */
+-#define __efi_call_virt(f, args...) efi_call_virt(f, args)
+-
+ extern void __iomem *__init efi_ioremap(unsigned long addr, unsigned long size,
+ 					u32 type, u64 attribute);
+ 
+-- 
+1.8.5.6
+

@@ -2,7 +2,8 @@ From: Jeff Mahoney <jeffm@suse.com>
 Subject: apparmor: allow SYS_CAP_RESOURCE to be sufficient to prlimit another
  task
 References: bsc#921949
-Patch-mainline: Submitted, apparmor@lists.ubuntu.com 6 Nov 2015
+Patch-mainline: v4.8-rc1
+Git-commit: ff118479a76dbece9ae1c65c7c6a3ebe9cfa73e0
 
 While using AppArmor, SYS_CAP_RESOURCE is insufficient to call prlimit
 on another task. The only other example of a AppArmor mediating access to
