@@ -15,11 +15,11 @@ https://vthsd.fm.intel.com/hsd/pcgsw/default.aspx#bug/default.aspx?bug_id=100458
  drivers/gpu/drm/i915/intel_lrc.c      |   13 ++++++-
  4 files changed, 93 insertions(+), 1 deletions(-)
 
-diff --git a/drivers/gpu/drm/i915/i915_gem.c b/drivers/gpu/drm/i915/i915_gem.c
-index 31f3e6f..8d18adf 100644
---- a/drivers/gpu/drm/i915/i915_gem.c
-+++ b/drivers/gpu/drm/i915/i915_gem.c
-@@ -1616,6 +1616,12 @@ i915_gem_object_wait_rendering(struct drm_i915_gem_object *obj,
+Index: current/drivers/gpu/drm/i915/i915_gem.c
+===================================================================
+--- current.orig/drivers/gpu/drm/i915/i915_gem.c
++++ current/drivers/gpu/drm/i915/i915_gem.c
+@@ -1616,6 +1616,12 @@ i915_gem_object_wait_rendering(struct dr
  
  	if (readonly) {
  		if (obj->last_write_req != NULL) {
@@ -32,7 +32,7 @@ index 31f3e6f..8d18adf 100644
  			ret = i915_wait_request(obj->last_write_req);
  			if (ret)
  				return ret;
-@@ -1631,6 +1637,12 @@ i915_gem_object_wait_rendering(struct drm_i915_gem_object *obj,
+@@ -1631,6 +1637,12 @@ i915_gem_object_wait_rendering(struct dr
  			if (obj->last_read_req[i] == NULL)
  				continue;
  
@@ -45,11 +45,11 @@ index 31f3e6f..8d18adf 100644
  			ret = i915_wait_request(obj->last_read_req[i]);
  			if (ret)
  				return ret;
-diff --git a/drivers/gpu/drm/i915/i915_scheduler.c b/drivers/gpu/drm/i915/i915_scheduler.c
-index 4670a27..678cf83 100644
---- a/drivers/gpu/drm/i915/i915_scheduler.c
-+++ b/drivers/gpu/drm/i915/i915_scheduler.c
-@@ -1633,6 +1633,73 @@ static int i915_scheduler_submit_max_priority(struct intel_engine_cs *ring,
+Index: current/drivers/gpu/drm/i915/i915_scheduler.c
+===================================================================
+--- current.orig/drivers/gpu/drm/i915/i915_scheduler.c
++++ current/drivers/gpu/drm/i915/i915_scheduler.c
+@@ -1633,6 +1633,73 @@ static int i915_scheduler_submit_max_pri
  }
  
  /**
@@ -123,11 +123,11 @@ index 4670a27..678cf83 100644
   * i915_scheduler_flush_stamp - force requests of a given age through the
   * scheduler.
   * @ring: Ring to be flushed
-diff --git a/drivers/gpu/drm/i915/i915_scheduler.h b/drivers/gpu/drm/i915/i915_scheduler.h
-index dbd4407..bcd3f94 100644
---- a/drivers/gpu/drm/i915/i915_scheduler.h
-+++ b/drivers/gpu/drm/i915/i915_scheduler.h
-@@ -171,6 +171,8 @@ void i915_scheduler_work_handler(struct work_struct *work);
+Index: current/drivers/gpu/drm/i915/i915_scheduler.h
+===================================================================
+--- current.orig/drivers/gpu/drm/i915/i915_scheduler.h
++++ current/drivers/gpu/drm/i915/i915_scheduler.h
+@@ -171,6 +171,8 @@ void i915_scheduler_work_handler(struct
  int i915_scheduler_flush(struct intel_engine_cs *ring, bool is_locked);
  int i915_scheduler_flush_stamp(struct intel_engine_cs *ring,
  			       unsigned long stamp, bool is_locked);
@@ -136,11 +136,11 @@ index dbd4407..bcd3f94 100644
  int i915_scheduler_dump(struct intel_engine_cs *ring,
  			const char *msg);
  int i915_scheduler_dump_all(struct drm_device *dev, const char *msg);
-diff --git a/drivers/gpu/drm/i915/intel_lrc.c b/drivers/gpu/drm/i915/intel_lrc.c
-index 4632f8b..f1f95db 100644
---- a/drivers/gpu/drm/i915/intel_lrc.c
-+++ b/drivers/gpu/drm/i915/intel_lrc.c
-@@ -2642,6 +2642,7 @@ int intel_lr_context_deferred_alloc(struct intel_context *ctx,
+Index: current/drivers/gpu/drm/i915/intel_lrc.c
+===================================================================
+--- current.orig/drivers/gpu/drm/i915/intel_lrc.c
++++ current/drivers/gpu/drm/i915/intel_lrc.c
+@@ -2643,6 +2643,7 @@ int intel_lr_context_deferred_alloc(stru
  				     struct intel_engine_cs *ring)
  {
  	struct drm_device *dev = ring->dev;
@@ -148,7 +148,7 @@ index 4632f8b..f1f95db 100644
  	struct drm_i915_gem_object *ctx_obj;
  	uint32_t context_size;
  	struct intel_ringbuffer *ringbuf;
-@@ -2690,11 +2691,21 @@ int intel_lr_context_deferred_alloc(struct intel_context *ctx,
+@@ -2691,11 +2692,21 @@ int intel_lr_context_deferred_alloc(stru
  		ret = i915_gem_request_alloc(ring,
  			ctx, &req);
  		if (ret) {
@@ -171,6 +171,3 @@ index 4632f8b..f1f95db 100644
  		ret = ring->init_context(req);
  		if (ret) {
  			DRM_ERROR("ring init context: %d\n",
--- 
-1.7.1
-

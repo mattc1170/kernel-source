@@ -11,11 +11,11 @@ Subject: [PATCH 104/143] [VPG]: drm/i915/sched: Deserialized batch buffer throug
  include/uapi/drm/i915_drm.h                |    1 +
  5 files changed, 11 insertions(+), 2 deletions(-)
 
-diff --git a/drivers/gpu/drm/i915/i915_dma.c b/drivers/gpu/drm/i915/i915_dma.c
-index 0979a27..61f485f 100644
---- a/drivers/gpu/drm/i915/i915_dma.c
-+++ b/drivers/gpu/drm/i915/i915_dma.c
-@@ -178,6 +178,9 @@ static int i915_getparam(struct drm_device *dev, void *data,
+Index: current/drivers/gpu/drm/i915/i915_dma.c
+===================================================================
+--- current.orig/drivers/gpu/drm/i915/i915_dma.c
++++ current/drivers/gpu/drm/i915/i915_dma.c
+@@ -178,6 +178,9 @@ static int i915_getparam(struct drm_devi
  		value = !dev_priv->workarounds.WaForceEnableNonCoherent &&
  			INTEL_INFO(dev)->gen >= 9;
  		break;
@@ -25,11 +25,11 @@ index 0979a27..61f485f 100644
  	default:
  		DRM_DEBUG("Unknown parameter %d\n", param->param);
  		return -EINVAL;
-diff --git a/drivers/gpu/drm/i915/i915_drv.h b/drivers/gpu/drm/i915/i915_drv.h
-index b396858..2ead172 100644
---- a/drivers/gpu/drm/i915/i915_drv.h
-+++ b/drivers/gpu/drm/i915/i915_drv.h
-@@ -1757,6 +1757,7 @@ struct i915_execbuffer_params {
+Index: current/drivers/gpu/drm/i915/i915_drv.h
+===================================================================
+--- current.orig/drivers/gpu/drm/i915/i915_drv.h
++++ current/drivers/gpu/drm/i915/i915_drv.h
+@@ -1760,6 +1760,7 @@ struct i915_execbuffer_params {
  	int                             instp_mode;
  	struct intel_context            *ctx;
  	struct drm_i915_gem_request     *request;
@@ -37,11 +37,11 @@ index b396858..2ead172 100644
  };
  
  struct i915_scheduler;
-diff --git a/drivers/gpu/drm/i915/i915_gem_execbuffer.c b/drivers/gpu/drm/i915/i915_gem_execbuffer.c
-index 5dce979..186f55e 100644
---- a/drivers/gpu/drm/i915/i915_gem_execbuffer.c
-+++ b/drivers/gpu/drm/i915/i915_gem_execbuffer.c
-@@ -966,8 +966,8 @@ i915_gem_check_execbuffer(struct drm_i915_gem_execbuffer2 *exec)
+Index: current/drivers/gpu/drm/i915/i915_gem_execbuffer.c
+===================================================================
+--- current.orig/drivers/gpu/drm/i915/i915_gem_execbuffer.c
++++ current/drivers/gpu/drm/i915/i915_gem_execbuffer.c
+@@ -959,8 +959,8 @@ i915_gem_check_execbuffer(struct drm_i91
  		return false;
  
  	/* Kernel clipping was a DRI1 misfeature */
@@ -52,7 +52,7 @@ index 5dce979..186f55e 100644
  
  	if (exec->DR4 == 0xffffffff) {
  		DRM_DEBUG("UXA submitting garbage DR4, fixing up\n");
-@@ -1744,6 +1744,7 @@ i915_gem_do_execbuffer(struct drm_device *dev, void *data,
+@@ -1737,6 +1737,7 @@ i915_gem_do_execbuffer(struct drm_device
  	params->args_flags              = args->flags;
  	params->args_batch_len          = args->batch_len;
  	params->args_num_cliprects      = args->num_cliprects;
@@ -60,11 +60,11 @@ index 5dce979..186f55e 100644
  	params->args_DR1                = args->DR1;
  	params->args_DR4                = args->DR4;
  	params->batch_obj               = batch_obj;
-diff --git a/drivers/gpu/drm/i915/i915_scheduler.c b/drivers/gpu/drm/i915/i915_scheduler.c
-index 75260bd..4645ce7 100644
---- a/drivers/gpu/drm/i915/i915_scheduler.c
-+++ b/drivers/gpu/drm/i915/i915_scheduler.c
-@@ -776,6 +776,9 @@ static int i915_generate_dependencies(struct i915_scheduler *scheduler,
+Index: current/drivers/gpu/drm/i915/i915_scheduler.c
+===================================================================
+--- current.orig/drivers/gpu/drm/i915/i915_scheduler.c
++++ current/drivers/gpu/drm/i915/i915_scheduler.c
+@@ -776,6 +776,9 @@ static int i915_generate_dependencies(st
  		if (that->ring != node->params.ring)
  			continue;
  
@@ -74,10 +74,10 @@ index 75260bd..4645ce7 100644
  		if (that->dep_uniq != req->uniq) {
  			node->dep_list[node->num_deps] = that->scheduler_qe;
  			node->num_deps++;
-diff --git a/include/uapi/drm/i915_drm.h b/include/uapi/drm/i915_drm.h
-index 208d18f..b1fb241 100644
---- a/include/uapi/drm/i915_drm.h
-+++ b/include/uapi/drm/i915_drm.h
+Index: current/include/uapi/drm/i915_drm.h
+===================================================================
+--- current.orig/include/uapi/drm/i915_drm.h
++++ current/include/uapi/drm/i915_drm.h
 @@ -362,6 +362,7 @@ typedef struct drm_i915_irq_wait {
  #define I915_PARAM_HAS_RESOURCE_STREAMER 36
  #define I915_PARAM_HAS_EXEC_SOFTPIN	 37
@@ -86,6 +86,3 @@ index 208d18f..b1fb241 100644
  #define I915_PRIVATE_PARAM_HAS_EXEC_FORCE_NON_COHERENT (-1)
  
  typedef struct drm_i915_getparam {
--- 
-1.7.1
-

@@ -37,11 +37,11 @@ Change-Id: I2173a8f7d5e177542ef42e9069334f2c38140e8d
  drivers/gpu/drm/i915/i915_reg.h     |    7 +++++++
  2 files changed, 28 insertions(+), 0 deletions(-)
 
-diff --git a/drivers/gpu/drm/i915/i915_gem_gtt.c b/drivers/gpu/drm/i915/i915_gem_gtt.c
-index add1560..24a84b3 100644
---- a/drivers/gpu/drm/i915/i915_gem_gtt.c
-+++ b/drivers/gpu/drm/i915/i915_gem_gtt.c
-@@ -2136,6 +2136,25 @@ static void i915_address_space_init(struct i915_address_space *vm,
+Index: current/drivers/gpu/drm/i915/i915_gem_gtt.c
+===================================================================
+--- current.orig/drivers/gpu/drm/i915/i915_gem_gtt.c
++++ current/drivers/gpu/drm/i915/i915_gem_gtt.c
+@@ -2136,6 +2136,25 @@ static void i915_address_space_init(stru
  	list_add_tail(&vm->global_link, &dev_priv->vm_list);
  }
  
@@ -67,7 +67,7 @@ index add1560..24a84b3 100644
  int i915_ppgtt_init(struct drm_device *dev, struct i915_hw_ppgtt *ppgtt)
  {
  	struct drm_i915_private *dev_priv = dev->dev_private;
-@@ -2152,6 +2171,8 @@ int i915_ppgtt_init(struct drm_device *dev, struct i915_hw_ppgtt *ppgtt)
+@@ -2152,6 +2171,8 @@ int i915_ppgtt_init(struct drm_device *d
  
  int i915_ppgtt_init_hw(struct drm_device *dev)
  {
@@ -76,11 +76,11 @@ index add1560..24a84b3 100644
  	/* In the case of execlists, PPGTT is enabled by the context descriptor
  	 * and the PDPs are contained within the context itself.  We don't
  	 * need to do anything here. */
-diff --git a/drivers/gpu/drm/i915/i915_reg.h b/drivers/gpu/drm/i915/i915_reg.h
-index 1b65942..37be03b 100644
---- a/drivers/gpu/drm/i915/i915_reg.h
-+++ b/drivers/gpu/drm/i915/i915_reg.h
-@@ -4140,6 +4140,13 @@ enum skl_disp_power_wells {
+Index: current/drivers/gpu/drm/i915/i915_reg.h
+===================================================================
+--- current.orig/drivers/gpu/drm/i915/i915_reg.h
++++ current/drivers/gpu/drm/i915/i915_reg.h
+@@ -4151,6 +4151,13 @@ enum skl_disp_power_wells {
  #define TV_V_LUMA(i)		(0x68300 + (i) * 4) /* 43 registers */
  #define TV_V_CHROMA(i)		(0x68400 + (i) * 4) /* 43 registers */
  
@@ -94,6 +94,3 @@ index 1b65942..37be03b 100644
  /* Display Port */
  #define DP_A				0x64000 /* eDP */
  #define DP_B				0x64100
--- 
-1.7.1
-

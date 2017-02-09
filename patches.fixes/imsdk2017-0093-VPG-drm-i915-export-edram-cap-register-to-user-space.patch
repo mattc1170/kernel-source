@@ -10,11 +10,11 @@ to read eDRAM info from a MMIO register now.
  drivers/gpu/drm/i915/intel_uncore.c |    1 +
  1 files changed, 1 insertions(+), 0 deletions(-)
 
-diff --git a/drivers/gpu/drm/i915/intel_uncore.c b/drivers/gpu/drm/i915/intel_uncore.c
-index 43cba12..d62bfbd 100644
---- a/drivers/gpu/drm/i915/intel_uncore.c
-+++ b/drivers/gpu/drm/i915/intel_uncore.c
-@@ -1268,6 +1268,7 @@ static const struct register_whitelist {
+Index: current/drivers/gpu/drm/i915/intel_uncore.c
+===================================================================
+--- current.orig/drivers/gpu/drm/i915/intel_uncore.c
++++ current/drivers/gpu/drm/i915/intel_uncore.c
+@@ -1272,6 +1272,7 @@ static const struct register_whitelist {
  	uint32_t gen_bitmask;
  } whitelist[] = {
  	{ RING_TIMESTAMP(RENDER_RING_BASE), 8, GEN_RANGE(4, 9) },
@@ -22,6 +22,3 @@ index 43cba12..d62bfbd 100644
  };
  
  int i915_reg_read_ioctl(struct drm_device *dev,
--- 
-1.7.1
-

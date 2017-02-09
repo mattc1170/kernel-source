@@ -17,10 +17,10 @@ Add mvp support for performance tracing.
  create mode 100644 drivers/gpu/drm/i915/i915_mvp.c
  create mode 100644 drivers/gpu/drm/i915/i915_mvp.h
 
-diff --git a/drivers/gpu/drm/i915/Makefile b/drivers/gpu/drm/i915/Makefile
-index 0f82b55..01a8a2a 100644
---- a/drivers/gpu/drm/i915/Makefile
-+++ b/drivers/gpu/drm/i915/Makefile
+Index: current/drivers/gpu/drm/i915/Makefile
+===================================================================
+--- current.orig/drivers/gpu/drm/i915/Makefile
++++ current/drivers/gpu/drm/i915/Makefile
 @@ -101,6 +101,9 @@ i915-y += i915_vgpu.o
  # legacy horrors
  i915-y += i915_dma.o
@@ -31,11 +31,11 @@ index 0f82b55..01a8a2a 100644
  obj-$(CONFIG_DRM_I915)  += i915.o
  
  CFLAGS_i915_trace_points.o := -I$(src)
-diff --git a/drivers/gpu/drm/i915/i915_debugfs.c b/drivers/gpu/drm/i915/i915_debugfs.c
-index 40cf87c..5ba83fe 100644
---- a/drivers/gpu/drm/i915/i915_debugfs.c
-+++ b/drivers/gpu/drm/i915/i915_debugfs.c
-@@ -5547,6 +5547,33 @@ static int i915_sseu_status(struct seq_file *m, void *unused)
+Index: current/drivers/gpu/drm/i915/i915_debugfs.c
+===================================================================
+--- current.orig/drivers/gpu/drm/i915/i915_debugfs.c
++++ current/drivers/gpu/drm/i915/i915_debugfs.c
+@@ -5547,6 +5547,33 @@ static int i915_sseu_status(struct seq_f
  	return 0;
  }
  
@@ -79,10 +79,10 @@ index 40cf87c..5ba83fe 100644
  };
  
  void intel_display_crc_init(struct drm_device *dev)
-diff --git a/drivers/gpu/drm/i915/i915_drv.h b/drivers/gpu/drm/i915/i915_drv.h
-index f5ae8d1..230c142 100644
---- a/drivers/gpu/drm/i915/i915_drv.h
-+++ b/drivers/gpu/drm/i915/i915_drv.h
+Index: current/drivers/gpu/drm/i915/i915_drv.h
+===================================================================
+--- current.orig/drivers/gpu/drm/i915/i915_drv.h
++++ current/drivers/gpu/drm/i915/i915_drv.h
 @@ -53,6 +53,7 @@
  #include "intel_guc.h"
  #include <linux/fence.h>
@@ -91,7 +91,7 @@ index f5ae8d1..230c142 100644
  #include  "i915_perfmon_defs.h"
  
  /* General customization:
-@@ -2374,6 +2375,8 @@ struct drm_i915_gem_request {
+@@ -2375,6 +2376,8 @@ struct drm_i915_gem_request {
  
  	struct hlist_node ctx_link;
  	uint32_t dep_uniq;
@@ -100,11 +100,11 @@ index f5ae8d1..230c142 100644
  };
  
  int i915_gem_request_alloc(struct intel_engine_cs *ring,
-diff --git a/drivers/gpu/drm/i915/i915_gem.c b/drivers/gpu/drm/i915/i915_gem.c
-index 896d5c2..31f3e6f 100644
---- a/drivers/gpu/drm/i915/i915_gem.c
-+++ b/drivers/gpu/drm/i915/i915_gem.c
-@@ -1521,6 +1521,7 @@ static void i915_gem_request_retire(struct drm_i915_gem_request *request)
+Index: current/drivers/gpu/drm/i915/i915_gem.c
+===================================================================
+--- current.orig/drivers/gpu/drm/i915/i915_gem.c
++++ current/drivers/gpu/drm/i915/i915_gem.c
+@@ -1521,6 +1521,7 @@ static void i915_gem_request_retire(stru
  
  	list_del_init(&request->list);
  	i915_gem_request_remove_from_client(request);
@@ -112,11 +112,11 @@ index 896d5c2..31f3e6f 100644
  
  	/*
  	 * In case the request is still in the signal pending list,
-diff --git a/drivers/gpu/drm/i915/i915_gem_execbuffer.c b/drivers/gpu/drm/i915/i915_gem_execbuffer.c
-index 78dba05..b06e0bd 100644
---- a/drivers/gpu/drm/i915/i915_gem_execbuffer.c
-+++ b/drivers/gpu/drm/i915/i915_gem_execbuffer.c
-@@ -973,7 +973,8 @@ i915_gem_check_execbuffer(struct drm_i915_gem_execbuffer2 *exec)
+Index: current/drivers/gpu/drm/i915/i915_gem_execbuffer.c
+===================================================================
+--- current.orig/drivers/gpu/drm/i915/i915_gem_execbuffer.c
++++ current/drivers/gpu/drm/i915/i915_gem_execbuffer.c
+@@ -966,7 +966,8 @@ i915_gem_check_execbuffer(struct drm_i91
  		DRM_DEBUG("UXA submitting garbage DR4, fixing up\n");
  		exec->DR4 = 0;
  	}
@@ -126,7 +126,7 @@ index 78dba05..b06e0bd 100644
  		return false;
  
  	if ((exec->batch_start_offset | exec->batch_len) & 0x7)
-@@ -1748,6 +1749,7 @@ i915_gem_do_execbuffer(struct drm_device *dev, void *data,
+@@ -1741,6 +1742,7 @@ i915_gem_do_execbuffer(struct drm_device
  	params->args_DR1                = args->DR1;
  	params->args_DR4                = args->DR4;
  	params->batch_obj               = batch_obj;
@@ -134,11 +134,10 @@ index 78dba05..b06e0bd 100644
  
  	/* Start with the context's priority level */
  	qe.priority = ctx->sched_info.priority;
-diff --git a/drivers/gpu/drm/i915/i915_mvp.c b/drivers/gpu/drm/i915/i915_mvp.c
-new file mode 100644
-index 0000000..fd1b8b2
+Index: current/drivers/gpu/drm/i915/i915_mvp.c
+===================================================================
 --- /dev/null
-+++ b/drivers/gpu/drm/i915/i915_mvp.c
++++ current/drivers/gpu/drm/i915/i915_mvp.c
 @@ -0,0 +1,229 @@
 +/*
 + * Copyright  2016 Intel Corporation
@@ -369,11 +368,10 @@ index 0000000..fd1b8b2
 +		return i915_mvp_exit();
 +	return 0;
 +}
-diff --git a/drivers/gpu/drm/i915/i915_mvp.h b/drivers/gpu/drm/i915/i915_mvp.h
-new file mode 100644
-index 0000000..1e996b9
+Index: current/drivers/gpu/drm/i915/i915_mvp.h
+===================================================================
 --- /dev/null
-+++ b/drivers/gpu/drm/i915/i915_mvp.h
++++ current/drivers/gpu/drm/i915/i915_mvp.h
 @@ -0,0 +1,55 @@
 +/*
 + * Copyright  2016 Intel Corporation
@@ -430,11 +428,11 @@ index 0000000..1e996b9
 +void i915_mvp_read_req(struct drm_i915_gem_request *req);
 +
 +#endif
-diff --git a/drivers/gpu/drm/i915/intel_lrc.c b/drivers/gpu/drm/i915/intel_lrc.c
-index f8a2931..6c9fd9e 100644
---- a/drivers/gpu/drm/i915/intel_lrc.c
-+++ b/drivers/gpu/drm/i915/intel_lrc.c
-@@ -1097,7 +1097,9 @@ int intel_execlists_submission_final(struct i915_execbuffer_params *params)
+Index: current/drivers/gpu/drm/i915/intel_lrc.c
+===================================================================
+--- current.orig/drivers/gpu/drm/i915/intel_lrc.c
++++ current/drivers/gpu/drm/i915/intel_lrc.c
+@@ -1097,7 +1097,9 @@ int intel_execlists_submission_final(str
  	exec_start = params->batch_obj_vm_offset +
  		     params->args_batch_start_offset;
  
@@ -444,6 +442,3 @@ index f8a2931..6c9fd9e 100644
  	if (ret)
  		goto err;
  
--- 
-1.7.1
-

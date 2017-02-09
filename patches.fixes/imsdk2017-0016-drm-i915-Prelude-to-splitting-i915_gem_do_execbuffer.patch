@@ -20,13 +20,13 @@ Reviewed-by: Jesse Barnes <jbarnes@virtuousgeek.org>
  drivers/gpu/drm/i915/intel_lrc.c           |   18 +++++++++---
  2 files changed, 38 insertions(+), 21 deletions(-)
 
-diff --git a/drivers/gpu/drm/i915/i915_gem_execbuffer.c b/drivers/gpu/drm/i915/i915_gem_execbuffer.c
-index ac1d220..89368c1 100644
---- a/drivers/gpu/drm/i915/i915_gem_execbuffer.c
-+++ b/drivers/gpu/drm/i915/i915_gem_execbuffer.c
-@@ -933,10 +933,7 @@ i915_gem_execbuffer_move_to_gpu(struct drm_i915_gem_request *req,
- 	if (flush_domains & I915_GEM_DOMAIN_GTT)
- 		wmb();
+Index: current/drivers/gpu/drm/i915/i915_gem_execbuffer.c
+===================================================================
+--- current.orig/drivers/gpu/drm/i915/i915_gem_execbuffer.c
++++ current/drivers/gpu/drm/i915/i915_gem_execbuffer.c
+@@ -926,10 +926,7 @@ i915_gem_execbuffer_move_to_gpu(struct d
+ 	/* Unconditionally flush any chipset caches (for streaming writes). */
+ 	i915_gem_chipset_flush(req->ring->dev);
  
 -	/* Unconditionally invalidate gpu caches and ensure that we do flush
 -	 * any residual writes from the previous batch.
@@ -36,7 +36,7 @@ index ac1d220..89368c1 100644
  }
  
  static bool
-@@ -1186,17 +1183,6 @@ i915_gem_ringbuffer_submission(struct i915_execbuffer_params *params,
+@@ -1179,17 +1176,6 @@ i915_gem_ringbuffer_submission(struct i9
  	u32 instp_mask;
  	int ret;
  
@@ -54,7 +54,7 @@ index ac1d220..89368c1 100644
  	instp_mode = args->flags & I915_EXEC_CONSTANTS_MASK;
  	instp_mask = I915_EXEC_CONSTANTS_MASK;
  	switch (instp_mode) {
-@@ -1230,6 +1216,30 @@ i915_gem_ringbuffer_submission(struct i915_execbuffer_params *params,
+@@ -1223,6 +1209,30 @@ i915_gem_ringbuffer_submission(struct i9
  		return -EINVAL;
  	}
  
@@ -85,7 +85,7 @@ index ac1d220..89368c1 100644
  	if (ring == &dev_priv->ring[RCS] &&
  	    instp_mode != dev_priv->relative_constants_mode) {
  		ret = intel_ring_begin(params->request, 4);
-@@ -1263,7 +1273,6 @@ i915_gem_ringbuffer_submission(struct i915_execbuffer_params *params,
+@@ -1256,7 +1266,6 @@ i915_gem_ringbuffer_submission(struct i9
  
  	trace_i915_gem_ring_dispatch(params->request, params->dispatch_flags);
  
@@ -93,11 +93,11 @@ index ac1d220..89368c1 100644
  	i915_gem_execbuffer_retire_commands(params);
  
  	return 0;
-diff --git a/drivers/gpu/drm/i915/intel_lrc.c b/drivers/gpu/drm/i915/intel_lrc.c
-index 3022d7e..69f0024 100644
---- a/drivers/gpu/drm/i915/intel_lrc.c
-+++ b/drivers/gpu/drm/i915/intel_lrc.c
-@@ -670,10 +670,7 @@ static int execlists_move_to_gpu(struct drm_i915_gem_request *req,
+Index: current/drivers/gpu/drm/i915/intel_lrc.c
+===================================================================
+--- current.orig/drivers/gpu/drm/i915/intel_lrc.c
++++ current/drivers/gpu/drm/i915/intel_lrc.c
+@@ -670,10 +670,7 @@ static int execlists_move_to_gpu(struct
  	if (flush_domains & I915_GEM_DOMAIN_GTT)
  		wmb();
  
@@ -109,7 +109,7 @@ index 3022d7e..69f0024 100644
  }
  
  int intel_logical_ring_alloc_request_extras(struct drm_i915_gem_request *request)
-@@ -936,6 +933,18 @@ int intel_execlists_submission(struct i915_execbuffer_params *params,
+@@ -936,6 +933,18 @@ int intel_execlists_submission(struct i9
  	if (ret)
  		return ret;
  
@@ -128,7 +128,7 @@ index 3022d7e..69f0024 100644
  	if (ring == &dev_priv->ring[RCS] &&
  	    instp_mode != dev_priv->relative_constants_mode) {
  		ret = intel_logical_ring_begin(params->request, 4);
-@@ -960,7 +969,6 @@ int intel_execlists_submission(struct i915_execbuffer_params *params,
+@@ -960,7 +969,6 @@ int intel_execlists_submission(struct i9
  
  	trace_i915_gem_ring_dispatch(params->request, params->dispatch_flags);
  
@@ -136,6 +136,3 @@ index 3022d7e..69f0024 100644
  	i915_gem_execbuffer_retire_commands(params);
  
  	return 0;
--- 
-1.7.1
-

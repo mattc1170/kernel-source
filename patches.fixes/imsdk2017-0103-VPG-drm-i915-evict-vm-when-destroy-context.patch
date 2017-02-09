@@ -10,11 +10,11 @@ evict vm in time to mitigate it.
  drivers/gpu/drm/i915/i915_gem_context.c |    2 ++
  1 files changed, 2 insertions(+), 0 deletions(-)
 
-diff --git a/drivers/gpu/drm/i915/i915_gem_context.c b/drivers/gpu/drm/i915/i915_gem_context.c
-index d985111..56fc62a 100644
---- a/drivers/gpu/drm/i915/i915_gem_context.c
-+++ b/drivers/gpu/drm/i915/i915_gem_context.c
-@@ -913,6 +913,8 @@ int i915_gem_context_destroy_ioctl(struct drm_device *dev, void *data,
+Index: current/drivers/gpu/drm/i915/i915_gem_context.c
+===================================================================
+--- current.orig/drivers/gpu/drm/i915/i915_gem_context.c
++++ current/drivers/gpu/drm/i915/i915_gem_context.c
+@@ -917,6 +917,8 @@ int i915_gem_context_destroy_ioctl(struc
  	}
  
  	idr_remove(&ctx->file_priv->context_idr, ctx->user_handle);
@@ -23,6 +23,3 @@ index d985111..56fc62a 100644
  	i915_gem_context_unreference(ctx);
  	mutex_unlock(&dev->struct_mutex);
  
--- 
-1.7.1
-

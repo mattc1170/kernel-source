@@ -9,11 +9,11 @@ Enable slice shutdown debugfs interface for BDW.
  drivers/gpu/drm/i915/intel_lrc.c    |    2 +-
  2 files changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/drivers/gpu/drm/i915/i915_debugfs.c b/drivers/gpu/drm/i915/i915_debugfs.c
-index af8ed6f..ef09fdf 100644
---- a/drivers/gpu/drm/i915/i915_debugfs.c
-+++ b/drivers/gpu/drm/i915/i915_debugfs.c
-@@ -5849,7 +5849,7 @@ i915_slice_enabled_set(void *data, u64 val)
+Index: current/drivers/gpu/drm/i915/i915_debugfs.c
+===================================================================
+--- current.orig/drivers/gpu/drm/i915/i915_debugfs.c
++++ current/drivers/gpu/drm/i915/i915_debugfs.c
+@@ -5849,7 +5849,7 @@ i915_slice_enabled_set(void *data, u64 v
  	struct intel_device_info *info;
  
  	info = (struct intel_device_info *)&dev_priv->info;
@@ -22,11 +22,11 @@ index af8ed6f..ef09fdf 100644
  		return -EINVAL;
  
  	if (val > info->slice_total || val <= 0)
-diff --git a/drivers/gpu/drm/i915/intel_lrc.c b/drivers/gpu/drm/i915/intel_lrc.c
-index f1f95db..a7095e1 100644
---- a/drivers/gpu/drm/i915/intel_lrc.c
-+++ b/drivers/gpu/drm/i915/intel_lrc.c
-@@ -2380,7 +2380,7 @@ make_rpcs(struct drm_device *dev)
+Index: current/drivers/gpu/drm/i915/intel_lrc.c
+===================================================================
+--- current.orig/drivers/gpu/drm/i915/intel_lrc.c
++++ current/drivers/gpu/drm/i915/intel_lrc.c
+@@ -2381,7 +2381,7 @@ make_rpcs(struct drm_device *dev)
  	 * No explicit RPCS request is needed to ensure full
  	 * slice/subslice/EU enablement prior to Gen9.
  	*/
@@ -35,6 +35,3 @@ index f1f95db..a7095e1 100644
  		return 0;
  
  	/*
--- 
-1.7.1
-

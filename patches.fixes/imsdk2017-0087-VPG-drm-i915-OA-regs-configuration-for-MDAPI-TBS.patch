@@ -50,10 +50,10 @@ Conflicts:
  create mode 100644 drivers/gpu/drm/i915/i915_perfmon_defs.h
  create mode 100644 include/uapi/drm/i915_perfmon.h
 
-diff --git a/drivers/gpu/drm/i915/Makefile b/drivers/gpu/drm/i915/Makefile
-index e9ba859..0f82b55 100644
---- a/drivers/gpu/drm/i915/Makefile
-+++ b/drivers/gpu/drm/i915/Makefile
+Index: current/drivers/gpu/drm/i915/Makefile
+===================================================================
+--- current.orig/drivers/gpu/drm/i915/Makefile
++++ current/drivers/gpu/drm/i915/Makefile
 @@ -92,6 +92,9 @@ i915-y += dvo_ch7017.o \
  	  intel_sdvo.o \
  	  intel_tv.o
@@ -64,11 +64,11 @@ index e9ba859..0f82b55 100644
  # virtual gpu code
  i915-y += i915_vgpu.o
  
-diff --git a/drivers/gpu/drm/i915/i915_dma.c b/drivers/gpu/drm/i915/i915_dma.c
-index 53a7a39..01be9a7 100644
---- a/drivers/gpu/drm/i915/i915_dma.c
-+++ b/drivers/gpu/drm/i915/i915_dma.c
-@@ -896,6 +896,9 @@ int i915_driver_load(struct drm_device *dev, unsigned long flags)
+Index: current/drivers/gpu/drm/i915/i915_dma.c
+===================================================================
+--- current.orig/drivers/gpu/drm/i915/i915_dma.c
++++ current/drivers/gpu/drm/i915/i915_dma.c
+@@ -899,6 +899,9 @@ int i915_driver_load(struct drm_device *
  	mutex_init(&dev_priv->modeset_restore_lock);
  	mutex_init(&dev_priv->csr_lock);
  	mutex_init(&dev_priv->av_mutex);
@@ -78,7 +78,7 @@ index 53a7a39..01be9a7 100644
  
  	intel_pm_setup(dev);
  
-@@ -1091,6 +1094,10 @@ int i915_driver_load(struct drm_device *dev, unsigned long flags)
+@@ -1093,6 +1096,10 @@ int i915_driver_load(struct drm_device *
  
  	i915_audio_component_init(dev_priv);
  
@@ -89,7 +89,7 @@ index 53a7a39..01be9a7 100644
  	return 0;
  
  out_power_well:
-@@ -1223,6 +1230,10 @@ int i915_driver_unload(struct drm_device *dev)
+@@ -1223,6 +1230,10 @@ int i915_driver_unload(struct drm_device
  	kmem_cache_destroy(dev_priv->vmas);
  	kmem_cache_destroy(dev_priv->objects);
  	pci_dev_put(dev_priv->bridge_dev);
@@ -100,7 +100,7 @@ index 53a7a39..01be9a7 100644
  	kfree(dev_priv);
  
  	return 0;
-@@ -1338,6 +1349,7 @@ const struct drm_ioctl_desc i915_ioctls[] = {
+@@ -1338,6 +1349,7 @@ const struct drm_ioctl_desc i915_ioctls[
  	DRM_IOCTL_DEF_DRV(I915_GEM_USERPTR, i915_gem_userptr_ioctl, DRM_RENDER_ALLOW),
  	DRM_IOCTL_DEF_DRV(I915_GEM_CONTEXT_GETPARAM, i915_gem_context_getparam_ioctl, DRM_RENDER_ALLOW),
  	DRM_IOCTL_DEF_DRV(I915_GEM_CONTEXT_SETPARAM, i915_gem_context_setparam_ioctl, DRM_RENDER_ALLOW),
@@ -108,10 +108,10 @@ index 53a7a39..01be9a7 100644
  };
  
  int i915_max_ioctl = ARRAY_SIZE(i915_ioctls);
-diff --git a/drivers/gpu/drm/i915/i915_drv.h b/drivers/gpu/drm/i915/i915_drv.h
-index 14f97bd..877fdaf 100644
---- a/drivers/gpu/drm/i915/i915_drv.h
-+++ b/drivers/gpu/drm/i915/i915_drv.h
+Index: current/drivers/gpu/drm/i915/i915_drv.h
+===================================================================
+--- current.orig/drivers/gpu/drm/i915/i915_drv.h
++++ current/drivers/gpu/drm/i915/i915_drv.h
 @@ -53,6 +53,8 @@
  #include "intel_guc.h"
  #include <linux/fence.h>
@@ -121,7 +121,7 @@ index 14f97bd..877fdaf 100644
  /* General customization:
   */
  
-@@ -345,6 +347,8 @@ struct drm_i915_file_private {
+@@ -348,6 +350,8 @@ struct drm_i915_file_private {
  	struct intel_engine_cs *bsd_ring;
  
  	u32 scheduler_queue_length;
@@ -130,7 +130,7 @@ index 14f97bd..877fdaf 100644
  };
  
  enum intel_dpll_id {
-@@ -895,6 +899,7 @@ struct i915_fence_timeline {
+@@ -898,6 +902,7 @@ struct i915_fence_timeline {
   */
  struct intel_context {
  	struct kref ref;
@@ -138,7 +138,7 @@ index 14f97bd..877fdaf 100644
  	int user_handle;
  	uint8_t remap_slice;
  	struct drm_i915_private *i915;
-@@ -921,6 +926,9 @@ struct intel_context {
+@@ -924,6 +929,9 @@ struct intel_context {
  	} engine[I915_NUM_RINGS];
  
  	struct list_head link;
@@ -148,7 +148,7 @@ index 14f97bd..877fdaf 100644
  };
  
  enum fb_op_origin {
-@@ -1895,6 +1903,16 @@ struct drm_i915_private {
+@@ -1898,6 +1906,16 @@ struct drm_i915_private {
  
  	struct i915_workarounds workarounds;
  
@@ -165,7 +165,7 @@ index 14f97bd..877fdaf 100644
  	/* Reclocking support */
  	bool render_reclock_avail;
  
-@@ -3449,6 +3467,15 @@ int i915_reg_read_ioctl(struct drm_device *dev, void *data,
+@@ -3465,6 +3483,15 @@ int i915_reg_read_ioctl(struct drm_devic
  int i915_get_reset_stats_ioctl(struct drm_device *dev, void *data,
  			       struct drm_file *file);
  
@@ -181,11 +181,11 @@ index 14f97bd..877fdaf 100644
  /* overlay */
  extern struct intel_overlay_error_state *intel_overlay_capture_error_state(struct drm_device *dev);
  extern void intel_overlay_print_error_state(struct drm_i915_error_state_buf *e,
-diff --git a/drivers/gpu/drm/i915/i915_gem_context.c b/drivers/gpu/drm/i915/i915_gem_context.c
-index 693bcf3..02263c2 100644
---- a/drivers/gpu/drm/i915/i915_gem_context.c
-+++ b/drivers/gpu/drm/i915/i915_gem_context.c
-@@ -168,6 +168,10 @@ void i915_gem_context_free(struct kref *ctx_ref)
+Index: current/drivers/gpu/drm/i915/i915_gem_context.c
+===================================================================
+--- current.orig/drivers/gpu/drm/i915/i915_gem_context.c
++++ current/drivers/gpu/drm/i915/i915_gem_context.c
+@@ -168,6 +168,10 @@ void i915_gem_context_free(struct kref *
  
  	if (ctx->legacy_hw_ctx.rcs_state)
  		drm_gem_object_unreference(&ctx->legacy_hw_ctx.rcs_state->base);
@@ -196,7 +196,7 @@ index 693bcf3..02263c2 100644
  	list_del(&ctx->link);
  	kfree(ctx);
  }
-@@ -317,6 +321,9 @@ i915_gem_create_context(struct drm_device *dev,
+@@ -317,6 +321,9 @@ i915_gem_create_context(struct drm_devic
  
  	trace_i915_context_create(ctx);
  
@@ -206,11 +206,10 @@ index 693bcf3..02263c2 100644
  	return ctx;
  
  err_unpin:
-diff --git a/drivers/gpu/drm/i915/i915_perfmon.c b/drivers/gpu/drm/i915/i915_perfmon.c
-new file mode 100644
-index 0000000..182d97d
+Index: current/drivers/gpu/drm/i915/i915_perfmon.c
+===================================================================
 --- /dev/null
-+++ b/drivers/gpu/drm/i915/i915_perfmon.c
++++ current/drivers/gpu/drm/i915/i915_perfmon.c
 @@ -0,0 +1,1067 @@
 +/*
 + * Copyright  2013 Intel Corporation
@@ -1279,11 +1278,10 @@ index 0000000..182d97d
 +
 +
 +
-diff --git a/drivers/gpu/drm/i915/i915_perfmon_defs.h b/drivers/gpu/drm/i915/i915_perfmon_defs.h
-new file mode 100644
-index 0000000..300f3e5
+Index: current/drivers/gpu/drm/i915/i915_perfmon_defs.h
+===================================================================
 --- /dev/null
-+++ b/drivers/gpu/drm/i915/i915_perfmon_defs.h
++++ current/drivers/gpu/drm/i915/i915_perfmon_defs.h
 @@ -0,0 +1,62 @@
 +/*
 + * Copyright  2014 Intel Corporation
@@ -1347,11 +1345,11 @@ index 0000000..300f3e5
 +};
 +
 +#endif	/* _I915_PERFMON_DEFS_H_ */
-diff --git a/drivers/gpu/drm/i915/i915_reg.h b/drivers/gpu/drm/i915/i915_reg.h
-index 7b13991..1b65942 100644
---- a/drivers/gpu/drm/i915/i915_reg.h
-+++ b/drivers/gpu/drm/i915/i915_reg.h
-@@ -5856,6 +5856,8 @@ enum skl_disp_power_wells {
+Index: current/drivers/gpu/drm/i915/i915_reg.h
+===================================================================
+--- current.orig/drivers/gpu/drm/i915/i915_reg.h
++++ current/drivers/gpu/drm/i915/i915_reg.h
+@@ -5867,6 +5867,8 @@ enum skl_disp_power_wells {
  #define GEN8_PCU_IIR 0x444e8
  #define GEN8_PCU_IER 0x444ec
  
@@ -1360,7 +1358,7 @@ index 7b13991..1b65942 100644
  #define ILK_DISPLAY_CHICKEN2	0x42004
  /* Required on all Ironlake and Sandybridge according to the B-Spec. */
  #define  ILK_ELPIN_409_SELECT	(1 << 25)
-@@ -8161,4 +8163,8 @@ enum skl_disp_power_wells {
+@@ -8176,4 +8178,8 @@ enum skl_disp_power_wells {
  #define MFC_IMAGE_STATUS_CONTROL 0x124B8
  #define MFC_QP_STATUS_COUNT      0x124BC
  #define MFC_BITSTREAM_BYTECOUNT_SLICE 0x124D0
@@ -1369,10 +1367,10 @@ index 7b13991..1b65942 100644
 +#define GEN8_RC6_WA_BB      0x2058
 +
  #endif /* _I915_REG_H_ */
-diff --git a/drivers/gpu/drm/i915/intel_lrc.c b/drivers/gpu/drm/i915/intel_lrc.c
-index 7c4df3d..d8c58f7 100644
---- a/drivers/gpu/drm/i915/intel_lrc.c
-+++ b/drivers/gpu/drm/i915/intel_lrc.c
+Index: current/drivers/gpu/drm/i915/intel_lrc.c
+===================================================================
+--- current.orig/drivers/gpu/drm/i915/intel_lrc.c
++++ current/drivers/gpu/drm/i915/intel_lrc.c
 @@ -222,6 +222,11 @@ enum {
  #define CTX_RCS_INDIRECT_CTX_OFFSET_DEFAULT  0x17
  
@@ -1385,7 +1383,7 @@ index 7c4df3d..d8c58f7 100644
  static void lrc_setup_hardware_status_page(struct intel_engine_cs *ring,
  		struct drm_i915_gem_object *default_ctx_obj);
  
-@@ -970,6 +975,7 @@ int intel_execlists_submission(struct i915_execbuffer_params *params,
+@@ -970,6 +975,7 @@ int intel_execlists_submission(struct i9
   */
  int intel_execlists_submission_final(struct i915_execbuffer_params *params)
  {
@@ -1393,7 +1391,7 @@ index 7c4df3d..d8c58f7 100644
  	struct drm_i915_private *dev_priv = params->dev->dev_private;
  	struct drm_i915_gem_request *req = params->request;
  	struct intel_ringbuffer *ringbuf = req->ringbuf;
-@@ -1052,6 +1058,9 @@ int intel_execlists_submission_final(struct i915_execbuffer_params *params)
+@@ -1052,6 +1058,9 @@ int intel_execlists_submission_final(str
  		dev_priv->relative_constants_mode = params->instp_mode;
  	}
  
@@ -1403,10 +1401,10 @@ index 7c4df3d..d8c58f7 100644
  	exec_start = params->batch_obj_vm_offset +
  		     params->args_batch_start_offset;
  
-diff --git a/include/uapi/drm/i915_drm.h b/include/uapi/drm/i915_drm.h
-index a7386d0..fa9940f 100644
---- a/include/uapi/drm/i915_drm.h
-+++ b/include/uapi/drm/i915_drm.h
+Index: current/include/uapi/drm/i915_drm.h
+===================================================================
+--- current.orig/include/uapi/drm/i915_drm.h
++++ current/include/uapi/drm/i915_drm.h
 @@ -28,6 +28,7 @@
  #define _UAPI_I915_DRM_H_
  
@@ -1432,11 +1430,10 @@ index a7386d0..fa9940f 100644
  /* Allow drivers to submit batchbuffers directly to hardware, relying
   * on the security mechanisms provided by hardware.
   */
-diff --git a/include/uapi/drm/i915_perfmon.h b/include/uapi/drm/i915_perfmon.h
-new file mode 100644
-index 0000000..ebc7498
+Index: current/include/uapi/drm/i915_perfmon.h
+===================================================================
 --- /dev/null
-+++ b/include/uapi/drm/i915_perfmon.h
++++ current/include/uapi/drm/i915_perfmon.h
 @@ -0,0 +1,125 @@
 +/*
 + * Copyright  2013 Intel Corporation
@@ -1563,6 +1560,3 @@ index 0000000..ebc7498
 +};
 +
 +#endif	/* _I915_PERFMON_H_ */
--- 
-1.7.1
-

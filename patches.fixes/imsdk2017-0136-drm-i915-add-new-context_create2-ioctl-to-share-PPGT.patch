@@ -21,10 +21,10 @@ Signed-off-by: Hong Liu <hong.liu@intel.com>
  include/uapi/drm/i915_drm.h             |   11 ++++
  5 files changed, 91 insertions(+), 37 deletions(-)
 
-Index: linux-4.4/drivers/gpu/drm/i915/i915_dma.c
+Index: current/drivers/gpu/drm/i915/i915_dma.c
 ===================================================================
---- linux-4.4.orig/drivers/gpu/drm/i915/i915_dma.c
-+++ linux-4.4/drivers/gpu/drm/i915/i915_dma.c
+--- current.orig/drivers/gpu/drm/i915/i915_dma.c
++++ current/drivers/gpu/drm/i915/i915_dma.c
 @@ -1351,6 +1351,7 @@ const struct drm_ioctl_desc i915_ioctls[
  	DRM_IOCTL_DEF_DRV(I915_GET_SPRITE_COLORKEY, drm_noop, DRM_MASTER|DRM_CONTROL_ALLOW),
  	DRM_IOCTL_DEF_DRV(I915_GEM_WAIT, i915_gem_wait_ioctl, DRM_AUTH|DRM_RENDER_ALLOW),
@@ -33,11 +33,11 @@ Index: linux-4.4/drivers/gpu/drm/i915/i915_dma.c
  	DRM_IOCTL_DEF_DRV(I915_GEM_CONTEXT_DESTROY, i915_gem_context_destroy_ioctl, DRM_RENDER_ALLOW),
  	DRM_IOCTL_DEF_DRV(I915_REG_READ, i915_reg_read_ioctl, DRM_RENDER_ALLOW),
  	DRM_IOCTL_DEF_DRV(I915_GET_RESET_STATS, i915_get_reset_stats_ioctl, DRM_RENDER_ALLOW),
-Index: linux-4.4/drivers/gpu/drm/i915/i915_drv.h
+Index: current/drivers/gpu/drm/i915/i915_drv.h
 ===================================================================
---- linux-4.4.orig/drivers/gpu/drm/i915/i915_drv.h
-+++ linux-4.4/drivers/gpu/drm/i915/i915_drv.h
-@@ -3299,6 +3299,8 @@ static inline bool i915_gem_context_is_d
+--- current.orig/drivers/gpu/drm/i915/i915_drv.h
++++ current/drivers/gpu/drm/i915/i915_drv.h
+@@ -3310,6 +3310,8 @@ static inline bool i915_gem_context_is_d
  
  int i915_gem_context_create_ioctl(struct drm_device *dev, void *data,
  				  struct drm_file *file);
@@ -46,10 +46,10 @@ Index: linux-4.4/drivers/gpu/drm/i915/i915_drv.h
  int i915_gem_context_destroy_ioctl(struct drm_device *dev, void *data,
  				   struct drm_file *file);
  int i915_gem_context_getparam_ioctl(struct drm_device *dev, void *data,
-Index: linux-4.4/drivers/gpu/drm/i915/i915_gem_context.c
+Index: current/drivers/gpu/drm/i915/i915_gem_context.c
 ===================================================================
---- linux-4.4.orig/drivers/gpu/drm/i915/i915_gem_context.c
-+++ linux-4.4/drivers/gpu/drm/i915/i915_gem_context.c
+--- current.orig/drivers/gpu/drm/i915/i915_gem_context.c
++++ current/drivers/gpu/drm/i915/i915_gem_context.c
 @@ -133,21 +133,6 @@ static int get_context_size(struct drm_d
  	return ret;
  }
@@ -208,10 +208,10 @@ Index: linux-4.4/drivers/gpu/drm/i915/i915_gem_context.c
  }
  
  int i915_gem_context_destroy_ioctl(struct drm_device *dev, void *data,
-Index: linux-4.4/drivers/gpu/drm/i915/i915_gem_gtt.c
+Index: current/drivers/gpu/drm/i915/i915_gem_gtt.c
 ===================================================================
---- linux-4.4.orig/drivers/gpu/drm/i915/i915_gem_gtt.c
-+++ linux-4.4/drivers/gpu/drm/i915/i915_gem_gtt.c
+--- current.orig/drivers/gpu/drm/i915/i915_gem_gtt.c
++++ current/drivers/gpu/drm/i915/i915_gem_gtt.c
 @@ -2231,6 +2231,17 @@ i915_ppgtt_create(struct drm_device *dev
  	return ppgtt;
  }
@@ -244,10 +244,10 @@ Index: linux-4.4/drivers/gpu/drm/i915/i915_gem_gtt.c
  	/* vmas should already be unbound */
  	WARN_ON(!list_empty(&ppgtt->base.active_list));
  	WARN_ON(!list_empty(&ppgtt->base.inactive_list));
-Index: linux-4.4/include/uapi/drm/i915_drm.h
+Index: current/include/uapi/drm/i915_drm.h
 ===================================================================
---- linux-4.4.orig/include/uapi/drm/i915_drm.h
-+++ linux-4.4/include/uapi/drm/i915_drm.h
+--- current.orig/include/uapi/drm/i915_drm.h
++++ current/include/uapi/drm/i915_drm.h
 @@ -231,6 +231,7 @@ typedef struct _drm_i915_sarea {
  #define DRM_I915_GEM_USERPTR		0x33
  #define DRM_I915_GEM_CONTEXT_GETPARAM	0x34

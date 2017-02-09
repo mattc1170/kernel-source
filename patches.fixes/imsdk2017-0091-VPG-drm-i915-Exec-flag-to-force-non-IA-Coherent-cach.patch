@@ -57,11 +57,11 @@ Conflicts:
  include/uapi/drm/i915_drm.h                |   10 +++++++-
  6 files changed, 60 insertions(+), 1 deletions(-)
 
-diff --git a/drivers/gpu/drm/i915/i915_dma.c b/drivers/gpu/drm/i915/i915_dma.c
-index 01be9a7..79c3dc1 100644
---- a/drivers/gpu/drm/i915/i915_dma.c
-+++ b/drivers/gpu/drm/i915/i915_dma.c
-@@ -174,6 +174,10 @@ static int i915_getparam(struct drm_device *dev, void *data,
+Index: current/drivers/gpu/drm/i915/i915_dma.c
+===================================================================
+--- current.orig/drivers/gpu/drm/i915/i915_dma.c
++++ current/drivers/gpu/drm/i915/i915_dma.c
+@@ -174,6 +174,10 @@ static int i915_getparam(struct drm_devi
  	case I915_PARAM_HAS_EXEC_SOFTPIN:
  		value = 1;
  		break;
@@ -72,11 +72,11 @@ index 01be9a7..79c3dc1 100644
  	default:
  		DRM_DEBUG("Unknown parameter %d\n", param->param);
  		return -EINVAL;
-diff --git a/drivers/gpu/drm/i915/i915_drv.h b/drivers/gpu/drm/i915/i915_drv.h
-index 877fdaf..5f9ae07 100644
---- a/drivers/gpu/drm/i915/i915_drv.h
-+++ b/drivers/gpu/drm/i915/i915_drv.h
-@@ -1727,6 +1727,10 @@ struct i915_wa_reg {
+Index: current/drivers/gpu/drm/i915/i915_drv.h
+===================================================================
+--- current.orig/drivers/gpu/drm/i915/i915_drv.h
++++ current/drivers/gpu/drm/i915/i915_drv.h
+@@ -1730,6 +1730,10 @@ struct i915_wa_reg {
  struct i915_workarounds {
  	struct i915_wa_reg reg[I915_MAX_WA_REGS];
  	u32 count;
@@ -87,11 +87,11 @@ index 877fdaf..5f9ae07 100644
  };
  
  struct i915_virtual_gpu {
-diff --git a/drivers/gpu/drm/i915/i915_gem_execbuffer.c b/drivers/gpu/drm/i915/i915_gem_execbuffer.c
-index 904c329..57a4325 100644
---- a/drivers/gpu/drm/i915/i915_gem_execbuffer.c
-+++ b/drivers/gpu/drm/i915/i915_gem_execbuffer.c
-@@ -1496,6 +1496,10 @@ i915_gem_do_execbuffer(struct drm_device *dev, void *data,
+Index: current/drivers/gpu/drm/i915/i915_gem_execbuffer.c
+===================================================================
+--- current.orig/drivers/gpu/drm/i915/i915_gem_execbuffer.c
++++ current/drivers/gpu/drm/i915/i915_gem_execbuffer.c
+@@ -1489,6 +1489,10 @@ i915_gem_do_execbuffer(struct drm_device
  	if (!i915_gem_check_execbuffer(args))
  		return -EINVAL;
  
@@ -102,11 +102,11 @@ index 904c329..57a4325 100644
  	ret = validate_exec_list(dev, exec, args->buffer_count);
  	if (ret)
  		return ret;
-diff --git a/drivers/gpu/drm/i915/intel_lrc.c b/drivers/gpu/drm/i915/intel_lrc.c
-index d8c58f7..34ed6b1 100644
---- a/drivers/gpu/drm/i915/intel_lrc.c
-+++ b/drivers/gpu/drm/i915/intel_lrc.c
-@@ -895,6 +895,35 @@ int intel_logical_ring_reserve_space(struct drm_i915_gem_request *request)
+Index: current/drivers/gpu/drm/i915/intel_lrc.c
+===================================================================
+--- current.orig/drivers/gpu/drm/i915/intel_lrc.c
++++ current/drivers/gpu/drm/i915/intel_lrc.c
+@@ -895,6 +895,35 @@ int intel_logical_ring_reserve_space(str
  	return intel_logical_ring_begin(request, 0);
  }
  
@@ -142,7 +142,7 @@ index d8c58f7..34ed6b1 100644
  /**
   * execlists_submission() - submit a batchbuffer for execution, Execlists style
   * @dev: DRM device.
-@@ -1058,6 +1087,10 @@ int intel_execlists_submission_final(struct i915_execbuffer_params *params)
+@@ -1058,6 +1087,10 @@ int intel_execlists_submission_final(str
  		dev_priv->relative_constants_mode = params->instp_mode;
  	}
  
@@ -153,7 +153,7 @@ index d8c58f7..34ed6b1 100644
  	if ((IS_GEN8(dev) || IS_GEN9(dev)) && ring == &dev_priv->ring[RCS])
  		i915_program_perfmon(dev, req);
  
-@@ -1068,6 +1101,10 @@ int intel_execlists_submission_final(struct i915_execbuffer_params *params)
+@@ -1068,6 +1101,10 @@ int intel_execlists_submission_final(str
  	if (ret)
  		goto err;
  
@@ -164,11 +164,11 @@ index d8c58f7..34ed6b1 100644
  	trace_i915_gem_ring_dispatch(req, params->dispatch_flags);
  
  	i915_gem_execbuffer_retire_commands(params);
-diff --git a/drivers/gpu/drm/i915/intel_ringbuffer.c b/drivers/gpu/drm/i915/intel_ringbuffer.c
-index 2552eee..782e4f9 100644
---- a/drivers/gpu/drm/i915/intel_ringbuffer.c
-+++ b/drivers/gpu/drm/i915/intel_ringbuffer.c
-@@ -822,6 +822,7 @@ static int gen8_init_workarounds(struct intel_engine_cs *ring)
+Index: current/drivers/gpu/drm/i915/intel_ringbuffer.c
+===================================================================
+--- current.orig/drivers/gpu/drm/i915/intel_ringbuffer.c
++++ current/drivers/gpu/drm/i915/intel_ringbuffer.c
+@@ -824,6 +824,7 @@ static int gen8_init_workarounds(struct
  	 * invalidation occurs during a PSD flush.
  	 */
  	/* WaForceEnableNonCoherent:bdw,chv */
@@ -176,7 +176,7 @@ index 2552eee..782e4f9 100644
  	/* WaHdcDisableFetchWhenMasked:bdw,chv */
  	WA_SET_BIT_MASKED(HDC_CHICKEN0,
  			  HDC_DONOT_FETCH_MEM_WHEN_MASKED |
-@@ -1076,6 +1077,7 @@ static int skl_init_workarounds(struct intel_engine_cs *ring)
+@@ -1079,6 +1080,7 @@ static int skl_init_workarounds(struct i
  		 * is a workaround for a possible hang in the unlikely event
  		 * a TLB invalidation occurs during a PSD flush.
  		 */
@@ -184,10 +184,10 @@ index 2552eee..782e4f9 100644
  		/* WaForceEnableNonCoherent:skl */
  		WA_SET_BIT_MASKED(HDC_CHICKEN0,
  				  HDC_FORCE_NON_COHERENT);
-diff --git a/include/uapi/drm/i915_drm.h b/include/uapi/drm/i915_drm.h
-index fa9940f..208d18f 100644
---- a/include/uapi/drm/i915_drm.h
-+++ b/include/uapi/drm/i915_drm.h
+Index: current/include/uapi/drm/i915_drm.h
+===================================================================
+--- current.orig/include/uapi/drm/i915_drm.h
++++ current/include/uapi/drm/i915_drm.h
 @@ -362,6 +362,8 @@ typedef struct drm_i915_irq_wait {
  #define I915_PARAM_HAS_RESOURCE_STREAMER 36
  #define I915_PARAM_HAS_EXEC_SOFTPIN	 37
@@ -212,6 +212,3 @@ index fa9940f..208d18f 100644
  
  #define I915_EXEC_CONTEXT_ID_MASK	(0xffffffff)
  #define i915_execbuffer2_set_context_id(eb2, context) \
--- 
-1.7.1
-

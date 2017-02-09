@@ -8,11 +8,11 @@ Signed-off-by: Hong Liu <hong.liu@intel.com>
  drivers/gpu/drm/i915/intel_pm.c |    5 ++++-
  1 files changed, 4 insertions(+), 1 deletions(-)
 
-Index: linux-4.4/drivers/gpu/drm/i915/intel_pm.c
+Index: current/drivers/gpu/drm/i915/intel_pm.c
 ===================================================================
---- linux-4.4.orig/drivers/gpu/drm/i915/intel_pm.c
-+++ linux-4.4/drivers/gpu/drm/i915/intel_pm.c
-@@ -4522,7 +4522,10 @@ void gen6_rps_idle(struct drm_i915_priva
+--- current.orig/drivers/gpu/drm/i915/intel_pm.c
++++ current/drivers/gpu/drm/i915/intel_pm.c
+@@ -4515,7 +4515,10 @@ void gen6_rps_idle(struct drm_i915_priva
  
  	mutex_lock(&dev_priv->rps.hw_lock);
  	if (dev_priv->rps.enabled) {

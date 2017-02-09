@@ -9,11 +9,11 @@ needed in media tests
  drivers/gpu/drm/i915/i915_reg.h        |    1 +
  2 files changed, 7 insertions(+), 0 deletions(-)
 
-diff --git a/drivers/gpu/drm/i915/i915_cmd_parser.c b/drivers/gpu/drm/i915/i915_cmd_parser.c
-index 39795ee..2f85bb7 100644
---- a/drivers/gpu/drm/i915/i915_cmd_parser.c
-+++ b/drivers/gpu/drm/i915/i915_cmd_parser.c
-@@ -509,6 +509,10 @@ static const struct drm_i915_reg_descriptor hsw_master_regs[] = {
+Index: current/drivers/gpu/drm/i915/i915_cmd_parser.c
+===================================================================
+--- current.orig/drivers/gpu/drm/i915/i915_cmd_parser.c
++++ current/drivers/gpu/drm/i915/i915_cmd_parser.c
+@@ -509,6 +509,10 @@ static const struct drm_i915_reg_descrip
  	REG32(DERRMR),
  };
  
@@ -24,7 +24,7 @@ index 39795ee..2f85bb7 100644
  #undef REG64
  #undef REG32
  
-@@ -739,6 +743,8 @@ int i915_cmd_parser_init_ring(struct intel_engine_cs *ring)
+@@ -739,6 +743,8 @@ int i915_cmd_parser_init_ring(struct int
  		cmd_tables = gen7_video_cmds;
  		cmd_table_count = ARRAY_SIZE(gen7_video_cmds);
  		ring->get_cmd_length_mask = gen7_bsd_get_cmd_length_mask;
@@ -33,16 +33,13 @@ index 39795ee..2f85bb7 100644
  		break;
  	case BCS:
  		if (IS_HASWELL(ring->dev)) {
-diff --git a/drivers/gpu/drm/i915/i915_reg.h b/drivers/gpu/drm/i915/i915_reg.h
-index b434155..9f5d6c0 100644
---- a/drivers/gpu/drm/i915/i915_reg.h
-+++ b/drivers/gpu/drm/i915/i915_reg.h
-@@ -8153,4 +8153,5 @@ enum skl_disp_power_wells {
+Index: current/drivers/gpu/drm/i915/i915_reg.h
+===================================================================
+--- current.orig/drivers/gpu/drm/i915/i915_reg.h
++++ current/drivers/gpu/drm/i915/i915_reg.h
+@@ -8168,4 +8168,5 @@ enum skl_disp_power_wells {
  #define GEN9_VEBOX_MOCS_0	0xcb00	/* Video MOCS base register*/
  #define GEN9_BLT_MOCS_0		0xcc00	/* Blitter MOCS base register*/
  
 +#define MFD_ERROR_STATUS 0x12400
  #endif /* _I915_REG_H_ */
--- 
-1.7.1
-

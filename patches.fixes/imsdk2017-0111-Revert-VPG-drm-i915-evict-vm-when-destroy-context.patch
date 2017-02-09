@@ -8,11 +8,11 @@ This reverts commit c4949c328bb33ed2d493dd2cacaa37988b0756a2.
  drivers/gpu/drm/i915/i915_gem_context.c |    2 --
  1 files changed, 0 insertions(+), 2 deletions(-)
 
-diff --git a/drivers/gpu/drm/i915/i915_gem_context.c b/drivers/gpu/drm/i915/i915_gem_context.c
-index e8cf817..4bde468 100644
---- a/drivers/gpu/drm/i915/i915_gem_context.c
-+++ b/drivers/gpu/drm/i915/i915_gem_context.c
-@@ -915,8 +915,6 @@ int i915_gem_context_destroy_ioctl(struct drm_device *dev, void *data,
+Index: current/drivers/gpu/drm/i915/i915_gem_context.c
+===================================================================
+--- current.orig/drivers/gpu/drm/i915/i915_gem_context.c
++++ current/drivers/gpu/drm/i915/i915_gem_context.c
+@@ -919,8 +919,6 @@ int i915_gem_context_destroy_ioctl(struc
  	}
  
  	idr_remove(&ctx->file_priv->context_idr, ctx->user_handle);
@@ -21,6 +21,3 @@ index e8cf817..4bde468 100644
  	i915_gem_context_unreference(ctx);
  	mutex_unlock(&dev->struct_mutex);
  
--- 
-1.7.1
-

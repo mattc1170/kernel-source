@@ -11,11 +11,11 @@ Slice shutdown override interface for the application usage.
  drivers/gpu/drm/i915/intel_lrc.c    |    2 +-
  4 files changed, 40 insertions(+), 2 deletions(-)
 
-diff --git a/drivers/gpu/drm/i915/i915_debugfs.c b/drivers/gpu/drm/i915/i915_debugfs.c
-index 5ba83fe..ff24b74 100644
---- a/drivers/gpu/drm/i915/i915_debugfs.c
-+++ b/drivers/gpu/drm/i915/i915_debugfs.c
-@@ -5697,6 +5697,41 @@ static const struct drm_info_list i915_debugfs_list[] = {
+Index: current/drivers/gpu/drm/i915/i915_debugfs.c
+===================================================================
+--- current.orig/drivers/gpu/drm/i915/i915_debugfs.c
++++ current/drivers/gpu/drm/i915/i915_debugfs.c
+@@ -5697,6 +5697,41 @@ static const struct drm_info_list i915_d
  	{"i915_rps_boost_info", i915_rps_boost_info, 0},
  	{"i915_ringstats", i915_ringstat_info, 0},
  };
@@ -67,11 +67,11 @@ index 5ba83fe..ff24b74 100644
  };
  
  void intel_display_crc_init(struct drm_device *dev)
-diff --git a/drivers/gpu/drm/i915/i915_dma.c b/drivers/gpu/drm/i915/i915_dma.c
-index 61f485f..4eb95c0 100644
---- a/drivers/gpu/drm/i915/i915_dma.c
-+++ b/drivers/gpu/drm/i915/i915_dma.c
-@@ -830,6 +830,7 @@ static void intel_device_info_runtime_init(struct drm_device *dev)
+Index: current/drivers/gpu/drm/i915/i915_dma.c
+===================================================================
+--- current.orig/drivers/gpu/drm/i915/i915_dma.c
++++ current/drivers/gpu/drm/i915/i915_dma.c
+@@ -833,6 +833,7 @@ static void intel_device_info_runtime_in
  	else if (INTEL_INFO(dev)->gen >= 9)
  		gen9_sseu_info_init(dev);
  
@@ -79,11 +79,11 @@ index 61f485f..4eb95c0 100644
  	DRM_DEBUG_DRIVER("slice total: %u\n", info->slice_total);
  	DRM_DEBUG_DRIVER("subslice total: %u\n", info->subslice_total);
  	DRM_DEBUG_DRIVER("subslice per slice: %u\n", info->subslice_per_slice);
-diff --git a/drivers/gpu/drm/i915/i915_drv.h b/drivers/gpu/drm/i915/i915_drv.h
-index c347304..7999d98 100644
---- a/drivers/gpu/drm/i915/i915_drv.h
-+++ b/drivers/gpu/drm/i915/i915_drv.h
-@@ -819,6 +819,7 @@ struct intel_device_info {
+Index: current/drivers/gpu/drm/i915/i915_drv.h
+===================================================================
+--- current.orig/drivers/gpu/drm/i915/i915_drv.h
++++ current/drivers/gpu/drm/i915/i915_drv.h
+@@ -822,6 +822,7 @@ struct intel_device_info {
  	u8 has_slice_pg:1;
  	u8 has_subslice_pg:1;
  	u8 has_eu_pg:1;
@@ -91,11 +91,11 @@ index c347304..7999d98 100644
  };
  
  #undef DEFINE_FLAG
-diff --git a/drivers/gpu/drm/i915/intel_lrc.c b/drivers/gpu/drm/i915/intel_lrc.c
-index 6c9fd9e..4632f8b 100644
---- a/drivers/gpu/drm/i915/intel_lrc.c
-+++ b/drivers/gpu/drm/i915/intel_lrc.c
-@@ -2391,7 +2391,7 @@ make_rpcs(struct drm_device *dev)
+Index: current/drivers/gpu/drm/i915/intel_lrc.c
+===================================================================
+--- current.orig/drivers/gpu/drm/i915/intel_lrc.c
++++ current/drivers/gpu/drm/i915/intel_lrc.c
+@@ -2392,7 +2392,7 @@ make_rpcs(struct drm_device *dev)
  	*/
  	if (INTEL_INFO(dev)->has_slice_pg) {
  		rpcs |= GEN8_RPCS_S_CNT_ENABLE;
@@ -104,6 +104,3 @@ index 6c9fd9e..4632f8b 100644
  			GEN8_RPCS_S_CNT_SHIFT;
  		rpcs |= GEN8_RPCS_ENABLE;
  	}
--- 
-1.7.1
-

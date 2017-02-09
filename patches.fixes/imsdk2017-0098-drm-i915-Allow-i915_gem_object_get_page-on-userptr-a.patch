@@ -42,11 +42,11 @@ Signed-off-by: Jani Nikula <jani.nikula@intel.com>
  drivers/gpu/drm/i915/i915_gem_userptr.c |    3 ++-
  3 files changed, 8 insertions(+), 2 deletions(-)
 
-diff --git a/drivers/gpu/drm/i915/i915_drv.h b/drivers/gpu/drm/i915/i915_drv.h
-index a75fa44..9b8727e 100644
---- a/drivers/gpu/drm/i915/i915_drv.h
-+++ b/drivers/gpu/drm/i915/i915_drv.h
-@@ -2069,6 +2069,9 @@ enum hdmi_force_audio {
+Index: current/drivers/gpu/drm/i915/i915_drv.h
+===================================================================
+--- current.orig/drivers/gpu/drm/i915/i915_drv.h
++++ current/drivers/gpu/drm/i915/i915_drv.h
+@@ -2072,6 +2072,9 @@ enum hdmi_force_audio {
  #define I915_GTT_OFFSET_NONE ((u32)-1)
  
  struct drm_i915_gem_object_ops {
@@ -56,7 +56,7 @@ index a75fa44..9b8727e 100644
  	/* Interface between the GEM object and its backing storage.
  	 * get_pages() is called once prior to the use of the associated set
  	 * of pages before to binding them into the GTT, and put_pages() is
-@@ -2084,6 +2087,7 @@ struct drm_i915_gem_object_ops {
+@@ -2087,6 +2090,7 @@ struct drm_i915_gem_object_ops {
  	 */
  	int (*get_pages)(struct drm_i915_gem_object *);
  	void (*put_pages)(struct drm_i915_gem_object *);
@@ -64,11 +64,11 @@ index a75fa44..9b8727e 100644
  	int (*dmabuf_export)(struct drm_i915_gem_object *);
  	void (*release)(struct drm_i915_gem_object *);
  };
-diff --git a/drivers/gpu/drm/i915/i915_gem.c b/drivers/gpu/drm/i915/i915_gem.c
-index 4df3955..70da690 100644
---- a/drivers/gpu/drm/i915/i915_gem.c
-+++ b/drivers/gpu/drm/i915/i915_gem.c
-@@ -4986,6 +4986,7 @@ void i915_gem_object_init(struct drm_i915_gem_object *obj,
+Index: current/drivers/gpu/drm/i915/i915_gem.c
+===================================================================
+--- current.orig/drivers/gpu/drm/i915/i915_gem.c
++++ current/drivers/gpu/drm/i915/i915_gem.c
+@@ -4986,6 +4986,7 @@ void i915_gem_object_init(struct drm_i91
  }
  
  static const struct drm_i915_gem_object_ops i915_gem_object_ops = {
@@ -76,7 +76,7 @@ index 4df3955..70da690 100644
  	.get_pages = i915_gem_object_get_pages_gtt,
  	.put_pages = i915_gem_object_put_pages_gtt,
  };
-@@ -5844,7 +5845,7 @@ i915_gem_object_get_dirty_page(struct drm_i915_gem_object *obj, int n)
+@@ -5844,7 +5845,7 @@ i915_gem_object_get_dirty_page(struct dr
  	struct page *page;
  
  	/* Only default objects have per-page dirty tracking */
@@ -85,11 +85,11 @@ index 4df3955..70da690 100644
  		return NULL;
  
  	page = i915_gem_object_get_page(obj, n);
-diff --git a/drivers/gpu/drm/i915/i915_gem_userptr.c b/drivers/gpu/drm/i915/i915_gem_userptr.c
-index 19fb0bd..59e45b3 100644
---- a/drivers/gpu/drm/i915/i915_gem_userptr.c
-+++ b/drivers/gpu/drm/i915/i915_gem_userptr.c
-@@ -789,9 +789,10 @@ i915_gem_userptr_dmabuf_export(struct drm_i915_gem_object *obj)
+Index: current/drivers/gpu/drm/i915/i915_gem_userptr.c
+===================================================================
+--- current.orig/drivers/gpu/drm/i915/i915_gem_userptr.c
++++ current/drivers/gpu/drm/i915/i915_gem_userptr.c
+@@ -794,9 +794,10 @@ i915_gem_userptr_dmabuf_export(struct dr
  }
  
  static const struct drm_i915_gem_object_ops i915_gem_userptr_ops = {
@@ -101,6 +101,3 @@ index 19fb0bd..59e45b3 100644
  	.release = i915_gem_userptr_release,
  };
  
--- 
-1.7.1
-

@@ -13,11 +13,11 @@ Change-Id: I0ec2102d7090f94f04ce1ca8a3c1ce5abb8db130
  drivers/gpu/drm/i915/intel_mocs_gmm_table.c |    7 +++----
  1 files changed, 3 insertions(+), 4 deletions(-)
 
-diff --git a/drivers/gpu/drm/i915/intel_mocs_gmm_table.c b/drivers/gpu/drm/i915/intel_mocs_gmm_table.c
-index 96b56df..c7604db 100644
---- a/drivers/gpu/drm/i915/intel_mocs_gmm_table.c
-+++ b/drivers/gpu/drm/i915/intel_mocs_gmm_table.c
-@@ -28,13 +28,12 @@ static const struct drm_i915_mocs_entry gen_9_mocs_table[] = {
+Index: current/drivers/gpu/drm/i915/intel_mocs_gmm_table.c
+===================================================================
+--- current.orig/drivers/gpu/drm/i915/intel_mocs_gmm_table.c
++++ current/drivers/gpu/drm/i915/intel_mocs_gmm_table.c
+@@ -28,13 +28,12 @@ static const struct drm_i915_mocs_entry
  	{0x00000009, 0x0010}, /* ED_UC LLC/eLLC EDSCC:0 L3SCC:0 L3_UC */
  	{0x00000038, 0x0030}, /* ED_PTE LLC/eLLC LRU_L EDSCC:0 L3SCC:0 L3_WB */
  	{0x0000003b, 0x0030}, /* ED_WB LLC/eLLC LRU_L EDSCC:0 L3SCC:0 L3_WB */
@@ -34,6 +34,3 @@ index 96b56df..c7604db 100644
  	{0x00000033, 0x0030}, /* ED_WB eLLC LRU_L EDSCC:0 L3SCC:0 L3_WB */
  	{0x00000033, 0x0010}, /* ED_WB eLLC LRU_L EDSCC:0 L3SCC:0 L3_UC */
  	{0x00000017, 0x0030}, /* ED_WB LLC LRU_S EDSCC:0 L3SCC:0 L3_WB */
--- 
-1.7.1
-

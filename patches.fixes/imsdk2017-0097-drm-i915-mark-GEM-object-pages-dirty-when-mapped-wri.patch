@@ -44,11 +44,11 @@ Signed-off-by: Daniel Vetter <daniel.vetter@ffwll.ch>
  drivers/gpu/drm/i915/intel_lrc.c             |   11 ++++-------
  6 files changed, 28 insertions(+), 13 deletions(-)
 
-diff --git a/drivers/gpu/drm/i915/i915_drv.h b/drivers/gpu/drm/i915/i915_drv.h
-index 5f9ae07..a75fa44 100644
---- a/drivers/gpu/drm/i915/i915_drv.h
-+++ b/drivers/gpu/drm/i915/i915_drv.h
-@@ -2979,6 +2979,9 @@ static inline int __sg_page_count(struct scatterlist *sg)
+Index: current/drivers/gpu/drm/i915/i915_drv.h
+===================================================================
+--- current.orig/drivers/gpu/drm/i915/i915_drv.h
++++ current/drivers/gpu/drm/i915/i915_drv.h
+@@ -2991,6 +2991,9 @@ static inline int __sg_page_count(struct
  	return sg->length >> PAGE_SHIFT;
  }
  
@@ -58,11 +58,11 @@ index 5f9ae07..a75fa44 100644
  static inline struct page *
  i915_gem_object_get_page(struct drm_i915_gem_object *obj, int n)
  {
-diff --git a/drivers/gpu/drm/i915/i915_gem.c b/drivers/gpu/drm/i915/i915_gem.c
-index 38c9906..4df3955 100644
---- a/drivers/gpu/drm/i915/i915_gem.c
-+++ b/drivers/gpu/drm/i915/i915_gem.c
-@@ -5837,6 +5837,21 @@ bool i915_gem_obj_is_pinned(struct drm_i915_gem_object *obj)
+Index: current/drivers/gpu/drm/i915/i915_gem.c
+===================================================================
+--- current.orig/drivers/gpu/drm/i915/i915_gem.c
++++ current/drivers/gpu/drm/i915/i915_gem.c
+@@ -5837,6 +5837,21 @@ bool i915_gem_obj_is_pinned(struct drm_i
  	return false;
  }
  
@@ -84,11 +84,11 @@ index 38c9906..4df3955 100644
  /* Allocate a new GEM object and fill it with the supplied data */
  struct drm_i915_gem_object *
  i915_gem_object_create_from_data(struct drm_device *dev,
-diff --git a/drivers/gpu/drm/i915/i915_gem_execbuffer.c b/drivers/gpu/drm/i915/i915_gem_execbuffer.c
-index 57a4325..eba5659 100644
---- a/drivers/gpu/drm/i915/i915_gem_execbuffer.c
-+++ b/drivers/gpu/drm/i915/i915_gem_execbuffer.c
-@@ -274,7 +274,7 @@ relocate_entry_cpu(struct drm_i915_gem_object *obj,
+Index: current/drivers/gpu/drm/i915/i915_gem_execbuffer.c
+===================================================================
+--- current.orig/drivers/gpu/drm/i915/i915_gem_execbuffer.c
++++ current/drivers/gpu/drm/i915/i915_gem_execbuffer.c
+@@ -274,7 +274,7 @@ relocate_entry_cpu(struct drm_i915_gem_o
  	if (ret)
  		return ret;
  
@@ -97,7 +97,7 @@ index 57a4325..eba5659 100644
  				reloc->offset >> PAGE_SHIFT));
  	*(uint32_t *)(vaddr + page_offset) = lower_32_bits(delta);
  
-@@ -283,7 +283,7 @@ relocate_entry_cpu(struct drm_i915_gem_object *obj,
+@@ -283,7 +283,7 @@ relocate_entry_cpu(struct drm_i915_gem_o
  
  		if (page_offset == 0) {
  			kunmap_atomic(vaddr);
@@ -106,7 +106,7 @@ index 57a4325..eba5659 100644
  			    (reloc->offset + sizeof(uint32_t)) >> PAGE_SHIFT));
  		}
  
-@@ -365,7 +365,7 @@ relocate_entry_clflush(struct drm_i915_gem_object *obj,
+@@ -365,7 +365,7 @@ relocate_entry_clflush(struct drm_i915_g
  	if (ret)
  		return ret;
  
@@ -115,7 +115,7 @@ index 57a4325..eba5659 100644
  				reloc->offset >> PAGE_SHIFT));
  	clflush_write32(vaddr + page_offset, lower_32_bits(delta));
  
-@@ -374,7 +374,7 @@ relocate_entry_clflush(struct drm_i915_gem_object *obj,
+@@ -374,7 +374,7 @@ relocate_entry_clflush(struct drm_i915_g
  
  		if (page_offset == 0) {
  			kunmap_atomic(vaddr);
@@ -124,11 +124,11 @@ index 57a4325..eba5659 100644
  			    (reloc->offset + sizeof(uint32_t)) >> PAGE_SHIFT));
  		}
  
-diff --git a/drivers/gpu/drm/i915/i915_gem_render_state.c b/drivers/gpu/drm/i915/i915_gem_render_state.c
-index 5026a62..fc7e6d5 100644
---- a/drivers/gpu/drm/i915/i915_gem_render_state.c
-+++ b/drivers/gpu/drm/i915/i915_gem_render_state.c
-@@ -103,7 +103,7 @@ static int render_state_setup(struct render_state *so)
+Index: current/drivers/gpu/drm/i915/i915_gem_render_state.c
+===================================================================
+--- current.orig/drivers/gpu/drm/i915/i915_gem_render_state.c
++++ current/drivers/gpu/drm/i915/i915_gem_render_state.c
+@@ -103,7 +103,7 @@ static int render_state_setup(struct ren
  	if (ret)
  		return ret;
  
@@ -137,11 +137,11 @@ index 5026a62..fc7e6d5 100644
  	d = kmap(page);
  
  	while (i < rodata->batch_items) {
-diff --git a/drivers/gpu/drm/i915/i915_guc_submission.c b/drivers/gpu/drm/i915/i915_guc_submission.c
-index 4bf9aa5..9366f5a 100644
---- a/drivers/gpu/drm/i915/i915_guc_submission.c
-+++ b/drivers/gpu/drm/i915/i915_guc_submission.c
-@@ -577,7 +577,7 @@ static void lr_context_update(struct drm_i915_gem_request *rq)
+Index: current/drivers/gpu/drm/i915/i915_guc_submission.c
+===================================================================
+--- current.orig/drivers/gpu/drm/i915/i915_guc_submission.c
++++ current/drivers/gpu/drm/i915/i915_guc_submission.c
+@@ -575,7 +575,7 @@ static void lr_context_update(struct drm
  	WARN_ON(!i915_gem_obj_is_pinned(ctx_obj));
  	WARN_ON(!i915_gem_obj_is_pinned(rb_obj));
  
@@ -150,11 +150,11 @@ index 4bf9aa5..9366f5a 100644
  	reg_state = kmap_atomic(page);
  
  	reg_state[CTX_RING_BUFFER_START+1] = i915_gem_obj_ggtt_offset(rb_obj);
-diff --git a/drivers/gpu/drm/i915/intel_lrc.c b/drivers/gpu/drm/i915/intel_lrc.c
-index 34ed6b1..7c57844 100644
---- a/drivers/gpu/drm/i915/intel_lrc.c
-+++ b/drivers/gpu/drm/i915/intel_lrc.c
-@@ -419,7 +419,7 @@ static int execlists_update_context(struct drm_i915_gem_request *rq)
+Index: current/drivers/gpu/drm/i915/intel_lrc.c
+===================================================================
+--- current.orig/drivers/gpu/drm/i915/intel_lrc.c
++++ current/drivers/gpu/drm/i915/intel_lrc.c
+@@ -419,7 +419,7 @@ static int execlists_update_context(stru
  
  	BUG_ON(!ctx_obj);
  
@@ -163,7 +163,7 @@ index 34ed6b1..7c57844 100644
  	reg_state = kmap_atomic(page);
  
  	reg_state[CTX_RING_TAIL+1] = rq->tail;
-@@ -1596,7 +1596,7 @@ static int intel_init_workaround_bb(struct intel_engine_cs *ring)
+@@ -1596,7 +1596,7 @@ static int intel_init_workaround_bb(stru
  		return ret;
  	}
  
@@ -172,7 +172,7 @@ index 34ed6b1..7c57844 100644
  	batch = kmap_atomic(page);
  	offset = 0;
  
-@@ -2441,7 +2441,7 @@ populate_lr_context(struct intel_context *ctx, struct drm_i915_gem_object *ctx_o
+@@ -2442,7 +2442,7 @@ populate_lr_context(struct intel_context
  
  	/* The second page of the context object contains some fields which must
  	 * be set up prior to the first execution. */
@@ -181,7 +181,7 @@ index 34ed6b1..7c57844 100644
  	reg_state = kmap_atomic(page);
  
  	/* A context is actually a big batch buffer with several MI_LOAD_REGISTER_IMM
-@@ -2543,9 +2543,6 @@ populate_lr_context(struct intel_context *ctx, struct drm_i915_gem_object *ctx_o
+@@ -2544,9 +2544,6 @@ populate_lr_context(struct intel_context
  	}
  
  	kunmap_atomic(reg_state);
@@ -191,7 +191,7 @@ index 34ed6b1..7c57844 100644
  	i915_gem_object_unpin_pages(ctx_obj);
  
  	return 0;
-@@ -2737,7 +2734,7 @@ void intel_lr_context_reset(struct drm_device *dev,
+@@ -2738,7 +2735,7 @@ void intel_lr_context_reset(struct drm_d
  			WARN(1, "Failed get_pages for context obj\n");
  			continue;
  		}
@@ -200,6 +200,3 @@ index 34ed6b1..7c57844 100644
  		reg_state = kmap_atomic(page);
  
  		reg_state[CTX_RING_HEAD+1] = 0;
--- 
-1.7.1
-

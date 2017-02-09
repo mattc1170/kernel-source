@@ -25,11 +25,11 @@ Cc: John Harrison <John.C.Harrison@Intel.com>
  include/uapi/drm/i915_drm.h             |    1 +
  6 files changed, 71 insertions(+), 1 deletions(-)
 
-diff --git a/drivers/gpu/drm/i915/i915_drv.h b/drivers/gpu/drm/i915/i915_drv.h
-index 230c142..c347304 100644
---- a/drivers/gpu/drm/i915/i915_drv.h
-+++ b/drivers/gpu/drm/i915/i915_drv.h
-@@ -883,6 +883,7 @@ struct i915_fence_timeline {
+Index: current/drivers/gpu/drm/i915/i915_drv.h
+===================================================================
+--- current.orig/drivers/gpu/drm/i915/i915_drv.h
++++ current/drivers/gpu/drm/i915/i915_drv.h
+@@ -886,6 +886,7 @@ struct i915_fence_timeline {
  #define DEFAULT_CONTEXT_HANDLE 0
  
  #define CONTEXT_NO_ZEROMAP (1<<0)
@@ -37,7 +37,7 @@ index 230c142..c347304 100644
  /**
   * struct intel_context - as the name implies, represents a context.
   * @ref: reference count.
-@@ -1211,6 +1212,13 @@ struct intel_gen6_power_mgmt {
+@@ -1214,6 +1215,13 @@ struct intel_gen6_power_mgmt {
  	 * talking to hw - so only take it when talking to hw!
  	 */
  	struct mutex hw_lock;
@@ -51,11 +51,11 @@ index 230c142..c347304 100644
  };
  
  /* defined intel_pm.c */
-diff --git a/drivers/gpu/drm/i915/i915_gem_context.c b/drivers/gpu/drm/i915/i915_gem_context.c
-index 4bde468..f9c104b 100644
---- a/drivers/gpu/drm/i915/i915_gem_context.c
-+++ b/drivers/gpu/drm/i915/i915_gem_context.c
-@@ -148,6 +148,22 @@ static void i915_gem_context_clean(struct intel_context *ctx)
+Index: current/drivers/gpu/drm/i915/i915_gem_context.c
+===================================================================
+--- current.orig/drivers/gpu/drm/i915/i915_gem_context.c
++++ current/drivers/gpu/drm/i915/i915_gem_context.c
+@@ -148,6 +148,22 @@ static void i915_gem_context_clean(struc
  	}
  }
  
@@ -78,7 +78,7 @@ index 4bde468..f9c104b 100644
  void i915_gem_context_free(struct kref *ctx_ref)
  {
  	struct intel_context *ctx = container_of(ctx_ref, typeof(*ctx), ref);
-@@ -171,6 +187,8 @@ void i915_gem_context_free(struct kref *ctx_ref)
+@@ -171,6 +187,8 @@ void i915_gem_context_free(struct kref *
  
  	put_pid(ctx->pid);
  	i915_perfmon_ctx_cleanup(ctx);
@@ -87,7 +87,7 @@ index 4bde468..f9c104b 100644
  
  	list_del(&ctx->link);
  	kfree(ctx);
-@@ -951,6 +969,9 @@ int i915_gem_context_getparam_ioctl(struct drm_device *dev, void *data,
+@@ -955,6 +973,9 @@ int i915_gem_context_getparam_ioctl(stru
  	case I915_CONTEXT_PARAM_PRIORITY:
  		args->value = (__u64) ctx->sched_info.priority;
  		break;
@@ -97,7 +97,7 @@ index 4bde468..f9c104b 100644
  	default:
  		ret = -EINVAL;
  		break;
-@@ -1017,6 +1038,26 @@ int i915_gem_context_setparam_ioctl(struct drm_device *dev, void *data,
+@@ -1021,6 +1042,26 @@ int i915_gem_context_setparam_ioctl(stru
  		break;
  	}
  
@@ -124,11 +124,11 @@ index 4bde468..f9c104b 100644
  	default:
  		ret = -EINVAL;
  		break;
-diff --git a/drivers/gpu/drm/i915/i915_irq.c b/drivers/gpu/drm/i915/i915_irq.c
-index 592e5c1..4ec7cea 100644
---- a/drivers/gpu/drm/i915/i915_irq.c
-+++ b/drivers/gpu/drm/i915/i915_irq.c
-@@ -1106,7 +1106,7 @@ static void gen6_pm_rps_work(struct work_struct *work)
+Index: current/drivers/gpu/drm/i915/i915_irq.c
+===================================================================
+--- current.orig/drivers/gpu/drm/i915/i915_irq.c
++++ current/drivers/gpu/drm/i915/i915_irq.c
+@@ -1106,7 +1106,7 @@ static void gen6_pm_rps_work(struct work
  	min = dev_priv->rps.min_freq_softlimit;
  	max = dev_priv->rps.max_freq_softlimit;
  
@@ -137,11 +137,11 @@ index 592e5c1..4ec7cea 100644
  		new_delay = dev_priv->rps.max_freq_softlimit;
  		adj = 0;
  	} else if (pm_iir & GEN6_PM_RP_UP_THRESHOLD) {
-diff --git a/drivers/gpu/drm/i915/i915_scheduler.c b/drivers/gpu/drm/i915/i915_scheduler.c
-index e67d76b..ea831fa 100644
---- a/drivers/gpu/drm/i915/i915_scheduler.c
-+++ b/drivers/gpu/drm/i915/i915_scheduler.c
-@@ -627,6 +627,8 @@ static int i915_scheduler_submit(struct intel_engine_cs *ring)
+Index: current/drivers/gpu/drm/i915/i915_scheduler.c
+===================================================================
+--- current.orig/drivers/gpu/drm/i915/i915_scheduler.c
++++ current/drivers/gpu/drm/i915/i915_scheduler.c
+@@ -627,6 +627,8 @@ static int i915_scheduler_submit(struct
  
  		spin_unlock_irq(&scheduler->lock);
  		ret = dev_priv->gt.execbuf_final(&node->params);
@@ -150,7 +150,7 @@ index e67d76b..ea831fa 100644
  		spin_lock_irq(&scheduler->lock);
  
  		/*
-@@ -834,6 +836,8 @@ static int i915_scheduler_queue_execbuffer_bypass(struct i915_scheduler_queue_en
+@@ -834,6 +836,8 @@ static int i915_scheduler_queue_execbuff
  
  	scheduler->flags[qe->params.ring->id] |= I915_SF_SUBMITTING;
  	ret = dev_priv->gt.execbuf_final(&qe->params);
@@ -159,11 +159,11 @@ index e67d76b..ea831fa 100644
  	scheduler->stats[qe->params.ring->id].submitted++;
  	scheduler->flags[qe->params.ring->id] &= ~I915_SF_SUBMITTING;
  
-diff --git a/drivers/gpu/drm/i915/intel_pm.c b/drivers/gpu/drm/i915/intel_pm.c
-index 02bc122..c51fc44 100644
---- a/drivers/gpu/drm/i915/intel_pm.c
-+++ b/drivers/gpu/drm/i915/intel_pm.c
-@@ -7319,6 +7319,18 @@ void intel_queue_rps_boost_for_request(struct drm_device *dev,
+Index: current/drivers/gpu/drm/i915/intel_pm.c
+===================================================================
+--- current.orig/drivers/gpu/drm/i915/intel_pm.c
++++ current/drivers/gpu/drm/i915/intel_pm.c
+@@ -7323,6 +7323,18 @@ void intel_queue_rps_boost_for_request(s
  
  	INIT_WORK(&boost->work, __intel_rps_boost_work);
  	queue_work(to_i915(dev)->wq, &boost->work);
@@ -182,7 +182,7 @@ index 02bc122..c51fc44 100644
  }
  
  void intel_pm_setup(struct drm_device *dev)
-@@ -7333,6 +7345,10 @@ void intel_pm_setup(struct drm_device *dev)
+@@ -7337,6 +7349,10 @@ void intel_pm_setup(struct drm_device *d
  	INIT_LIST_HEAD(&dev_priv->rps.clients);
  	INIT_LIST_HEAD(&dev_priv->rps.semaphores.link);
  	INIT_LIST_HEAD(&dev_priv->rps.mmioflips.link);
@@ -193,10 +193,10 @@ index 02bc122..c51fc44 100644
  
  	dev_priv->pm.suspended = false;
  }
-diff --git a/include/uapi/drm/i915_drm.h b/include/uapi/drm/i915_drm.h
-index b1fb241..fc57651 100644
---- a/include/uapi/drm/i915_drm.h
-+++ b/include/uapi/drm/i915_drm.h
+Index: current/include/uapi/drm/i915_drm.h
+===================================================================
+--- current.orig/include/uapi/drm/i915_drm.h
++++ current/include/uapi/drm/i915_drm.h
 @@ -1157,6 +1157,7 @@ struct drm_i915_gem_context_param {
  #define I915_CONTEXT_PARAM_BAN_PERIOD 0x1
  #define I915_CONTEXT_PARAM_NO_ZEROMAP 0x2
@@ -205,6 +205,3 @@ index b1fb241..fc57651 100644
  	__u64 value;
  };
  
--- 
-1.7.1
-

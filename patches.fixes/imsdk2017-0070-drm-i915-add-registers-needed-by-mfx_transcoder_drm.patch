@@ -12,11 +12,11 @@ MFC_IMAGE_STATUS_CONTROL - MFC Image Status Control
  drivers/gpu/drm/i915/i915_reg.h        |    5 +++++
  2 files changed, 9 insertions(+), 0 deletions(-)
 
-diff --git a/drivers/gpu/drm/i915/i915_cmd_parser.c b/drivers/gpu/drm/i915/i915_cmd_parser.c
-index 2f85bb7..98951b5 100644
---- a/drivers/gpu/drm/i915/i915_cmd_parser.c
-+++ b/drivers/gpu/drm/i915/i915_cmd_parser.c
-@@ -511,6 +511,10 @@ static const struct drm_i915_reg_descriptor hsw_master_regs[] = {
+Index: current/drivers/gpu/drm/i915/i915_cmd_parser.c
+===================================================================
+--- current.orig/drivers/gpu/drm/i915/i915_cmd_parser.c
++++ current/drivers/gpu/drm/i915/i915_cmd_parser.c
+@@ -511,6 +511,10 @@ static const struct drm_i915_reg_descrip
  
  static const struct drm_i915_reg_descriptor gen7_vcs_regs[] = {
  	REG32(MFD_ERROR_STATUS),
@@ -27,11 +27,11 @@ index 2f85bb7..98951b5 100644
  };
  
  #undef REG64
-diff --git a/drivers/gpu/drm/i915/i915_reg.h b/drivers/gpu/drm/i915/i915_reg.h
-index 9f5d6c0..3f2875a 100644
---- a/drivers/gpu/drm/i915/i915_reg.h
-+++ b/drivers/gpu/drm/i915/i915_reg.h
-@@ -8154,4 +8154,9 @@ enum skl_disp_power_wells {
+Index: current/drivers/gpu/drm/i915/i915_reg.h
+===================================================================
+--- current.orig/drivers/gpu/drm/i915/i915_reg.h
++++ current/drivers/gpu/drm/i915/i915_reg.h
+@@ -8169,4 +8169,9 @@ enum skl_disp_power_wells {
  #define GEN9_BLT_MOCS_0		0xcc00	/* Blitter MOCS base register*/
  
  #define MFD_ERROR_STATUS 0x12400
@@ -41,6 +41,3 @@ index 9f5d6c0..3f2875a 100644
 +#define MFC_IMAGE_STATUS_CONTROL 0x124B8
 +
  #endif /* _I915_REG_H_ */
--- 
-1.7.1
-

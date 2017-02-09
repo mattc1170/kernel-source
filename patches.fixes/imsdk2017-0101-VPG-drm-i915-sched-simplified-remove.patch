@@ -9,11 +9,11 @@ Simplify the i915_scheduler_remove function
  drivers/gpu/drm/i915/i915_trace.h     |    9 ++----
  2 files changed, 6 insertions(+), 50 deletions(-)
 
-diff --git a/drivers/gpu/drm/i915/i915_scheduler.c b/drivers/gpu/drm/i915/i915_scheduler.c
-index 4226d68..75260bd 100644
---- a/drivers/gpu/drm/i915/i915_scheduler.c
-+++ b/drivers/gpu/drm/i915/i915_scheduler.c
-@@ -1155,61 +1155,20 @@ static bool i915_scheduler_remove(struct i915_scheduler *scheduler,
+Index: current/drivers/gpu/drm/i915/i915_scheduler.c
+===================================================================
+--- current.orig/drivers/gpu/drm/i915/i915_scheduler.c
++++ current/drivers/gpu/drm/i915/i915_scheduler.c
+@@ -1155,61 +1155,20 @@ static bool i915_scheduler_remove(struct
  	struct i915_scheduler_queue_entry *node, *node_next;
  	int flying = 0, queued = 0;
  	bool do_submit;
@@ -76,7 +76,7 @@ index 4226d68..75260bd 100644
  
  		list_del(&node->link);
  		list_add(&node->link, remove);
-@@ -1231,7 +1190,7 @@ static bool i915_scheduler_remove(struct i915_scheduler *scheduler,
+@@ -1231,7 +1190,7 @@ static bool i915_scheduler_remove(struct
  	 * Release the interrupt reference count if there are no longer any
  	 * nodes to worry about.
  	 */
@@ -85,7 +85,7 @@ index 4226d68..75260bd 100644
  	    (scheduler->flags[ring->id] & I915_SF_INTERRUPTS_ENABLED)) {
  		ring->irq_put(ring);
  		scheduler->flags[ring->id] &= ~I915_SF_INTERRUPTS_ENABLED;
-@@ -1240,7 +1199,7 @@ static bool i915_scheduler_remove(struct i915_scheduler *scheduler,
+@@ -1240,7 +1199,7 @@ static bool i915_scheduler_remove(struct
  	/* Launch more packets now? */
  	do_submit = (queued > 0) && (flying < scheduler->min_flying);
  
@@ -94,10 +94,10 @@ index 4226d68..75260bd 100644
  
  	spin_unlock_irq(&scheduler->lock);
  
-diff --git a/drivers/gpu/drm/i915/i915_trace.h b/drivers/gpu/drm/i915/i915_trace.h
-index 8d3aec3..d6af52d 100644
---- a/drivers/gpu/drm/i915/i915_trace.h
-+++ b/drivers/gpu/drm/i915/i915_trace.h
+Index: current/drivers/gpu/drm/i915/i915_trace.h
+===================================================================
+--- current.orig/drivers/gpu/drm/i915/i915_trace.h
++++ current/drivers/gpu/drm/i915/i915_trace.h
 @@ -916,23 +916,20 @@ TRACE_EVENT(i915_scheduler_landing,
  
  TRACE_EVENT(i915_scheduler_remove,
@@ -125,6 +125,3 @@ index 8d3aec3..d6af52d 100644
  );
  
  TRACE_EVENT(i915_scheduler_destroy,
--- 
-1.7.1
-

@@ -12,11 +12,11 @@ Add the requests to the context to simpilify the loop
  drivers/gpu/drm/i915/i915_scheduler.h   |    3 +
  5 files changed, 62 insertions(+), 41 deletions(-)
 
-diff --git a/drivers/gpu/drm/i915/i915_drv.h b/drivers/gpu/drm/i915/i915_drv.h
-index 9b8727e..ca9038f 100644
---- a/drivers/gpu/drm/i915/i915_drv.h
-+++ b/drivers/gpu/drm/i915/i915_drv.h
-@@ -926,6 +926,7 @@ struct intel_context {
+Index: current/drivers/gpu/drm/i915/i915_drv.h
+===================================================================
+--- current.orig/drivers/gpu/drm/i915/i915_drv.h
++++ current/drivers/gpu/drm/i915/i915_drv.h
+@@ -929,6 +929,7 @@ struct intel_context {
  	} engine[I915_NUM_RINGS];
  
  	struct list_head link;
@@ -24,7 +24,7 @@ index 9b8727e..ca9038f 100644
  
  	/* perfmon configuration */
  	struct drm_i915_perfmon_context perfmon;
-@@ -2222,6 +2223,8 @@ struct drm_i915_gem_object {
+@@ -2225,6 +2226,8 @@ struct drm_i915_gem_object {
  	/** Breadcrumb of last fenced GPU access to the buffer. */
  	struct drm_i915_gem_request *last_fenced_req;
  
@@ -33,7 +33,7 @@ index 9b8727e..ca9038f 100644
  	/** Current tiling stride for the object, if it's tiled. */
  	uint32_t stride;
  
-@@ -2361,6 +2364,8 @@ struct drm_i915_gem_request {
+@@ -2362,6 +2365,8 @@ struct drm_i915_gem_request {
  	/** Execlists no. of times this request has been sent to the ELSP */
  	int elsp_submitted;
  
@@ -42,11 +42,11 @@ index 9b8727e..ca9038f 100644
  };
  
  int i915_gem_request_alloc(struct intel_engine_cs *ring,
-diff --git a/drivers/gpu/drm/i915/i915_gem.c b/drivers/gpu/drm/i915/i915_gem.c
-index 70da690..e755ce0 100644
---- a/drivers/gpu/drm/i915/i915_gem.c
-+++ b/drivers/gpu/drm/i915/i915_gem.c
-@@ -3198,6 +3198,7 @@ int i915_gem_request_alloc(struct intel_engine_cs *ring,
+Index: current/drivers/gpu/drm/i915/i915_gem.c
+===================================================================
+--- current.orig/drivers/gpu/drm/i915/i915_gem.c
++++ current/drivers/gpu/drm/i915/i915_gem.c
+@@ -3198,6 +3198,7 @@ int i915_gem_request_alloc(struct intel_
  		goto err;
  	}
  
@@ -54,7 +54,7 @@ index 70da690..e755ce0 100644
  	INIT_LIST_HEAD(&req->signal_link);
  	fence_init(&req->fence, &i915_gem_request_fops, &ring->fence_lock,
  		   ctx->engine[ring->id].fence_timeline.fence_context,
-@@ -4983,6 +4984,8 @@ void i915_gem_object_init(struct drm_i915_gem_object *obj,
+@@ -4983,6 +4984,8 @@ void i915_gem_object_init(struct drm_i91
  	obj->madv = I915_MADV_WILLNEED;
  
  	i915_gem_info_add_obj(obj->base.dev->dev_private, obj->base.size);
@@ -63,11 +63,11 @@ index 70da690..e755ce0 100644
  }
  
  static const struct drm_i915_gem_object_ops i915_gem_object_ops = {
-diff --git a/drivers/gpu/drm/i915/i915_gem_context.c b/drivers/gpu/drm/i915/i915_gem_context.c
-index 02263c2..d985111 100644
---- a/drivers/gpu/drm/i915/i915_gem_context.c
-+++ b/drivers/gpu/drm/i915/i915_gem_context.c
-@@ -222,6 +222,8 @@ __create_hw_context(struct drm_device *dev,
+Index: current/drivers/gpu/drm/i915/i915_gem_context.c
+===================================================================
+--- current.orig/drivers/gpu/drm/i915/i915_gem_context.c
++++ current/drivers/gpu/drm/i915/i915_gem_context.c
+@@ -222,6 +222,8 @@ __create_hw_context(struct drm_device *d
  	list_add_tail(&ctx->link, &dev_priv->context_list);
  	ctx->i915 = dev_priv;
  
@@ -76,11 +76,11 @@ index 02263c2..d985111 100644
  	if (dev_priv->hw_context_size) {
  		struct drm_i915_gem_object *obj =
  				i915_gem_alloc_context_obj(dev, dev_priv->hw_context_size);
-diff --git a/drivers/gpu/drm/i915/i915_scheduler.c b/drivers/gpu/drm/i915/i915_scheduler.c
-index 5d2ed5b..4226d68 100644
---- a/drivers/gpu/drm/i915/i915_scheduler.c
-+++ b/drivers/gpu/drm/i915/i915_scheduler.c
-@@ -757,53 +757,60 @@ static void i915_scheduler_file_queue_dec(struct drm_file *file)
+Index: current/drivers/gpu/drm/i915/i915_scheduler.c
+===================================================================
+--- current.orig/drivers/gpu/drm/i915/i915_scheduler.c
++++ current/drivers/gpu/drm/i915/i915_scheduler.c
+@@ -757,53 +757,60 @@ static void i915_scheduler_file_queue_de
  	file_priv->scheduler_queue_length--;
  }
  
@@ -146,12 +146,12 @@ index 5d2ed5b..4226d68 100644
 +		list_for_each_entry(that_oe, &this_oe->obj->req_head, req_link) {
 +			count++;
 +			that = that_oe->req;
++
++			if (!that->scheduler_qe || I915_SQS_IS_COMPLETE(that->scheduler_qe))
++				continue;
  
 -				found = true;
 -				break;
-+			if (!that->scheduler_qe || I915_SQS_IS_COMPLETE(that->scheduler_qe))
-+				continue;
-+
 +			/* Only need to worry about writes */
 +			if (this_oe->read_only && that_oe->read_only)
 +				continue;
@@ -175,7 +175,7 @@ index 5d2ed5b..4226d68 100644
  }
  
  static int i915_scheduler_queue_execbuffer_bypass(struct i915_scheduler_queue_entry *qe)
-@@ -879,8 +886,9 @@ int i915_scheduler_queue_execbuffer(struct i915_scheduler_queue_entry *qe)
+@@ -879,8 +886,9 @@ int i915_scheduler_queue_execbuffer(stru
  	struct intel_engine_cs *ring = qe->params.ring;
  	struct i915_scheduler_queue_entry *node;
  	bool not_flying;
@@ -186,7 +186,7 @@ index 5d2ed5b..4226d68 100644
  
  	if (qe->params.fence_wait)
  		scheduler->stats[ring->id].fence_got++;
-@@ -933,12 +941,9 @@ int i915_scheduler_queue_execbuffer(struct i915_scheduler_queue_entry *qe)
+@@ -933,12 +941,9 @@ int i915_scheduler_queue_execbuffer(stru
  	spin_lock_irq(&scheduler->lock);
  	node->num_deps = 0;
  
@@ -201,7 +201,7 @@ index 5d2ed5b..4226d68 100644
  
  	node->priority = clamp(node->priority,
  			       scheduler->priority_level_min,
-@@ -1105,14 +1110,17 @@ void i915_scheduler_clean_node(struct i915_scheduler_queue_entry *node)
+@@ -1105,14 +1110,17 @@ void i915_scheduler_clean_node(struct i9
  	}
  
  	/* Release the locked buffers: */
@@ -220,11 +220,11 @@ index 5d2ed5b..4226d68 100644
  		i915_gem_context_unreference(node->params.ctx);
  		node->params.ctx = NULL;
  	}
-diff --git a/drivers/gpu/drm/i915/i915_scheduler.h b/drivers/gpu/drm/i915/i915_scheduler.h
-index 15d6357..dbd4407 100644
---- a/drivers/gpu/drm/i915/i915_scheduler.h
-+++ b/drivers/gpu/drm/i915/i915_scheduler.h
-@@ -53,6 +53,9 @@ const char *i915_scheduler_queue_status_str(
+Index: current/drivers/gpu/drm/i915/i915_scheduler.h
+===================================================================
+--- current.orig/drivers/gpu/drm/i915/i915_scheduler.h
++++ current/drivers/gpu/drm/i915/i915_scheduler.h
+@@ -53,6 +53,9 @@ const char *i915_scheduler_queue_status_
  struct i915_scheduler_obj_entry {
  	struct drm_i915_gem_object *obj;
  	bool read_only;
@@ -234,6 +234,3 @@ index 15d6357..dbd4407 100644
  };
  
  enum i915_scheduler_queue_entry_flags {
--- 
-1.7.1
-

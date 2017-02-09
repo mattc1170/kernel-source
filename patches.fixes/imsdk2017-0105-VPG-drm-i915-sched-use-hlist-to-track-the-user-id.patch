@@ -10,11 +10,11 @@ Subject: [PATCH 105/143] [VPG]: drm/i915/sched: use hlist to track the user id
  drivers/gpu/drm/i915/i915_scheduler.c   |    7 ++++---
  4 files changed, 14 insertions(+), 7 deletions(-)
 
-diff --git a/drivers/gpu/drm/i915/i915_drv.h b/drivers/gpu/drm/i915/i915_drv.h
-index 2ead172..a9df90e 100644
---- a/drivers/gpu/drm/i915/i915_drv.h
-+++ b/drivers/gpu/drm/i915/i915_drv.h
-@@ -874,6 +874,10 @@ struct i915_fence_timeline {
+Index: current/drivers/gpu/drm/i915/i915_drv.h
+===================================================================
+--- current.orig/drivers/gpu/drm/i915/i915_drv.h
++++ current/drivers/gpu/drm/i915/i915_drv.h
+@@ -877,6 +877,10 @@ struct i915_fence_timeline {
  	struct intel_engine_cs *ring;
  };
  
@@ -25,7 +25,7 @@ index 2ead172..a9df90e 100644
  /* This must match up with the value previously used for execbuf2.rsvd1. */
  #define DEFAULT_CONTEXT_HANDLE 0
  
-@@ -926,7 +930,7 @@ struct intel_context {
+@@ -929,7 +933,7 @@ struct intel_context {
  	} engine[I915_NUM_RINGS];
  
  	struct list_head link;
@@ -34,7 +34,7 @@ index 2ead172..a9df90e 100644
  
  	/* perfmon configuration */
  	struct drm_i915_perfmon_context perfmon;
-@@ -2368,7 +2372,7 @@ struct drm_i915_gem_request {
+@@ -2369,7 +2373,7 @@ struct drm_i915_gem_request {
  	/** Execlists no. of times this request has been sent to the ELSP */
  	int elsp_submitted;
  
@@ -43,11 +43,11 @@ index 2ead172..a9df90e 100644
  	uint32_t dep_uniq;
  };
  
-diff --git a/drivers/gpu/drm/i915/i915_gem.c b/drivers/gpu/drm/i915/i915_gem.c
-index 9a38aed..dbdee03 100644
---- a/drivers/gpu/drm/i915/i915_gem.c
-+++ b/drivers/gpu/drm/i915/i915_gem.c
-@@ -3236,7 +3236,7 @@ int i915_gem_request_alloc(struct intel_engine_cs *ring,
+Index: current/drivers/gpu/drm/i915/i915_gem.c
+===================================================================
+--- current.orig/drivers/gpu/drm/i915/i915_gem.c
++++ current/drivers/gpu/drm/i915/i915_gem.c
+@@ -3236,7 +3236,7 @@ int i915_gem_request_alloc(struct intel_
  	}
  
  	init_waitqueue_head(&req->locked_wait_queue);
@@ -56,11 +56,11 @@ index 9a38aed..dbdee03 100644
  	INIT_LIST_HEAD(&req->signal_link);
  	fence_init(&req->fence, &i915_gem_request_fops, &ring->fence_lock,
  		   ctx->engine[ring->id].fence_timeline.fence_context,
-diff --git a/drivers/gpu/drm/i915/i915_gem_context.c b/drivers/gpu/drm/i915/i915_gem_context.c
-index 56fc62a..e8cf817 100644
---- a/drivers/gpu/drm/i915/i915_gem_context.c
-+++ b/drivers/gpu/drm/i915/i915_gem_context.c
-@@ -213,6 +213,7 @@ __create_hw_context(struct drm_device *dev,
+Index: current/drivers/gpu/drm/i915/i915_gem_context.c
+===================================================================
+--- current.orig/drivers/gpu/drm/i915/i915_gem_context.c
++++ current/drivers/gpu/drm/i915/i915_gem_context.c
+@@ -213,6 +213,7 @@ __create_hw_context(struct drm_device *d
  	struct drm_i915_private *dev_priv = dev->dev_private;
  	struct intel_context *ctx;
  	int ret;
@@ -68,7 +68,7 @@ index 56fc62a..e8cf817 100644
  
  	ctx = kzalloc(sizeof(*ctx), GFP_KERNEL);
  	if (ctx == NULL)
-@@ -222,7 +223,8 @@ __create_hw_context(struct drm_device *dev,
+@@ -222,7 +223,8 @@ __create_hw_context(struct drm_device *d
  	list_add_tail(&ctx->link, &dev_priv->context_list);
  	ctx->i915 = dev_priv;
  
@@ -78,11 +78,11 @@ index 56fc62a..e8cf817 100644
  
  	if (dev_priv->hw_context_size) {
  		struct drm_i915_gem_object *obj =
-diff --git a/drivers/gpu/drm/i915/i915_scheduler.c b/drivers/gpu/drm/i915/i915_scheduler.c
-index 4645ce7..3c32a22 100644
---- a/drivers/gpu/drm/i915/i915_scheduler.c
-+++ b/drivers/gpu/drm/i915/i915_scheduler.c
-@@ -766,8 +766,9 @@ static int i915_generate_dependencies(struct i915_scheduler *scheduler,
+Index: current/drivers/gpu/drm/i915/i915_scheduler.c
+===================================================================
+--- current.orig/drivers/gpu/drm/i915/i915_scheduler.c
++++ current/drivers/gpu/drm/i915/i915_scheduler.c
+@@ -766,8 +766,9 @@ static int i915_generate_dependencies(st
  	struct drm_i915_gem_request *req = node->params.request;
  	struct drm_i915_gem_request *that = node->params.request;
  	int i;
@@ -93,7 +93,7 @@ index 4645ce7..3c32a22 100644
  		count++;
  
  		if (!that->scheduler_qe || I915_SQS_IS_COMPLETE(that->scheduler_qe))
-@@ -786,7 +787,7 @@ static int i915_generate_dependencies(struct i915_scheduler *scheduler,
+@@ -786,7 +787,7 @@ static int i915_generate_dependencies(st
  		}
  	}
  
@@ -102,7 +102,7 @@ index 4645ce7..3c32a22 100644
  
  	for (i = 0; i < node->num_objs; i++) {
  		this_oe = node->objs + i;
-@@ -1123,7 +1124,7 @@ void i915_scheduler_clean_node(struct i915_scheduler_queue_entry *node)
+@@ -1123,7 +1124,7 @@ void i915_scheduler_clean_node(struct i9
  
  	/* Context too: */
  	if (node->params.ctx) {
@@ -111,6 +111,3 @@ index 4645ce7..3c32a22 100644
  		i915_gem_context_unreference(node->params.ctx);
  		node->params.ctx = NULL;
  	}
--- 
-1.7.1
-

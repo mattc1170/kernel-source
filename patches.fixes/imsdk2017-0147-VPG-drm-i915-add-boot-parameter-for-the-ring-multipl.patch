@@ -16,7 +16,7 @@ Index: current/drivers/gpu/drm/i915/i915_drv.h
 ===================================================================
 --- current.orig/drivers/gpu/drm/i915/i915_drv.h
 +++ current/drivers/gpu/drm/i915/i915_drv.h
-@@ -2810,6 +2810,7 @@ struct i915_params {
+@@ -2819,6 +2819,7 @@ struct i915_params {
  	bool nuclear_pageflip;
  	int edp_vswing;
  	int enable_scheduler;
@@ -47,7 +47,7 @@ Index: current/drivers/gpu/drm/i915/intel_pm.c
 ===================================================================
 --- current.orig/drivers/gpu/drm/i915/intel_pm.c
 +++ current/drivers/gpu/drm/i915/intel_pm.c
-@@ -5036,6 +5036,14 @@ static void gen6_enable_rps(struct drm_d
+@@ -5027,6 +5027,14 @@ static void gen6_enable_rps(struct drm_d
  	intel_uncore_forcewake_put(dev_priv, FORCEWAKE_ALL);
  }
  
@@ -62,7 +62,7 @@ Index: current/drivers/gpu/drm/i915/intel_pm.c
  static void __gen6_update_ring_freq(struct drm_device *dev)
  {
  	struct drm_i915_private *dev_priv = dev->dev_private;
-@@ -5071,6 +5079,9 @@ static void __gen6_update_ring_freq(stru
+@@ -5062,6 +5070,9 @@ static void __gen6_update_ring_freq(stru
  		/* Convert GT frequency to 50 HZ units */
  		min_gpu_freq = dev_priv->rps.min_freq / GEN9_FREQ_SCALER;
  		max_gpu_freq = dev_priv->rps.max_freq / GEN9_FREQ_SCALER;
@@ -72,7 +72,7 @@ Index: current/drivers/gpu/drm/i915/intel_pm.c
  	} else {
  		min_gpu_freq = dev_priv->rps.min_freq;
  		max_gpu_freq = dev_priv->rps.max_freq;
-@@ -5087,10 +5098,15 @@ static void __gen6_update_ring_freq(stru
+@@ -5078,10 +5089,15 @@ static void __gen6_update_ring_freq(stru
  
  		if (IS_SKYLAKE(dev)) {
  			/*
@@ -90,7 +90,7 @@ Index: current/drivers/gpu/drm/i915/intel_pm.c
  		} else if (INTEL_INFO(dev)->gen >= 8) {
  			/* max(2 * GT, DDR). NB: GT is 50MHz units */
  			ring_freq = max(min_ring_freq, gpu_freq);
-@@ -5113,6 +5129,9 @@ static void __gen6_update_ring_freq(stru
+@@ -5104,6 +5120,9 @@ static void __gen6_update_ring_freq(stru
  			ia_freq = DIV_ROUND_CLOSEST(ia_freq, 100);
  		}
  

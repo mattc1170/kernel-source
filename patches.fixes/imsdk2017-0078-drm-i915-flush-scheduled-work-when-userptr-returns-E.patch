@@ -7,11 +7,11 @@ Subject: [PATCH 078/143] drm/i915: flush scheduled work when userptr returns EAG
  drivers/gpu/drm/i915/i915_gem_execbuffer.c |    2 ++
  1 files changed, 2 insertions(+), 0 deletions(-)
 
-diff --git a/drivers/gpu/drm/i915/i915_gem_execbuffer.c b/drivers/gpu/drm/i915/i915_gem_execbuffer.c
-index b22247c..904c329 100644
---- a/drivers/gpu/drm/i915/i915_gem_execbuffer.c
-+++ b/drivers/gpu/drm/i915/i915_gem_execbuffer.c
-@@ -1877,6 +1877,8 @@ err:
+Index: current/drivers/gpu/drm/i915/i915_gem_execbuffer.c
+===================================================================
+--- current.orig/drivers/gpu/drm/i915/i915_gem_execbuffer.c
++++ current/drivers/gpu/drm/i915/i915_gem_execbuffer.c
+@@ -1870,6 +1870,8 @@ err:
  		i915_gem_request_cancel(params->request);
  
  	mutex_unlock(&dev->struct_mutex);
@@ -20,6 +20,3 @@ index b22247c..904c329 100644
  
  pre_mutex_err:
  	/* intel_gpu_busy should also get a ref, so it will free when the device
--- 
-1.7.1
-

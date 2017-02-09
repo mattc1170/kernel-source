@@ -9,11 +9,11 @@ It is simply overzealous debug spew and not an actual issue.
  drivers/gpu/drm/i915/i915_irq.c |    9 +++------
  1 files changed, 3 insertions(+), 6 deletions(-)
 
-diff --git a/drivers/gpu/drm/i915/i915_irq.c b/drivers/gpu/drm/i915/i915_irq.c
-index 4ec7cea..9787c9c 100644
---- a/drivers/gpu/drm/i915/i915_irq.c
-+++ b/drivers/gpu/drm/i915/i915_irq.c
-@@ -3026,19 +3026,16 @@ static void i915_hangcheck_elapsed(struct work_struct *work)
+Index: current/drivers/gpu/drm/i915/i915_irq.c
+===================================================================
+--- current.orig/drivers/gpu/drm/i915/i915_irq.c
++++ current/drivers/gpu/drm/i915/i915_irq.c
+@@ -3044,19 +3044,16 @@ static void i915_hangcheck_elapsed(struc
  				ring->hangcheck.action = HANGCHECK_IDLE;
  
  				if (!list_empty(&ring->request_wait_list)) {
@@ -36,6 +36,3 @@ index 4ec7cea..9787c9c 100644
  					}
  					/* Safeguard against driver failure */
  					ring->hangcheck.score += BUSY;
--- 
-1.7.1
-

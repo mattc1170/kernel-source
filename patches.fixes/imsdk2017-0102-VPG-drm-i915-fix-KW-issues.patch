@@ -11,11 +11,11 @@ Conflicts:
  drivers/gpu/drm/i915/i915_gem_execbuffer.c |    3 ++-
  1 files changed, 2 insertions(+), 1 deletions(-)
 
-diff --git a/drivers/gpu/drm/i915/i915_gem_execbuffer.c b/drivers/gpu/drm/i915/i915_gem_execbuffer.c
-index eba5659..5dce979 100644
---- a/drivers/gpu/drm/i915/i915_gem_execbuffer.c
-+++ b/drivers/gpu/drm/i915/i915_gem_execbuffer.c
-@@ -1766,7 +1766,8 @@ i915_gem_do_execbuffer(struct drm_device *dev, void *data,
+Index: current/drivers/gpu/drm/i915/i915_gem_execbuffer.c
+===================================================================
+--- current.orig/drivers/gpu/drm/i915/i915_gem_execbuffer.c
++++ current/drivers/gpu/drm/i915/i915_gem_execbuffer.c
+@@ -1759,7 +1759,8 @@ i915_gem_do_execbuffer(struct drm_device
  		obj = to_intel_bo(drm_gem_object_lookup(dev, file,
  							  exec[i].handle));
  		qe.objs[i].obj       = obj;
@@ -25,6 +25,3 @@ index eba5659..5dce979 100644
  
  	}
  	qe.num_objs = i;
--- 
-1.7.1
-

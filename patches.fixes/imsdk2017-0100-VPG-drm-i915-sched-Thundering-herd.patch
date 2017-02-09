@@ -16,11 +16,11 @@ completed.
  drivers/gpu/drm/i915/intel_ringbuffer.h |    3 +-
  8 files changed, 74 insertions(+), 22 deletions(-)
 
-diff --git a/drivers/gpu/drm/i915/i915_debugfs.c b/drivers/gpu/drm/i915/i915_debugfs.c
-index e1ad113..40cf87c 100644
---- a/drivers/gpu/drm/i915/i915_debugfs.c
-+++ b/drivers/gpu/drm/i915/i915_debugfs.c
-@@ -710,11 +710,12 @@ static int i915_gem_request_info(struct seq_file *m, void *data)
+Index: current/drivers/gpu/drm/i915/i915_debugfs.c
+===================================================================
+--- current.orig/drivers/gpu/drm/i915/i915_debugfs.c
++++ current/drivers/gpu/drm/i915/i915_debugfs.c
+@@ -710,11 +710,12 @@ static int i915_gem_request_info(struct
  			task = NULL;
  			if (req->pid)
  				task = pid_task(req->pid, PIDTYPE_PID);
@@ -34,11 +34,11 @@ index e1ad113..40cf87c 100644
  				   req->fence.context, req->fence.seqno);
  			rcu_read_unlock();
  		}
-diff --git a/drivers/gpu/drm/i915/i915_drv.h b/drivers/gpu/drm/i915/i915_drv.h
-index ca9038f..b396858 100644
---- a/drivers/gpu/drm/i915/i915_drv.h
-+++ b/drivers/gpu/drm/i915/i915_drv.h
-@@ -2276,9 +2276,12 @@ struct drm_i915_gem_request {
+Index: current/drivers/gpu/drm/i915/i915_drv.h
+===================================================================
+--- current.orig/drivers/gpu/drm/i915/i915_drv.h
++++ current/drivers/gpu/drm/i915/i915_drv.h
+@@ -2277,9 +2277,12 @@ struct drm_i915_gem_request {
  	struct list_head signal_link;
  	struct list_head unsignal_link;
  	struct list_head delayed_free_link;
@@ -51,11 +51,11 @@ index ca9038f..b396858 100644
  
  	/** On Which ring this request was generated */
  	struct drm_i915_private *i915;
-diff --git a/drivers/gpu/drm/i915/i915_gem.c b/drivers/gpu/drm/i915/i915_gem.c
-index e755ce0..9a38aed 100644
---- a/drivers/gpu/drm/i915/i915_gem.c
-+++ b/drivers/gpu/drm/i915/i915_gem.c
-@@ -1257,8 +1257,8 @@ int __i915_wait_request(struct drm_i915_gem_request *req,
+Index: current/drivers/gpu/drm/i915/i915_gem.c
+===================================================================
+--- current.orig/drivers/gpu/drm/i915/i915_gem.c
++++ current/drivers/gpu/drm/i915/i915_gem.c
+@@ -1257,8 +1257,8 @@ int __i915_wait_request(struct drm_i915_
  	struct drm_i915_private *dev_priv = dev->dev_private;
  	int state = interruptible ? TASK_INTERRUPTIBLE : TASK_UNINTERRUPTIBLE;
  	uint32_t seqno;
@@ -66,7 +66,7 @@ index e755ce0..9a38aed 100644
  	s64 before = 0; /* Only to silence a compiler warning. */
  	int ret = 0;
  	bool busy;
-@@ -1302,13 +1302,26 @@ int __i915_wait_request(struct drm_i915_gem_request *req,
+@@ -1302,13 +1302,26 @@ int __i915_wait_request(struct drm_i915_
  	 */
  	fence_enable_sw_signaling(&req->fence);
  
@@ -95,7 +95,7 @@ index e755ce0..9a38aed 100644
  		if (reset_counter != atomic_read(&dev_priv->gpu_error.reset_counter)) {
  			/* ... but upgrade the -EAGAIN to an -EIO if the gpu
  			 * is truely gone. */
-@@ -1375,7 +1388,19 @@ int __i915_wait_request(struct drm_i915_gem_request *req,
+@@ -1375,7 +1388,19 @@ int __i915_wait_request(struct drm_i915_
  			mod_timer(&timer, expire);
  		}
  
@@ -116,7 +116,7 @@ index e755ce0..9a38aed 100644
  
  		if (timer.function) {
  			del_singleshot_timer_sync(&timer);
-@@ -1383,7 +1408,18 @@ int __i915_wait_request(struct drm_i915_gem_request *req,
+@@ -1383,7 +1408,18 @@ int __i915_wait_request(struct drm_i915_
  		}
  	}
  
@@ -136,7 +136,7 @@ index e755ce0..9a38aed 100644
  
  out:
  	trace_i915_gem_request_wait_end(req);
-@@ -1501,6 +1537,7 @@ static void i915_gem_request_retire(struct drm_i915_gem_request *request)
+@@ -1501,6 +1537,7 @@ static void i915_gem_request_retire(stru
  		/* How to propagate to any associated sync_fence??? */
  		request->fence.status = -EIO;
  		fence_signal_locked(&request->fence);
@@ -144,7 +144,7 @@ index e755ce0..9a38aed 100644
  	}
  
  	if (request->scheduler_qe)
-@@ -2963,6 +3000,7 @@ void i915_gem_request_notify(struct intel_engine_cs *ring, bool fence_locked)
+@@ -2963,6 +3000,7 @@ void i915_gem_request_notify(struct inte
  		if (!req->cancelled) {
  			fence_signal_locked(&req->fence);
  			trace_i915_gem_request_complete(req);
@@ -152,7 +152,7 @@ index e755ce0..9a38aed 100644
  		}
  
  		if (req->irq_enabled) {
-@@ -2977,8 +3015,7 @@ void i915_gem_request_notify(struct intel_engine_cs *ring, bool fence_locked)
+@@ -2977,8 +3015,7 @@ void i915_gem_request_notify(struct inte
  	if (!fence_locked)
  		spin_unlock_irqrestore(&ring->fence_lock, flags);
  
@@ -162,7 +162,7 @@ index e755ce0..9a38aed 100644
  
  	/* Final scheduler processing after all individual updates are done. */
  	if (wake_sched)
-@@ -3198,6 +3235,7 @@ int i915_gem_request_alloc(struct intel_engine_cs *ring,
+@@ -3198,6 +3235,7 @@ int i915_gem_request_alloc(struct intel_
  		goto err;
  	}
  
@@ -170,7 +170,7 @@ index e755ce0..9a38aed 100644
  	INIT_LIST_HEAD(&req->ctx_link);
  	INIT_LIST_HEAD(&req->signal_link);
  	fence_init(&req->fence, &i915_gem_request_fops, &ring->fence_lock,
-@@ -3242,6 +3280,8 @@ void i915_gem_request_cancel(struct drm_i915_gem_request *req)
+@@ -3242,6 +3280,8 @@ void i915_gem_request_cancel(struct drm_
  	req->fence.status = -EINVAL;
  	fence_signal_locked(&req->fence);
  
@@ -179,11 +179,11 @@ index e755ce0..9a38aed 100644
  	i915_gem_request_unreference(req);
  }
  
-diff --git a/drivers/gpu/drm/i915/i915_gpu_error.c b/drivers/gpu/drm/i915/i915_gpu_error.c
-index 2f04e4f..305b096 100644
---- a/drivers/gpu/drm/i915/i915_gpu_error.c
-+++ b/drivers/gpu/drm/i915/i915_gpu_error.c
-@@ -889,7 +889,7 @@ static void i915_record_ring_state(struct drm_device *dev,
+Index: current/drivers/gpu/drm/i915/i915_gpu_error.c
+===================================================================
+--- current.orig/drivers/gpu/drm/i915/i915_gpu_error.c
++++ current/drivers/gpu/drm/i915/i915_gpu_error.c
+@@ -889,7 +889,7 @@ static void i915_record_ring_state(struc
  		ering->instdone = I915_READ(GEN2_INSTDONE);
  	}
  
@@ -192,11 +192,11 @@ index 2f04e4f..305b096 100644
  	ering->instpm = I915_READ(RING_INSTPM(ring->mmio_base));
  	ering->seqno = ring->get_seqno(ring, false);
  	ering->acthd = intel_ring_get_active_head(ring);
-diff --git a/drivers/gpu/drm/i915/i915_irq.c b/drivers/gpu/drm/i915/i915_irq.c
-index 8d357af..592e5c1 100644
---- a/drivers/gpu/drm/i915/i915_irq.c
-+++ b/drivers/gpu/drm/i915/i915_irq.c
-@@ -982,8 +982,6 @@ static void notify_ring(struct intel_engine_cs *ring)
+Index: current/drivers/gpu/drm/i915/i915_irq.c
+===================================================================
+--- current.orig/drivers/gpu/drm/i915/i915_irq.c
++++ current/drivers/gpu/drm/i915/i915_irq.c
+@@ -982,8 +982,6 @@ static void notify_ring(struct intel_eng
  		return;
  
  	i915_gem_request_notify(ring, false);
@@ -205,7 +205,7 @@ index 8d357af..592e5c1 100644
  }
  
  static void vlv_c0_read(struct drm_i915_private *dev_priv,
-@@ -2378,9 +2376,13 @@ static void i915_error_wake_up(struct drm_i915_private *dev_priv,
+@@ -2396,9 +2394,13 @@ static void i915_error_wake_up(struct dr
  	 * a gpu reset pending so that i915_error_work_func can acquire them).
  	 */
  
@@ -222,7 +222,7 @@ index 8d357af..592e5c1 100644
  
  	/* Wake up intel_crtc_wait_for_pending_flips, holding crtc->mutex. */
  	wake_up_all(&dev_priv->pending_flip_queue);
-@@ -3023,8 +3025,10 @@ static void i915_hangcheck_elapsed(struct work_struct *work)
+@@ -3041,8 +3043,10 @@ static void i915_hangcheck_elapsed(struc
  			if (ring_idle(ring, seqno)) {
  				ring->hangcheck.action = HANGCHECK_IDLE;
  
@@ -235,7 +235,7 @@ index 8d357af..592e5c1 100644
  					if (!test_and_set_bit(ring->id, &dev_priv->gpu_error.missed_irq_rings)) {
  						if (!(dev_priv->gpu_error.test_irq_rings & intel_ring_flag(ring)))
  							DRM_ERROR("Hangcheck timer elapsed... %s idle\n",
-@@ -3032,7 +3036,9 @@ static void i915_hangcheck_elapsed(struct work_struct *work)
+@@ -3050,7 +3054,9 @@ static void i915_hangcheck_elapsed(struc
  						else
  							DRM_INFO("Fake missed irq on %s\n",
  								 ring->name);
@@ -246,11 +246,11 @@ index 8d357af..592e5c1 100644
  					}
  					/* Safeguard against driver failure */
  					ring->hangcheck.score += BUSY;
-diff --git a/drivers/gpu/drm/i915/intel_lrc.c b/drivers/gpu/drm/i915/intel_lrc.c
-index 7c57844..f8a2931 100644
---- a/drivers/gpu/drm/i915/intel_lrc.c
-+++ b/drivers/gpu/drm/i915/intel_lrc.c
-@@ -2101,13 +2101,14 @@ static int logical_ring_init(struct drm_device *dev, struct intel_engine_cs *rin
+Index: current/drivers/gpu/drm/i915/intel_lrc.c
+===================================================================
+--- current.orig/drivers/gpu/drm/i915/intel_lrc.c
++++ current/drivers/gpu/drm/i915/intel_lrc.c
+@@ -2102,13 +2102,14 @@ static int logical_ring_init(struct drm_
  	ring->dev = dev;
  	INIT_LIST_HEAD(&ring->active_list);
  	INIT_LIST_HEAD(&ring->request_list);
@@ -266,11 +266,11 @@ index 7c57844..f8a2931 100644
  
  	INIT_LIST_HEAD(&ring->buffers);
  	INIT_LIST_HEAD(&ring->execlist_queue);
-diff --git a/drivers/gpu/drm/i915/intel_ringbuffer.c b/drivers/gpu/drm/i915/intel_ringbuffer.c
-index 5506de0..3b1ffae 100644
---- a/drivers/gpu/drm/i915/intel_ringbuffer.c
-+++ b/drivers/gpu/drm/i915/intel_ringbuffer.c
-@@ -2132,6 +2132,7 @@ static int intel_init_ring_buffer(struct drm_device *dev,
+Index: current/drivers/gpu/drm/i915/intel_ringbuffer.c
+===================================================================
+--- current.orig/drivers/gpu/drm/i915/intel_ringbuffer.c
++++ current/drivers/gpu/drm/i915/intel_ringbuffer.c
+@@ -2156,6 +2156,7 @@ static int intel_init_ring_buffer(struct
  	ring->dev = dev;
  	INIT_LIST_HEAD(&ring->active_list);
  	INIT_LIST_HEAD(&ring->request_list);
@@ -278,7 +278,7 @@ index 5506de0..3b1ffae 100644
  	INIT_LIST_HEAD(&ring->execlist_queue);
  	INIT_LIST_HEAD(&ring->buffers);
  	INIT_LIST_HEAD(&ring->fence_signal_list);
-@@ -2139,11 +2140,10 @@ static int intel_init_ring_buffer(struct drm_device *dev,
+@@ -2163,11 +2164,10 @@ static int intel_init_ring_buffer(struct
  	INIT_LIST_HEAD(&ring->delayed_free_list);
  	spin_lock_init(&ring->fence_lock);
  	spin_lock_init(&ring->delayed_free_lock);
@@ -291,10 +291,10 @@ index 5506de0..3b1ffae 100644
  	ringbuf = intel_engine_create_ringbuffer(ring, 32 * PAGE_SIZE);
  	if (IS_ERR(ringbuf))
  		return PTR_ERR(ringbuf);
-diff --git a/drivers/gpu/drm/i915/intel_ringbuffer.h b/drivers/gpu/drm/i915/intel_ringbuffer.h
-index eb41461..43b262c 100644
---- a/drivers/gpu/drm/i915/intel_ringbuffer.h
-+++ b/drivers/gpu/drm/i915/intel_ringbuffer.h
+Index: current/drivers/gpu/drm/i915/intel_ringbuffer.h
+===================================================================
+--- current.orig/drivers/gpu/drm/i915/intel_ringbuffer.h
++++ current/drivers/gpu/drm/i915/intel_ringbuffer.h
 @@ -313,7 +313,8 @@ struct  intel_engine_cs {
  
  	bool gpu_caches_dirty;
@@ -305,6 +305,3 @@ index eb41461..43b262c 100644
  
  	struct intel_context *default_context;
  	struct intel_context *last_context;
--- 
-1.7.1
-

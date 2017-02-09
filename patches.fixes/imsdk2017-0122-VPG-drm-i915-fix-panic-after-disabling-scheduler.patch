@@ -13,11 +13,11 @@ Signed-off-by: Hong Liu <hong.liu@intel.com>
  drivers/gpu/drm/i915/i915_scheduler.c      |    2 +-
  2 files changed, 2 insertions(+), 1 deletions(-)
 
-diff --git a/drivers/gpu/drm/i915/i915_gem_execbuffer.c b/drivers/gpu/drm/i915/i915_gem_execbuffer.c
-index b06e0bd..ebaecd1 100644
---- a/drivers/gpu/drm/i915/i915_gem_execbuffer.c
-+++ b/drivers/gpu/drm/i915/i915_gem_execbuffer.c
-@@ -1771,6 +1771,7 @@ i915_gem_do_execbuffer(struct drm_device *dev, void *data,
+Index: current/drivers/gpu/drm/i915/i915_gem_execbuffer.c
+===================================================================
+--- current.orig/drivers/gpu/drm/i915/i915_gem_execbuffer.c
++++ current/drivers/gpu/drm/i915/i915_gem_execbuffer.c
+@@ -1764,6 +1764,7 @@ i915_gem_do_execbuffer(struct drm_device
  		qe.objs[i].obj       = obj;
  		if (obj)
  			qe.objs[i].read_only = obj->base.pending_write_domain == 0;
@@ -25,11 +25,11 @@ index b06e0bd..ebaecd1 100644
  
  	}
  	qe.num_objs = i;
-diff --git a/drivers/gpu/drm/i915/i915_scheduler.c b/drivers/gpu/drm/i915/i915_scheduler.c
-index ea831fa..4670a27 100644
---- a/drivers/gpu/drm/i915/i915_scheduler.c
-+++ b/drivers/gpu/drm/i915/i915_scheduler.c
-@@ -1128,7 +1128,7 @@ void i915_scheduler_clean_node(struct i915_scheduler_queue_entry *node)
+Index: current/drivers/gpu/drm/i915/i915_scheduler.c
+===================================================================
+--- current.orig/drivers/gpu/drm/i915/i915_scheduler.c
++++ current/drivers/gpu/drm/i915/i915_scheduler.c
+@@ -1128,7 +1128,7 @@ void i915_scheduler_clean_node(struct i9
  
  	/* Context too: */
  	if (node->params.ctx) {
@@ -38,6 +38,3 @@ index ea831fa..4670a27 100644
  		i915_gem_context_unreference(node->params.ctx);
  		node->params.ctx = NULL;
  	}
--- 
-1.7.1
-
