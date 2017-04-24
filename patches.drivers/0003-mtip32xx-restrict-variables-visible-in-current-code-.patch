@@ -4,7 +4,7 @@ Date: Tue, 5 Jan 2016 18:39:04 +0800
 Subject: [PATCH] mtip32xx: restrict variables visible in current code module
 Patch-mainline: v4.5-rc1 
 Git-commit: 9e35fdcb9cd54e381135310aae3d9bbb23cecda3
-Reference: fate#319999
+References: fate#319999
 
 The modified variables are only used in the file mtip32xx.c.
 As such, the static keyword is inserted to define that object

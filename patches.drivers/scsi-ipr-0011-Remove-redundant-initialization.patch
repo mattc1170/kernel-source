@@ -1,0 +1,50 @@
+From 960e96480ee2bff4f09472c64e25f1850bf06470 Mon Sep 17 00:00:00 2001
+From: Brian King <brking@linux.vnet.ibm.com>
+Date: Wed, 15 Mar 2017 16:58:37 -0500
+Subject: [PATCH] scsi: ipr: Remove redundant initialization
+
+References: bsc#1031555, fate#321595
+Patch-mainline: queued, next-20170328
+Git-repo: https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git
+Git-commit: 960e96480ee2bff4f09472c64e25f1850bf06470
+
+Removes some code in __ipr_eh_dev_reset which was modifying the ipr_cmd
+done function. This should have already been setup at command allocation
+time and if its since been changed, it means we are in the ipr_erp*
+functions and need to wait for them to complete and don't want to
+override that here.
+
+Signed-off-by: Brian King <brking@linux.vnet.ibm.com>
+Reviewed-by: Wendy Xiong <wenxiong@linux.vnet.ibm.com>
+Tested-by: Wendy Xiong <wenxiong@linux.vnet.ibm.com>
+Signed-off-by: Martin K. Petersen <martin.petersen@oracle.com>
+Acked-by: Michal Suchanek <msuchanek@suse.de>
+---
+ drivers/scsi/ipr.c | 11 +++++------
+ 1 file changed, 5 insertions(+), 6 deletions(-)
+
+diff --git a/drivers/scsi/ipr.c b/drivers/scsi/ipr.c
+index 0688e0aa76a5..0d780c9bb09b 100644
+--- a/drivers/scsi/ipr.c
++++ b/drivers/scsi/ipr.c
+@@ -5243,12 +5243,11 @@ static int __ipr_eh_dev_reset(struct scsi_cmnd *scsi_cmd)
+ 		spin_lock(&hrrq->_lock);
+ 		list_for_each_entry(ipr_cmd, &hrrq->hrrq_pending_q, queue) {
+ 			if (ipr_cmd->ioarcb.res_handle == res->res_handle) {
+-				if (ipr_cmd->scsi_cmd)
+-					ipr_cmd->done = ipr_scsi_eh_done;
+-				if (ipr_cmd->qc)
+-					ipr_cmd->done = ipr_sata_eh_done;
+-				if (ipr_cmd->qc &&
+-				    !(ipr_cmd->qc->flags & ATA_QCFLAG_FAILED)) {
++				if (!ipr_cmd->qc)
++					continue;
++
++				ipr_cmd->done = ipr_sata_eh_done;
++				if (!(ipr_cmd->qc->flags & ATA_QCFLAG_FAILED)) {
+ 					ipr_cmd->qc->err_mask |= AC_ERR_TIMEOUT;
+ 					ipr_cmd->qc->flags |= ATA_QCFLAG_FAILED;
+ 				}
+-- 
+2.10.2
+

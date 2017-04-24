@@ -1,6 +1,7 @@
 From: Omar Sandoval <osandov@fb.com>
 Subject: Btrfs: deal with existing encompassing extent map in btrfs_get_extent()
-Patch-mainline: Submitted, linux-btrfs 10 Nov 2016
+Patch-mainline: v4.10-rc1
+Git-commit: 8e2bd3b7fac91b79a6115fd1511ca20b2a09696d
 References: bsc#1001171
 
 My QEMU VM was seeing inexplicable I/O errors that I tracked down to

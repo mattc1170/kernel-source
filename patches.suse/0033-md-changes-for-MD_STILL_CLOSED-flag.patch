@@ -1,8 +1,9 @@
-From 275cfb51c1e7731f0cf725f98a1b4ae746358b4c Mon Sep 17 00:00:00 2001
+From af8d8e6f031589ccf32b08eea91def53db8cfa95 Mon Sep 17 00:00:00 2001
 From: Guoqing Jiang <gqjiang@suse.com>
-Date: Thu, 28 Jul 2016 16:14:01 +0800
-Subject: [PATCH 5/8] md: changes for MD_STILL_CLOSED flag
-Patch-mainline: Submitted to linux-raid http://www.spinics.net/lists/raid/msg53091.html
+Date: Fri, 12 Aug 2016 13:42:37 +0800
+Subject: [PATCH] md: changes for MD_STILL_CLOSED flag
+Git-commit: af8d8e6f031589ccf32b08eea91def53db8cfa95
+Patch-mainline: v4.9-rc1
 References: fate#316335
 
 When stop clustered raid while it is pending on resync,
@@ -10,10 +11,10 @@ MD_STILL_CLOSED flag could be cleared since udev rule
 is triggered to open the mddev. So obviously array can't
 be stopped soon and returns EBUSY.
 
-             mdadm -Ss          md-raid-arrays.rules
-	set MD_STILL_CLOSED          md_open()
-            ... ... ...          clear MD_STILL_CLOSED
-	    do_md_stop
+	mdadm -Ss          md-raid-arrays.rules
+  set MD_STILL_CLOSED          md_open()
+	... ... ...          clear MD_STILL_CLOSED
+	do_md_stop
 
 We make below changes to resolve this issue:
 
@@ -28,17 +29,17 @@ We make below changes to resolve this issue:
 
 Reviewed-by: NeilBrown <neilb@suse.com>
 Signed-off-by: Guoqing Jiang <gqjiang@suse.com>
-Acked-by: Guoqing Jiang <gqjiang@suse.com>
+Signed-off-by: Shaohua Li <shli@fb.com>
 ---
  drivers/md/md.c | 14 ++++++++------
  drivers/md/md.h |  5 ++---
  2 files changed, 10 insertions(+), 9 deletions(-)
 
 diff --git a/drivers/md/md.c b/drivers/md/md.c
-index eb2e271..43bd698 100644
+index 7eaf549..b6ad04b 100644
 --- a/drivers/md/md.c
 +++ b/drivers/md/md.c
-@@ -5638,8 +5638,7 @@ static int md_set_readonly(struct mddev *mddev, struct block_device *bdev)
+@@ -5573,8 +5573,7 @@ static int md_set_readonly(struct mddev *mddev, struct block_device *bdev)
  	mutex_lock(&mddev->open_mutex);
  	if ((mddev->pers && atomic_read(&mddev->openers) > !!bdev) ||
  	    mddev->sync_thread ||
@@ -48,7 +49,7 @@ index eb2e271..43bd698 100644
  		printk("md: %s still in use.\n",mdname(mddev));
  		if (did_freeze) {
  			clear_bit(MD_RECOVERY_FROZEN, &mddev->recovery);
-@@ -5701,8 +5700,7 @@ static int do_md_stop(struct mddev *mddev, int mode,
+@@ -5636,8 +5635,7 @@ static int do_md_stop(struct mddev *mddev, int mode,
  	if ((mddev->pers && atomic_read(&mddev->openers) > !!bdev) ||
  	    mddev->sysfs_active ||
  	    mddev->sync_thread ||
@@ -58,7 +59,7 @@ index eb2e271..43bd698 100644
  		printk("md: %s still in use.\n",mdname(mddev));
  		mutex_unlock(&mddev->open_mutex);
  		if (did_freeze) {
-@@ -6899,7 +6897,7 @@ static int md_ioctl(struct block_device *bdev, fmode_t mode,
+@@ -6826,7 +6824,7 @@ static int md_ioctl(struct block_device *bdev, fmode_t mode,
  			err = -EBUSY;
  			goto out;
  		}
@@ -67,7 +68,7 @@ index eb2e271..43bd698 100644
  		mutex_unlock(&mddev->open_mutex);
  		sync_blockdev(bdev);
  	}
-@@ -7148,9 +7146,13 @@ static int md_open(struct block_device *bdev, fmode_t mode)
+@@ -7075,9 +7073,13 @@ static int md_open(struct block_device *bdev, fmode_t mode)
  	if ((err = mutex_lock_interruptible(&mddev->open_mutex)))
  		goto out;
  
@@ -83,10 +84,10 @@ index eb2e271..43bd698 100644
  
  	check_disk_change(bdev);
 diff --git a/drivers/md/md.h b/drivers/md/md.h
-index a6808ed..78f0e47 100644
+index 20c6675..2b20417 100644
 --- a/drivers/md/md.h
 +++ b/drivers/md/md.h
-@@ -214,9 +214,8 @@ struct mddev {
+@@ -201,9 +201,8 @@ struct mddev {
  #define MD_CHANGE_PENDING 2	/* switch from 'clean' to 'active' in progress */
  #define MD_UPDATE_SB_FLAGS (1 | 2 | 4)	/* If these are set, md_update_sb needed */
  #define MD_ARRAY_FIRST_USE 3    /* First use of array, needs initialization */
@@ -99,5 +100,5 @@ index a6808ed..78f0e47 100644
  #define MD_HAS_JOURNAL	6	/* The raid array has journal feature set */
  #define MD_NEED_REWRITE 7	/* metadata write need to be repeated */
 -- 
-2.6.2
+2.6.6
 

@@ -3,7 +3,7 @@ Date: Wed, 27 Jan 2016 22:29:42 -0800
 Patch-mainline: v4.6-rc1
 Subject: Drivers: hv: vmbus: add a per-channel rescind callback
 Git-commit: 499e8401a515d04daa986b995da710d2b9737764
-Reference: fate#320485
+References: fate#320485
 
 This will be used by the coming hv_sock driver.
 

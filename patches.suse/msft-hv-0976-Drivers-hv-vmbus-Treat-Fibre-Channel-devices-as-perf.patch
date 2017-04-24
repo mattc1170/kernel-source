@@ -3,7 +3,7 @@ Date: Tue, 15 Dec 2015 16:27:27 -0800
 Patch-mainline: v4.5-rc1
 Subject: Drivers: hv: vmbus: Treat Fibre Channel devices as performance critical
 Git-commit: 879a650a273bc3efb9d472886b8ced12630ea8ed
-Reference: fate#315887
+References: fate#315887
 
 For performance critical devices, we distribute the incoming
 channel interrupt load across available CPUs in the guest.

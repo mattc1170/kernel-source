@@ -5,7 +5,7 @@ Subject: [PATCH] md/raid5: remove redundant check in
  stripe_add_to_batch_list()
 Git-commit: b46020aa3a8a0f9c7324fe0af4aec4227f947a10
 Patch-mainline: v4.5-rc1
-Reference: fate#320291
+References: fate#320291
 
 The stripe_add_to_batch_list() function is called only if
 stripe_can_batch() returned true, so there is no need for double check.

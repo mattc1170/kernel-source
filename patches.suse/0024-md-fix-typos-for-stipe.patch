@@ -4,7 +4,7 @@ Date: Mon, 14 Mar 2016 17:01:39 +0800
 Subject: [PATCH] md: fix typos for stipe
 Git-commit: d85326cf86d7f52d1ac23c38f745470066acc76f
 Patch-mainline: v4.6-rc1
-Reference: fate#320291
+References: fate#320291
 
 Signed-off-by: Guoqing Jiang <gqjiang@suse.com>
 Signed-off-by: Shaohua Li <shli@fb.com>

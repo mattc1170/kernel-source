@@ -1,9 +1,9 @@
-From 1ba1b253a86a8ebb893b6a5aca683a420866c100 Mon Sep 17 00:00:00 2001
 From: Qu Wenruo <quwenruo@cn.fujitsu.com>
 Date: Tue, 18 Oct 2016 09:31:28 +0800
 Subject: [PATCH 3/4] btrfs: Expoert and move leaf/subtree qgroup helpers to qgroup.c
 References: bsc983087, bsc986255
-Patch-mainline: Submitted, https://patchwork.kernel.org/patch/9380981/
+Patch-mainline: v4.10-rc1
+Git-commit: 33d1f05ccb698aa92db3e64a639ce523cf18a408
 
 Move account_shared_subtree() to qgroup.c and rename it to
 btrfs_qgroup_trace_subtree().

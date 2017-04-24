@@ -1,0 +1,38 @@
+From: Edward Cree <ecree@solarflare.com>
+Date: Fri, 27 Jan 2017 15:02:26 +0000
+Subject: net: implement netif_cond_dbg macro
+Patch-mainline: Queued in subsystem maintainer repository
+Git-repo: git://git.kernel.org/pub/scm/linux/kernel/git/davem/net-next.git
+Git-commit: f617f27653c4d9f5b2aa43d567ac0405df889944
+References: bsc#1019168
+
+For reporting things that may or may not be serious, depending on some
+ condition, netif_cond_dbg will check the condition and print the report
+ at either dbg (if the condition is true) or the specified level.
+
+Suggested-by: Jon Cooper <jcooper@solarflare.com>
+Signed-off-by: Edward Cree <ecree@solarflare.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+Acked-by: Benjamin Poirier <bpoirier@suse.com>
+---
+ include/linux/netdevice.h |    9 +++++++++
+ 1 file changed, 9 insertions(+)
+
+--- a/include/linux/netdevice.h
++++ b/include/linux/netdevice.h
+@@ -4153,6 +4153,15 @@ do {								\
+ })
+ #endif
+ 
++/* if @cond then downgrade to debug, else print at @level */
++#define netif_cond_dbg(priv, type, netdev, cond, level, fmt, args...)     \
++	do {                                                              \
++		if (cond)                                                 \
++			netif_dbg(priv, type, netdev, fmt, ##args);       \
++		else                                                      \
++			netif_ ## level(priv, type, netdev, fmt, ##args); \
++	} while (0)
++
+ #if defined(VERBOSE_DEBUG)
+ #define netif_vdbg	netif_dbg
+ #else

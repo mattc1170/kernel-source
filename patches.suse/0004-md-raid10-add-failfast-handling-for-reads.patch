@@ -2,7 +2,8 @@ From: NeilBrown <neilb@suse.de>
 Date: Thu, 24 Nov 2011 14:19:26 +1100
 Subject: [PATCH 4/5] md/raid10 add failfast handling for reads.
 References: Fate#311379
-Patch-mainline: Not yet, "failfast" is not very well defined...
+Git-commit: 8d3ca83dcf9ca3d58822eddd279918d46f41e9ff
+Patch-mainline: v4.10
 
 If a device is marked FailFast and it is not the only device
 we can read from, we mark the bio as REQ_FAILFAST_DEV.

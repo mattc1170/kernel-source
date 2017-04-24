@@ -5,7 +5,7 @@ Subject: [PATCH] md-cluster: gather resync infos and enable recv_thread after
  bitmap is ready
 Git-commit: 51e453aecb267b6a99b1d2853bccd5bba7340236
 Patch-mainline: v4.7-rc1
-Reference: fate#316335
+References: fate#316335
 
 The in-memory bitmap is not ready when node joins cluster,
 so it doesn't make sense to make gather_all_resync_info()

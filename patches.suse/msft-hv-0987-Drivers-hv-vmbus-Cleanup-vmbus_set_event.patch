@@ -3,7 +3,7 @@ Date: Mon, 21 Dec 2015 15:12:20 -0800
 Patch-mainline: v4.6-rc1
 Subject: Drivers: hv: vmbus: Cleanup vmbus_set_event()
 Git-commit: 1b807e1011af46a595ba46c75ad5e20ad7177af7
-Reference: fate#320485
+References: fate#320485
 
 Cleanup vmbus_set_event() by inlining the hypercall to post
 the event and since the return value of vmbus_set_event() is not checked,

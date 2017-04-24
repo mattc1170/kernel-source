@@ -1,0 +1,30 @@
+From: Jiri Slaby <jslaby@suse.cz>
+Subject: kABI: protect user_namespace include in fs/exec
+Patch-mainline: never, kabi
+References: kabi
+
+In 4.4.40, commit b35f34f66943fa1b8feadb037d054a141723f7fe (exec:
+Ensure mm->user_ns contains the execed files), upstream commit
+f84df2a6f268de584a201e8911384a2d244876e3
+added user_namespace.h include to fs/exec.c and it made some of the
+symbols defined.
+
+Protect the include by __GENKSYMS__ to hide it from the kABI checker.
+
+Signed-off-by: Jiri Slaby <jslaby@suse.cz>
+---
+ fs/exec.c |    2 ++
+ 1 file changed, 2 insertions(+)
+
+--- a/fs/exec.c
++++ b/fs/exec.c
+@@ -56,7 +56,9 @@
+ #include <linux/pipe_fs_i.h>
+ #include <linux/oom.h>
+ #include <linux/compat.h>
++#ifndef __GENKSYMS__
+ #include <linux/user_namespace.h>
++#endif
+ 
+ #include <asm/uaccess.h>
+ #include <asm/mmu_context.h>

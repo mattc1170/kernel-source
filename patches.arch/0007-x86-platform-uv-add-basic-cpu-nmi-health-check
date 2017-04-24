@@ -1,0 +1,68 @@
+From: "travis@sgi.com" <travis@sgi.com>
+Date: Wed, 25 Jan 2017 10:35:20 -0600
+Subject: x86/platform/UV: Add basic CPU NMI health check
+Git-commit: 278c9b099b2fc0cc0a51de95a1dcefcf54ca2183
+Patch-mainline: v3.20-rc1
+References: bsc#1023866
+
+Add a low impact health check triggered by the system NMI command
+that essentially checks which CPUs are responding to external NMI's.
+
+Signed-off-by: Mike Travis <travis@sgi.com>
+Reviewed-by: Russ Anderson <rja@hpe.com>
+Reviewed-by: Alex Thorlton <athorlton@sgi.com>
+Acked-by: Thomas Gleixner <tglx@linutronix.de>
+Acked-by: Dimitri Sivanich <sivanich@hpe.com>
+Cc: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: Peter Zijlstra <peterz@infradead.org>
+Link: http://lkml.kernel.org/r/20170125163517.756690240@asylum.americas.sgi.com
+Signed-off-by: Ingo Molnar <mingo@kernel.org>
+Acked-by: Joerg Roedel <jroedel@suse.de>
+---
+ arch/x86/platform/uv/uv_nmi.c | 21 ++++++++++++++++++++-
+ 1 file changed, 20 insertions(+), 1 deletion(-)
+
+--- a/arch/x86/platform/uv/uv_nmi.c
++++ b/arch/x86/platform/uv/uv_nmi.c
+@@ -176,6 +176,7 @@ module_param_named(debug, uv_nmi_debug,
+  *  "kdump"	- do crash dump
+  *  "kdb"	- enter KDB (default)
+  *  "kgdb"	- enter KGDB
++ *  "health"	- check if CPUs respond to NMI
+  */
+ static char uv_nmi_action[8] = "kdb";
+ module_param_string(action, uv_nmi_action, sizeof(uv_nmi_action), 0644);
+@@ -571,6 +572,22 @@ static void uv_nmi_sync_exit(int master)
+ 	}
+ }
+ 
++/* Current "health" check is to check which CPU's are responsive */
++static void uv_nmi_action_health(int cpu, struct pt_regs *regs, int master)
++{
++	if (master) {
++		int in = atomic_read(&uv_nmi_cpus_in_nmi);
++		int out = num_online_cpus() - in;
++
++		pr_alert("UV: NMI CPU health check (non-responding:%d)\n", out);
++		atomic_set(&uv_nmi_slave_continue, SLAVE_EXIT);
++	} else {
++		while (!atomic_read(&uv_nmi_slave_continue))
++			cpu_relax();
++	}
++	uv_nmi_sync_exit(master);
++}
++
+ /* Walk through cpu list and dump state of each */
+ static void uv_nmi_dump_state(int cpu, struct pt_regs *regs, int master)
+ {
+@@ -747,7 +764,9 @@ int uv_handle_nmi(unsigned int reason, s
+ 	uv_nmi_wait(master);
+ 
+ 	/* Process actions other than "kdump": */
+-	if (uv_nmi_action_is("ips") || uv_nmi_action_is("dump")) {
++	if (uv_nmi_action_is("health")) {
++		uv_nmi_action_health(cpu, regs, master);
++	} else if (uv_nmi_action_is("ips") || uv_nmi_action_is("dump")) {
+ 		uv_nmi_dump_state(cpu, regs, master);
+ 	} else if (uv_nmi_action_is("kdb") || uv_nmi_action_is("kgdb")) {
+ 		uv_call_kgdb_kdb(cpu, regs, master);

@@ -3,7 +3,7 @@ Date: Tue, 1 Dec 2015 16:43:17 -0800
 Patch-mainline: v4.5-rc1
 Subject: hv_netvsc: Eliminate xmit_more from struct hv_netvsc_packet
 Git-commit: bde79be529c43b5a5a877b3e0b93607d22a8b01e
-Reference: fate#315887
+References: fate#315887
 
 Eliminate xmit_more from struct hv_netvsc_packet.
 

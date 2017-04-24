@@ -3,7 +3,8 @@ From: NeilBrown <neilb@suse.de>
 Date: Thu, 24 Nov 2011 14:19:30 +1100
 Subject: [PATCH 5/5] md/raid10 - add failfast handling for writes.
 References: Fate#311379
-Patch-mainline: Not yet, submitted?
+Git-commit: 1919cbb23bf1b3e0fdb7b6edfb7369f920744087
+Patch-mainline: v4.10
 
 When writing to a fastfail device we use REQ_FASTFAIL_DEV unless it is
 the only device being written to.

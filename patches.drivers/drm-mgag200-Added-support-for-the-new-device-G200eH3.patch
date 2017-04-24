@@ -1,0 +1,170 @@
+From f0493e653f9679114d1dfd54ab88b54ce95576e1 Mon Sep 17 00:00:00 2001
+From: Mathieu Larouche <mathieu.larouche@matrox.com>
+Date: Fri, 21 Oct 2016 12:47:07 -0400
+Subject: [PATCH] drm/mgag200: Added support for the new device G200eH3
+References: bsc#1007959, fate#322780
+Patch-mainline: v4.10-rc4
+Git-commit: f0493e653f9679114d1dfd54ab88b54ce95576e1
+Reviewed-by: Stefan Dirsch <sndirsch@suse.de>
+
+- Added the new device ID
+- Added new pll algorithm
+
+Signed-off-by: Mathieu Larouche <mathieu.larouche@matrox.com>
+Signed-off-by: Dave Airlie <airlied@redhat.com>
+---
+ drivers/gpu/drm/mgag200/mgag200_drv.c  |    1 
+ drivers/gpu/drm/mgag200/mgag200_drv.h  |    1 
+ drivers/gpu/drm/mgag200/mgag200_i2c.c  |    1 
+ drivers/gpu/drm/mgag200/mgag200_mode.c |   81 ++++++++++++++++++++++++---------
+ 4 files changed, 63 insertions(+), 21 deletions(-)
+
+--- a/drivers/gpu/drm/mgag200/mgag200_drv.c
++++ b/drivers/gpu/drm/mgag200/mgag200_drv.c
+@@ -42,6 +42,7 @@ static const struct pci_device_id pciidl
+ 	{ PCI_VENDOR_ID_MATROX, 0x533, PCI_ANY_ID, PCI_ANY_ID, 0, 0, G200_EH },
+ 	{ PCI_VENDOR_ID_MATROX, 0x534, PCI_ANY_ID, PCI_ANY_ID, 0, 0, G200_ER },
+ 	{ PCI_VENDOR_ID_MATROX, 0x536, PCI_ANY_ID, PCI_ANY_ID, 0, 0, G200_EW3 },
++	{ PCI_VENDOR_ID_MATROX, 0x538, PCI_ANY_ID, PCI_ANY_ID, 0, 0, G200_EH3 },
+ 	{0,}
+ };
+ 
+--- a/drivers/gpu/drm/mgag200/mgag200_drv.h
++++ b/drivers/gpu/drm/mgag200/mgag200_drv.h
+@@ -181,6 +181,7 @@ enum mga_type {
+ 	G200_WB,
+ 	G200_EV,
+ 	G200_EH,
++	G200_EH3,
+ 	G200_ER,
+ 	G200_EW3,
+ };
+--- a/drivers/gpu/drm/mgag200/mgag200_i2c.c
++++ b/drivers/gpu/drm/mgag200/mgag200_i2c.c
+@@ -106,6 +106,7 @@ struct mga_i2c_chan *mgag200_i2c_create(
+ 		clock = 2;
+ 		break;
+ 	case G200_EH:
++	case G200_EH3:
+ 	case G200_ER:
+ 		data = 2;
+ 		clock = 1;
+--- a/drivers/gpu/drm/mgag200/mgag200_mode.c
++++ b/drivers/gpu/drm/mgag200/mgag200_mode.c
+@@ -575,34 +575,70 @@ static int mga_g200eh_set_plls(struct mg
+ 	bool pll_locked = false;
+ 
+ 	m = n = p = 0;
+-	vcomax = 800000;
+-	vcomin = 400000;
+-	pllreffreq = 33333;
+ 
+-	delta = 0xffffffff;
+-
+-	for (testp = 16; testp > 0; testp >>= 1) {
+-		if (clock * testp > vcomax)
+-			continue;
+-		if (clock * testp < vcomin)
+-			continue;
+-
+-		for (testm = 1; testm < 33; testm++) {
+-			for (testn = 17; testn < 257; testn++) {
+-				computed = (pllreffreq * testn) /
+-					(testm * testp);
++	if (mdev->type == G200_EH3) {
++		vcomax = 3000000;
++		vcomin = 1500000;
++		pllreffreq = 25000;
++
++		delta = 0xffffffff;
++
++		testp = 0;
++
++		for (testm = 150; testm >= 6; testm--) {
++			if (clock * testm > vcomax)
++				continue;
++			if (clock * testm < vcomin)
++				continue;
++			for (testn = 120; testn >= 60; testn--) {
++				computed = (pllreffreq * testn) / testm;
+ 				if (computed > clock)
+ 					tmpdelta = computed - clock;
+ 				else
+ 					tmpdelta = clock - computed;
+ 				if (tmpdelta < delta) {
+ 					delta = tmpdelta;
+-					n = testn - 1;
+-					m = (testm - 1);
+-					p = testp - 1;
++					n = testn;
++					m = testm;
++					p = testp;
++				}
++				if (delta == 0)
++					break;
++			}
++			if (delta == 0)
++				break;
++		}
++	} else {
++
++		vcomax = 800000;
++		vcomin = 400000;
++		pllreffreq = 33333;
++
++		delta = 0xffffffff;
++
++		for (testp = 16; testp > 0; testp >>= 1) {
++			if (clock * testp > vcomax)
++				continue;
++			if (clock * testp < vcomin)
++				continue;
++
++			for (testm = 1; testm < 33; testm++) {
++				for (testn = 17; testn < 257; testn++) {
++					computed = (pllreffreq * testn) /
++						(testm * testp);
++					if (computed > clock)
++						tmpdelta = computed - clock;
++					else
++						tmpdelta = clock - computed;
++					if (tmpdelta < delta) {
++						delta = tmpdelta;
++						n = testn - 1;
++						m = (testm - 1);
++						p = testp - 1;
++					}
++					if ((clock * testp) >= 600000)
++						p |= 0x80;
+ 				}
+-				if ((clock * testp) >= 600000)
+-					p |= 0x80;
+ 			}
+ 		}
+ 	}
+@@ -756,6 +792,7 @@ static int mga_crtc_set_plls(struct mga_
+ 		return mga_g200ev_set_plls(mdev, clock);
+ 		break;
+ 	case G200_EH:
++	case G200_EH3:
+ 		return mga_g200eh_set_plls(mdev, clock);
+ 		break;
+ 	case G200_ER:
+@@ -1026,6 +1063,7 @@ static int mga_crtc_mode_set(struct drm_
+ 		option2 = 0x0000b000;
+ 		break;
+ 	case G200_EH:
++	case G200_EH3:
+ 		dacvalue[MGA1064_MISC_CTL] = MGA1064_MISC_CTL_VGA8 |
+ 					     MGA1064_MISC_CTL_DAC_RAM_CS;
+ 		option = 0x00000120;
+@@ -1072,7 +1110,8 @@ static int mga_crtc_mode_set(struct drm_
+ 		if ((mdev->type == G200_EV ||
+ 		    mdev->type == G200_WB ||
+ 		    mdev->type == G200_EH ||
+-		    mdev->type == G200_EW3) &&
++		    mdev->type == G200_EW3 ||
++		    mdev->type == G200_EH3) &&
+ 		    (i >= 0x44) && (i <= 0x4e))
+ 			continue;
+ 

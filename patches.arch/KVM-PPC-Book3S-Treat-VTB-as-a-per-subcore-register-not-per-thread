@@ -6,7 +6,8 @@ Subject: [1/2] KVM: PPC: Book3S: Treat VTB as a per-subcore register,
 From: Paul Mackerras <paulus@ozlabs.org>
 X-patchwork-id: 9332931
 Message-id: <20160915080847.GA4318@fergus.ozlabs.ibm.com>
-Patch-mainline: Submitted, https://patchwork.kernel.org/patch/9332931/
+Patch-mainline: v4.9-rc1
+Git-commit: 88b02cf97bb7e742db3e31671d54177e3e19fd89
 References: bsc#981367
 
 POWER8 has one virtual timebase (VTB) register per subcore, not one

@@ -2,7 +2,9 @@ From 187540c8fbb90948794d5492a1e9b5f5518d0de1 Mon Sep 17 00:00:00 2001
 From: Gabriel Krisman Bertazi <krisman@linux.vnet.ibm.com>
 Date: Tue, 6 Dec 2016 15:49:31 -0200
 Subject: [PATCH] 8250_pci: Fix potential use-after-free in error path
-Patch-mainline: submitted linux-serial@vger.kernel.org http://marc.info/?l=linux-serial&m=148120825019839&w=2
+
+Git-commit: c130b666a9a711f985a0a44b58699ebe14bb7245
+Patch-mainline: v4.10-rc4
 References: bsc#1013001
 
 Commit f209fa03fc9d ("serial: 8250_pci: Detach low-level driver during

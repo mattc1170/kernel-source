@@ -3,7 +3,7 @@ Date: Wed, 17 Feb 2016 16:43:59 -0800
 Patch-mainline: v4.6-rc1
 Subject: hv_netvsc: add software transmit timestamp support
 Git-commit: 76d13b568776fdef646c70878de406c90aef46a9
-Reference: fate#320485
+References: fate#320485
 
 Enable skb_tx_timestamp in hyperv netvsc.
 

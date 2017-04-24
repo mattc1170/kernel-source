@@ -1,17 +1,8 @@
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Subject: drivers: net: xgene: Fix error handling
 From: Matthias Brugger <mbrugger@suse.com>
-X-Patchwork-Id: 9004081
-Message-Id: <1462284307-15401-1-git-send-email-mbrugger@suse.com>
-To: davem@davemloft.net,
-	isubramanian@apm.com
-Cc: netdev@vger.kernel.org, Matthias Brugger <mbrugger@suse.com>,
-	kchudgar@apm.com, linux-kernel@vger.kernel.org,
-	linux-arm-kernel@lists.infradead.org
 Date: Tue,  3 May 2016 16:05:07 +0200
-Patch-mainline: Submitted, https://patchwork.kernel.org/patch/9004081
+Subject: drivers: net: xgene: Fix error handling
+Git-commit: 20decb7e486d7eefff3931f58d092d2d7c024a1c
+Patch-mainline: v4.6
 References: bsc#978261
 
 When probe bails out with an error, we try to unregister the
@@ -19,7 +10,7 @@ netdev before we have even registered it. Fix the goto statements
 for that.
 
 Signed-off-by: Matthias Brugger <mbrugger@suse.com>
-
+Signed-off-by: David S. Miller <davem@davemloft.net>
 ---
 drivers/net/ethernet/apm/xgene/xgene_enet_main.c | 7 ++++---
  1 file changed, 4 insertions(+), 3 deletions(-)

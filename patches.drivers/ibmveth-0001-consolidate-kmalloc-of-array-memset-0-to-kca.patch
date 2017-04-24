@@ -1,0 +1,45 @@
+From 076ef440708bc28d821cebb2dbca64e3c917ac73 Mon Sep 17 00:00:00 2001
+From: Nicholas Mc Guire <hofrat@osadl.org>
+Date: Sun, 20 Dec 2015 15:06:18 +0100
+Subject: [PATCH] ibmveth: consolidate kmalloc of array, memset 0 to kcalloc
+
+References: bsc#1019148
+Patch-mainline: v4.5-rc1
+Git-commit: 076ef440708bc28d821cebb2dbca64e3c917ac73
+
+This is an API consolidation only. The use of kmalloc + memset to 0
+is equivalent to kcalloc in this case as it is allocating an array
+of elements.
+
+Signed-off-by: Nicholas Mc Guire <hofrat@osadl.org>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+Acked-by: Michal Suchanek <msuchanek@suse.de>
+---
+ drivers/net/ethernet/ibm/ibmveth.c | 4 +---
+ 1 file changed, 1 insertion(+), 3 deletions(-)
+
+diff --git a/drivers/net/ethernet/ibm/ibmveth.c b/drivers/net/ethernet/ibm/ibmveth.c
+index 6691b5a45b9d..335417b4756b 100644
+--- a/drivers/net/ethernet/ibm/ibmveth.c
++++ b/drivers/net/ethernet/ibm/ibmveth.c
+@@ -169,7 +169,7 @@ static int ibmveth_alloc_buffer_pool(struct ibmveth_buff_pool *pool)
+ 	if (!pool->free_map)
+ 		return -1;
+ 
+-	pool->dma_addr = kmalloc(sizeof(dma_addr_t) * pool->size, GFP_KERNEL);
++	pool->dma_addr = kcalloc(pool->size, sizeof(dma_addr_t), GFP_KERNEL);
+ 	if (!pool->dma_addr) {
+ 		kfree(pool->free_map);
+ 		pool->free_map = NULL;
+@@ -187,8 +187,6 @@ static int ibmveth_alloc_buffer_pool(struct ibmveth_buff_pool *pool)
+ 		return -1;
+ 	}
+ 
+-	memset(pool->dma_addr, 0, sizeof(dma_addr_t) * pool->size);
+-
+ 	for (i = 0; i < pool->size; ++i)
+ 		pool->free_map[i] = i;
+ 
+-- 
+2.10.2
+

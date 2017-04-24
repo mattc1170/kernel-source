@@ -1,0 +1,79 @@
+From bc183779dedf969533f19cc957a4a02b69fc44d3 Mon Sep 17 00:00:00 2001
+From: Hari Bathini <hbathini@linux.vnet.ibm.com>
+Date: Fri, 17 Mar 2017 02:35:42 +0530
+Subject: [PATCH] powerpc/fadump: Update fadump documentation
+
+References: bsc#1032141
+Git-repo: https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git
+Patch-mainline: queued, next-20170411
+Git-commit: bc183779dedf969533f19cc957a4a02b69fc44d3
+
+With the unnecessary restriction to reserve memory for fadump at the
+top of RAM forgone, update the documentation accordingly.
+
+Signed-off-by: Hari Bathini <hbathini@linux.vnet.ibm.com>
+Signed-off-by: Michael Ellerman <mpe@ellerman.id.au>
+Acked-by: Michal Suchanek <msuchanek@suse.de>
+---
+ Documentation/powerpc/firmware-assisted-dump.txt | 34 ++++++++++++------------
+ 1 file changed, 17 insertions(+), 17 deletions(-)
+
+diff --git a/Documentation/powerpc/firmware-assisted-dump.txt b/Documentation/powerpc/firmware-assisted-dump.txt
+index 3007bc9..19b1e3d 100644
+--- a/Documentation/powerpc/firmware-assisted-dump.txt
++++ b/Documentation/powerpc/firmware-assisted-dump.txt
+@@ -105,21 +105,21 @@ memory is held.
+ 
+ If there is no waiting dump data, then only the memory required
+ to hold CPU state, HPTE region, boot memory dump and elfcore
+-header, is reserved at the top of memory (see Fig. 1). This area
+-is *not* released: this region will be kept permanently reserved,
+-so that it can act as a receptacle for a copy of the boot memory
+-content in addition to CPU state and HPTE region, in the case a
+-crash does occur.
++header, is usually reserved at an offset greater than boot memory
++size (see Fig. 1). This area is *not* released: this region will
++be kept permanently reserved, so that it can act as a receptacle
++for a copy of the boot memory content in addition to CPU state
++and HPTE region, in the case a crash does occur.
+ 
+   o Memory Reservation during first kernel
+ 
+-  Low memory                                        Top of memory
++  Low memory                                         Top of memory
+   0      boot memory size                                       |
+-  |           |                       |<--Reserved dump area -->|
+-  V           V                       |   Permanent Reservation V
+-  +-----------+----------/ /----------+---+----+-----------+----+
+-  |           |                       |CPU|HPTE|  DUMP     |ELF |
+-  +-----------+----------/ /----------+---+----+-----------+----+
++  |           |                |<--Reserved dump area -->|      |
++  V           V                |   Permanent Reservation |      V
++  +-----------+----------/ /---+---+----+-----------+----+------+
++  |           |                |CPU|HPTE|  DUMP     |ELF |      |
++  +-----------+----------/ /---+---+----+-----------+----+------+
+         |                                           ^
+         |                                           |
+         \                                           /
+@@ -135,12 +135,12 @@ crash does occur.
+   0      boot memory size                                       |
+   |           |<------------- Reserved dump area ----------- -->|
+   V           V                                                 V
+-  +-----------+----------/ /----------+---+----+-----------+----+
+-  |           |                       |CPU|HPTE|  DUMP     |ELF |
+-  +-----------+----------/ /----------+---+----+-----------+----+
+-        |                                                    |
+-        V                                                    V
+-   Used by second                                    /proc/vmcore
++  +-----------+----------/ /---+---+----+-----------+----+------+
++  |           |                |CPU|HPTE|  DUMP     |ELF |      |
++  +-----------+----------/ /---+---+----+-----------+----+------+
++        |                                              |
++        V                                              V
++   Used by second                                /proc/vmcore
+    kernel to boot
+                    Fig. 2
+ 
+-- 
+2.10.2
+

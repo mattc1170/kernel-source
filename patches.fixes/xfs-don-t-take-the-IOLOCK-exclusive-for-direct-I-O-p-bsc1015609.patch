@@ -1,0 +1,195 @@
+From 0ee7a3f6b5b2f22bb69bfc6c60d0ea0777003098 Mon Sep 17 00:00:00 2001
+From: Christoph Hellwig <hch@lst.de>
+Date: Thu, 20 Oct 2016 15:44:14 +1100
+Patch-mainline: v4.9-rc3
+Git-commit: 0ee7a3f6b5b2f22bb69bfc6c60d0ea0777003098
+References: bsc#1015609
+Subject: [PATCH 1/1] xfs: don't take the IOLOCK exclusive for direct I/O page
+ invalidation
+
+XFS historically took the iolock exclusive when invalidating pages
+before direct I/O operations to protect against writeback starvations.
+
+But this writeback starvation issues has been fixed a long time ago
+in the core writeback code, and all other file systems manage to do
+without the exclusive lock.  Convert XFS over to avoid the exclusive
+lock in this case, and also move to range invalidations like done
+by the other file systems.
+
+Signed-off-by: Christoph Hellwig <hch@lst.de>
+Reviewed-by: Jan Kara <jack@suse.cz>
+Reviewed-by: Carlos Maiolino <cmaiolino@redhat.com>
+Signed-off-by: Dave Chinner <david@fromorbit.com>
+---
+diff --git a/fs/xfs/xfs_file.c b/fs/xfs/xfs_file.c
+index 09a250d..7f88a75 100644
+--- a/fs/xfs/xfs_file.c
++++ b/fs/xfs/xfs_file.c
+@@ -308,6 +308,7 @@ xfs_file_read_iter(
+ 	struct iov_iter		*to)
+ {
+ 	struct file		*file = iocb->ki_filp;
++	struct address_space	*mapping = file->f_mapping;
+ 	struct inode		*inode = file->f_mapping->host;
+ 	struct xfs_inode	*ip = XFS_I(inode);
+ 	struct xfs_mount	*mp = ip->i_mount;
+@@ -316,6 +317,7 @@ xfs_file_read_iter(
+ 	int			ioflags = 0;
+ 	xfs_fsize_t		n;
+ 	loff_t			pos = iocb->ki_pos;
++	loff_t			end = pos + size - 1;
+ 
+ 	XFS_STATS_INC(mp, xs_read_calls);
+ 
+@@ -346,16 +348,6 @@ xfs_file_read_iter(
+ 	if (XFS_FORCED_SHUTDOWN(mp))
+ 		return -EIO;
+ 
+-	/*
+-	 * Locking is a bit tricky here. If we take an exclusive lock for direct
+-	 * IO, we effectively serialise all new concurrent read IO to this file
+-	 * and block it behind IO that is currently in progress because IO in
+-	 * progress holds the IO lock shared. We only need to hold the lock
+-	 * exclusive to blow away the page cache, so only take lock exclusively
+-	 * if the page cache needs invalidation. This allows the normal direct
+-	 * IO case of no page cache pages to proceeed concurrently without
+-	 * serialisation.
+-	 */
+ 	xfs_rw_ilock(ip, XFS_IOLOCK_SHARED);
+ 
+ 	if (DM_EVENT_ENABLED(ip, DM_EVENT_READ) && !(ioflags & XFS_IO_INVIS)) {
+@@ -376,37 +368,19 @@ xfs_file_read_iter(
+ 	}
+ 
+ 	if ((ioflags & XFS_IO_ISDIRECT) && inode->i_mapping->nrpages) {
+-		xfs_rw_iunlock(ip, XFS_IOLOCK_SHARED);
+-		xfs_rw_ilock(ip, XFS_IOLOCK_EXCL);
++		ret = filemap_write_and_wait_range(mapping, iocb->ki_pos, end);
++		if (ret)
++			goto out_unlock;
+ 
+ 		/*
+-		 * The generic dio code only flushes the range of the particular
+-		 * I/O. Because we take an exclusive lock here, this whole
+-		 * sequence is considerably more expensive for us. This has a
+-		 * noticeable performance impact for any file with cached pages,
+-		 * even when outside of the range of the particular I/O.
+-		 *
+-		 * Hence, amortize the cost of the lock against a full file
+-		 * flush and reduce the chances of repeated iolock cycles going
+-		 * forward.
++		 * Invalidate whole pages. This can return an error if we fail
++		 * to invalidate a page, but this should never happen on XFS.
++		 * Warn if it does fail.
+ 		 */
+-		if (inode->i_mapping->nrpages) {
+-			ret = filemap_write_and_wait(VFS_I(ip)->i_mapping);
+-			if (ret) {
+-				xfs_rw_iunlock(ip, XFS_IOLOCK_EXCL);
+-				return ret;
+-			}
+-
+-			/*
+-			 * Invalidate whole pages. This can return an error if
+-			 * we fail to invalidate a page, but this should never
+-			 * happen on XFS. Warn if it does fail.
+-			 */
+-			ret = invalidate_inode_pages2(VFS_I(ip)->i_mapping);
+-			WARN_ON_ONCE(ret);
+-			ret = 0;
+-		}
+-		xfs_rw_ilock_demote(ip, XFS_IOLOCK_EXCL);
++		ret = invalidate_inode_pages2_range(mapping,
++				iocb->ki_pos >> PAGE_SHIFT, end >> PAGE_SHIFT);
++		WARN_ON_ONCE(ret);
++		ret = 0;
+ 	}
+ 
+ 	trace_xfs_file_read(ip, size, pos, ioflags);
+@@ -415,6 +389,7 @@ xfs_file_read_iter(
+ 	if (ret > 0)
+ 		XFS_STATS_ADD(mp, xs_read_bytes, ret);
+ 
++out_unlock:
+ 	xfs_rw_iunlock(ip, XFS_IOLOCK_SHARED);
+ 	return ret;
+ }
+@@ -800,34 +775,23 @@ xfs_file_dio_aio_write(
+ 	if (!IS_DAX(inode) && ((pos | count) & target->bt_logical_sectormask))
+ 		return -EINVAL;
+ 
+-	/* "unaligned" here means not aligned to a filesystem block */
+-	if ((pos & mp->m_blockmask) || ((pos + count) & mp->m_blockmask))
+-		unaligned_io = 1;
+-
+ 	/*
+-	 * We don't need to take an exclusive lock unless there page cache needs
+-	 * to be invalidated or unaligned IO is being executed. We don't need to
+-	 * consider the EOF extension case here because
+-	 * xfs_file_aio_write_checks() will relock the inode as necessary for
+-	 * EOF zeroing cases and fill out the new inode size as appropriate.
++	 * Don't take the exclusive iolock here unless the I/O is unaligned to
++	 * the file system block size.  We don't need to consider the EOF
++	 * extension case here because xfs_file_aio_write_checks() will relock
++	 * the inode as necessary for EOF zeroing cases and fill out the new
++	 * inode size as appropriate.
+ 	 */
+-	if (unaligned_io || mapping->nrpages)
++	if ((pos & mp->m_blockmask) ||
++		((pos + count) & mp->m_blockmask)) {
++		unaligned_io = 1;
+ 		iolock = XFS_IOLOCK_EXCL;
+-	else
++	} else {
+ 		iolock = XFS_IOLOCK_SHARED;
+-	xfs_rw_ilock(ip, iolock);
+-
+-	/*
+-	 * Recheck if there are cached pages that need invalidate after we got
+-	 * the iolock to protect against other threads adding new pages while
+-	 * we were waiting for the iolock.
+-	 */
+-	if (mapping->nrpages && iolock == XFS_IOLOCK_SHARED) {
+-		xfs_rw_iunlock(ip, iolock);
+-		iolock = XFS_IOLOCK_EXCL;
+-		xfs_rw_ilock(ip, iolock);
+ 	}
+ 
++	xfs_rw_ilock(ip, iolock);
++
+ 	ret = xfs_file_aio_write_checks(iocb, from, &iolock, eventsent);
+ 	if (ret)
+ 		goto out;
+@@ -835,26 +799,26 @@ xfs_file_dio_aio_write(
+ 	pos = iocb->ki_pos;
+ 	end = pos + count - 1;
+ 
+-	/*
+-	 * See xfs_file_read_iter() for why we do a full-file flush here.
+-	 */
+ 	if (mapping->nrpages) {
+-		ret = filemap_write_and_wait(VFS_I(ip)->i_mapping);
++		ret = filemap_write_and_wait_range(mapping, iocb->ki_pos, end);
+ 		if (ret)
+ 			goto out;
++
+ 		/*
+ 		 * Invalidate whole pages. This can return an error if we fail
+ 		 * to invalidate a page, but this should never happen on XFS.
+ 		 * Warn if it does fail.
+ 		 */
+-		ret = invalidate_inode_pages2(VFS_I(ip)->i_mapping);
++		ret = invalidate_inode_pages2_range(mapping,
++				iocb->ki_pos >> PAGE_SHIFT, end >> PAGE_SHIFT);
+ 		WARN_ON_ONCE(ret);
+ 		ret = 0;
+ 	}
+ 
+ 	/*
+ 	 * If we are doing unaligned IO, wait for all other IO to drain,
+-	 * otherwise demote the lock if we had to flush cached pages
++	 * otherwise demote the lock if we had to take the exclusive lock
++	 * for other reasons in xfs_file_aio_write_checks.
+ 	 */
+ 	if (unaligned_io)
+ 		inode_dio_wait(inode);

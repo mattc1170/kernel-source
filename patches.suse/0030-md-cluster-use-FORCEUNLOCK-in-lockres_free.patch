@@ -1,8 +1,9 @@
-From b1c59cbce1514457f8b0beb9aa7a5857c0bcb24a Mon Sep 17 00:00:00 2001
+From 400cb454a4205ec1d7311bc3dd8104859c26ba46 Mon Sep 17 00:00:00 2001
 From: Guoqing Jiang <gqjiang@suse.com>
-Date: Tue, 14 Jun 2016 13:50:43 +0800
-Subject: [PATCH 2/8] md-cluster: use FORCEUNLOCK in lockres_free
-Patch-mainline: Submitted to linux-raid http://www.spinics.net/lists/raid/msg53088.html
+Date: Fri, 12 Aug 2016 13:42:35 +0800
+Subject: [PATCH] md-cluster: use FORCEUNLOCK in lockres_free
+Git-commit: 400cb454a4205ec1d7311bc3dd8104859c26ba46
+Patch-mainline: v4.9-rc1
 References: fate#316335
 
 For dlm_unlock, we need to pass flag to dlm_unlock as the
@@ -13,16 +14,16 @@ since it works even the lock is on waiting or convert queue.
 
 Acked-by: NeilBrown <neilb@suse.com>
 Signed-off-by: Guoqing Jiang <gqjiang@suse.com>
-Acked-by: Guoqing Jiang <gqjiang@suse.com>
+Signed-off-by: Shaohua Li <shli@fb.com>
 ---
- drivers/md/md-cluster.c | 23 ++++++++---------------
- 1 file changed, 8 insertions(+), 15 deletions(-)
+ drivers/md/md-cluster.c | 26 +++++++++++---------------
+ 1 file changed, 11 insertions(+), 15 deletions(-)
 
 diff --git a/drivers/md/md-cluster.c b/drivers/md/md-cluster.c
-index 1d86229..e7d1b71 100644
+index 34a840d..ccd756f 100644
 --- a/drivers/md/md-cluster.c
 +++ b/drivers/md/md-cluster.c
-@@ -194,25 +194,18 @@ out_err:
+@@ -194,25 +194,21 @@ static struct dlm_lock_resource *lockres_init(struct mddev *mddev,
  
  static void lockres_free(struct dlm_lock_resource *res)
  {
@@ -46,9 +47,12 @@ index 1d86229..e7d1b71 100644
 -	}
 -	res->flags &= ~DLM_LKF_CANCEL;
 -	wait_for_completion(&res->completion);
-+	/* use FORCEUNLOCK flag, so we can unlock even the lock is on the
-+	 * waiting or convert queue */
-+	ret = dlm_unlock(res->ls, res->lksb.sb_lkid, DLM_LKF_FORCEUNLOCK, &res->lksb, res);
++	/*
++	 * use FORCEUNLOCK flag, so we can unlock even the lock is on the
++	 * waiting or convert queue
++	 */
++	ret = dlm_unlock(res->ls, res->lksb.sb_lkid, DLM_LKF_FORCEUNLOCK,
++		&res->lksb, res);
 +	if (unlikely(ret != 0))
 +		pr_err("failed to unlock %s return %d\n", res->name, ret);
 +	else
@@ -57,5 +61,5 @@ index 1d86229..e7d1b71 100644
  	kfree(res->name);
  	kfree(res->lksb.sb_lvbptr);
 -- 
-2.6.2
+2.6.6
 

@@ -3,7 +3,7 @@ Date: Tue, 16 Feb 2016 21:56:23 +0000
 Patch-mainline: v4.6-rc1
 Subject: PCI: hv: Add paravirtual PCI front-end for Microsoft Hyper-V VMs
 Git-commit: 4daace0d8ce851f8f8f91563c835e3000c954d5e
-Reference: fate#320295
+References: fate#320295
 
 Add a new driver which exposes a root PCI bus whenever a PCI Express device
 is passed through to a guest VM under Hyper-V.  The device can be single-

@@ -3,7 +3,7 @@ Date: Sat, 2 Apr 2016 16:17:38 -0700
 Patch-mainline: v4.6-rc7
 Subject: Drivers: hv: vmbus: Fix signaling logic in hv_need_to_signal_on_read()
 Git-commit: 1db488d12894f1936360779d6ab2aede3dd7f06a
-Reference: fate#320485
+References: fate#320485
 
 On the consumer side, we have interrupt driven flow management of the
 producer. It is sufficient to base the signaling decision on the

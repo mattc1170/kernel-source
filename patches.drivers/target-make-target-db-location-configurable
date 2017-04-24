@@ -1,7 +1,7 @@
 From: Lee Duncan <lduncan@suse.com>
 Date: Thu, 14 Apr 2016 18:18:50 -0700
 Subject: target: make target db location configurable
-Reference: bsc#984716
+References: bsc#984716
 Git-commit: a96e9783e05851d5f06da0ae7635aec55a228e3d
 Patch-mainline: v4.7-rc1
 

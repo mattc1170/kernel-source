@@ -3,7 +3,7 @@ Date: Mon, 30 Nov 2015 19:22:15 +0300
 Patch-mainline: v4.5-rc1
 Subject: drivers/hv: Move struct hv_message into UAPI Hyper-V x86 header
 Git-commit: 5b423efe11e822e092e8c911a6bad17eadf718eb
-Reference: fate#315887
+References: fate#315887
 
 This struct is required for Hyper-V SynIC timers implementation inside KVM
 and for upcoming Hyper-V VMBus support by userspace(QEMU). So place it into

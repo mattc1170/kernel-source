@@ -1,0 +1,36 @@
+From: Alex Ng <alexng@messages.microsoft.com>
+Date: Sun, 6 Nov 2016 13:14:08 -0800
+Patch-mainline: v4.10-rc1
+Subject: Drivers: hv: balloon: Disable hot add when CONFIG_MEMORY_HOTPLUG is not set
+Git-commit: 8ba8c0a111083bfe53f7a8a0e2f14fd12eb2e030
+References: fate#320485
+
+If the guest does not support memory hotplugging, it should respond to
+the host with zero pages added and successful result code. This signals
+to the host that hotplugging is not supported and the host will avoid
+sending future hot-add requests.
+
+Signed-off-by: Alex Ng <alexng@microsoft.com>
+Signed-off-by: K. Y. Srinivasan <kys@microsoft.com>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Acked-by: <ohering@suse.de>
+---
+ drivers/hv/hv_balloon.c | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/drivers/hv/hv_balloon.c b/drivers/hv/hv_balloon.c
+index fdf8da929cbe..8f932aada3eb 100644
+--- a/drivers/hv/hv_balloon.c
++++ b/drivers/hv/hv_balloon.c
+@@ -1501,7 +1501,11 @@ static int balloon_probe(struct hv_device *dev,
+ 	struct dm_version_request version_req;
+ 	struct dm_capabilities cap_msg;
+ 
++#ifdef CONFIG_MEMORY_HOTPLUG
+ 	do_hot_add = hot_add;
++#else
++	do_hot_add = false;
++#endif
+ 
+ 	/*
+ 	 * First allocate a send buffer.

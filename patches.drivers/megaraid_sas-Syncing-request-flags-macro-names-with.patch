@@ -10,15 +10,13 @@ Reviewed-by: Tomas Henzl <thenzl@redhat.com>
 Signed-off-by: Martin K. Petersen <martin.petersen@oracle.com>
 Acked-by: Hannes Reinecke <hare@suse.de>
 ---
- drivers/scsi/megaraid/megaraid_sas_fusion.c | 6 +++---
- drivers/scsi/megaraid/megaraid_sas_fusion.h | 3 ++-
+ drivers/scsi/megaraid/megaraid_sas_fusion.c |    6 +++---
+ drivers/scsi/megaraid/megaraid_sas_fusion.h |    3 ++-
  2 files changed, 5 insertions(+), 4 deletions(-)
 
-diff --git a/drivers/scsi/megaraid/megaraid_sas_fusion.c b/drivers/scsi/megaraid/megaraid_sas_fusion.c
-index 6e48707..1dc4537 100644
 --- a/drivers/scsi/megaraid/megaraid_sas_fusion.c
 +++ b/drivers/scsi/megaraid/megaraid_sas_fusion.c
-@@ -1666,7 +1666,7 @@ megasas_build_ldio_fusion(struct megasas_instance *instance,
+@@ -1667,7 +1667,7 @@ megasas_build_ldio_fusion(struct megasas
  				   local_map_ptr, start_lba_lo);
  		io_request->Function = MPI2_FUNCTION_SCSI_IO_REQUEST;
  		cmd->request_desc->SCSIIO.RequestFlags =
@@ -27,7 +25,7 @@ index 6e48707..1dc4537 100644
  			 << MEGASAS_REQ_DESCRIPT_FLAGS_TYPE_SHIFT);
  		if (fusion->adapter_type == INVADER_SERIES) {
  			if (io_request->RaidContext.regLockFlags ==
-@@ -1799,7 +1799,7 @@ static void megasas_build_ld_nonrw_fusion(struct megasas_instance *instance,
+@@ -1800,7 +1800,7 @@ static void megasas_build_ld_nonrw_fusio
  
  		/* build request descriptor */
  		cmd->request_desc->SCSIIO.RequestFlags =
@@ -36,17 +34,15 @@ index 6e48707..1dc4537 100644
  			MEGASAS_REQ_DESCRIPT_FLAGS_TYPE_SHIFT);
  		cmd->request_desc->SCSIIO.DevHandle = devHandle;
  
-@@ -1905,7 +1905,7 @@ megasas_build_syspd_fusion(struct megasas_instance *instance,
+@@ -1906,7 +1906,7 @@ megasas_build_syspd_fusion(struct megasa
  				cpu_to_le16(MPI25_SAS_DEVICE0_FLAGS_ENABLED_FAST_PATH);
- 		}
+ 
  		cmd->request_desc->SCSIIO.RequestFlags =
 -			(MPI2_REQ_DESCRIPT_FLAGS_HIGH_PRIORITY <<
 +			(MPI2_REQ_DESCRIPT_FLAGS_FP_IO <<
  				MEGASAS_REQ_DESCRIPT_FLAGS_TYPE_SHIFT);
  	}
  }
-diff --git a/drivers/scsi/megaraid/megaraid_sas_fusion.h b/drivers/scsi/megaraid/megaraid_sas_fusion.h
-index 473005c..a9e10c4 100644
 --- a/drivers/scsi/megaraid/megaraid_sas_fusion.h
 +++ b/drivers/scsi/megaraid/megaraid_sas_fusion.h
 @@ -176,7 +176,8 @@ enum REGION_TYPE {
@@ -59,6 +55,3 @@ index 473005c..a9e10c4 100644
  #define MPI2_REQ_DESCRIPT_FLAGS_SCSI_IO                 (0x00)
  #define MPI2_SGE_FLAGS_64_BIT_ADDRESSING        (0x02)
  #define MPI2_SCSIIO_CONTROL_WRITE               (0x01000000)
--- 
-1.8.5.6
-

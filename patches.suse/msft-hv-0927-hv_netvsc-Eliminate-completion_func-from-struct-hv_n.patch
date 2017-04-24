@@ -3,7 +3,7 @@ Date: Tue, 1 Dec 2015 16:43:16 -0800
 Patch-mainline: v4.5-rc1
 Subject: hv_netvsc: Eliminate completion_func from struct hv_netvsc_packet
 Git-commit: a429bda374a640b05a8f949fed080af7512be49a
-Reference: fate#315887
+References: fate#315887
 
 Eliminate completion_func from struct hv_netvsc_packet.
 

@@ -3,7 +3,7 @@ Date: Sat, 30 Apr 2016 19:21:33 -0700
 Patch-mainline: v4.7-rc1
 Subject: Drivers: hv: kvp: fix IP Failover
 Git-commit: 4dbfc2e68004c60edab7e8fd26784383dd3ee9bc
-Reference: fate#320485
+References: fate#320485
 
 Hyper-V VMs can be replicated to another hosts and there is a feature to
 set different IP for replicas, it is called 'Failover TCP/IP'. When

@@ -3,7 +3,7 @@ Date: Wed, 27 Jan 2016 18:22:44 -0800
 Patch-mainline: v4.5-rc4
 Subject: storvsc: Install the storvsc specific timeout handler for FC devices
 Git-commit: d791a8c60e9cbd1c4fecbc5c86ff59c7ffe137e8
-Reference: fate#320485
+References: fate#320485
 
 The default timeout routine used for FC transport is not suitable for FC
 devices managed by storvsc since FC devices managed by storvsc driver do

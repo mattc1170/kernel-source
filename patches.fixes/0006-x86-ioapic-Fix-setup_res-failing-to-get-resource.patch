@@ -1,0 +1,45 @@
+From ca895ad4f8b0325026cbb33a1af87bdc75f2b47b Mon Sep 17 00:00:00 2001
+From: Rui Wang <rui.y.wang@intel.com>
+Date: Wed, 17 Aug 2016 16:00:35 +0800
+Git-commit: 6ab7eba5db93c11d61f6f7fbe21edbc875b26c1a
+Patch-mainline: v4.9
+References: bsc#1027153, bsc#1027616
+Subject: [PATCH 6/9] x86/ioapic: Fix setup_res() failing to get resource
+
+acpi_dev_filter_resource_type() returns 0 on success, and 1 on failure.
+A return value of zero means there's a matching resource, so we should
+continue within setup_res() to get the resource.
+
+Signed-off-by: Rui Wang <rui.y.wang@intel.com>
+Cc: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: Peter Zijlstra <peterz@infradead.org>
+Cc: Thomas Gleixner <tglx@linutronix.de>
+Cc: bhelgaas@google.com
+Cc: helgaas@kernel.org
+Cc: linux-acpi@vger.kernel.org
+Cc: linux-pci@vger.kernel.org
+Cc: rjw@rjwysocki.net
+Cc: tony.luck@intel.com
+Link: http://lkml.kernel.org/r/1471420837-31003-4-git-send-email-rui.y.wang@intel.com
+Signed-off-by: Ingo Molnar <mingo@kernel.org>
+Acked-by: Joerg Roedel <jroedel@suse.de>
+---
+ drivers/acpi/ioapic.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/acpi/ioapic.c b/drivers/acpi/ioapic.c
+index 2449377..8ab6d42 100644
+--- a/drivers/acpi/ioapic.c
++++ b/drivers/acpi/ioapic.c
+@@ -46,7 +46,7 @@ static acpi_status setup_res(struct acpi_resource *acpi_res, void *data)
+ 	struct resource_win win;
+ 
+ 	res->flags = 0;
+-	if (acpi_dev_filter_resource_type(acpi_res, IORESOURCE_MEM) == 0)
++	if (acpi_dev_filter_resource_type(acpi_res, IORESOURCE_MEM))
+ 		return AE_OK;
+ 
+ 	if (!acpi_dev_resource_memory(acpi_res, res)) {
+-- 
+2.10.1
+

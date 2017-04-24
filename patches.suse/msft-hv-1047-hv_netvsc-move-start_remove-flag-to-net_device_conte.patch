@@ -3,7 +3,7 @@ Date: Fri, 13 May 2016 13:55:20 +0200
 Patch-mainline: v4.7-rc1
 Subject: hv_netvsc: move start_remove flag to net_device_context
 Git-commit: f580aec4bfd7babe51f086e599400027def08ed8
-Reference: fate#320485
+References: fate#320485
 
 struct netvsc_device is destroyed on mtu change so keeping the
 protection flag there is not a good idea. Move it to struct

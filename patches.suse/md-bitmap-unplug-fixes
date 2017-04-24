@@ -1,6 +1,7 @@
 From: NeilBrown <neilb@suse.de>
 Subject: md/bitmap: Don't write bitmap while earlier writes might be in-flight
-Patch-mainline: Not yet, needs to be submitted.
+Git-commit: 85c9ccd4f026aad8e91ec1c182206e807cff932d
+Patch-mainline: v4.10
 References: bnc#771398
 
 As we don't wait for writes to complete in bitmap_daemon_work, they

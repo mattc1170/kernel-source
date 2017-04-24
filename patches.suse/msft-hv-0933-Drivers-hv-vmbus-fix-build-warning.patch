@@ -3,7 +3,7 @@ Date: Fri, 11 Dec 2015 14:23:11 +0530
 Patch-mainline: v4.5-rc1
 Subject: Drivers: hv: vmbus: fix build warning
 Git-commit: 9220e39b5c900c67ddcb517d52fe52d90fb5e3c8
-Reference: fate#315887
+References: fate#315887
 
 We were getting build warning about unused variable "tsc_msr" and
 "va_tsc" while building for i386 allmodconfig.

@@ -3,7 +3,7 @@ Date: Sun, 7 Feb 2016 23:27:55 +0200
 Patch-mainline: v4.6-rc1
 Subject: ethtool: future-proof interface for speed extensions
 Git-commit: 4456ed04ea44b800d691b18c14a68ec9894d2aca
-Reference: fate#320485
+References: fate#320485
 
 Many virtual and not quite virtual devices allow any speed to be set
 through ethtool. In particular, this applies to the virtio-net devices.

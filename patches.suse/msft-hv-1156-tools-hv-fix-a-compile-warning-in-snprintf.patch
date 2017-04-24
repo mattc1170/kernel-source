@@ -1,0 +1,34 @@
+From: Weibing Zhang <atheism.zhang@gmail.com>
+Date: Sun, 6 Nov 2016 13:14:14 -0800
+Patch-mainline: v4.10-rc1
+Subject: tools: hv: fix a compile warning in snprintf
+Git-commit: 1745ba41945db2c77d918e3bcad898f8259f7f5a
+References: fate#320485
+
+hv_kvp_daemon.c: In function .kvp_mac_to_if_name.:
+hv_kvp_daemon.c:705:2: warning: format not a string literal and no format arguments [-Wformat-security]
+  snprintf(dev_id, sizeof(dev_id), kvp_net_dir);
+  ^
+hv_kvp_daemon.c:705:2: warning: format not a string literal and no format arguments [-Wformat-security]
+
+Signed-off-by: Weibing Zhang <atheism.zhang@gmail.com>
+Signed-off-by: K. Y. Srinivasan <kys@microsoft.com>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Acked-by: <ohering@suse.de>
+---
+ tools/hv/hv_kvp_daemon.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/tools/hv/hv_kvp_daemon.c b/tools/hv/hv_kvp_daemon.c
+index bc7adb84e679..bb0719b11475 100644
+--- a/tools/hv/hv_kvp_daemon.c
++++ b/tools/hv/hv_kvp_daemon.c
+@@ -702,7 +702,7 @@ static char *kvp_mac_to_if_name(char *mac)
+ 	if (dir == NULL)
+ 		return NULL;
+ 
+-	snprintf(dev_id, sizeof(dev_id), kvp_net_dir);
++	snprintf(dev_id, sizeof(dev_id), "%s", kvp_net_dir);
+ 	q = dev_id + strlen(kvp_net_dir);
+ 
+ 	while ((entry = readdir(dir)) != NULL) {

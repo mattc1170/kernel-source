@@ -4,7 +4,7 @@ Date: Fri, 4 Mar 2016 08:15:48 -0700
 Subject: [PATCH] mtip32xx: remove unneeded variable in mtip_cmd_timeout()
 Git-commit: 90beb2e7a0c5143a904be04c9c03afff436e7915
 Patch-mainline: v4.6-rc1
-Reference: fate#319999
+References: fate#319999
 
 We always return BLK_EH_RESET_TIMER, so no point in storing that in
 an integer.

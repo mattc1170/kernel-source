@@ -3,7 +3,7 @@ Date: Sat, 2 Apr 2016 17:59:48 -0700
 Patch-mainline: v4.7-rc1
 Subject: Drivers: hv: vmbus: Use the new virt_xx barrier code
 Git-commit: dcd0eeca4454d5c5a60aa3467581e0c6d7461b96
-Reference: fate#320485
+References: fate#320485
 
 Use the virt_xx barriers that have been defined for use in virtual machines.
 

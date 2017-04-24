@@ -3,7 +3,7 @@ From: David Daney <david.daney@cavium.com>
 Date: Wed, 16 Sep 2015 15:28:39 -0700
 Subject: [PATCH 23/26] net: mdio-octeon: Add PCI driver binding.
 Patch-mainline: Submitted, https://lkml.org/lkml/2015/9/22/1216
-Reference: fate#319484
+References: fate#319484
 
 When the Cavium mdio-octeon devices appear in the Thunder family of
 arm64 based SoCs, they show up as PCI devices.  Because the device

@@ -1,0 +1,32 @@
+From: Ewan Milne <emilne@redhat.com>
+Subject: ses: Fix SAS device detection in enclosure
+Date: Mon,  9 Jan 2017 16:33:36 -0500
+Git-commit: 9373eba6cfae48911b977d14323032cd5d161aae
+Patch-mainline: v4.10-rc5
+References: bsc#1016403
+
+From: "Ewan D. Milne" <emilne@redhat.com>
+
+The call to scsi_is_sas_rphy() needs to be made on the
+SAS end_device, not on the SCSI device.
+
+Fixes: 835831c57e9b ("ses: use scsi_is_sas_rphy instead of is_sas_attached")
+Reviewed-by: Johannes Thumshirn <jthumshirn@suse.de>
+Signed-off-by: Ewan D. Milne <emilne@redhat.com>
+---
+ drivers/scsi/ses.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/scsi/ses.c b/drivers/scsi/ses.c
+index 8c9a35c..50adabb 100644
+--- a/drivers/scsi/ses.c
++++ b/drivers/scsi/ses.c
+@@ -587,7 +587,7 @@ static void ses_match_to_enclosure(struct enclosure_device *edev,
+ 
+ 	ses_enclosure_data_process(edev, to_scsi_device(edev->edev.parent), 0);
+ 
+-	if (scsi_is_sas_rphy(&sdev->sdev_gendev))
++	if (scsi_is_sas_rphy(sdev->sdev_target->dev.parent))
+ 		efd.addr = sas_get_address(sdev);
+ 
+ 	if (efd.addr) {

@@ -1,0 +1,55 @@
+From: Sebastian Ott <sebott@linux.vnet.ibm.com>
+Date: Mon, 12 Sep 2016 20:09:40 +0200
+Subject: [PATCH] misc/genwqe: ensure zero initialization
+Git-commit: 13decfb4383b13b0f75e88709f4fad9138bd243b
+Patch-mainline: v4.9-rc1
+References: fate#321595
+
+Genwqe uses dma_alloc_coherent and depends on zero initialized memory. On
+one occasion it ueses an explicit memset on others it uses un-initialized
+memory.
+
+This bug was covered because some archs actually return zero initialized
+memory when using dma_alloc_coherent but this is by no means guaranteed.
+Simply switch to dma_zalloc_coherent.
+
+Signed-off-by: Sebastian Ott <sebott@linux.vnet.ibm.com>
+Signed-off-by: Frank Haverkamp <haver@linux.vnet.ibm.com>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Acked-by: Michal Suchanek <msuchanek@suse.de>
+---
+ drivers/misc/genwqe/card_ddcb.c  | 2 --
+ drivers/misc/genwqe/card_utils.c | 4 ++--
+ 2 files changed, 2 insertions(+), 4 deletions(-)
+
+diff --git a/drivers/misc/genwqe/card_ddcb.c b/drivers/misc/genwqe/card_ddcb.c
+index 353ee0c..ddfeefe 100644
+--- a/drivers/misc/genwqe/card_ddcb.c
++++ b/drivers/misc/genwqe/card_ddcb.c
+@@ -1048,8 +1048,6 @@ static int setup_ddcb_queue(struct genwqe_dev *cd, struct ddcb_queue *queue)
+ 			"[%s] **err: could not allocate DDCB **\n", __func__);
+ 		return -ENOMEM;
+ 	}
+-	memset(queue->ddcb_vaddr, 0, queue_size);
+-
+ 	queue->ddcb_req = kzalloc(sizeof(struct ddcb_requ *) *
+ 				  queue->ddcb_max, GFP_KERNEL);
+ 	if (!queue->ddcb_req) {
+diff --git a/drivers/misc/genwqe/card_utils.c b/drivers/misc/genwqe/card_utils.c
+index 222367c..8a679ec 100644
+--- a/drivers/misc/genwqe/card_utils.c
++++ b/drivers/misc/genwqe/card_utils.c
+@@ -220,8 +220,8 @@ void *__genwqe_alloc_consistent(struct genwqe_dev *cd, size_t size,
+ 	if (get_order(size) > MAX_ORDER)
+ 		return NULL;
+ 
+-	return dma_alloc_coherent(&cd->pci_dev->dev, size, dma_handle,
+-				  GFP_KERNEL);
++	return dma_zalloc_coherent(&cd->pci_dev->dev, size, dma_handle,
++				   GFP_KERNEL);
+ }
+ 
+ void __genwqe_free_consistent(struct genwqe_dev *cd, size_t size,
+-- 
+2.10.2
+

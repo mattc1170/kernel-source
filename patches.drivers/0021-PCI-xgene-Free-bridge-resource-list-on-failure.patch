@@ -1,0 +1,55 @@
+From 467d4d1ce1cc762312d26ea2fedae9036607255e Mon Sep 17 00:00:00 2001
+From: Bjorn Helgaas <bhelgaas@google.com>
+Date: Tue, 31 May 2016 11:07:30 -0500
+Subject: [PATCH 21/36] PCI: xgene: Free bridge resource list on failure
+
+Git-commit: 11659a1d54b670f05ff91627934aaadf376db937
+Patch-mainline: v4.8-rc1
+References: bsc#1019351
+
+of_pci_get_host_bridge_resources() allocates a list of resources for host
+bridge windows.  If we fail after allocating that list, free it before we
+return error.
+
+Signed-off-by: Bjorn Helgaas <bhelgaas@google.com>
+Signed-off-by: Mian Yousaf Kaukab <yousaf.kaukab@suse.com>
+---
+ drivers/pci/host/pci-xgene.c | 12 +++++++++---
+ 1 file changed, 9 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/pci/host/pci-xgene.c b/drivers/pci/host/pci-xgene.c
+index ae00ce22d5a6..bc4e1c61206c 100644
+--- a/drivers/pci/host/pci-xgene.c
++++ b/drivers/pci/host/pci-xgene.c
+@@ -542,12 +542,14 @@ static int xgene_pcie_probe_bridge(struct platform_device *pdev)
+ 
+ 	ret = xgene_pcie_setup(port, &res, iobase);
+ 	if (ret)
+-		return ret;
++		goto error;
+ 
+ 	bus = pci_create_root_bus(&pdev->dev, 0,
+ 					&xgene_pcie_ops, port, &res);
+-	if (!bus)
+-		return -ENOMEM;
++	if (!bus) {
++		ret = -ENOMEM;
++		goto error;
++	}
+ 
+ 	pci_scan_child_bus(bus);
+ 	pci_assign_unassigned_bus_resources(bus);
+@@ -555,6 +557,10 @@ static int xgene_pcie_probe_bridge(struct platform_device *pdev)
+ 
+ 	platform_set_drvdata(pdev, port);
+ 	return 0;
++
++error:
++	pci_free_resource_list(&res);
++	return ret;
+ }
+ 
+ static const struct of_device_id xgene_pcie_match_table[] = {
+-- 
+2.11.0
+

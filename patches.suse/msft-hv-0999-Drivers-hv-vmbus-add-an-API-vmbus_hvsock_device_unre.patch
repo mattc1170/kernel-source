@@ -3,7 +3,7 @@ Date: Wed, 27 Jan 2016 22:29:43 -0800
 Patch-mainline: v4.6-rc1
 Subject: Drivers: hv: vmbus: add an API vmbus_hvsock_device_unregister()
 Git-commit: 85d9aa705184a4504d0330017e3956fcdae8a9d6
-Reference: fate#320485
+References: fate#320485
 
 The hvsock driver needs this API to release all the resources related
 to the channel.

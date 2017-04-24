@@ -4,7 +4,7 @@ Date: Mon, 29 Feb 2016 23:15:44 +0000
 Subject: arm64: perf: Extend ARMV8_EVTYPE_MASK to include PMCR.LC
 Git-commit: fe638401a091f4473e9e30942ea3cecc0c0b2b94
 Patch-mainline: v4.6-rc1
-Reference: fate#319982
+References: fate#319982
 
 Commit 7175f0591eb9 ("arm64: perf: Enable PMCR long cycle counter bit")
 added initial support for a 64-bit cycle counter enabled using PMCR.LC.

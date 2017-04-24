@@ -37,19 +37,17 @@ Cc: Mike Christie <michaelc@cs.wisc.edu>
 Signed-off-by: Nicholas Bellinger <nab@linux-iscsi.org>
 Acked-by: Lee Duncan <lduncan@suse.com>
 ---
- drivers/target/iscsi/iscsi_target_configfs.c |  29 ++---
- drivers/target/iscsi/iscsi_target_tpg.c      |  10 --
- drivers/target/iscsi/iscsi_target_tpg.h      |   2 -
- drivers/target/target_core_tpg.c             | 152 ++++++++-------------------
- drivers/target/target_core_transport.c       |   4 +-
- include/target/target_core_fabric.h          |   5 +-
+ drivers/target/iscsi/iscsi_target_configfs.c |   29 +----
+ drivers/target/iscsi/iscsi_target_tpg.c      |   10 -
+ drivers/target/iscsi/iscsi_target_tpg.h      |    2 
+ drivers/target/target_core_tpg.c             |  152 +++++++--------------------
+ drivers/target/target_core_transport.c       |    4 
+ include/target/target_core_fabric.h          |    5 
  6 files changed, 56 insertions(+), 146 deletions(-)
 
-diff --git a/drivers/target/iscsi/iscsi_target_configfs.c b/drivers/target/iscsi/iscsi_target_configfs.c
-index b4bfd706ac94..2f821de63049 100644
 --- a/drivers/target/iscsi/iscsi_target_configfs.c
 +++ b/drivers/target/iscsi/iscsi_target_configfs.c
-@@ -725,11 +725,8 @@ static ssize_t lio_target_nacl_cmdsn_depth_store(struct config_item *item,
+@@ -725,11 +725,8 @@ static ssize_t lio_target_nacl_cmdsn_dep
  
  	if (iscsit_get_tpg(tpg) < 0)
  		return -EINVAL;
@@ -63,7 +61,7 @@ index b4bfd706ac94..2f821de63049 100644
  
  	pr_debug("LIO_Target_ConfigFS: %s/%s Set CmdSN Window: %u for"
  		"InitiatorName: %s\n", config_item_name(wwn_ci),
-@@ -1593,42 +1590,30 @@ static int lio_tpg_check_prot_fabric_only(
+@@ -1593,42 +1590,30 @@ static int lio_tpg_check_prot_fabric_onl
  }
  
  /*
@@ -111,11 +109,9 @@ index b4bfd706ac94..2f821de63049 100644
  	return 1;
  }
  
-diff --git a/drivers/target/iscsi/iscsi_target_tpg.c b/drivers/target/iscsi/iscsi_target_tpg.c
-index 23c95cd14167..0814e5894a96 100644
 --- a/drivers/target/iscsi/iscsi_target_tpg.c
 +++ b/drivers/target/iscsi/iscsi_target_tpg.c
-@@ -590,16 +590,6 @@ int iscsit_tpg_del_network_portal(
+@@ -589,16 +589,6 @@ int iscsit_tpg_del_network_portal(
  	return iscsit_tpg_release_np(tpg_np, tpg, np);
  }
  
@@ -132,11 +128,9 @@ index 23c95cd14167..0814e5894a96 100644
  int iscsit_ta_authentication(struct iscsi_portal_group *tpg, u32 authentication)
  {
  	unsigned char buf1[256], buf2[256], *none = NULL;
-diff --git a/drivers/target/iscsi/iscsi_target_tpg.h b/drivers/target/iscsi/iscsi_target_tpg.h
-index 9db32bd24cd4..2da211920c18 100644
 --- a/drivers/target/iscsi/iscsi_target_tpg.h
 +++ b/drivers/target/iscsi/iscsi_target_tpg.h
-@@ -26,8 +26,6 @@ extern struct iscsi_tpg_np *iscsit_tpg_add_network_portal(struct iscsi_portal_gr
+@@ -26,8 +26,6 @@ extern struct iscsi_tpg_np *iscsit_tpg_a
  			int);
  extern int iscsit_tpg_del_network_portal(struct iscsi_portal_group *,
  			struct iscsi_tpg_np *);
@@ -145,11 +139,9 @@ index 9db32bd24cd4..2da211920c18 100644
  extern int iscsit_ta_authentication(struct iscsi_portal_group *, u32);
  extern int iscsit_ta_login_timeout(struct iscsi_portal_group *, u32);
  extern int iscsit_ta_netif_timeout(struct iscsi_portal_group *, u32);
-diff --git a/drivers/target/target_core_tpg.c b/drivers/target/target_core_tpg.c
-index 62103a8cbe72..67be44da29ff 100644
 --- a/drivers/target/target_core_tpg.c
 +++ b/drivers/target/target_core_tpg.c
-@@ -157,28 +157,25 @@ void core_tpg_add_node_to_devs(
+@@ -169,28 +169,25 @@ void core_tpg_add_node_to_devs(
  	mutex_unlock(&tpg->tpg_lun_mutex);
  }
  
@@ -185,7 +177,7 @@ index 62103a8cbe72..67be44da29ff 100644
  
  	acl = kzalloc(max(sizeof(*acl), tpg->se_tpg_tfo->node_acl_size),
  			GFP_KERNEL);
-@@ -193,24 +190,20 @@ static struct se_node_acl *target_alloc_node_acl(struct se_portal_group *tpg,
+@@ -205,24 +202,20 @@ static struct se_node_acl *target_alloc_
  	spin_lock_init(&acl->nacl_sess_lock);
  	mutex_init(&acl->lun_entry_mutex);
  	atomic_set(&acl->acl_pr_ref_count, 0);
@@ -215,7 +207,7 @@ index 62103a8cbe72..67be44da29ff 100644
  }
  
  static void target_add_node_acl(struct se_node_acl *acl)
-@@ -327,7 +320,8 @@ void core_tpg_del_initiator_node_acl(struct se_node_acl *acl)
+@@ -367,7 +360,8 @@ void core_tpg_del_initiator_node_acl(str
  		if (sess->sess_tearing_down != 0)
  			continue;
  
@@ -225,7 +217,7 @@ index 62103a8cbe72..67be44da29ff 100644
  		list_move(&sess->sess_acl_list, &sess_list);
  	}
  	spin_unlock_irqrestore(&acl->nacl_sess_lock, flags);
-@@ -364,108 +358,52 @@ void core_tpg_del_initiator_node_acl(struct se_node_acl *acl)
+@@ -404,108 +398,52 @@ void core_tpg_del_initiator_node_acl(str
   *
   */
  int core_tpg_set_initiator_node_queue_depth(
@@ -365,11 +357,9 @@ index 62103a8cbe72..67be44da29ff 100644
  	return 0;
  }
  EXPORT_SYMBOL(core_tpg_set_initiator_node_queue_depth);
-diff --git a/drivers/target/target_core_transport.c b/drivers/target/target_core_transport.c
-index eb7aaf022df5..7b05ebf8053c 100644
 --- a/drivers/target/target_core_transport.c
 +++ b/drivers/target/target_core_transport.c
-@@ -384,9 +384,9 @@ static void target_release_session(struct kref *kref)
+@@ -383,9 +383,9 @@ static void target_release_session(struc
  	se_tpg->se_tpg_tfo->close_session(se_sess);
  }
  
@@ -381,11 +371,9 @@ index eb7aaf022df5..7b05ebf8053c 100644
  }
  EXPORT_SYMBOL(target_get_session);
  
-diff --git a/include/target/target_core_fabric.h b/include/target/target_core_fabric.h
-index de21130cc9bc..48e002f86893 100644
 --- a/include/target/target_core_fabric.h
 +++ b/include/target/target_core_fabric.h
-@@ -117,7 +117,7 @@ void	__transport_register_session(struct se_portal_group *,
+@@ -117,7 +117,7 @@ void	__transport_register_session(struct
  		struct se_node_acl *, struct se_session *, void *);
  void	transport_register_session(struct se_portal_group *,
  		struct se_node_acl *, struct se_session *, void *);
@@ -394,8 +382,8 @@ index de21130cc9bc..48e002f86893 100644
  void	target_put_session(struct se_session *);
  ssize_t	target_show_dynamic_sessions(struct se_portal_group *, char *);
  void	transport_free_session(struct se_session *);
-@@ -171,8 +171,7 @@ struct se_node_acl *core_tpg_get_initiator_node_acl(struct se_portal_group *tpg,
- 		unsigned char *);
+@@ -172,8 +172,7 @@ bool	target_tpg_has_node_acl(struct se_p
+ 		const char *);
  struct se_node_acl *core_tpg_check_initiator_node_acl(struct se_portal_group *,
  		unsigned char *);
 -int	core_tpg_set_initiator_node_queue_depth(struct se_portal_group *,
@@ -404,4 +392,3 @@ index de21130cc9bc..48e002f86893 100644
  int	core_tpg_set_initiator_node_tag(struct se_portal_group *,
  		struct se_node_acl *, const char *);
  int	core_tpg_register(struct se_wwn *, struct se_portal_group *, int);
-

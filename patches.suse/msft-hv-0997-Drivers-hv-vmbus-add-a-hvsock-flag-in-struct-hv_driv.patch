@@ -3,7 +3,7 @@ Date: Wed, 27 Jan 2016 22:29:41 -0800
 Patch-mainline: v4.6-rc1
 Subject: Drivers: hv: vmbus: add a hvsock flag in struct hv_driver
 Git-commit: 8981da320a11217589aa3c50f9e891bcdef07ece
-Reference: fate#320485
+References: fate#320485
 
 Only the coming hv_sock driver has a "true" value for this flag.
 

@@ -4,7 +4,7 @@ Date: Mon, 7 Mar 2016 12:01:05 +0000
 Subject: [PATCH] md/bitmap: remove redundant check
 Git-commit: c97e0602bcfeaabf303b125e07ed7ba35c656495
 Patch-mainline: v4.6-rc1
-Reference: fate#320291
+References: fate#320291
 
 daemon_sleep is an unsigned, so testing if it's 0 or less than 1 does
 the same thing.

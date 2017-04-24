@@ -3,7 +3,7 @@ Date: Tue, 1 Dec 2015 16:43:15 -0800
 Patch-mainline: v4.5-rc1
 Subject: hv_netvsc: Eliminate is_data_pkt from struct hv_netvsc_packet
 Git-commit: 694a9fb0263dddfb07bc490a02e59d6962602fe8
-Reference: fate#315887
+References: fate#315887
 
 Eliminate is_data_pkt from struct hv_netvsc_packet.
 

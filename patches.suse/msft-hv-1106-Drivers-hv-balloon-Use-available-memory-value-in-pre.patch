@@ -1,0 +1,80 @@
+From: Alex Ng <alexng@messages.microsoft.com>
+Date: Wed, 24 Aug 2016 16:23:13 -0700
+Patch-mainline: v4.9-rc1
+Subject: Drivers: hv: balloon: Use available memory value in pressure report
+Git-commit: b605c2d913589c448d4a6887262bb8e99da12009
+References: fate#320485
+
+Reports for available memory should use the si_mem_available() value.
+The previous freeram value does not include available page cache memory.
+
+Signed-off-by: Alex Ng <alexng@messages.microsoft.com>
+Signed-off-by: K. Y. Srinivasan <kys@microsoft.com>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Acked-by: <ohering@suse.de>
+---
+ drivers/hv/hv_balloon.c | 13 +++++--------
+ 1 file changed, 5 insertions(+), 8 deletions(-)
+
+diff --git a/drivers/hv/hv_balloon.c b/drivers/hv/hv_balloon.c
+index d55e0e7..fdf8da9 100644
+--- a/drivers/hv/hv_balloon.c
++++ b/drivers/hv/hv_balloon.c
+@@ -1075,7 +1075,6 @@ static unsigned long compute_balloon_floor(void)
+ static void post_status(struct hv_dynmem_device *dm)
+ {
+ 	struct dm_status status;
+-	struct sysinfo val;
+ 	unsigned long now = jiffies;
+ 	unsigned long last_post = last_post_time;
+ 
+@@ -1087,7 +1086,6 @@ static void post_status(struct hv_dynmem_device *dm)
+ 	if (!time_after(now, (last_post_time + HZ)))
+ 		return;
+ 
+-	si_meminfo(&val);
+ 	memset(&status, 0, sizeof(struct dm_status));
+ 	status.hdr.type = DM_STATUS_REPORT;
+ 	status.hdr.size = sizeof(struct dm_status);
+@@ -1103,7 +1101,7 @@ static void post_status(struct hv_dynmem_device *dm)
+ 	 * num_pages_onlined) as committed to the host, otherwise it can try
+ 	 * asking us to balloon them out.
+ 	 */
+-	status.num_avail = val.freeram;
++	status.num_avail = si_mem_available();
+ 	status.num_committed = vm_memory_committed() +
+ 		dm->num_pages_ballooned +
+ 		(dm->num_pages_added > dm->num_pages_onlined ?
+@@ -1209,7 +1207,7 @@ static void balloon_up(struct work_struct *dummy)
+ 	int ret;
+ 	bool done = false;
+ 	int i;
+-	struct sysinfo val;
++	long avail_pages;
+ 	unsigned long floor;
+ 
+ 	/* The host balloons pages in 2M granularity. */
+@@ -1221,12 +1219,12 @@ static void balloon_up(struct work_struct *dummy)
+ 	 */
+ 	alloc_unit = 512;
+ 
+-	si_meminfo(&val);
++	avail_pages = si_mem_available();
+ 	floor = compute_balloon_floor();
+ 
+ 	/* Refuse to balloon below the floor, keep the 2M granularity. */
+-	if (val.freeram < num_pages || val.freeram - num_pages < floor) {
+-		num_pages = val.freeram > floor ? (val.freeram - floor) : 0;
++	if (avail_pages < num_pages || avail_pages - num_pages < floor) {
++		num_pages = avail_pages > floor ? (avail_pages - floor) : 0;
+ 		num_pages -= num_pages % PAGES_IN_2M;
+ 	}
+ 
+@@ -1237,7 +1235,6 @@ static void balloon_up(struct work_struct *dummy)
+ 		bl_resp->hdr.size = sizeof(struct dm_balloon_response);
+ 		bl_resp->more_pages = 1;
+ 
+-
+ 		num_pages -= num_ballooned;
+ 		num_ballooned = alloc_balloon_pages(&dm_device, num_pages,
+ 						    bl_resp, alloc_unit);

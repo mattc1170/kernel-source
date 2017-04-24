@@ -1,0 +1,55 @@
+From: Heiko Carstens <heiko.carstens@de.ibm.com>
+Subject: s390/cpuinfo: show maximum thread id
+Patch-mainline: v4.8-rc1
+Git-commit: 10f4954ae67b3be6dac3cdfb1e0057c3779542be
+References: bnc#1009718, LTC#148580
+
+Description:  kernel: provide maximum thread id
+Symptom:      Tools like lscpu may print the wrong number of threads per core.
+Problem:      The kernel does not provide an interface which can be used to
+              figure out the number of threads per core within a machine.
+              Therefore many tools, like e.g. lscpu, have heuristics to figure
+              the number of threads per core. These heuristics do not always
+              work and therefore may return a wrong result.
+Solution:     Provide a line within /proc/cpuinfo which can be parsed by tools
+              so they can evaluate the correct number of threads per core.
+              E.g. the corresponding patch for lscpu utility which is part of
+              the upstream util-linux repository is
+              2c497d328840c8cf6d915675fd6168ff616517d3 ("lscpu: print correct
+              number of threads per core if possible").
+Reproduction: -
+
+Upstream-Description:
+
+              s390/cpuinfo: show maximum thread id
+
+              Expose the maximum thread id with /proc/cpuinfo.
+              With the new line the output looks like this:
+
+              vendor_id       : IBM/S390
+              bogomips per cpu: 20325.00
+              max thread id   : 1
+
+              With this new interface it is possible to always tell the correct
+              number of cpu threads potentially being used by the kernel.
+
+              Signed-off-by: Heiko Carstens <heiko.carstens@de.ibm.com>
+              Signed-off-by: Martin Schwidefsky <schwidefsky@de.ibm.com>
+
+
+Signed-off-by: Heiko Carstens <heiko.carstens@de.ibm.com>
+Acked-by: John Jolly <jjolly@suse.com>
+---
+ arch/s390/kernel/processor.c |    1 +
+ 1 file changed, 1 insertion(+)
+
+--- a/arch/s390/kernel/processor.c
++++ b/arch/s390/kernel/processor.c
+@@ -74,6 +74,7 @@ static int show_cpuinfo(struct seq_file
+ 			   "bogomips per cpu: %lu.%02lu\n",
+ 			   num_online_cpus(), loops_per_jiffy/(500000/HZ),
+ 			   (loops_per_jiffy/(5000/HZ))%100);
++		seq_printf(m, "max thread id   : %d\n", smp_cpu_mtid);
+ 		seq_puts(m, "features\t: ");
+ 		for (i = 0; i < ARRAY_SIZE(hwcap_str); i++)
+ 			if (hwcap_str[i] && (elf_hwcap & (1UL << i)))

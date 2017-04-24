@@ -1,0 +1,28 @@
+From: Jiri Slaby <jslaby@suse.cz>
+Subject: kABI: protect user_namespace include in kernel/ptrace
+Patch-mainline: never, kabi
+References: kabi
+
+Patch patches.fixes/ptrace-in-namespace-perm-check.fix used to include
+linux/user_namespace.h in kernel/ptrace.c before it was disabled. It
+defined user_namespace structure. Now, when the patch is disabled,
+kABI checker complains.
+
+Reintroduce the include just to keep kABI checker happy.
+
+Signed-off-by: Jiri Slaby <jslaby@suse.cz>
+patches.fixes/ptrace-in-namespace-perm-check.fix
+---
+ kernel/ptrace.c |    1 +
+ 1 file changed, 1 insertion(+)
+
+--- a/kernel/ptrace.c
++++ b/kernel/ptrace.c
+@@ -20,6 +20,7 @@
+ #include <linux/uio.h>
+ #include <linux/audit.h>
+ #include <linux/pid_namespace.h>
++#include <linux/user_namespace.h>
+ #include <linux/syscalls.h>
+ #include <linux/uaccess.h>
+ #include <linux/regset.h>

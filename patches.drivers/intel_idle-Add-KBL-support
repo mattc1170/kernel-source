@@ -1,0 +1,29 @@
+From 3ce093d4de753d6c92cc09366e29d0618a62f542 Mon Sep 17 00:00:00 2001
+From: Len Brown <len.brown@intel.com>
+Date: Wed, 6 Apr 2016 17:00:59 -0400
+Subject: [PATCH] intel_idle: Add KBL support
+Git-commit: 3ce093d4de753d6c92cc09366e29d0618a62f542
+Patch-mainline: 4.6-rc3
+References: bsc#1016884
+
+KBL is similar to SKL
+
+Signed-off-by: Len Brown <len.brown@intel.com>
+Signed-off-by: Rafael J. Wysocki <rafael.j.wysocki@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/idle/intel_idle.c |    2 ++
+ 1 file changed, 2 insertions(+)
+
+--- a/drivers/idle/intel_idle.c
++++ b/drivers/idle/intel_idle.c
+@@ -978,6 +978,8 @@ static const struct x86_cpu_id intel_idl
+ 	ICPU(0x56, idle_cpu_bdw),
+ 	ICPU(0x4e, idle_cpu_skl),
+ 	ICPU(0x5e, idle_cpu_skl),
++	ICPU(0x8e, idle_cpu_skl),
++	ICPU(0x9e, idle_cpu_skl),
+ 	ICPU(0x55, idle_cpu_skx),
+ 	ICPU(0x57, idle_cpu_knl),
+ 	{}

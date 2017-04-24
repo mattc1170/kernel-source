@@ -3,7 +3,7 @@ Date: Wed, 27 Jan 2016 18:22:45 -0800
 Patch-mainline: v4.5-rc4
 Subject: storvsc: Use the specified target ID in device lookup
 Git-commit: 98441221708a092eb6d3d05142cf842a95aba152
-Reference: fate#320485
+References: fate#320485
 
 The current code assumes that there is only one target in device lookup.
 Fix this bug. This will alow us to correctly handle hot reomoval of

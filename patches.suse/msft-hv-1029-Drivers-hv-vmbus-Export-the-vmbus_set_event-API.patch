@@ -3,7 +3,7 @@ Date: Sat, 2 Apr 2016 17:59:49 -0700
 Patch-mainline: v4.7-rc1
 Subject: Drivers: hv: vmbus: Export the vmbus_set_event() API
 Git-commit: 5cc472477f928fb8584eb8e08245c9cf9002d74a
-Reference: fate#320485
+References: fate#320485
 
 In preparation for moving some ring buffer functionality out of the
 vmbus driver, export the API for signaling the host.

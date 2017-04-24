@@ -3,7 +3,7 @@ Date: Wed, 23 Dec 2015 13:15:48 -0800
 Patch-mainline: v4.5-rc1
 Subject: storvsc: Fix a bug in the layout of the hv_fc_wwn_packet
 Git-commit: 83d1e8b9b51b06d79653293d0bf34ff2c61abe46
-Reference: fate#315887
+References: fate#315887
 
 The hv_fc_wwn_packet is exchanged over vmbus. Make the definition in
 Linux match the Windows definition.

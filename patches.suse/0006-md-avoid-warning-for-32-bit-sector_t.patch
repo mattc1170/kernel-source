@@ -4,7 +4,7 @@ Date: Mon, 21 Dec 2015 10:51:01 +1100
 Subject: [PATCH] md: avoid warning for 32-bit sector_t
 Git-commit: 3312c951efaba55080958974047414576b9e5d63
 Patch-mainline: v4.5-rc1
-Reference: fate#320291
+References: fate#320291
 
 When CONFIG_LBDAF is not set, sector_t is only 32-bits wide, which
 means we cannot have devices with more than 2TB, and the code that

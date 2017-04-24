@@ -1,10 +1,9 @@
-From 619f2c3c08de13f3f79e8186f4062cd0a1eee654 Mon Sep 17 00:00:00 2001
 From: Jan Kara <jack@suse.cz>
-Date: Wed, 9 Mar 2016 13:05:42 +0100
+Date: Thu, 12 May 2016 18:29:18 +0200
 Subject: [PATCH 5/7] dax: New fault locking
-References: fate#319256
 Patch-mainline: v4.7-rc1
 Git-commit: ac401cc782429cc8560ce4840b1405d603740917
+References: fate#319256
 
 Currently DAX page fault locking is racy.
 
@@ -42,11 +41,11 @@ Reviewed-by: Ross Zwisler <ross.zwisler@linux.intel.com>
 Signed-off-by: Jan Kara <jack@suse.cz>
 
 ---
- fs/dax.c            |  561 ++++++++++++++++++++++++++++++++++++++--------------
+ fs/dax.c            |  563 ++++++++++++++++++++++++++++++++++++++--------------
  include/linux/dax.h |    3 
  mm/filemap.c        |    9 
  mm/truncate.c       |   62 ++---
- 4 files changed, 452 insertions(+), 183 deletions(-)
+ 4 files changed, 453 insertions(+), 184 deletions(-)
 
 --- a/fs/dax.c
 +++ b/fs/dax.c
@@ -691,6 +690,15 @@ Signed-off-by: Jan Kara <jack@suse.cz>
  }
  EXPORT_SYMBOL(__dax_fault);
  
+@@ -750,7 +1021,7 @@ int __dax_pmd_fault(struct vm_area_struc
+ 	struct block_device *bdev;
+ 	pgoff_t size, pgoff;
+ 	sector_t block;
+-	int error, result = 0;
++	int result = 0;
+ 	bool alloc = false;
+ 
+ 	/* dax pmd mappings require pfn_t_devmap() */
 @@ -897,13 +1168,10 @@ int __dax_pmd_fault(struct vm_area_struc
  		 * the write to insert a dirty entry.
  		 */

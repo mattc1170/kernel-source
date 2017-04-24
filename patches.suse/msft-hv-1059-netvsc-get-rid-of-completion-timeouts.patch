@@ -3,7 +3,7 @@ Date: Thu, 9 Jun 2016 12:44:03 +0200
 Patch-mainline: v4.8-rc1
 Subject: netvsc: get rid of completion timeouts
 Git-commit: 5362855aba7159aab8f7c6573eb675d9da317914
-Reference: fate#320485
+References: fate#320485
 
 I'm hitting 5 second timeout in rndis_filter_set_rss_param() while setting
 RSS parameters for the device. When this happens we end up returning

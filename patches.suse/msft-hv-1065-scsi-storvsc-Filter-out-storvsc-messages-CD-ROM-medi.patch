@@ -3,7 +3,7 @@ Date: Mon, 23 May 2016 10:29:17 -0400
 Patch-mainline: v4.8-rc1
 Subject: scsi: storvsc: Filter out storvsc messages CD-ROM medium not present
 Git-commit: 84b342c0f4dc0180ad4ac701b46024761ff4af11
-Reference: fate#320485, bnc#984609
+References: fate#320485, bnc#984609
 
 When a virtual scsi DVD device is present with no image file
 attached the storvsc driver logs all resulting unnecessary sense errors

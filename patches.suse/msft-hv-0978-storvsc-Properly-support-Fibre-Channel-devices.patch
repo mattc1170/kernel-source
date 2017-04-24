@@ -3,7 +3,7 @@ Date: Wed, 23 Dec 2015 13:15:49 -0800
 Patch-mainline: v4.5-rc1
 Subject: storvsc: Properly support Fibre Channel devices
 Git-commit: dac582417bc449b1f7f572d3f1dd9d23eec15cc9
-Reference: fate#315887
+References: fate#315887
 
 For FC devices managed by this driver, atttach the appropriate transport
 template. This will allow us to create the appropriate sysfs files for

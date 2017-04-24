@@ -3,7 +3,7 @@ Date: Mon, 14 Dec 2015 16:01:41 -0800
 Patch-mainline: v4.5-rc1
 Subject: drivers:hv: Define the channel type for Hyper-V PCI Express pass-through
 Git-commit: 3053c762444a83ec6a8777f9476668b23b8ab180
-Reference: fate#315887
+References: fate#315887
 
 This defines the channel type for PCI front-ends in Hyper-V VMs.
 

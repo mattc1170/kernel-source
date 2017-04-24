@@ -3,7 +3,7 @@ From: David Daney <david.daney@cavium.com>
 Date: Fri, 9 Oct 2015 11:16:40 -0700
 Subject: [PATCH 24/26] net: mdio-octeon: Quit using readq_relaxed/writeq_relaxed
 Patch-mainline: Not yet, Cavium has to do so
-Reference: fate#319484
+References: fate#319484
 
 On early versions of the ThunderX SoCs, readq_relaxed/writeq_relaxed
 had the property of ensuring that reads and writes were properly

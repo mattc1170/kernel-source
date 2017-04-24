@@ -3,7 +3,7 @@ Date: Wed, 27 Jan 2016 22:29:40 -0800
 Patch-mainline: v4.6-rc1
 Subject: Drivers: hv: vmbus: define a new VMBus message type for hvsock
 Git-commit: 5c23a1a5c60b0f472cfa61cd7d8279f8aaeb5b64
-Reference: fate#320485
+References: fate#320485
 
 A function to send the type of message is also added.
 

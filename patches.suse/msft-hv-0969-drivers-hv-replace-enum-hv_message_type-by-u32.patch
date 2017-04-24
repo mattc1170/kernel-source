@@ -3,7 +3,7 @@ Date: Mon, 30 Nov 2015 19:22:13 +0300
 Patch-mainline: v4.5-rc1
 Subject: drivers/hv: replace enum hv_message_type by u32
 Git-commit: 7797dcf63f11b6e1d34822daf2317223d0f4ad46
-Reference: fate#315887
+References: fate#315887
 
 enum hv_message_type inside struct hv_message, hv_post_message
 is not size portable. Replace enum by u32.

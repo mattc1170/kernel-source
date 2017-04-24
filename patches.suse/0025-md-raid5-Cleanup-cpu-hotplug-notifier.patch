@@ -4,7 +4,7 @@ Date: Wed, 16 Mar 2016 09:25:23 +0100
 Subject: [PATCH] md/raid5: Cleanup cpu hotplug notifier
 Git-commit: 1d034e68e2c256640eb1f44bd7dcd89f90806ccf
 Patch-mainline: v4.6-rc1
-Reference: fate#320291
+References: fate#320291
 
 The raid456_cpu_notify() hotplug callback lacks handling of the
 CPU_UP_CANCELED case. That means if CPU_UP_PREPARE fails, the scratch

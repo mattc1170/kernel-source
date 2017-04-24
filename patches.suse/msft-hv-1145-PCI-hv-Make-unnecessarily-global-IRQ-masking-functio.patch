@@ -1,0 +1,42 @@
+From: Tobias Klauser <tklauser@distanz.ch>
+Date: Mon, 31 Oct 2016 12:04:09 +0100
+Patch-mainline: v4.10-rc1
+Subject: PCI: hv: Make unnecessarily global IRQ masking functions static
+Git-commit: 542ccf4551fa019a8ae9dfb7c8cd7e73a3d7e614
+References: fate#320485
+
+Make hv_irq_mask() and hv_irq_unmask() static as they are only used in
+pci-hyperv.c
+
+This fixes a sparse warning.
+
+Signed-off-by: Tobias Klauser <tklauser@distanz.ch>
+Signed-off-by: Bjorn Helgaas <bhelgaas@google.com>
+Acked-by: K. Y. Srinivasan <kys@microsoft.com>
+Acked-by: <ohering@suse.de>
+---
+ drivers/pci/host/pci-hyperv.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/pci/host/pci-hyperv.c b/drivers/pci/host/pci-hyperv.c
+index 763ff8745828..06c98695c06c 100644
+--- a/drivers/pci/host/pci-hyperv.c
++++ b/drivers/pci/host/pci-hyperv.c
+@@ -755,7 +755,7 @@ static int hv_set_affinity(struct irq_data *data, const struct cpumask *dest,
+ 	return parent->chip->irq_set_affinity(parent, dest, force);
+ }
+ 
+-void hv_irq_mask(struct irq_data *data)
++static void hv_irq_mask(struct irq_data *data)
+ {
+ 	pci_msi_mask_irq(data);
+ }
+@@ -770,7 +770,7 @@ void hv_irq_mask(struct irq_data *data)
+  * is built out of this PCI bus's instance GUID and the function
+  * number of the device.
+  */
+-void hv_irq_unmask(struct irq_data *data)
++static void hv_irq_unmask(struct irq_data *data)
+ {
+ 	struct msi_desc *msi_desc = irq_data_get_msi_desc(data);
+ 	struct irq_cfg *cfg = irqd_cfg(data);

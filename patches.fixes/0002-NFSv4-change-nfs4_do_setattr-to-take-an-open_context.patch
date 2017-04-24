@@ -2,7 +2,8 @@ From: NeilBrown <neilb@suse.com>
 Date: Thu, 13 Oct 2016 10:35:42 +1100
 Subject: [PATCH] NFSv4: change nfs4_do_setattr to take an open_context instead
  of a nfs4_state.
-Patch-mainline: Submitted, Thu, 13 Oct 2016 15:26:47 +1100 - linux-nfs@vger.kernel.org
+Patch-mainline: v4.10
+Git-commit: 29b59f94169374c412cedf60c77073df4e68ce51
 References: bnc#998689
 
 The open_context can always lead directly to the state, and is always easily

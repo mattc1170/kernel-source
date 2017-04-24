@@ -3,7 +3,7 @@ Date: Tue, 5 Apr 2016 10:22:53 -0700
 Patch-mainline: v4.7-rc1
 Subject: drivers:hv: Reverse order of resources in hyperv_mmio
 Git-commit: 23a0683186b7ca0083bfc76b410497f39a9d0351
-Reference: fate#320485
+References: fate#320485
 
 A patch later in this series allocates child nodes
 in this resource tree.  For that to work, this tree

@@ -23,10 +23,9 @@ Signed-off-by: David Sterba <dsterba@suse.cz>
 ---
  fs/btrfs/ctree.h   |    7 +++++++
  fs/btrfs/disk-io.c |   14 ++++++++++++++
- fs/btrfs/file.c    |    8 +++++++-
- fs/btrfs/ioctl.c   |   13 ++++++++++++-
- fs/btrfs/super.c   |   27 +++++++++++++++++++++++++++
- 6 files changed, 67 insertions(+), 2 deletions(-)
+ fs/btrfs/ioctl.c   |    8 +++++++-
+ fs/btrfs/super.c   |   20 ++++++++++++++++++++
+ 4 files changed, 48 insertions(+), 1 deletion(-)
 
 --- a/fs/btrfs/ctree.h
 +++ b/fs/btrfs/ctree.h
@@ -38,7 +37,7 @@ Signed-off-by: David Sterba <dsterba@suse.cz>
  #include "extent_io.h"
  #include "extent_map.h"
  #include "async-thread.h"
-@@ -4390,4 +4391,10 @@ static inline int btrfs_test_is_dummy_ro
+@@ -4392,4 +4393,10 @@ static inline int btrfs_test_is_dummy_ro
  	return 0;
  }
  
@@ -51,7 +50,7 @@ Signed-off-by: David Sterba <dsterba@suse.cz>
  #endif
 --- a/fs/btrfs/disk-io.c
 +++ b/fs/btrfs/disk-io.c
-@@ -2697,6 +2697,14 @@ int open_ctree(struct super_block *sb,
+@@ -2722,6 +2722,14 @@ int open_ctree(struct super_block *sb,
  	if (btrfs_super_flags(disk_super) & BTRFS_SUPER_FLAG_ERROR)
  		set_bit(BTRFS_FS_STATE_ERROR, &fs_info->fs_state);
  
@@ -66,7 +65,7 @@ Signed-off-by: David Sterba <dsterba@suse.cz>
  	/*
  	 * run through our array of backup supers and setup
  	 * our ring pointer to the oldest one
-@@ -2781,6 +2789,12 @@ int open_ctree(struct super_block *sb,
+@@ -2786,6 +2794,12 @@ int open_ctree(struct super_block *sb,
  				sb->s_id);
  		goto fail_alloc;
  	}
@@ -81,7 +80,7 @@ Signed-off-by: David Sterba <dsterba@suse.cz>
  	 * Needn't use the lock because there is no other task which will
 --- a/fs/btrfs/ioctl.c
 +++ b/fs/btrfs/ioctl.c
-@@ -5440,6 +5440,7 @@ long btrfs_ioctl(struct file *file, unsi
+@@ -5541,6 +5541,7 @@ long btrfs_ioctl(struct file *file, unsi
  {
  	struct btrfs_root *root = BTRFS_I(file_inode(file))->root;
  	void __user *argp = (void __user *)arg;
@@ -89,7 +88,7 @@ Signed-off-by: David Sterba <dsterba@suse.cz>
  
  	switch (cmd) {
  	case FS_IOC_GETFLAGS:
-@@ -5558,6 +5564,11 @@ long btrfs_ioctl(struct file *file, unsi
+@@ -5659,6 +5660,11 @@ long btrfs_ioctl(struct file *file, unsi
  	case BTRFS_IOC_QUOTA_RESCAN_WAIT:
  		return btrfs_ioctl_quota_rescan_wait(file, argp);
  	case BTRFS_IOC_DEV_REPLACE:
@@ -101,13 +100,15 @@ Signed-off-by: David Sterba <dsterba@suse.cz>
  		return btrfs_ioctl_dev_replace(root, argp);
  	case BTRFS_IOC_GET_FSLABEL:
  		return btrfs_ioctl_get_fslabel(file, argp);
-@@ -5573,5 +5584,5 @@ long btrfs_ioctl(struct file *file, unsi
+@@ -5674,7 +5680,7 @@ long btrfs_ioctl(struct file *file, unsi
  		return btrfs_ioctl_set_features(file, argp);
  	}
  
 -	return -ENOTTY;
 +	return ret;
  }
+ 
+ #ifdef CONFIG_COMPAT
 --- a/fs/btrfs/super.c
 +++ b/fs/btrfs/super.c
 @@ -18,6 +18,7 @@
@@ -127,7 +128,7 @@ Signed-off-by: David Sterba <dsterba@suse.cz>
  static const struct super_operations btrfs_super_ops;
  static struct file_system_type btrfs_fs_type;
  
-@@ -628,6 +631,11 @@ int btrfs_parse_options(struct btrfs_roo
+@@ -643,6 +646,11 @@ int btrfs_parse_options(struct btrfs_roo
  					     "disabling disk space caching");
  			break;
  		case Opt_inode_cache:
@@ -139,7 +140,7 @@ Signed-off-by: David Sterba <dsterba@suse.cz>
  			btrfs_set_pending_and_info(info, INODE_MAP_CACHE,
  					   "enabling inode map caching");
  			break;
-@@ -649,6 +657,11 @@ int btrfs_parse_options(struct btrfs_roo
+@@ -664,6 +672,11 @@ int btrfs_parse_options(struct btrfs_roo
  			btrfs_clear_opt(info->mount_opt, ENOSPC_DEBUG);
  			break;
  		case Opt_defrag:
@@ -151,7 +152,7 @@ Signed-off-by: David Sterba <dsterba@suse.cz>
  			btrfs_set_and_info(root, AUTO_DEFRAG,
  					   "enabling auto defrag");
  			break;
-@@ -1700,6 +1713,13 @@ static int btrfs_remount(struct super_bl
+@@ -1715,6 +1728,13 @@ static int btrfs_remount(struct super_bl
  			ret = -EACCES;
  			goto restore;
  		}

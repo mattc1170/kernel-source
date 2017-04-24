@@ -4,7 +4,7 @@ Date: Sun, 24 Apr 2016 18:11:45 +0200
 Subject: [PATCH] md/raid0: remove empty line printk from dump_zones
 Git-commit: b297874a2d5c5fcaeb5242a8b4708e54c5477d90
 Patch-mainline: v4.6-rc7
-Reference: fate#320291
+References: fate#320291
 
 Remove the final printk. All preceding output is already properly
 newline-terminated and the printk isn't even KERN_CONT to begin with,

@@ -3,7 +3,7 @@ Date: Thu, 21 Apr 2016 16:13:01 -0700
 Patch-mainline: v4.7-rc1
 Subject: hv_netvsc: Fix the list processing for network change event
 Git-commit: 15cfd40771e18a4e9b788c64c9db2606f958b93d
-Reference: fate#320485
+References: fate#320485
 
 RNDIS_STATUS_NETWORK_CHANGE event is handled as two "half events" --
 media disconnect & connect. The second half should be added to the list

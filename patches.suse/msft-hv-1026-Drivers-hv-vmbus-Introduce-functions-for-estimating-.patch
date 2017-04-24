@@ -3,7 +3,7 @@ Date: Sat, 2 Apr 2016 17:59:46 -0700
 Patch-mainline: v4.7-rc1
 Subject: Drivers: hv: vmbus: Introduce functions for estimating room in the ring buffer
 Git-commit: a6341f000024cdf1ec14dc26743a409a17378db5
-Reference: fate#320485
+References: fate#320485
 
 Introduce separate functions for estimating how much can be read from
 and written to the ring buffer.

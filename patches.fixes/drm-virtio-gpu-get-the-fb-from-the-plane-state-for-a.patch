@@ -1,0 +1,37 @@
+From 627007b615c63bed513b2c04d12eeea7d2df52cf Mon Sep 17 00:00:00 2001
+From: Rob Herring <robh@kernel.org>
+Date: Wed, 13 Jan 2016 15:52:07 -0600
+Subject: [PATCH] drm: virtio-gpu: get the fb from the plane state for atomic
+ updates
+Git-commit: 11c94ace5e25a1b6d12184b1a6f54ef4dc75aa62
+Patch-mainline: v4.6-rc1
+References: bsc#1023101
+
+When using the atomic API, plane->fb is not set when calling
+virtio_gpu_plane_atomic_update. Use plane->state->fb instead.
+
+Signed-off-by: Rob Herring <robh@kernel.org>
+Signed-off-by: Dave Airlie <airlied@redhat.com>
+Signed-off-by: Alexander Graf <agraf@suse.de>
+---
+ drivers/gpu/drm/virtio/virtgpu_plane.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/gpu/drm/virtio/virtgpu_plane.c b/drivers/gpu/drm/virtio/virtgpu_plane.c
+index 4a74129..6b9ad59 100644
+--- a/drivers/gpu/drm/virtio/virtgpu_plane.c
++++ b/drivers/gpu/drm/virtio/virtgpu_plane.c
+@@ -68,8 +68,8 @@ static void virtio_gpu_plane_atomic_update(struct drm_plane *plane,
+ 	struct virtio_gpu_object *bo;
+ 	uint32_t handle;
+ 
+-	if (plane->fb) {
+-		vgfb = to_virtio_gpu_framebuffer(plane->fb);
++	if (plane->state->fb) {
++		vgfb = to_virtio_gpu_framebuffer(plane->state->fb);
+ 		bo = gem_to_virtio_gpu_obj(vgfb->obj);
+ 		handle = bo->hw_res_handle;
+ 	} else {
+-- 
+1.8.5.6
+

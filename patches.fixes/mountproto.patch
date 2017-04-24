@@ -1,0 +1,74 @@
+From: NeilBrown <neilb@suse.com>
+Subject: avoid including "mountproto=" with no protocol in /proc/mounts
+References: bsc#1019260
+Patch-mainline: Not yet, upstream wants more
+
+When NFS detects a transition to a different filesystem on the server
+it creates an intervening mountpoint so local clients can see that it
+is a different filesystem.  The mounted filesystem has no mount proto,
+so /proc/mounts shows "mountproto=" due to a code error.
+
+This causes umount.nfs to print an error message, but appears to
+otherwise be harmless.
+Incorrect error messages aren't good, so fix the code bug.
+
+As similar patch was sent upstream:
+  http://marc.info/?l=linux-nfs&m=147924359703972
+but negotiaions are ongoing.
+
+Signed-off-by: NeilBrown <neilb@suse.com>
+---
+ fs/nfs/super.c |   23 +++++++++--------------
+ 1 file changed, 9 insertions(+), 14 deletions(-)
+
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -534,39 +534,34 @@ static void nfs_show_mountd_netid(struct
+ 				  int showdefaults)
+ {
+ 	struct sockaddr *sap = (struct sockaddr *) &nfss->mountd_address;
++	char *proto = NULL;
+ 
+-	seq_printf(m, ",mountproto=");
+ 	switch (sap->sa_family) {
+ 	case AF_INET:
+ 		switch (nfss->mountd_protocol) {
+ 		case IPPROTO_UDP:
+-			seq_printf(m, RPCBIND_NETID_UDP);
++			proto = RPCBIND_NETID_UDP;
+ 			break;
+ 		case IPPROTO_TCP:
+-			seq_printf(m, RPCBIND_NETID_TCP);
++			proto = RPCBIND_NETID_TCP;
+ 			break;
+-		default:
+-			if (showdefaults)
+-				seq_printf(m, "auto");
+ 		}
+ 		break;
+ 	case AF_INET6:
+ 		switch (nfss->mountd_protocol) {
+ 		case IPPROTO_UDP:
+-			seq_printf(m, RPCBIND_NETID_UDP6);
++			proto = RPCBIND_NETID_UDP6;
+ 			break;
+ 		case IPPROTO_TCP:
+-			seq_printf(m, RPCBIND_NETID_TCP6);
++			proto = RPCBIND_NETID_TCP6;
+ 			break;
+-		default:
+-			if (showdefaults)
+-				seq_printf(m, "auto");
+ 		}
+ 		break;
+-	default:
+-		if (showdefaults)
+-			seq_printf(m, "auto");
+ 	}
++	if (proto)
++		seq_printf(m, ",mountproto=%s", proto);
++	else if (showdefaults)
++		seq_printf(m, ",mountproto=auto");
+ }
+ 
+ static void nfs_show_mountd_options(struct seq_file *m, struct nfs_server *nfss,

@@ -3,7 +3,7 @@ Date: Sat, 2 Apr 2016 17:59:47 -0700
 Patch-mainline: v4.7-rc1
 Subject: Drivers: hv: vmbus: Use READ_ONCE() to read variables that are volatile
 Git-commit: d45faaeedb762a3965a0246cf831e55045dd6ef8
-Reference: fate#320485
+References: fate#320485
 
 Use the READ_ONCE macro to access variabes that can change asynchronously.
 This is the recommended mechanism for dealing with "unsafe" compiler

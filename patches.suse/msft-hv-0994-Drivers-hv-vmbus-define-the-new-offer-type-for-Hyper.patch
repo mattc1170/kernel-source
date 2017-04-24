@@ -3,7 +3,7 @@ Date: Wed, 27 Jan 2016 22:29:38 -0800
 Patch-mainline: v4.6-rc1
 Subject: Drivers: hv: vmbus: define the new offer type for Hyper-V socket (hvsock)
 Git-commit: e8d6ca023efce3bd80050dcd9e708ee3cf8babd4
-Reference: fate#320485
+References: fate#320485
 
 A helper function is also added.
 

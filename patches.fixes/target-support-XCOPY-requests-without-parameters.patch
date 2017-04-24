@@ -1,0 +1,42 @@
+From fdd06a257a6360c35366f8d63078cdb5efb23417 Mon Sep 17 00:00:00 2001
+From: David Disseldorp <ddiss@suse.de>
+Date: Mon, 2 Jan 2017 18:04:09 +0100
+Subject: [PATCH 10/10] target: support XCOPY requests without parameters
+Git-commit: 87156518da94a696f2b27ab8945d531af2f1d339
+Patch-mainline: v4.10-rc4
+References: bsc#991273
+
+SPC4r37 6.4.1 EXTENDED COPY(LID4) states (also applying to LID1 reqs):
+  A parameter list length of zero specifies that the copy manager shall
+  not transfer any data or alter any internal state, and this shall not
+  be considered an error.
+
+This behaviour can be tested using the libiscsi ExtendedCopy.ParamHdr
+test.
+
+Signed-off-by: David Disseldorp <ddiss@suse.de>
+Reviewed-by: Christoph Hellwig <hch@lst.de>
+Signed-off-by: Bart Van Assche <bart.vanassche@sandisk.com>
+
+---
+ drivers/target/target_core_xcopy.c | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/drivers/target/target_core_xcopy.c b/drivers/target/target_core_xcopy.c
+index fdd39ac..9aa044d 100644
+--- a/drivers/target/target_core_xcopy.c
++++ b/drivers/target/target_core_xcopy.c
+@@ -887,6 +887,10 @@ sense_reason_t target_do_xcopy(struct se_cmd *se_cmd)
+ 		return TCM_UNSUPPORTED_SCSI_OPCODE;
+ 	}
+ 
++	if (se_cmd->data_length == 0) {
++		target_complete_cmd(se_cmd, SAM_STAT_GOOD);
++		return TCM_NO_SENSE;
++	}
+ 	if (se_cmd->data_length < XCOPY_HDR_LEN) {
+ 		pr_err("XCOPY parameter truncation: length %u < hdr_len %u\n",
+ 				se_cmd->data_length, XCOPY_HDR_LEN);
+-- 
+2.10.2
+

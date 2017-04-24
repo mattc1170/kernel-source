@@ -3,7 +3,7 @@ Date: Fri, 26 Feb 2016 15:13:22 -0800
 Patch-mainline: v4.6-rc1
 Subject: Drivers: hv: vmbus: Support kexec on ws2012 r2 and above
 Git-commit: 7268644734f6a300353a4c4ff8bf3e013ba80f89
-Reference: fate#320485
+References: fate#320485
 
 WS2012 R2 and above hosts can support kexec in that thay can support
 reconnecting to the host (as would be needed in the kexec path)

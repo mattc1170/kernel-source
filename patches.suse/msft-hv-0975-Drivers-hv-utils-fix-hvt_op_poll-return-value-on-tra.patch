@@ -3,7 +3,7 @@ Date: Tue, 15 Dec 2015 16:27:26 -0800
 Patch-mainline: v4.5-rc1
 Subject: Drivers: hv: utils: fix hvt_op_poll() return value on transport destroy
 Git-commit: 77b744a598d604de49df79cf161bbd1809a6948a
-Reference: fate#315887
+References: fate#315887
 
 The return type of hvt_op_poll() is unsigned int and -EBADF is
 inappropriate, poll functions return POLL* statuses.

@@ -3,7 +3,7 @@ Date: Fri, 5 Feb 2016 17:29:08 +0100
 Patch-mainline: v4.5-rc6
 Subject: hv_netvsc: Restore needed_headroom request
 Git-commit: 14a03cf80edf3e19953bb744938e48bc9d496d30
-Reference: fate#320485
+References: fate#320485
 
 Commit c0eb454034aa ("hv_netvsc: Don't ask for additional head room in the
 skb") got rid of needed_headroom setting for the driver. With the change I

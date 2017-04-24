@@ -3,7 +3,7 @@ Date: Mon, 14 Dec 2015 19:01:58 -0800
 Patch-mainline: v4.5-rc1
 Subject: Drivers: hv: ring_buffer: remove stray smp_read_barrier_depends()
 Git-commit: 45870a441361d1c05a5f767c4ece2f6e30e0da9c
-Reference: fate#315887
+References: fate#315887
 
 smp_read_barrier_depends() does nothing on almost all arcitectures
 including x86 and having it in the beginning of

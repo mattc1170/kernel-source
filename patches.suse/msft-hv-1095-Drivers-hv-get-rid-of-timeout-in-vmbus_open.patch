@@ -1,0 +1,46 @@
+From: Vitaly Kuznetsov <vkuznets@redhat.com>
+Date: Thu, 9 Jun 2016 17:08:56 -0700
+Patch-mainline: v4.9-rc1
+Subject: Drivers: hv: get rid of timeout in vmbus_open()
+Git-commit: 396e287fa2ff46e83ae016cdcb300c3faa3b02f6
+References: fate#320485
+
+vmbus_teardown_gpadl() can result in infinite wait when it is called on 5
+second timeout in vmbus_open(). The issue is caused by the fact that gpadl
+teardown operation won't ever succeed for an opened channel and the timeout
+isn't always enough. As a guest, we can always trust the host to respond to
+our request (and there is nothing we can do if it doesn't).
+
+Signed-off-by: Vitaly Kuznetsov <vkuznets@redhat.com>
+Signed-off-by: K. Y. Srinivasan <kys@microsoft.com>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Acked-by: <ohering@suse.de>
+---
+ drivers/hv/channel.c | 7 +------
+ 1 file changed, 1 insertion(+), 6 deletions(-)
+
+diff --git a/drivers/hv/channel.c b/drivers/hv/channel.c
+index a68830c..9a88c63 100644
+--- a/drivers/hv/channel.c
++++ b/drivers/hv/channel.c
+@@ -73,7 +73,6 @@ int vmbus_open(struct vmbus_channel *newchannel, u32 send_ringbuffer_size,
+ 	void *in, *out;
+ 	unsigned long flags;
+ 	int ret, err = 0;
+-	unsigned long t;
+ 	struct page *page;
+ 
+ 	spin_lock_irqsave(&newchannel->lock, flags);
+@@ -183,11 +182,7 @@ int vmbus_open(struct vmbus_channel *newchannel, u32 send_ringbuffer_size,
+ 		goto error1;
+ 	}
+ 
+-	t = wait_for_completion_timeout(&open_info->waitevent, 5*HZ);
+-	if (t == 0) {
+-		err = -ETIMEDOUT;
+-		goto error1;
+-	}
++	wait_for_completion(&open_info->waitevent);
+ 
+ 	spin_lock_irqsave(&vmbus_connection.channelmsg_lock, flags);
+ 	list_del(&open_info->msglistentry);

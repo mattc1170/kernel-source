@@ -4,7 +4,7 @@ Date: Wed, 20 Jan 2016 13:52:20 -0800
 Subject: [PATCH] MD: rename some functions
 Git-commit: 849674e4fb175e47b7504249f7367367b18fe6a1
 Patch-mainline: v4.5-rc3
-Reference: fate#320291
+References: fate#320291
 
 These short function names are hard to search. Rename them to make vim happy.
 

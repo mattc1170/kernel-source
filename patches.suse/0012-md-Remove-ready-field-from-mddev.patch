@@ -4,7 +4,7 @@ Date: Mon, 4 Jan 2016 16:16:58 +1100
 Subject: [PATCH] md: Remove 'ready' field from mddev.
 Git-commit: 274d8cbde1bc3bdfb31c5d6a58113dff5cee4f87
 Patch-mainline: v4.5-rc1
-Reference: fate#320291
+References: fate#320291
 
 This field is always set in tandem with ->pers, and when it is tested
 ->pers is also tested.  So ->ready is not needed.

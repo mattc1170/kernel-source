@@ -4,7 +4,7 @@ Date: Thu, 22 Oct 2015 07:07:01 -0700
 Subject: [PATCH 1/2] arm64: perf: Convert event enums to #defines
 Git-commit: 90381cba64591e27d0e8bbfe71bf8a98bd2a3db3
 Patch-mainline: v4.5-rc1
-Reference: fate#319982
+References: fate#319982
 
 The enums are not necessary and this allows the event values to be
 used to construct static strings at compile time.

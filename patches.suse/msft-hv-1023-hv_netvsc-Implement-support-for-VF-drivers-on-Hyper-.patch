@@ -3,7 +3,7 @@ Date: Thu, 14 Apr 2016 16:31:54 -0700
 Patch-mainline: v4.7-rc1
 Subject: hv_netvsc: Implement support for VF drivers on Hyper-V
 Git-commit: 84bf9cefb162b197da20a0f4388929f4b5ba5db4
-Reference: fate#320485
+References: fate#320485
 
 Support VF drivers on Hyper-V. On Hyper-V, each VF instance presented to
 the guest has an associated synthetic interface that shares the MAC address

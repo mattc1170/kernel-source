@@ -4,7 +4,7 @@ Date: Mon, 14 Mar 2016 17:01:37 +0800
 Subject: [PATCH] md/raid1: remove unnecessary BUG_ON
 Git-commit: b3c95b425e0991840262dba8dd095f2682dbf848
 Patch-mainline: v4.6-rc1
-Reference: fate#320291
+References: fate#320291
 
 Since bitmap_start_sync will not return until
 sync_blocks is not less than PAGE_SIZE>>9, so

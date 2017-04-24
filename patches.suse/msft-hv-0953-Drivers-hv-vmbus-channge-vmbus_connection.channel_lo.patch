@@ -3,7 +3,7 @@ Date: Mon, 14 Dec 2015 16:01:51 -0800
 Patch-mainline: v4.5-rc1
 Subject: Drivers: hv: vmbus: channge vmbus_connection.channel_lock to mutex
 Git-commit: d6f591e339d23f434efda11917da511870891472
-Reference: fate#315887
+References: fate#315887
 
 spinlock is unnecessary here.
 mutex is enough.

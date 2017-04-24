@@ -1,6 +1,7 @@
 From: NeilBrown <neilb@suse.de>
 Subject: md: perform async updates for metadata where possible.
-Patch-mainline: Not yet, no good reasons
+Patch-mainline: v4.10
+Git-commit: 060b0689f5df7e87641c820a605c779149da33ef
 References: bnc#768084
 
 When adding devices to, or removing device from, an array we need to

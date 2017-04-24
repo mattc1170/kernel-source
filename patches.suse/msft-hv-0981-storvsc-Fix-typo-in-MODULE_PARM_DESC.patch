@@ -3,7 +3,7 @@ Date: Fri, 8 Jan 2016 14:02:04 +0300
 Patch-mainline: v4.5-rc1
 Subject: storvsc: Fix typo in MODULE_PARM_DESC
 Git-commit: 74e26784f1c50469585f483cf404c2b1d621c101
-Reference: fate#315887
+References: fate#315887
 
 The module_param is "storvsc_vcpus_per_sub_channel" so we need to use
 that for MODULE_PARM_DESC() as well.

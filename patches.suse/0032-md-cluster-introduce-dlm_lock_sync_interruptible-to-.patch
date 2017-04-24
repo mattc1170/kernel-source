@@ -1,10 +1,10 @@
-From 36fc1d5151b36816835395c2dfe8808c7865e69e Mon Sep 17 00:00:00 2001
+From 7bcda7149dd6911bee15a51b22477f592f8b9620 Mon Sep 17 00:00:00 2001
 From: Guoqing Jiang <gqjiang@suse.com>
-Date: Wed, 1 Jun 2016 17:07:57 +0800
-Subject: [PATCH 4/8] md-cluster: introduce dlm_lock_sync_interruptible to fix
+Date: Fri, 12 Aug 2016 13:42:42 +0800
+Subject: [PATCH] md-cluster: introduce dlm_lock_sync_interruptible to fix
  tasks hang
-Patch-mainline: Submitted to linux-raid http://www.spinics.net/lists/raid/msg53090.html
-References: fate#316335 bsc#980489
+Git-commit: 7bcda7149dd6911bee15a51b22477f592f8b9620
+Patch-mainline: v4.9-rc1
 
 When some node leaves cluster, then it's bitmap need to be
 synced by another node, so "md*_recover" thread is triggered
@@ -47,30 +47,31 @@ is introduced to detect the thread's situation to fix the problem.
 
 Reviewed-by: NeilBrown <neilb@suse.com>
 Signed-off-by: Guoqing Jiang <gqjiang@suse.com>
-Acked-by: Guoqing Jiang <gqjiang@suse.com>
+Signed-off-by: Shaohua Li <shli@fb.com>
 ---
- drivers/md/md-cluster.c | 38 +++++++++++++++++++++++++++++++++++++-
- 1 file changed, 37 insertions(+), 1 deletion(-)
+ drivers/md/md-cluster.c | 40 +++++++++++++++++++++++++++++++++++++++-
+ 1 file changed, 39 insertions(+), 1 deletion(-)
 
 diff --git a/drivers/md/md-cluster.c b/drivers/md/md-cluster.c
-index fdacbab..9166a1d 100644
+index c947151..43b9048 100644
 --- a/drivers/md/md-cluster.c
 +++ b/drivers/md/md-cluster.c
-@@ -10,6 +10,8 @@
+@@ -10,6 +10,7 @@
  
  
  #include <linux/module.h>
-+#include <linux/completion.h>
 +#include <linux/kthread.h>
  #include <linux/dlm.h>
  #include <linux/sched.h>
  #include <linux/raid/md_p.h>
-@@ -141,6 +143,40 @@ static int dlm_unlock_sync(struct dlm_lock_resource *res)
+@@ -144,6 +145,43 @@ static int dlm_unlock_sync(struct dlm_lock_resource *res)
  	return dlm_lock_sync(res, DLM_LOCK_NL);
  }
  
-+/* An variation of dlm_lock_sync, which make lock request could
-+ * be interrupted */
++/*
++ * An variation of dlm_lock_sync, which make lock request could
++ * be interrupted
++ */
 +static int dlm_lock_sync_interruptible(struct dlm_lock_resource *res, int mode,
 +				       struct mddev *mddev)
 +{
@@ -82,22 +83,23 @@ index fdacbab..9166a1d 100644
 +	if (ret)
 +		return ret;
 +
-+	wait_event(res->completion.wait,
-+		   res->completion.done || kthread_should_stop());
-+	if (!res->completion.done) {
++	wait_event(res->sync_locking, res->sync_locking_done
++				      || kthread_should_stop());
++	if (!res->sync_locking_done) {
 +		/*
 +		 * the convert queue contains the lock request when request is
 +		 * interrupted, and sync_ast could still be run, so need to
 +		 * cancel the request and reset completion
 +		 */
-+		ret = dlm_unlock(res->ls, res->lksb.sb_lkid, DLM_LKF_CANCEL, &res->lksb, res);
-+		reinit_completion(&res->completion);
++		ret = dlm_unlock(res->ls, res->lksb.sb_lkid, DLM_LKF_CANCEL,
++			&res->lksb, res);
++		res->sync_locking_done = false;
 +		if (unlikely(ret != 0))
 +			pr_info("failed to cancel previous lock request "
 +				 "%s return %d\n", res->name, ret);
 +		return -EPERM;
-+	}
-+	wait_for_completion(&res->completion);
++	} else
++		res->sync_locking_done = false;
 +	if (res->lksb.sb_status == 0)
 +		res->mode = mode;
 +	return res->lksb.sb_status;
@@ -106,7 +108,7 @@ index fdacbab..9166a1d 100644
  static struct dlm_lock_resource *lockres_init(struct mddev *mddev,
  		char *name, void (*bastfn)(void *arg, int mode), int with_lvb)
  {
-@@ -272,7 +308,7 @@ static void recover_bitmaps(struct md_thread *thread)
+@@ -279,7 +317,7 @@ static void recover_bitmaps(struct md_thread *thread)
  			goto clear_bit;
  		}
  
@@ -116,5 +118,5 @@ index fdacbab..9166a1d 100644
  			pr_err("md-cluster: Could not DLM lock %s: %d\n",
  					str, ret);
 -- 
-2.6.2
+2.6.6
 

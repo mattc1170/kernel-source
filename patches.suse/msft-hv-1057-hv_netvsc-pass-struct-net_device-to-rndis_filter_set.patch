@@ -3,7 +3,7 @@ Date: Fri, 3 Jun 2016 17:51:01 +0200
 Patch-mainline: v4.8-rc1
 Subject: hv_netvsc: pass struct net_device to rndis_filter_set_device_mac()
 Git-commit: e834da9a40edd3117ef0a9b2a73d845fe6b622a8
-Reference: fate#320485
+References: fate#320485
 
 We unpack 'struct net_device' in netvsc_set_mac_addr() to get to
 'struct hv_device' pointer which we use in rndis_filter_set_device_mac()

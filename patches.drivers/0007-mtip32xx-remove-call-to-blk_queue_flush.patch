@@ -4,7 +4,7 @@ Date: Tue, 12 Apr 2016 15:45:39 -0600
 Subject: [PATCH] mtip32xx: remove call to blk_queue_flush()
 Git-commit: 17fe95f4605c3a2ec3df763876e3abf2eca790a7
 Patch-mainline: v4.7-rc1
-Reference: fate#319999
+References: fate#319999
 
 The driver calls it with 0 for flags, since it doesn't have a writeback
 cache. Just remove the call, as it's a no-op right now.

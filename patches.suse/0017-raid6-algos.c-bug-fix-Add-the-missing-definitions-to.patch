@@ -5,7 +5,7 @@ Subject: [PATCH] raid6/algos.c : bug fix : Add the missing definitions to the
  pq.h file
 Git-commit: 6a84f57241e1fb9fb6772256f538d1073359a32d
 Patch-mainline: v4.5-rc3
-Reference: fate#320291
+References: fate#320291
 
 Adding these pr_info and pr_err definitions so as to allow code to be
 compiled successfully for testing in userspace, since the printk has

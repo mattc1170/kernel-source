@@ -1,0 +1,44 @@
+From: Arnd Bergmann <arnd@arndb.de>
+Date: Tue, 18 Oct 2016 00:16:09 +0200
+Patch-mainline: v4.9-rc4
+Subject: net/hyperv: avoid uninitialized variable
+Git-commit: 52ccd6318481a467d8ad54ea40f60c61e957d58f
+References: fate#320485
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The hdr_offset variable is only if we deal with a TCP or UDP packet,
+but as the check surrounding its usage tests for skb_is_gso()
+instead, the compiler has no idea if the variable is initialized
+or not at that point:
+
+drivers/net/hyperv/netvsc_drv.c: In function ‘netvsc_start_xmit’:
+drivers/net/hyperv/netvsc_drv.c:494:42: error: ‘hdr_offset’ may be used uninitialized in this function [-Werror=maybe-uninitialized]
+
+This adds an additional check for the transport type, which
+tells the compiler that this path cannot happen. Since the
+get_net_transport_info() function should always be inlined
+here, I don't expect this to result in additional runtime
+checks.
+
+Signed-off-by: Arnd Bergmann <arnd@arndb.de>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+Acked-by: <ohering@suse.de>
+---
+ drivers/net/hyperv/netvsc_drv.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/net/hyperv/netvsc_drv.c b/drivers/net/hyperv/netvsc_drv.c
+index f0919bd3a563..5d6e75a40d38 100644
+--- a/drivers/net/hyperv/netvsc_drv.c
++++ b/drivers/net/hyperv/netvsc_drv.c
+@@ -447,7 +447,7 @@ static int netvsc_start_xmit(struct sk_buff *skb, struct net_device *net)
+ 	 * Setup the sendside checksum offload only if this is not a
+ 	 * GSO packet.
+ 	 */
+-	if (skb_is_gso(skb)) {
++	if ((net_trans_info & (INFO_TCP | INFO_UDP)) && skb_is_gso(skb)) {
+ 		struct ndis_tcp_lso_info *lso_info;
+ 
+ 		rndis_msg_size += NDIS_LSO_PPI_SIZE;

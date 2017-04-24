@@ -3,7 +3,7 @@ Date: Tue, 1 Dec 2015 16:43:14 -0800
 Patch-mainline: v4.5-rc1
 Subject: hv_netvsc: Eliminate send_completion_tid from struct hv_netvsc_packet
 Git-commit: 3a3d9a0a731add5afaafd9c714e7efe11820fe5b
-Reference: fate#315887
+References: fate#315887
 
 Eliminate send_completion_tid from struct hv_netvsc_packet.
 

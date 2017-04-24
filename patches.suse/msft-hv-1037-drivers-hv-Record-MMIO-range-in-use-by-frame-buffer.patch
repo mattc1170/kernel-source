@@ -3,7 +3,7 @@ Date: Tue, 5 Apr 2016 10:22:55 -0700
 Patch-mainline: v4.7-rc1
 Subject: drivers:hv: Record MMIO range in use by frame buffer
 Git-commit: 6d146aefbaa5c5dff0c2e9d81e90e5112ded284e
-Reference: fate#320485
+References: fate#320485
 
 Later in the boot sequence, we need to figure out which memory
 ranges can be given out to various paravirtual drivers.  The

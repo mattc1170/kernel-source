@@ -3,7 +3,7 @@ Date: Tue, 5 Apr 2016 10:22:56 -0700
 Patch-mainline: v4.7-rc1
 Subject: drivers:hv: Separate out frame buffer logic when picking MMIO range
 Git-commit: ea37a6b8a0b9fbe3f85b4b9da3206c28f1de6f8e
-Reference: fate#320485
+References: fate#320485
 
 Simplify the logic that picks MMIO ranges by pulling out the
 logic related to trying to lay frame buffer claim on top of where

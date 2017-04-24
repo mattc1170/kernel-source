@@ -1,0 +1,64 @@
+From: David Sterba <dsterba@suse.com>
+Date: Mon, 18 Jan 2016 18:42:13 +0100
+Patch-mainline: 4.6
+Git-commit: ed0244faf59e33ff915b83acd15c903b81fd357b
+References: bsc#1012452
+Subject: [PATCH] btrfs: reada: use GFP_KERNEL everywhere
+
+The readahead framework is not on the critical writeback path we don't
+need to use GFP_NOFS for allocations. All error paths are handled and
+the readahead failures are not fatal. The actual users (scrub,
+dev-replace) will trigger reads if the blocks are not found in cache.
+
+Signed-off-by: David Sterba <dsterba@suse.com>
+---
+ fs/btrfs/reada.c |   10 +++++-----
+ 1 file changed, 5 insertions(+), 5 deletions(-)
+
+--- a/fs/btrfs/reada.c
++++ b/fs/btrfs/reada.c
+@@ -280,7 +280,7 @@ static struct reada_zone *reada_find_zon
+ 	end = start + cache->key.offset - 1;
+ 	btrfs_put_block_group(cache);
+ 
+-	zone = kzalloc(sizeof(*zone), GFP_NOFS);
++	zone = kzalloc(sizeof(*zone), GFP_KERNEL);
+ 	if (!zone)
+ 		return NULL;
+ 
+@@ -343,7 +343,7 @@ static struct reada_extent *reada_find_e
+ 	if (re)
+ 		return re;
+ 
+-	re = kzalloc(sizeof(*re), GFP_NOFS);
++	re = kzalloc(sizeof(*re), GFP_KERNEL);
+ 	if (!re)
+ 		return NULL;
+ 
+@@ -566,7 +566,7 @@ static int reada_add_block(struct reada_
+ 	if (!re)
+ 		return -1;
+ 
+-	rec = kzalloc(sizeof(*rec), GFP_NOFS);
++	rec = kzalloc(sizeof(*rec), GFP_KERNEL);
+ 	if (!rec) {
+ 		reada_extent_put(root->fs_info, re);
+ 		return -ENOMEM;
+@@ -791,7 +791,7 @@ static void reada_start_machine(struct b
+ {
+ 	struct reada_machine_work *rmw;
+ 
+-	rmw = kzalloc(sizeof(*rmw), GFP_NOFS);
++	rmw = kzalloc(sizeof(*rmw), GFP_KERNEL);
+ 	if (!rmw) {
+ 		/* FIXME we cannot handle this properly right now */
+ 		BUG();
+@@ -926,7 +926,7 @@ struct reada_control *btrfs_reada_add(st
+ 		.offset = (u64)-1
+ 	};
+ 
+-	rc = kzalloc(sizeof(*rc), GFP_NOFS);
++	rc = kzalloc(sizeof(*rc), GFP_KERNEL);
+ 	if (!rc)
+ 		return ERR_PTR(-ENOMEM);
+ 

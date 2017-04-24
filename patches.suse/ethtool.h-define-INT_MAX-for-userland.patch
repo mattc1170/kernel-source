@@ -3,7 +3,7 @@ Date: Fri, 4 Mar 2016 11:52:19 +0100
 Patch-mainline: v4.6-rc1
 Subject: ethtool.h: define INT_MAX for userland
 Git-commit: 14e2037902d65213842b4e40305ff54a64abbcb6
-Reference: fate#320485
+References: fate#320485
 
 INT_MAX needs limits.h in userland.
 When ethtool.h is included by a userland app, we got the following error:

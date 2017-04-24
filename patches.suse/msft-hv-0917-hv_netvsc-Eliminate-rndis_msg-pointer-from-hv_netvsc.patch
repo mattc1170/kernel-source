@@ -3,7 +3,7 @@ Date: Tue, 1 Dec 2015 16:43:06 -0800
 Patch-mainline: v4.5-rc1
 Subject: hv_netvsc: Eliminate rndis_msg pointer from hv_netvsc_packet structure
 Git-commit: 24476760ef0b45bab75ea6731d081aeb48113e6a
-Reference: fate#315887
+References: fate#315887
 
 Eliminate rndis_msg pointer from hv_netvsc_packet structure.
 

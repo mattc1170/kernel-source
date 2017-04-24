@@ -3,7 +3,7 @@ Date: Wed, 3 Feb 2016 04:04:36 +0100
 Patch-mainline: v4.6-rc1
 Subject: ethtool: add speed/duplex validation functions
 Git-commit: 103a8ad1fa3b261c78dfc842cb315defe9d40be0
-Reference: fate#320485
+References: fate#320485
 
 Add functions which check if the speed/duplex are defined.
 

@@ -4,7 +4,7 @@ Date: Wed, 17 Feb 2016 17:25:00 +0100
 Subject: [PATCH] md: Drop sending a change uevent when stopping
 Git-commit: 399146b80ed6fb9f1ebe5a07234f00dff446d2b4
 Patch-mainline: v4.6-rc1
-Reference: fate#320291
+References: fate#320291
 
 When stopping an MD device, then its device node /dev/mdX may still
 exist afterwards or it is recreated by udev. The next open() call

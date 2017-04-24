@@ -3,7 +3,7 @@ Date: Mon, 11 Jul 2016 17:06:42 -0700
 Patch-mainline: v4.8-rc1
 Subject: tools: hv: Add a script to help bonding synthetic and VF NICs
 Git-commit: 178cd55f086629cf0bad9c66c793a7e2bcc3abb6
-Reference: fate#320485
+References: fate#320485
 
 This script helps to create bonding network devices based on synthetic NIC
 (the virtual network adapter usually provided by Hyper-V) and the matching

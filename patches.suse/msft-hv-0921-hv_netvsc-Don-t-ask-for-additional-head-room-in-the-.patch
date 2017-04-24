@@ -3,7 +3,7 @@ Date: Tue, 1 Dec 2015 16:43:10 -0800
 Patch-mainline: v4.5-rc1
 Subject: hv_netvsc: Don't ask for additional head room in the skb
 Git-commit: c0eb454034aab783dc602739237a63b30867f5bd
-Reference: fate#315887
+References: fate#315887
 
 The rndis header is 116 bytes big and can be placed in the default
 head room that will be available in the skb. Since the netvsc packet

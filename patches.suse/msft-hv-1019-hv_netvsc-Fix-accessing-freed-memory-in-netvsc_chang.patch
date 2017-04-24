@@ -3,7 +3,7 @@ Date: Wed, 23 Mar 2016 09:43:09 -0700
 Patch-mainline: v4.6-rc1
 Subject: hv_netvsc: Fix accessing freed memory in netvsc_change_mtu()
 Git-commit: d212b4633c3a99561939f2d423eacf3263850bcd
-Reference: fate#320485
+References: fate#320485
 
 struct netvsc_device is freed in rndis_filter_device_remove(). So we save
 the nvdev->num_chn into a temp variable for later usage.

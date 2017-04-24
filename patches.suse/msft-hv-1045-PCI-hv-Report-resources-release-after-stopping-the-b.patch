@@ -3,7 +3,7 @@ Date: Fri, 29 Apr 2016 11:39:10 +0200
 Patch-mainline: v4.7-rc1
 Subject: PCI: hv: Report resources release after stopping the bus
 Git-commit: deb22e5c84c884a129d801cf3bfde7411536998d
-Reference: fate#320485
+References: fate#320485
 
 Kernel hang is observed when pci-hyperv module is release with device
 drivers still attached.  E.g., when I do 'rmmod pci_hyperv' with BCM5720

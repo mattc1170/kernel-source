@@ -3,7 +3,7 @@ Date: Sat, 30 Apr 2016 19:21:34 -0700
 Patch-mainline: v4.7-rc1
 Subject: Drivers: hv: vmbus: handle various crash scenarios
 Git-commit: cd95aad5579371ac332507fc946008217fc37e6c
-Reference: fate#320485
+References: fate#320485
 
 Kdump keeps biting. Turns out CHANNELMSG_UNLOAD_RESPONSE is always
 delivered to the CPU which was used for initial contact or to CPU0

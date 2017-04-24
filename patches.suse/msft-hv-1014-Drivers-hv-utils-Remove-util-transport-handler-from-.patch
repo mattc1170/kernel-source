@@ -3,7 +3,7 @@ Date: Fri, 26 Feb 2016 15:13:20 -0800
 Patch-mainline: v4.6-rc1
 Subject: Drivers: hv: utils: Remove util transport handler from list if registration fails
 Git-commit: e66853b09017a788dc384dadce9323396dae3293
-Reference: fate#320485
+References: fate#320485
 
 If util transport fails to initialize for any reason, the list of transport
 handlers may become corrupted due to freeing the transport handler without

@@ -4,7 +4,8 @@ Date: Tue, 18 Oct 2016 09:31:27 +0800
 Subject: [PATCH 2/4] btrfs: qgroup: Rename functions to make it follow
  reserve, trace, account steps
 References: bsc983087, bsc986255
-Patch-mainline: Submitted, https://patchwork.kernel.org/patch/9380977/
+Patch-mainline: v4.10-rc1
+Git-commit: 50b3e040b7c092c3c157f3febaaac77038e9f6fd
 
 Rename btrfs_qgroup_insert_dirty_extent(_nolock) to
 btrfs_qgroup_trace_extent(_nolock), according to the new

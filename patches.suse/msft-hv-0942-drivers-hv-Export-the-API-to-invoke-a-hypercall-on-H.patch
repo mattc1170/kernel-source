@@ -3,7 +3,7 @@ Date: Mon, 14 Dec 2015 16:01:40 -0800
 Patch-mainline: v4.5-rc1
 Subject: drivers:hv: Export the API to invoke a hypercall on Hyper-V
 Git-commit: a108393dbf764efb2405f21ca759806c65b8bc16
-Reference: fate#315887
+References: fate#315887
 
 This patch exposes the function that hv_vmbus.ko uses to make hypercalls.  This
 is necessary for retargeting an interrupt when it is given a new affinity.

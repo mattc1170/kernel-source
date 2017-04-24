@@ -1,0 +1,115 @@
+From: <mihajlov@linux.vnet.ibm.com>
+Subject: s390/sysinfo: show partition extended name and UUID if available
+Patch-mainline: v4.10-rc1
+Git-commit: e32eae10e589ec54679c19ca6c9d1b276e9b97cd
+References: bnc#1009718, LTC#150160
+
+Description:  kernel: Partition extended name and UUID missing in /proc/sysinfo
+Symptom:      The UUID of a DPM partition cannot be determined
+Problem:      The SYSIB 2.2.2 fields containing the UUID and extended
+              names are not extracted.
+Solution:     Extract the UUID and extended names in the same way as
+              done for the SYSIB 3.2.2 case. 
+Reproduction: On a CEC running in DPM mode execute the following command
+              'cat /proc/sysinfo' and verify that the UUID field is matching
+              the UUID in the HMC. 
+
+Upstream-Description:
+
+              s390/sysinfo: show partition extended name and UUID if available
+
+              Extract extended name and UUID from SYSIB 2.2.2 data.
+              As the code to convert the raw extended name into printable format
+              can be reused by stsi_2_2_2 we're moving the conversion code into a
+              separate function convert_ext_name.
+
+              Signed-off-by: Viktor Mihajlovski <mihajlov@linux.vnet.ibm.com>
+              Reviewed-by: Heiko Carstens <heiko.carstens@de.ibm.com>
+              Signed-off-by: Martin Schwidefsky <schwidefsky@de.ibm.com>
+
+
+Signed-off-by: <mihajlov@linux.vnet.ibm.com>
+Acked-by: John Jolly <jjolly@suse.com>
+---
+ arch/s390/include/asm/sysinfo.h |    7 ++++++-
+ arch/s390/kernel/sysinfo.c      |   33 +++++++++++++++++++++------------
+ 2 files changed, 27 insertions(+), 13 deletions(-)
+
+--- a/arch/s390/include/asm/sysinfo.h
++++ b/arch/s390/include/asm/sysinfo.h
+@@ -98,6 +98,11 @@ struct sysinfo_2_2_2 {
+ 	char reserved_3[5];
+ 	unsigned short cpus_dedicated;
+ 	unsigned short cpus_shared;
++	char reserved_4[3];
++	unsigned char vsne;
++	uuid_be uuid;
++	char reserved_5[160];
++	char ext_name[256];
+ };
+ 
+ #define LPAR_CHAR_DEDICATED	(1 << 7)
+@@ -118,7 +123,7 @@ struct sysinfo_3_2_2 {
+ 		unsigned int caf;
+ 		char cpi[16];
+ 		char reserved_1[3];
+-		char ext_name_encoding;
++		unsigned char evmne;
+ 		unsigned int reserved_2;
+ 		uuid_be uuid;
+ 	} vm[8];
+--- a/arch/s390/kernel/sysinfo.c
++++ b/arch/s390/kernel/sysinfo.c
+@@ -51,6 +51,20 @@ int stsi(void *sysinfo, int fc, int sel1
+ }
+ EXPORT_SYMBOL(stsi);
+ 
++static bool convert_ext_name(unsigned char encoding, char *name, size_t len)
++{
++	switch (encoding) {
++	case 1: /* EBCDIC */
++		EBCASC(name, len);
++		break;
++	case 2:	/* UTF-8 */
++		break;
++	default:
++		return false;
++	}
++	return true;
++}
++
+ static void stsi_1_1_1(struct seq_file *m, struct sysinfo_1_1_1 *info)
+ {
+ 	int i;
+@@ -202,24 +216,19 @@ static void stsi_2_2_2(struct seq_file *
+ 		seq_printf(m, "LPAR CPUs PS-MTID:    %d\n",
+ 			   info->mt_psmtid & 0x1f);
+ 	}
++	if (convert_ext_name(info->vsne, info->ext_name, sizeof(info->ext_name))) {
++		seq_printf(m, "LPAR Extended Name:   %-.256s\n", info->ext_name);
++		seq_printf(m, "LPAR UUID:            %pUb\n", &info->uuid);
++	}
+ }
+ 
+ static void print_ext_name(struct seq_file *m, int lvl,
+ 			   struct sysinfo_3_2_2 *info)
+ {
+-	if (info->vm[lvl].ext_name_encoding == 0)
+-		return;
+-	if (info->ext_names[lvl][0] == 0)
+-		return;
+-	switch (info->vm[lvl].ext_name_encoding) {
+-	case 1: /* EBCDIC */
+-		EBCASC(info->ext_names[lvl], sizeof(info->ext_names[lvl]));
+-		break;
+-	case 2:	/* UTF-8 */
+-		break;
+-	default:
++	size_t len = sizeof(info->ext_names[lvl]);
++
++	if (!convert_ext_name(info->vm[lvl].evmne, info->ext_names[lvl], len))
+ 		return;
+-	}
+ 	seq_printf(m, "VM%02d Extended Name:   %-.256s\n", lvl,
+ 		   info->ext_names[lvl]);
+ }

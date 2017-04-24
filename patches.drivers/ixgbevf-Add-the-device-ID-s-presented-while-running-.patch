@@ -3,7 +3,7 @@ Date: Tue, 19 Apr 2016 19:17:56 -0700
 Patch-mainline: v4.7-rc1
 Subject: ixgbevf: Add the device ID's presented while running on Hyper-V
 Git-commit: b4363fbd8df2be23439e15a53b4040897228c481
-Reference: fate#320485
+References: fate#320485
 
 Intel SR-IOV cards present different ID when running on Hyper-V.
 Add the device IDs presented while running on Hyper-V.

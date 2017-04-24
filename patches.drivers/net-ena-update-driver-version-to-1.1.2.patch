@@ -1,0 +1,26 @@
+From: Netanel Belgazal <netanel@annapurnalabs.com>
+Date: Thu, 9 Feb 2017 15:21:39 +0200
+Subject: net/ena: update driver version to 1.1.2
+Patch-mainline: Queued in subsystem maintainer repository
+Git-repo: git://git.kernel.org/pub/scm/linux/kernel/git/davem/net-next.git
+Git-commit: 3e5d6897176d38b54124da56183810abbd68c8bc
+References: bsc#1026509
+
+Signed-off-by: Netanel Belgazal <netanel@annapurnalabs.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+Acked-by: Benjamin Poirier <bpoirier@suse.com>
+---
+ drivers/net/ethernet/amazon/ena/ena_netdev.h |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+--- a/drivers/net/ethernet/amazon/ena/ena_netdev.h
++++ b/drivers/net/ethernet/amazon/ena/ena_netdev.h
+@@ -44,7 +44,7 @@
+ #include "ena_eth_com.h"
+ 
+ #define DRV_MODULE_VER_MAJOR	1
+-#define DRV_MODULE_VER_MINOR	0
++#define DRV_MODULE_VER_MINOR	1
+ #define DRV_MODULE_VER_SUBMINOR 2
+ 
+ #define DRV_MODULE_NAME		"ena"

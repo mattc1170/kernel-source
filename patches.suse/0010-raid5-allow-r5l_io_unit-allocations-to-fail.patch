@@ -4,7 +4,7 @@ Date: Mon, 21 Dec 2015 10:51:02 +1100
 Subject: [PATCH] raid5: allow r5l_io_unit allocations to fail
 Git-commit: 5036c3902054358ee293b8cecfea13342d8019e8
 Patch-mainline: v4.5-rc1
-Reference: fate#320291
+References: fate#320291
 
 And propagate the error up the stack so we can add the stripe
 to no_stripes_list and retry our log operation later.  This avoids

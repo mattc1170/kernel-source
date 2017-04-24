@@ -3,7 +3,7 @@ Date: Wed, 27 Jan 2016 22:29:39 -0800
 Patch-mainline: v4.6-rc1
 Subject: Drivers: hv: vmbus: vmbus_sendpacket_ctl: hvsock: avoid unnecessary signaling
 Git-commit: 5f363bc38f810d238d1e8b19998625ddec3b8138
-Reference: fate#320485
+References: fate#320485
 
 When the hvsock channel's outbound ringbuffer is full (i.e.,
 hv_ringbuffer_write() returns -EAGAIN), we should avoid the unnecessary

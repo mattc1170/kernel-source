@@ -1,0 +1,36 @@
+From 3a4e591d31451eb4eb6cd91764d4e429080623a5 Mon Sep 17 00:00:00 2001
+From: Jean Delvare <jdelvare@suse.de>
+Date: Thu, 8 Sep 2016 16:25:15 +0200
+Subject: [PATCH 01/36] drivers: net: phy: mdio-xgene: Add hardware dependency
+
+Git-commit: c2f57fb97da5730509a50e316f353d3da17f6c25
+Patch-mainline: v4.8-rc7
+References: bsc#1019351
+
+The mdio-xgene driver is only useful on X-Gene SoC.
+
+Signed-off-by: Jean Delvare <jdelvare@suse.de>
+Cc: Iyappan Subramanian <isubramanian@apm.com>
+Cc: David S. Miller <davem@davemloft.net>
+Acked-by:  Iyappan Subramanian <isubramanian@apm.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+Signed-off-by: Mian Yousaf Kaukab <yousaf.kaukab@suse.com>
+---
+ drivers/net/phy/Kconfig | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/drivers/net/phy/Kconfig b/drivers/net/phy/Kconfig
+index b7c18cbdaf8e..6e621a2f0ab3 100644
+--- a/drivers/net/phy/Kconfig
++++ b/drivers/net/phy/Kconfig
+@@ -259,6 +259,7 @@ config MDIO_BCM_IPROC
+ 
+ config MDIO_XGENE
+ 	tristate "APM X-Gene SoC MDIO bus controller"
++	depends on ARCH_XGENE || COMPILE_TEST
+ 	help
+ 	  This module provides a driver for the MDIO busses found in the
+ 	  APM X-Gene SoC's.
+-- 
+2.11.0
+

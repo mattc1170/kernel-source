@@ -3,7 +3,7 @@ Date: Wed, 23 Mar 2016 09:43:10 -0700
 Patch-mainline: v4.6-rc1
 Subject: hv_netvsc: Fix the array sizes to be max supported channels
 Git-commit: 9efc2f7dcd06e04d7b6a3032ae65bfd628b1aebe
-Reference: fate#320485
+References: fate#320485
 
 The VRSS_CHANNEL_MAX is the max number of channels supported by Hyper-V
 hosts. We use it for the related array sizes instead of using NR_CPUS,

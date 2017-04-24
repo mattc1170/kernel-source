@@ -3,7 +3,8 @@ Date: Wed, 23 Nov 2011 13:40:38 +1100
 Subject: [PATCH 1/5] md/failfast:  add failfast flag for md to be used by
  some personalities.
 References: Fate#311379
-Patch-mainline: Not yet, failfast is poorly defined
+Git-commit: 688834e6ae6b21e3d98b5cf2586aa4a9b515c3a0
+Patch-mainline: v4.10
 
 This patch just adds a 'failfast' per-device flag which can be stored
 in v0.90 or v1.x metadata.

@@ -2,7 +2,8 @@ From: NeilBrown <neilb@suse.de>
 Date: Thu, 24 Nov 2011 14:19:21 +1100
 Subject: [PATCH 3/5] md/raid1 - add failfast handling for writes.
 References: Fate#311379
-Patch-mainline: Not yet, failfast is poorly defined
+Git-commit: 212e7eb7a3403464a796c05c2fc46cae3b62d803
+Patch-mainline: v4.10
 
 When writing to a fastfail device we use REQ_FASTFAIL_DEV unless it is
 the only device being written to.

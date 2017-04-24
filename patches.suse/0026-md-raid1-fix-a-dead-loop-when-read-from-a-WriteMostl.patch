@@ -4,7 +4,7 @@ Date: Mon, 21 Mar 2016 19:18:32 +0800
 Subject: [PATCH] md:raid1: fix a dead loop when read from a WriteMostly disk
 Git-commit: 816b0acf3deb6d6be5d0519b286fdd4bafade905
 Patch-mainline: v4.6-rc3
-Reference: fate#320291
+References: fate#320291
 
 If first_bad == this_sector when we get the WriteMostly disk
 in read_balance(), valid disk will be returned with zero

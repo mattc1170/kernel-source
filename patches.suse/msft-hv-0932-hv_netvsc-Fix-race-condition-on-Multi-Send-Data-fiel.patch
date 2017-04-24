@@ -3,7 +3,7 @@ Date: Thu, 10 Dec 2015 12:19:35 -0800
 Patch-mainline: v4.5-rc1
 Subject: hv_netvsc: Fix race condition on Multi-Send Data field
 Git-commit: cf8190e4c26c8ccf87d80793f8f1f7fe150cdf8c
-Reference: fate#315887
+References: fate#315887
 
 In commit 2a04ae8acb14 ("hv_netvsc: remove locking in netvsc_send()"), the
 locking for MSD (Multi-Send Data) field was removed. This could cause a

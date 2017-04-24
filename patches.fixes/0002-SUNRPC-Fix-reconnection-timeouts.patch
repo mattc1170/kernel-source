@@ -1,0 +1,81 @@
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+Date: Thu, 4 Aug 2016 00:00:33 -0400
+Subject: [PATCH] SUNRPC: Fix reconnection timeouts
+Git-commit: 02910177aede34d6f49e2dc14b1c5c6cd468d94f
+Patch-mainline: v4.8
+References: bsc#1014410
+
+When the connect attempt fails and backs off, we should start the clock
+at the last connection attempt, not time at which we queue up the
+reconnect job.
+
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+Acked-by: NeilBrown <neilb@suse.com>
+
+---
+ net/sunrpc/xprtsock.c |   27 ++++++++++++++++++++-------
+ 1 file changed, 20 insertions(+), 7 deletions(-)
+
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -2175,6 +2175,8 @@ static void xs_udp_finish_connecting(str
+ 		write_unlock_bh(&sk->sk_callback_lock);
+ 	}
+ 	xs_udp_do_set_buffer_size(xprt);
++
++	xprt->stat.connect_start = jiffies;
+ }
+ 
+ static void xs_udp_setup_socket(struct work_struct *work)
+@@ -2385,6 +2387,16 @@ out:
+ 	xprt_wake_pending_tasks(xprt, status);
+ }
+ 
++static unsigned long xs_reconnect_delay(const struct rpc_xprt *xprt)
++{
++	unsigned long start, now = jiffies;
++
++	start = xprt->stat.connect_start + xprt->reestablish_timeout;
++	if (time_after(start, now))
++		return start - now;
++	return 0;
++}
++
+ /**
+  * xs_connect - connect a socket to a remote endpoint
+  * @xprt: pointer to transport structure
+@@ -2402,6 +2414,7 @@ out:
+ static void xs_connect(struct rpc_xprt *xprt, struct rpc_task *task)
+ {
+ 	struct sock_xprt *transport = container_of(xprt, struct sock_xprt, xprt);
++	unsigned long delay = 0;
+ 
+ 	WARN_ON_ONCE(!xprt_lock_connect(xprt, task, transport));
+ 
+@@ -2413,19 +2426,19 @@ static void xs_connect(struct rpc_xprt *
+ 		/* Start by resetting any existing state */
+ 		xs_reset_transport(transport);
+ 
+-		queue_delayed_work(rpciod_workqueue,
+-				   &transport->connect_worker,
+-				   xprt->reestablish_timeout);
++		delay = xs_reconnect_delay(xprt);
++
+ 		xprt->reestablish_timeout <<= 1;
+ 		if (xprt->reestablish_timeout < XS_TCP_INIT_REEST_TO)
+ 			xprt->reestablish_timeout = XS_TCP_INIT_REEST_TO;
+ 		if (xprt->reestablish_timeout > XS_TCP_MAX_REEST_TO)
+ 			xprt->reestablish_timeout = XS_TCP_MAX_REEST_TO;
+-	} else {
++	} else
+ 		dprintk("RPC:       xs_connect scheduled xprt %p\n", xprt);
+-		queue_delayed_work(rpciod_workqueue,
+-				   &transport->connect_worker, 0);
+-	}
++
++	queue_delayed_work(rpciod_workqueue,
++			&transport->connect_worker,
++			delay);
+ }
+ 
+ /**

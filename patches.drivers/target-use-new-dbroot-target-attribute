@@ -1,7 +1,7 @@
 From: Lee Duncan <lduncan@suse.com>
 Date: Thu, 14 Apr 2016 18:18:51 -0700
 Subject: target: use new "dbroot" target attribute
-Reference: bsc#984716
+References: bsc#984716
 Git-commit: fdddf932269a75c3dd1c68d82b9a0fbc1821a2a8
 Patch-mainline: v4.7-rc1
 

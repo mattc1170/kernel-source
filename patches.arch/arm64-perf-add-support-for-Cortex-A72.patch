@@ -4,7 +4,7 @@ Date: Tue, 22 Dec 2015 14:45:35 +0000
 Subject: [PATCH] arm64: perf: add support for Cortex-A72
 Git-commit: 5d7ee87708d4d86fcc32afc9552d05f7625d303d
 Patch-mainline: v4.5-rc1
-Reference: fate#319982
+References: fate#319982
 
 Cortex-A72 has a PMUv3 implementation that is compatible with the PMU
 implemented by Cortex-A57.

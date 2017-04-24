@@ -3,7 +3,7 @@ Date: Tue, 1 Dec 2015 16:43:04 -0800
 Patch-mainline: v4.5-rc1
 Subject: hv_netvsc: Rearrange the hv_negtvsc_packet to be space efficient
 Git-commit: 934d202255ecd03d1f48b1031a2e03cb647e73d9
-Reference: fate#315887
+References: fate#315887
 
 Rearrange the elements of struct hv_negtvsc_packet for optimal layout -
 eliminate unnecessary padding.

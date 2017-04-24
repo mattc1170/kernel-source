@@ -3,7 +3,7 @@ Date: Thu, 14 Apr 2016 20:37:15 -0400
 Patch-mainline: v4.7-rc1
 Subject: ixgbevf: Move API negotiation function into mac_ops
 Git-commit: 7921f4dc4c36e736d7a5b45dfa7b6a755a4fc012
-Reference: fate#320485
+References: fate#320485
 
 This patch moves API negotiation into mac_ops.  The general idea here is
 that with HyperV on the way we need to make certain that anything that will

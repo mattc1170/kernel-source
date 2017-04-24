@@ -1,0 +1,42 @@
+From: Vitaly Kuznetsov <vkuznets@redhat.com>
+Date: Fri, 3 Jun 2016 17:09:24 -0700
+Patch-mainline: v4.9-rc1
+Subject: Drivers: hv: don't leak memory in vmbus_establish_gpadl()
+Git-commit: 7cc80c98070ccc7940fc28811c92cca0a681015d
+References: fate#320485
+
+In some cases create_gpadl_header() allocates submessages but we never
+free them.
+
+Signed-off-by: Vitaly Kuznetsov <vkuznets@redhat.com>
+Signed-off-by: K. Y. Srinivasan <kys@microsoft.com>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Acked-by: <ohering@suse.de>
+---
+ drivers/hv/channel.c | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/hv/channel.c b/drivers/hv/channel.c
+index 2b109e8..a68830c 100644
+--- a/drivers/hv/channel.c
++++ b/drivers/hv/channel.c
+@@ -388,7 +388,7 @@ int vmbus_establish_gpadl(struct vmbus_channel *channel, void *kbuffer,
+ 	struct vmbus_channel_gpadl_header *gpadlmsg;
+ 	struct vmbus_channel_gpadl_body *gpadl_body;
+ 	struct vmbus_channel_msginfo *msginfo = NULL;
+-	struct vmbus_channel_msginfo *submsginfo;
++	struct vmbus_channel_msginfo *submsginfo, *tmp;
+ 	struct list_head *curr;
+ 	u32 next_gpadl_handle;
+ 	unsigned long flags;
+@@ -445,6 +445,10 @@ cleanup:
+ 	spin_lock_irqsave(&vmbus_connection.channelmsg_lock, flags);
+ 	list_del(&msginfo->msglistentry);
+ 	spin_unlock_irqrestore(&vmbus_connection.channelmsg_lock, flags);
++	list_for_each_entry_safe(submsginfo, tmp, &msginfo->submsglist,
++				 msglistentry) {
++		kfree(submsginfo);
++	}
+ 
+ 	kfree(msginfo);
+ 	return ret;

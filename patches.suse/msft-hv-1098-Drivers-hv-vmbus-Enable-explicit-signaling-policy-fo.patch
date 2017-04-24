@@ -1,0 +1,156 @@
+From: "K. Y. Srinivasan" <kys@microsoft.com>
+Date: Fri, 1 Jul 2016 16:26:35 -0700
+Patch-mainline: v4.9-rc1
+Subject: Drivers: hv: vmbus: Enable explicit signaling policy for NIC channels
+Git-commit: ccef9bcc02ee63ac171ea9f0d51e04b3e55b3a12
+References: fate#320485
+
+For synthetic NIC channels, enable explicit signaling policy as netvsc wants to
+explicitly control when the host is to be signaled.
+
+Signed-off-by: K. Y. Srinivasan <kys@microsoft.com>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Acked-by: <ohering@suse.de>
+---
+ drivers/hv/channel.c      | 18 ++++--------------
+ drivers/hv/channel_mgmt.c |  2 ++
+ drivers/hv/hyperv_vmbus.h |  3 ++-
+ drivers/hv/ring_buffer.c  | 15 ++++++++++++---
+ 4 files changed, 20 insertions(+), 18 deletions(-)
+
+diff --git a/drivers/hv/channel.c b/drivers/hv/channel.c
+index e47d37d..9a49505 100644
+--- a/drivers/hv/channel.c
++++ b/drivers/hv/channel.c
+@@ -650,7 +650,7 @@ int vmbus_sendpacket_ctl(struct vmbus_channel *channel, void *buffer,
+ 	bufferlist[2].iov_len = (packetlen_aligned - packetlen);
+ 
+ 	ret = hv_ringbuffer_write(&channel->outbound, bufferlist, num_vecs,
+-				  &signal, lock);
++				  &signal, lock, channel->signal_policy);
+ 
+ 	/*
+ 	 * Signalling the host is conditional on many factors:
+@@ -671,11 +671,6 @@ int vmbus_sendpacket_ctl(struct vmbus_channel *channel, void *buffer,
+ 	 * mechanism which can hurt the performance otherwise.
+ 	 */
+ 
+-	if (channel->signal_policy)
+-		signal = true;
+-	else
+-		kick_q = true;
+-
+ 	if (((ret == 0) && kick_q && signal) ||
+ 	    (ret && !is_hvsock_channel(channel)))
+ 		vmbus_setevent(channel);
+@@ -768,7 +763,7 @@ int vmbus_sendpacket_pagebuffer_ctl(struct vmbus_channel *channel,
+ 	bufferlist[2].iov_len = (packetlen_aligned - packetlen);
+ 
+ 	ret = hv_ringbuffer_write(&channel->outbound, bufferlist, 3,
+-				  &signal, lock);
++				  &signal, lock, channel->signal_policy);
+ 
+ 	/*
+ 	 * Signalling the host is conditional on many factors:
+@@ -786,11 +781,6 @@ int vmbus_sendpacket_pagebuffer_ctl(struct vmbus_channel *channel,
+ 	 * enough condition that it should not matter.
+ 	 */
+ 
+-	if (channel->signal_policy)
+-		signal = true;
+-	else
+-		kick_q = true;
+-
+ 	if (((ret == 0) && kick_q && signal) || (ret))
+ 		vmbus_setevent(channel);
+ 
+@@ -852,7 +842,7 @@ int vmbus_sendpacket_mpb_desc(struct vmbus_channel *channel,
+ 	bufferlist[2].iov_len = (packetlen_aligned - packetlen);
+ 
+ 	ret = hv_ringbuffer_write(&channel->outbound, bufferlist, 3,
+-				  &signal, lock);
++				  &signal, lock, channel->signal_policy);
+ 
+ 	if (ret == 0 && signal)
+ 		vmbus_setevent(channel);
+@@ -917,7 +907,7 @@ int vmbus_sendpacket_multipagebuffer(struct vmbus_channel *channel,
+ 	bufferlist[2].iov_len = (packetlen_aligned - packetlen);
+ 
+ 	ret = hv_ringbuffer_write(&channel->outbound, bufferlist, 3,
+-				  &signal, lock);
++				  &signal, lock, channel->signal_policy);
+ 
+ 	if (ret == 0 && signal)
+ 		vmbus_setevent(channel);
+diff --git a/drivers/hv/channel_mgmt.c b/drivers/hv/channel_mgmt.c
+index 8818b92..d8b64ba 100644
+--- a/drivers/hv/channel_mgmt.c
++++ b/drivers/hv/channel_mgmt.c
+@@ -426,6 +426,8 @@ static void vmbus_process_offer(struct vmbus_channel *newchannel)
+ 	}
+ 
+ 	dev_type = hv_get_dev_type(&newchannel->offermsg.offer.if_type);
++	if (dev_type == HV_NIC)
++		set_channel_signal_state(newchannel, HV_SIGNAL_POLICY_EXPLICIT);
+ 
+ 	init_vp_index(newchannel, dev_type);
+ 
+diff --git a/drivers/hv/hyperv_vmbus.h b/drivers/hv/hyperv_vmbus.h
+index dfa9fac..ddcc348 100644
+--- a/drivers/hv/hyperv_vmbus.h
++++ b/drivers/hv/hyperv_vmbus.h
+@@ -529,7 +529,8 @@ void hv_ringbuffer_cleanup(struct hv_ring_buffer_info *ring_info);
+ 
+ int hv_ringbuffer_write(struct hv_ring_buffer_info *ring_info,
+ 		    struct kvec *kv_list,
+-		    u32 kv_count, bool *signal, bool lock);
++		    u32 kv_count, bool *signal, bool lock,
++		    enum hv_signal_policy policy);
+ 
+ int hv_ringbuffer_read(struct hv_ring_buffer_info *inring_info,
+ 		       void *buffer, u32 buflen, u32 *buffer_actual_len,
+diff --git a/drivers/hv/ring_buffer.c b/drivers/hv/ring_buffer.c
+index fe586bf..e3edcae 100644
+--- a/drivers/hv/ring_buffer.c
++++ b/drivers/hv/ring_buffer.c
+@@ -66,12 +66,20 @@ u32 hv_end_read(struct hv_ring_buffer_info *rbi)
+  *	   arrived.
+  */
+ 
+-static bool hv_need_to_signal(u32 old_write, struct hv_ring_buffer_info *rbi)
++static bool hv_need_to_signal(u32 old_write, struct hv_ring_buffer_info *rbi,
++			      enum hv_signal_policy policy)
+ {
+ 	virt_mb();
+ 	if (READ_ONCE(rbi->ring_buffer->interrupt_mask))
+ 		return false;
+ 
++	/*
++	 * When the client wants to control signaling,
++	 * we only honour the host interrupt mask.
++	 */
++	if (policy == HV_SIGNAL_POLICY_EXPLICIT)
++		return true;
++
+ 	/* check interrupt_mask before read_index */
+ 	virt_rmb();
+ 	/*
+@@ -264,7 +272,8 @@ void hv_ringbuffer_cleanup(struct hv_ring_buffer_info *ring_info)
+ 
+ /* Write to the ring buffer. */
+ int hv_ringbuffer_write(struct hv_ring_buffer_info *outring_info,
+-		    struct kvec *kv_list, u32 kv_count, bool *signal, bool lock)
++		    struct kvec *kv_list, u32 kv_count, bool *signal, bool lock,
++		    enum hv_signal_policy policy)
+ {
+ 	int i = 0;
+ 	u32 bytes_avail_towrite;
+@@ -326,7 +335,7 @@ int hv_ringbuffer_write(struct hv_ring_buffer_info *outring_info,
+ 	if (lock)
+ 		spin_unlock_irqrestore(&outring_info->ring_lock, flags);
+ 
+-	*signal = hv_need_to_signal(old_write, outring_info);
++	*signal = hv_need_to_signal(old_write, outring_info, policy);
+ 	return 0;
+ }
+ 

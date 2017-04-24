@@ -3,7 +3,7 @@ Date: Tue, 19 Apr 2016 19:17:57 -0700
 Patch-mainline: v4.7-rc1
 Subject: ixgbevf: Support Windows hosts (Hyper-V)
 Git-commit: c6d45171d706c2b5efa3d5ee7a8260c14b6367c0
-Reference: fate#320485
+References: fate#320485
 
 On Hyper-V, the VF/PF communication is a via software mediated path
 as opposed to the hardware mailbox. Make the necessary

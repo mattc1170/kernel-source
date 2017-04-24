@@ -1,0 +1,39 @@
+From 16a20b52d1b0c900ea2e7363cf6e10267a445002 Mon Sep 17 00:00:00 2001
+From: Brian King <brking@linux.vnet.ibm.com>
+Date: Wed, 15 Mar 2017 16:58:42 -0500
+Subject: [PATCH] scsi: ipr: Driver version 2.6.4
+
+References: bsc#1031555, fate#321595
+Patch-mainline: queued, next-20170328
+Git-repo: https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git
+Git-commit: 16a20b52d1b0c900ea2e7363cf6e10267a445002
+
+Bump driver version
+
+Signed-off-by: Brian King <brking@linux.vnet.ibm.com>
+Reviewed-by: Wendy Xiong <wenxiong@linux.vnet.ibm.com>
+Tested-by: Wendy Xiong <wenxiong@linux.vnet.ibm.com>
+Signed-off-by: Martin K. Petersen <martin.petersen@oracle.com>
+Acked-by: Michal Suchanek <msuchanek@suse.de>
+---
+ drivers/scsi/ipr.h | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/scsi/ipr.h b/drivers/scsi/ipr.h
+index b7d2e98eb45b..e98a87a65335 100644
+--- a/drivers/scsi/ipr.h
++++ b/drivers/scsi/ipr.h
+@@ -39,8 +39,8 @@
+ /*
+  * Literals
+  */
+-#define IPR_DRIVER_VERSION "2.6.3"
+-#define IPR_DRIVER_DATE "(October 17, 2015)"
++#define IPR_DRIVER_VERSION "2.6.4"
++#define IPR_DRIVER_DATE "(March 14, 2017)"
+ 
+ /*
+  * IPR_MAX_CMD_PER_LUN: This defines the maximum number of outstanding
+-- 
+2.10.2
+

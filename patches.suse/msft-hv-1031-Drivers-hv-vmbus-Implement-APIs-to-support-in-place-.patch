@@ -3,7 +3,7 @@ Date: Sat, 2 Apr 2016 17:59:51 -0700
 Patch-mainline: v4.7-rc1
 Subject: Drivers: hv: vmbus: Implement APIs to support "in place" consumption of vmbus packets
 Git-commit: ab028db41ca9174caab7f9e3fc0a2e7f4a418410
-Reference: fate#320485
+References: fate#320485
 
 Implement APIs for in-place consumption of vmbus packets. Currently, each
 packet is copied and processed one at a time and as part of processing

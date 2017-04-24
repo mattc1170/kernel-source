@@ -1,0 +1,61 @@
+From: Vitaly Kuznetsov <vkuznets@redhat.com>
+Date: Fri, 2 Sep 2016 05:58:21 -0700
+Patch-mainline: v4.9-rc1
+Subject: Drivers: hv: ring_buffer: use wrap around mappings in hv_copy{from, to}_ringbuffer()
+Git-commit: f24f0b495b17df33c03f3b758b1461385e9f0e50
+References: fate#320485
+
+With wrap around mappings for ring buffers we can always use a single
+memcpy() to do the job.
+
+Signed-off-by: Vitaly Kuznetsov <vkuznets@redhat.com>
+Signed-off-by: K. Y. Srinivasan <kys@microsoft.com>
+Tested-by: Dexuan Cui <decui@microsoft.com>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Acked-by: <ohering@suse.de>
+---
+ drivers/hv/ring_buffer.c | 24 +++---------------------
+ 1 file changed, 3 insertions(+), 21 deletions(-)
+
+diff --git a/drivers/hv/ring_buffer.c b/drivers/hv/ring_buffer.c
+index 7e21c2c..08043da 100644
+--- a/drivers/hv/ring_buffer.c
++++ b/drivers/hv/ring_buffer.c
+@@ -172,18 +172,7 @@ static u32 hv_copyfrom_ringbuffer(
+ 	void *ring_buffer = hv_get_ring_buffer(ring_info);
+ 	u32 ring_buffer_size = hv_get_ring_buffersize(ring_info);
+ 
+-	u32 frag_len;
+-
+-	/* wrap-around detected at the src */
+-	if (destlen > ring_buffer_size - start_read_offset) {
+-		frag_len = ring_buffer_size - start_read_offset;
+-
+-		memcpy(dest, ring_buffer + start_read_offset, frag_len);
+-		memcpy(dest + frag_len, ring_buffer, destlen - frag_len);
+-	} else
+-
+-		memcpy(dest, ring_buffer + start_read_offset, destlen);
+-
++	memcpy(dest, ring_buffer + start_read_offset, destlen);
+ 
+ 	start_read_offset += destlen;
+ 	start_read_offset %= ring_buffer_size;
+@@ -204,15 +193,8 @@ static u32 hv_copyto_ringbuffer(
+ {
+ 	void *ring_buffer = hv_get_ring_buffer(ring_info);
+ 	u32 ring_buffer_size = hv_get_ring_buffersize(ring_info);
+-	u32 frag_len;
+-
+-	/* wrap-around detected! */
+-	if (srclen > ring_buffer_size - start_write_offset) {
+-		frag_len = ring_buffer_size - start_write_offset;
+-		memcpy(ring_buffer + start_write_offset, src, frag_len);
+-		memcpy(ring_buffer, src + frag_len, srclen - frag_len);
+-	} else
+-		memcpy(ring_buffer + start_write_offset, src, srclen);
++
++	memcpy(ring_buffer + start_write_offset, src, srclen);
+ 
+ 	start_write_offset += srclen;
+ 	start_write_offset %= ring_buffer_size;

@@ -4,7 +4,7 @@ Date: Mon, 21 Dec 2015 10:51:01 +1100
 Subject: [PATCH] drivers: md: use ktime_get_real_seconds()
 Git-commit: 9ebc6ef188a0656f3620835f9be7fe22c1644c1c
 Patch-mainline: v4.5-rc1
-Reference: fate#320291
+References: fate#320291
 
 get_seconds() API is not y2038 safe on 32 bit systems and the API
 is deprecated. Replace it with calls to ktime_get_real_seconds()

@@ -3,7 +3,7 @@ Date: Mon, 14 Dec 2015 19:01:53 -0800
 Patch-mainline: v4.5-rc1
 Subject: Drivers: hv: utils: fix memory leak on on_msg() failure
 Git-commit: 1f75338b6fece2bbd42ac3623830c65e2df6e031
-Reference: fate#315887
+References: fate#315887
 
 inmsg should be freed in case of on_msg() failure to avoid memory leak.
 Preserve the error code from on_msg().

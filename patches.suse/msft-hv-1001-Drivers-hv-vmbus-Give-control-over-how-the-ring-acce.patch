@@ -3,7 +3,7 @@ Date: Wed, 27 Jan 2016 22:29:45 -0800
 Patch-mainline: v4.6-rc1
 Subject: Drivers: hv: vmbus: Give control over how the ring access is serialized
 Git-commit: fe760e4d64fe5c17c39e86c410d41f6587ee88bc
-Reference: fate#320485
+References: fate#320485
 
 On the channel send side, many of the VMBUS
 device drivers explicity serialize access to the

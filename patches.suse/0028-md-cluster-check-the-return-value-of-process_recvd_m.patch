@@ -4,7 +4,7 @@ Date: Tue, 3 May 2016 22:22:15 -0400
 Subject: [PATCH] md-cluster: check the return value of process_recvd_msg
 Git-commit: 1fa9a1ad0a9db3c745fe0c1bfa73fd87901fd7f3
 Patch-mainline: v4.7-rc1
-Reference: fate#316335
+References: fate#316335
 
 We don't need to run the full path of recv_daemon
 if process_recvd_msg doesn't return 0.

@@ -4,7 +4,7 @@ Date: Wed, 9 Mar 2016 10:08:38 -0800
 Subject: [PATCH] md/raid5: output stripe state for debug
 Git-commit: fb3229d5cd4c8e65178afe55f6727ff645cdb81a
 Patch-mainline: v4.6-rc1
-Reference: fate#320291
+References: fate#320291
 
 Neil recently fixed an obscure race in break_stripe_batch_list. Debug would be
 quite convenient if we know the stripe state. This is what this patch does.

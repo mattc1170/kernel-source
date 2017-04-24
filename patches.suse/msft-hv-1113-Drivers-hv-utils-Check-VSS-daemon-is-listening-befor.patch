@@ -1,0 +1,70 @@
+From: Alex Ng <alexng@messages.microsoft.com>
+Date: Fri, 2 Sep 2016 05:58:25 -0700
+Patch-mainline: v4.9-rc1
+Subject: Drivers: hv: utils: Check VSS daemon is listening before a hot backup
+Git-commit: db886e4d24c2b3d334be2cc1bd1bd05d547eb4c4
+References: fate#320485
+
+Hyper-V host will send a VSS_OP_HOT_BACKUP request to check if guest is
+ready for a live backup/snapshot. The driver should respond to the check
+only if the daemon is running and listening to requests. This allows the
+host to fallback to standard snapshots in case the VSS daemon is not
+running.
+
+Signed-off-by: Alex Ng <alexng@messages.microsoft.com>
+Signed-off-by: K. Y. Srinivasan <kys@microsoft.com>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Acked-by: <ohering@suse.de>
+---
+ drivers/hv/hv_snapshot.c | 9 ++++++---
+ tools/hv/hv_vss_daemon.c | 3 +++
+ 2 files changed, 9 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/hv/hv_snapshot.c b/drivers/hv/hv_snapshot.c
+index c4013c8..a670713 100644
+--- a/drivers/hv/hv_snapshot.c
++++ b/drivers/hv/hv_snapshot.c
+@@ -142,6 +142,11 @@ static int vss_on_msg(void *msg, int len)
+ 		return vss_handle_handshake(vss_msg);
+ 	} else if (vss_transaction.state == HVUTIL_USERSPACE_REQ) {
+ 		vss_transaction.state = HVUTIL_USERSPACE_RECV;
++
++		if (vss_msg->vss_hdr.operation == VSS_OP_HOT_BACKUP)
++			vss_transaction.msg->vss_cf.flags =
++				VSS_HBU_NO_AUTO_RECOVERY;
++
+ 		if (cancel_delayed_work_sync(&vss_timeout_work)) {
+ 			vss_respond_to_host(vss_msg->error);
+ 			/* Transaction is finished, reset the state. */
+@@ -202,6 +207,7 @@ static void vss_handle_request(struct work_struct *dummy)
+ 	 */
+ 	case VSS_OP_THAW:
+ 	case VSS_OP_FREEZE:
++	case VSS_OP_HOT_BACKUP:
+ 		if (vss_transaction.state < HVUTIL_READY) {
+ 			/* Userspace is not registered yet */
+ 			vss_respond_to_host(HV_E_FAIL);
+@@ -210,9 +216,6 @@ static void vss_handle_request(struct work_struct *dummy)
+ 		vss_transaction.state = HVUTIL_HOSTMSG_RECEIVED;
+ 		vss_send_op();
+ 		return;
+-	case VSS_OP_HOT_BACKUP:
+-		vss_transaction.msg->vss_cf.flags = VSS_HBU_NO_AUTO_RECOVERY;
+-		break;
+ 	case VSS_OP_GET_DM_INFO:
+ 		vss_transaction.msg->dm_info.flags = 0;
+ 		break;
+diff --git a/tools/hv/hv_vss_daemon.c b/tools/hv/hv_vss_daemon.c
+index 5d51d6f..e082980 100644
+--- a/tools/hv/hv_vss_daemon.c
++++ b/tools/hv/hv_vss_daemon.c
+@@ -250,6 +250,9 @@ int main(int argc, char *argv[])
+ 				syslog(LOG_ERR, "/etc/fstab and /proc/mounts");
+ 			}
+ 			break;
++		case VSS_OP_HOT_BACKUP:
++			syslog(LOG_INFO, "VSS: op=CHECK HOT BACKUP\n");
++			break;
+ 		default:
+ 			syslog(LOG_ERR, "Illegal op:%d\n", op);
+ 		}

@@ -3,7 +3,7 @@ Date: Mon, 14 Dec 2015 16:01:35 -0800
 Patch-mainline: v4.5-rc1
 Subject: tools: hv: remove repeated HV_FCOPY string
 Git-commit: 6dfb867cea9e93ae9220f0b2e702b0440e4c8b4b
-Reference: fate#315887
+References: fate#315887
 
 HV_FCOPY is already used as identifier in syslog.
 

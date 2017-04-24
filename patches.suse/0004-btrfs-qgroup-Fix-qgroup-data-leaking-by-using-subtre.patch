@@ -3,7 +3,8 @@ From: Qu Wenruo <quwenruo@cn.fujitsu.com>
 Date: Tue, 18 Oct 2016 09:31:29 +0800
 Subject: [PATCH 4/4] btrfs: qgroup: Fix qgroup data leaking by using subtree tracing
 References: bsc983087, bsc986255
-Patch-mainline: Submitted, https://patchwork.kernel.org/patch/9380975/
+Patch-mainline: v4.10-rc1
+Git-commit: 824d8dff8846533c9f1f9b1eabb0c03959e989ca
 
 Commit 62b99540a1d91e464 (btrfs: relocation: Fix leaking qgroups numbers
 on data extents) only fixes the problem partly.

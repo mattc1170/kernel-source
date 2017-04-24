@@ -4,7 +4,7 @@ Date: Mon, 14 Mar 2016 17:01:38 +0800
 Subject: [PATCH] md/bitmap: remove redundant return in bitmap_checkpage
 Git-commit: c6f0b9f195416e2d3c474e51190b6aa0c238aa36
 Patch-mainline: v4.6-rc1
-Reference: fate#320291
+References: fate#320291
 
 The "return 0" is not needed since bitmap_checkpage
 will finally return 0 for the case.

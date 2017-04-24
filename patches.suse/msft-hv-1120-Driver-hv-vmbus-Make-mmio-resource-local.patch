@@ -1,0 +1,33 @@
+From: Stephen Hemminger <sthemmin@microsoft.com>
+Date: Wed, 7 Sep 2016 05:39:33 -0700
+Patch-mainline: v4.9-rc1
+Subject: Driver: hv: vmbus: Make mmio resource local
+Git-commit: e2e808413425d82c8f162933a30304d10a5df231
+References: fate#320485
+
+This fixes a sparse warning because hyperv_mmio resources
+are only used in this one file and should be static.
+
+Signed-off-by: Stephen Hemminger <sthemmin@microsoft.com>
+Signed-off-by: K. Y. Srinivasan <kys@microsoft.com>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Acked-by: <ohering@suse.de>
+---
+ drivers/hv/vmbus_drv.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/hv/vmbus_drv.c b/drivers/hv/vmbus_drv.c
+index fedf629..6cbe074 100644
+--- a/drivers/hv/vmbus_drv.c
++++ b/drivers/hv/vmbus_drv.c
+@@ -105,8 +105,8 @@ static struct notifier_block hyperv_panic_block = {
+ 
+ static const char *fb_mmio_name = "fb_range";
+ static struct resource *fb_mmio;
+-struct resource *hyperv_mmio;
+-DEFINE_SEMAPHORE(hyperv_mmio_lock);
++static struct resource *hyperv_mmio;
++static DEFINE_SEMAPHORE(hyperv_mmio_lock);
+ 
+ static int vmbus_exists(void)
+ {

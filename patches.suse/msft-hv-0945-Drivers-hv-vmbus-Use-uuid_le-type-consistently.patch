@@ -3,7 +3,7 @@ Date: Mon, 14 Dec 2015 16:01:43 -0800
 Patch-mainline: v4.5-rc1
 Subject: Drivers: hv: vmbus: Use uuid_le type consistently
 Git-commit: af3ff643ea91ba64dd8d0b1cbed54d44512f96cd
-Reference: fate#315887
+References: fate#315887
 
 Consistently use uuid_le type in the Hyper-V driver code.
 

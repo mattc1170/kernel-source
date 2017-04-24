@@ -3,7 +3,7 @@ Date: Mon, 14 Dec 2015 19:01:59 -0800
 Patch-mainline: v4.5-rc1
 Subject: Drivers: hv: ring_buffer: remove code duplication from hv_ringbuffer_peek/read()
 Git-commit: b5f53dde8d8e84a6ee200dbd0bd90a400a8fe1a1
-Reference: fate#315887
+References: fate#315887
 
 hv_ringbuffer_peek() does the same as hv_ringbuffer_read() without
 advancing the read index. The only functional change this patch brings

@@ -1,0 +1,106 @@
+From: "Ji-Ze Hong (Peter Hong)" <hpeter@gmail.com>
+Subject: [PATCH] serial: 8250_fintek: fix the mismatched IRQ mode
+Patch-mainline: v4.8
+Git-commit: 4da22f1418cb6f09e974499794db2f5e59fe8090
+References: boo#1009546
+
+Some BIOS only use _OSI("Linux") to distinguish between Linux & Windows.
+Apply Level/Low to UART trigger mode if Windows, Edge/High mode otherwise.
+But since 2.6.23 the mainline kernel no longer returns true for
+_OSI(“Linux”).
+
+The default IRQ0~15 trigger mode in Linux is Edge/High mode without
+ACPI MADT override. It mismatches IRQ mode and makes UART malfunctional on
+such motherboard.
+
+This patch will check the current IRQ mode and apply correct mode to UART.
+
+The following link is F81216AD spec PDF:
+http://html.alldatasheet.com/html-pdf/257956/FINTEK/F81216AD/5569/
+25/F81216AD.html
+
+LDN0~3
+	70h: IRQ channel & Mode register
+		Bit 6~5	:
+			00	: Active low level mode
+			01	: Active high edge mode
+		Bit 4	: Sharing Flag (0: not share/1: share)
+		Bit 3~0 : IRQ channel
+
+Signed-off-by: Ji-Ze Hong (Peter Hong) <hpeter+linux_kernel@gmail.com>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Signed-off-by: Matwey V. Kornilov <matwey.kornilov@gmail.com>
+Signed-off-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/tty/serial/8250/8250_fintek.c |   36 +++++++++++++++++++++++++++++++++-
+ 1 file changed, 35 insertions(+), 1 deletion(-)
+
+--- a/drivers/tty/serial/8250/8250_fintek.c
++++ b/drivers/tty/serial/8250/8250_fintek.c
+@@ -13,6 +13,7 @@
+ #include <linux/pnp.h>
+ #include <linux/kernel.h>
+ #include <linux/serial_core.h>
++#include <linux/irq.h>
+ #include  "8250.h"
+ 
+ #define ADDR_PORT 0
+@@ -30,6 +31,12 @@
+ #define IO_ADDR2 0x60
+ #define LDN 0x7
+ 
++#define IRQ_MODE	0x70
++#define IRQ_SHARE	BIT(4)
++#define IRQ_MODE_MASK	(BIT(6) | BIT(5))
++#define IRQ_LEVEL_LOW	0
++#define IRQ_EDGE_HIGH	BIT(5)
++
+ #define RS485  0xF0
+ #define RTS_INVERT BIT(5)
+ #define RS485_URA BIT(4)
+@@ -176,10 +183,37 @@ static int find_base_port(struct fintek_
+ 	return -ENODEV;
+ }
+ 
++static int fintek_8250_set_irq_mode(struct fintek_8250 *pdata, bool level_mode)
++{
++	int status;
++	u8 tmp;
++
++	status = fintek_8250_enter_key(pdata->base_port, pdata->key);
++	if (status)
++		return status;
++
++	outb(LDN, pdata->base_port + ADDR_PORT);
++	outb(pdata->index, pdata->base_port + DATA_PORT);
++
++	outb(IRQ_MODE, pdata->base_port + ADDR_PORT);
++	tmp = inb(pdata->base_port + DATA_PORT);
++
++	tmp &= ~IRQ_MODE_MASK;
++	tmp |= IRQ_SHARE;
++	if (!level_mode)
++		tmp |= IRQ_EDGE_HIGH;
++
++	outb(tmp, pdata->base_port + DATA_PORT);
++	fintek_8250_exit_key(pdata->base_port);
++	return 0;
++}
++
+ int fintek_8250_probe(struct uart_8250_port *uart)
+ {
+ 	struct fintek_8250 *pdata;
+ 	struct fintek_8250 probe_data;
++	struct irq_data *irq_data = irq_get_irq_data(uart->port.irq);
++	bool level_mode = irqd_is_level_type(irq_data);
+ 
+ 	if (find_base_port(&probe_data, uart->port.iobase))
+ 		return -ENODEV;
+@@ -192,5 +226,5 @@ int fintek_8250_probe(struct uart_8250_p
+ 	uart->port.rs485_config = fintek_8250_rs485_config;
+ 	uart->port.private_data = pdata;
+ 
+-	return 0;
++	return fintek_8250_set_irq_mode(pdata, level_mode);
+ }

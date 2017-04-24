@@ -1,6 +1,7 @@
 From: NeilBrown <neilb@suse.de>
 Subject: Use FAILFAST on metadata writes where appropriate
-Patch-mainline: Not yet, "failfast" is not very well defined...
+Git-commit: 46533ff7fefb7e9e3539494f5873b00091caa8eb
+Patch-mainline: v4.10
 References: FATE#311379
 
 If we get a failure writing metadata but the device doesn't fail,

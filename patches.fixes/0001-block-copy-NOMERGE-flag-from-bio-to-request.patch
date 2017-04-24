@@ -1,0 +1,29 @@
+From: Shaohua Li <shli@fb.com>
+Date: Mon, 25 Apr 2016 16:50:14 -0700
+Subject: [PATCH] block: copy NOMERGE flag from bio to request
+Git-commit: 1fcbcc333f1fae6e11cc0839a6e72bc1a3e830bf
+Patch-mainline: v4.7
+References: bsc#1030070
+
+bio might have NOMERGE flag set, for example blk_queue_split sets it.
+When we initiate request, copy this flag too.
+
+Signed-off-by: Shaohua Li <shli@fb.com>
+Signed-off-by: Jens Axboe <axboe@fb.com>
+Acked-by: NeilBrown <neilb@suse.com>
+
+---
+ include/linux/blk_types.h |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+--- a/include/linux/blk_types.h
++++ b/include/linux/blk_types.h
+@@ -208,7 +208,7 @@ enum rq_flag_bits {
+ #define REQ_COMMON_MASK \
+ 	(REQ_WRITE | REQ_FAILFAST_MASK | REQ_SYNC | REQ_META | REQ_PRIO | \
+ 	 REQ_DISCARD | REQ_WRITE_SAME | REQ_NOIDLE | REQ_FLUSH | REQ_FUA | \
+-	 REQ_SECURE | REQ_INTEGRITY)
++	 REQ_SECURE | REQ_INTEGRITY | REQ_NOMERGE)
+ #define REQ_CLONE_MASK		REQ_COMMON_MASK
+ 
+ #define BIO_NO_ADVANCE_ITER_MASK	(REQ_DISCARD|REQ_WRITE_SAME)

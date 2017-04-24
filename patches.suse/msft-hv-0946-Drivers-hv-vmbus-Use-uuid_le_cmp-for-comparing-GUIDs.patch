@@ -3,7 +3,7 @@ Date: Mon, 14 Dec 2015 16:01:44 -0800
 Patch-mainline: v4.5-rc1
 Subject: Drivers: hv: vmbus: Use uuid_le_cmp() for comparing GUIDs
 Git-commit: 4ae9250893485f380275e7d5cb291df87c4d9710
-Reference: fate#315887
+References: fate#315887
 
 Use uuid_le_cmp() for comparing GUIDs.
 

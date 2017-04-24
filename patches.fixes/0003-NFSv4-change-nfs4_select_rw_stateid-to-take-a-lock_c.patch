@@ -2,7 +2,8 @@ From: NeilBrown <neilb@suse.com>
 Date: Wed, 5 Oct 2016 16:14:33 +1100
 Subject: [PATCH] NFSv4: change nfs4_select_rw_stateid to take a lock_context
  inplace of lock_owner
-Patch-mainline: Submitted, Thu, 13 Oct 2016 15:26:47 +1100 - linux-nfs@vger.kernel.org
+Patch-mainline: v4.10
+Git-commit: 1739347549653dc2463d208d7039f5e97b8f1e8b
 References: bnc#998689
 
 The only time that a lock_context is not immediately available is in

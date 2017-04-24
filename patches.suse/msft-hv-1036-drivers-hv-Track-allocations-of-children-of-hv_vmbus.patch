@@ -3,7 +3,7 @@ Date: Tue, 5 Apr 2016 10:22:54 -0700
 Patch-mainline: v4.7-rc1
 Subject: drivers:hv: Track allocations of children of hv_vmbus in private resource tree
 Git-commit: be000f93e5d71f5d43dd722f8eb110b069f9d8a2
-Reference: fate#320485
+References: fate#320485
 
 This patch changes vmbus_allocate_mmio() and vmbus_free_mmio() so
 that when child paravirtual devices allocate memory-mapped I/O

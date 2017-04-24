@@ -3,7 +3,7 @@ From: Jan Glauber <jglauber@cavium.com>
 Date: Thu, 18 Feb 2016 17:50:14 +0100
 Patch-mainline: v4.6-rc1
 Git-commit: c210ae80e4e7083e03bee13535d11fc2c991cf71
-Reference: fate#319982
+References: fate#319982
 
 ARMv8.1 increases the PMU event number space to 16 bit so increase
 the EVTYPE mask.

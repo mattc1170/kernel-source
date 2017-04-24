@@ -1,0 +1,33 @@
+From: Vitaly Kuznetsov <vkuznets@redhat.com>
+Date: Wed, 6 Jul 2016 18:24:10 -0700
+Patch-mainline: v4.9-rc1
+Subject: Tools: hv: kvp: ensure kvp device fd is closed on exec
+Git-commit: 26840437cbd6d3625ea6ab34e17cd34bb810c861
+References: fate#320485
+
+KVP daemon does fork()/exec() (with popen()) so we need to close our fds
+to avoid sharing them with child processes. The immediate implication of
+not doing so I see is SELinux complaining about 'ip' trying to access
+'/dev/vmbus/hv_kvp'.
+
+Signed-off-by: Vitaly Kuznetsov <vkuznets@redhat.com>
+Signed-off-by: K. Y. Srinivasan <kys@microsoft.com>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Acked-by: <ohering@suse.de>
+---
+ tools/hv/hv_kvp_daemon.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/tools/hv/hv_kvp_daemon.c b/tools/hv/hv_kvp_daemon.c
+index 0d9f48e..bc7adb8 100644
+--- a/tools/hv/hv_kvp_daemon.c
++++ b/tools/hv/hv_kvp_daemon.c
+@@ -1433,7 +1433,7 @@ int main(int argc, char *argv[])
+ 	openlog("KVP", 0, LOG_USER);
+ 	syslog(LOG_INFO, "KVP starting; pid is:%d", getpid());
+ 
+-	kvp_fd = open("/dev/vmbus/hv_kvp", O_RDWR);
++	kvp_fd = open("/dev/vmbus/hv_kvp", O_RDWR | O_CLOEXEC);
+ 
+ 	if (kvp_fd < 0) {
+ 		syslog(LOG_ERR, "open /dev/vmbus/hv_kvp failed; error: %d %s",

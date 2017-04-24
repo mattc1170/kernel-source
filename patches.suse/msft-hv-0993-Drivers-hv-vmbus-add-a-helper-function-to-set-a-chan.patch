@@ -3,7 +3,7 @@ Date: Wed, 27 Jan 2016 22:29:37 -0800
 Patch-mainline: v4.6-rc1
 Subject: Drivers: hv: vmbus: add a helper function to set a channel's pending send size
 Git-commit: 3c75354d043ad546148d6992e40033ecaefc5ea5
-Reference: fate#320485
+References: fate#320485
 
 This will be used by the coming net/hvsock driver.
 

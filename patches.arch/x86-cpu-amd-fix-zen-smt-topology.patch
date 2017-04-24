@@ -1,0 +1,47 @@
+From: Yazen Ghannam <Yazen.Ghannam@amd.com>
+Date: Sun, 5 Feb 2017 11:50:22 +0100
+Subject: x86/CPU/AMD: Fix Zen SMT topology
+Git-commit: 08b259631b5a1d912af4832847b5642f377d9101
+Patch-mainline: v4.10-rc8
+References: bsc#1027512
+
+After:
+
+  a33d331761bc ("x86/CPU/AMD: Fix Bulldozer topology")
+
+our  SMT scheduling topology for Fam17h systems is broken, because
+the ThreadId is included in the ApicId when SMT is enabled.
+
+So, without further decoding cpu_core_id is unique for each thread
+rather than the same for threads on the same core. This didn't affect
+systems with SMT disabled. Make cpu_core_id be what it is defined to be.
+
+Signed-off-by: Yazen Ghannam <Yazen.Ghannam@amd.com>
+Signed-off-by: Borislav Petkov <bp@suse.de>
+Cc: <stable@vger.kernel.org> # 4.9
+Cc: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: Peter Zijlstra <peterz@infradead.org>
+Cc: Thomas Gleixner <tglx@linutronix.de>
+Link: http://lkml.kernel.org/r/20170205105022.8705-2-bp@alien8.de
+Signed-off-by: Ingo Molnar <mingo@kernel.org>
+---
+ arch/x86/kernel/cpu/amd.c |    8 ++++++++
+ 1 file changed, 8 insertions(+)
+
+--- a/arch/x86/kernel/cpu/amd.c
++++ b/arch/x86/kernel/cpu/amd.c
+@@ -315,6 +315,14 @@ static void amd_get_topology(struct cpui
+ 		smp_num_siblings = ((ebx >> 8) & 3) + 1;
+ 		c->compute_unit_id = ebx & 0xff;
+ 		cores_per_cu += ((ebx >> 8) & 3);
++
++		if (c->x86 >= 0x17) {
++			c->cpu_core_id = ebx & 0xff;
++
++			if (smp_num_siblings > 1)
++				c->x86_max_cores /= smp_num_siblings;
++		}
++
+ 	} else if (cpu_has(c, X86_FEATURE_NODEID_MSR)) {
+ 		u64 value;
+ 

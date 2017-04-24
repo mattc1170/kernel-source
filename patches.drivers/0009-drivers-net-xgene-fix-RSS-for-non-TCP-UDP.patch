@@ -1,0 +1,146 @@
+From 7a95dd6cdc2510bdea65a6c98d618099810a014e Mon Sep 17 00:00:00 2001
+From: Iyappan Subramanian <isubramanian@apm.com>
+Date: Thu, 1 Dec 2016 16:41:41 -0800
+Subject: [PATCH 09/36] drivers: net: xgene: fix: RSS for non-TCP/UDP
+
+Git-commit: a809701fed15ff49cb87883030e5c63af03d7889
+Patch-mainline: v4.10-rc1
+References: bsc#1019351
+
+This patch fixes RSS feature, for non-TCP/UDP packets.
+
+Signed-off-by: Khuong Dinh <kdinh@apm.com>
+Signed-off-by: Iyappan Subramanian <isubramanian@apm.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+Signed-off-by: Mian Yousaf Kaukab <yousaf.kaukab@suse.com>
+---
+ drivers/net/ethernet/apm/xgene/xgene_enet_cle.c | 90 ++++++++++++++++++++++++-
+ drivers/net/ethernet/apm/xgene/xgene_enet_cle.h |  1 +
+ 2 files changed, 89 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/net/ethernet/apm/xgene/xgene_enet_cle.c b/drivers/net/ethernet/apm/xgene/xgene_enet_cle.c
+index 2776ac755785..5293aa1353d0 100644
+--- a/drivers/net/ethernet/apm/xgene/xgene_enet_cle.c
++++ b/drivers/net/ethernet/apm/xgene/xgene_enet_cle.c
+@@ -485,11 +485,11 @@ static int xgene_enet_cle_init(struct xgene_enet_pdata *pdata)
+ 				},
+ 				{
+ 					.valid = 0,
+-					.next_packet_pointer = 260,
++					.next_packet_pointer = 26,
+ 					.jump_bw = JMP_FW,
+ 					.jump_rel = JMP_ABS,
+ 					.operation = EQT,
+-					.next_node = LAST_NODE,
++					.next_node = RSS_IPV4_OTHERS_NODE,
+ 					.next_branch = 0,
+ 					.data = 0x0,
+ 					.mask = 0xffff
+@@ -667,6 +667,92 @@ static int xgene_enet_cle_init(struct xgene_enet_pdata *pdata)
+ 			}
+ 		},
+ 		{
++			/* RSS_IPV4_OTHERS_NODE */
++			.node_type = EWDN,
++			.last_node = 0,
++			.hdr_len_store = 1,
++			.hdr_extn = NO_BYTE,
++			.byte_store = NO_BYTE,
++			.search_byte_store = BOTH_BYTES,
++			.result_pointer = DB_RES_DROP,
++			.num_branches = 6,
++			.branch = {
++				{
++					/* SRC IPV4 B01 */
++					.valid = 0,
++					.next_packet_pointer = 28,
++					.jump_bw = JMP_FW,
++					.jump_rel = JMP_ABS,
++					.operation = EQT,
++					.next_node = RSS_IPV4_OTHERS_NODE,
++					.next_branch = 1,
++					.data = 0x0,
++					.mask = 0xffff
++				},
++				{
++					/* SRC IPV4 B23 */
++					.valid = 0,
++					.next_packet_pointer = 30,
++					.jump_bw = JMP_FW,
++					.jump_rel = JMP_ABS,
++					.operation = EQT,
++					.next_node = RSS_IPV4_OTHERS_NODE,
++					.next_branch = 2,
++					.data = 0x0,
++					.mask = 0xffff
++				},
++				{
++					/* DST IPV4 B01 */
++					.valid = 0,
++					.next_packet_pointer = 32,
++					.jump_bw = JMP_FW,
++					.jump_rel = JMP_ABS,
++					.operation = EQT,
++					.next_node = RSS_IPV4_OTHERS_NODE,
++					.next_branch = 3,
++					.data = 0x0,
++					.mask = 0xffff
++				},
++				{
++					/* DST IPV4 B23 */
++					.valid = 0,
++					.next_packet_pointer = 34,
++					.jump_bw = JMP_FW,
++					.jump_rel = JMP_ABS,
++					.operation = EQT,
++					.next_node = RSS_IPV4_OTHERS_NODE,
++					.next_branch = 4,
++					.data = 0x0,
++					.mask = 0xffff
++				},
++				{
++					/* TCP SRC Port */
++					.valid = 0,
++					.next_packet_pointer = 36,
++					.jump_bw = JMP_FW,
++					.jump_rel = JMP_ABS,
++					.operation = EQT,
++					.next_node = RSS_IPV4_OTHERS_NODE,
++					.next_branch = 5,
++					.data = 0x0,
++					.mask = 0xffff
++				},
++				{
++					/* TCP DST Port */
++					.valid = 0,
++					.next_packet_pointer = 260,
++					.jump_bw = JMP_FW,
++					.jump_rel = JMP_ABS,
++					.operation = EQT,
++					.next_node = LAST_NODE,
++					.next_branch = 0,
++					.data = 0x0,
++					.mask = 0xffff
++				}
++			}
++		},
++
++		{
+ 			/* LAST NODE */
+ 			.node_type = EWDN,
+ 			.last_node = 1,
+diff --git a/drivers/net/ethernet/apm/xgene/xgene_enet_cle.h b/drivers/net/ethernet/apm/xgene/xgene_enet_cle.h
+index 0980bc841475..81e5363ac20a 100644
+--- a/drivers/net/ethernet/apm/xgene/xgene_enet_cle.h
++++ b/drivers/net/ethernet/apm/xgene/xgene_enet_cle.h
+@@ -106,6 +106,7 @@ enum xgene_cle_ptree_nodes {
+ 	PKT_PROT_NODE,
+ 	RSS_IPV4_TCP_NODE,
+ 	RSS_IPV4_UDP_NODE,
++	RSS_IPV4_OTHERS_NODE,
+ 	LAST_NODE,
+ 	MAX_NODES
+ };
+-- 
+2.11.0
+

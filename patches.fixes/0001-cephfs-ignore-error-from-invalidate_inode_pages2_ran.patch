@@ -2,9 +2,8 @@ From: NeilBrown <neilb@suse.com>
 Date: Thu, 1 Sep 2016 22:26:23 +0800
 Subject: [PATCH] cephfs: ignore error from invalidate_inode_pages2_range() in
  direct write.
-Git-commit: 5ac09b3d07b9f47c13a048cd09ac096055941f2b
-Git-repo: git://github.com/ceph/ceph-client.git testing
-Patch-mainline: Queued in subsystem maintainer repository
+Git-commit: 5d7eb1a3225309b294275385ece36fee256d5c46
+Patch-mainline: v4.9
 References: bsc#995153
 
 This call can fail if there are dirty pages.  The preceding call to

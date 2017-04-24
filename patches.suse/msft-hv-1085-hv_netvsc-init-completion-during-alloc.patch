@@ -1,0 +1,38 @@
+From: Stephen Hemminger <sthemmin@microsoft.com>
+Date: Tue, 23 Aug 2016 12:17:51 -0700
+Patch-mainline: v4.9-rc1
+Subject: hv_netvsc: init completion during alloc
+Git-commit: fd612602d6a7919982779fda914bd521e5778593
+References: fate#320485
+
+Move initialization to allocate where other fields are initialized.
+
+Signed-off-by: Stephen Hemminger <sthemmin@microsoft.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+Acked-by: <ohering@suse.de>
+---
+ drivers/net/hyperv/netvsc.c | 4 +---
+ 1 file changed, 1 insertion(+), 3 deletions(-)
+
+diff --git a/drivers/net/hyperv/netvsc.c b/drivers/net/hyperv/netvsc.c
+index 2ece27a..27eb507 100644
+--- a/drivers/net/hyperv/netvsc.c
++++ b/drivers/net/hyperv/netvsc.c
+@@ -164,6 +164,7 @@ static struct netvsc_device *alloc_net_device(void)
+ 	atomic_set(&net_device->open_cnt, 0);
+ 	net_device->max_pkt = RNDIS_MAX_PKT_DEFAULT;
+ 	net_device->pkt_align = RNDIS_PKT_ALIGN_DEFAULT;
++	init_completion(&net_device->channel_init_wait);
+ 
+ 	return net_device;
+ }
+@@ -1442,9 +1443,6 @@ int netvsc_device_add(struct hv_device *device, void *additional_info)
+ 
+ 	net_device->ring_size = ring_size;
+ 
+-	/* Initialize the NetVSC channel extension */
+-	init_completion(&net_device->channel_init_wait);
+-
+ 	set_per_channel_state(device->channel, net_device->cb_buffer);
+ 
+ 	/* Open the channel */

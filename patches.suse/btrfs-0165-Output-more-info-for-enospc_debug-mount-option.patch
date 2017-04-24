@@ -1,0 +1,70 @@
+From: Qu Wenruo <quwenruo@cn.fujitsu.com>
+Date: Wed, 23 Mar 2016 11:38:17 +0800
+Patch-mainline: 4.6
+Git-commit: 0305bc279317a6ba261a663cc32721d78e6544cf
+References: bsc#1012452
+Subject: [PATCH] btrfs: Output more info for enospc_debug mount option
+
+As one user in mail list report reproducible balance ENOSPC error, it's
+better to add more debug info for enospc_debug mount option.
+
+Reported-by: Marc Haber <mh+linux-btrfs@zugschlus.de>
+Signed-off-by: Qu Wenruo <quwenruo@cn.fujitsu.com>
+Signed-off-by: David Sterba <dsterba@suse.com>
+---
+ fs/btrfs/extent-tree.c |   21 +++++++++++++++++++--
+ 1 file changed, 19 insertions(+), 2 deletions(-)
+
+--- a/fs/btrfs/extent-tree.c
++++ b/fs/btrfs/extent-tree.c
+@@ -9373,15 +9373,23 @@ int btrfs_can_relocate(struct btrfs_root
+ 	u64 dev_min = 1;
+ 	u64 dev_nr = 0;
+ 	u64 target;
++	int debug;
+ 	int index;
+ 	int full = 0;
+ 	int ret = 0;
+ 
++	debug = btrfs_test_opt(root, ENOSPC_DEBUG);
++
+ 	block_group = btrfs_lookup_block_group(root->fs_info, bytenr);
+ 
+ 	/* odd, couldn't find the block group, leave it alone */
+-	if (!block_group)
++	if (!block_group) {
++		if (debug)
++			btrfs_warn(root->fs_info,
++				   "can't find block group for bytenr %llu",
++				   bytenr);
+ 		return -1;
++	}
+ 
+ 	min_free = btrfs_block_group_used(&block_group->item);
+ 
+@@ -9435,8 +9443,13 @@ int btrfs_can_relocate(struct btrfs_root
+ 		 * this is just a balance, so if we were marked as full
+ 		 * we know there is no space for a new chunk
+ 		 */
+-		if (full)
++		if (full) {
++			if (debug)
++				btrfs_warn(root->fs_info,
++					"no space to alloc new chunk for block group %llu",
++					block_group->key.objectid);
+ 			goto out;
++		}
+ 
+ 		index = get_block_group_index(block_group);
+ 	}
+@@ -9483,6 +9496,10 @@ int btrfs_can_relocate(struct btrfs_root
+ 			ret = -1;
+ 		}
+ 	}
++	if (debug && ret == -1)
++		btrfs_warn(root->fs_info,
++			"no space to allocate a new chunk for block group %llu",
++			block_group->key.objectid);
+ 	mutex_unlock(&root->fs_info->chunk_mutex);
+ 	btrfs_end_transaction(trans, root);
+ out:

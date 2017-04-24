@@ -1,0 +1,45 @@
+From: Haiyang Zhang <haiyangz@microsoft.com>
+Date: Mon, 13 Feb 2017 18:10:11 +0000
+Patch-mainline: v4.11-rc1
+Subject: PCI: hv: Use device serial number as PCI domain
+Git-commit: 4a9b0933bdfcd85da840284bf5a0eb17b654b9c2
+References: fate#320485, bug#1028217
+
+Use the device serial number as the PCI domain.  The serial numbers start
+with 1 and are unique within a VM.  So names, such as VF NIC names, that
+include domain number as part of the name, can be shorter than that based
+on part of bus UUID previously.  The new names will also stay same for VMs
+created with copied VHD and same number of devices.
+
+Signed-off-by: Haiyang Zhang <haiyangz@microsoft.com>
+Signed-off-by: Stephen Hemminger <sthemmin@microsoft.com>
+Signed-off-by: Bjorn Helgaas <bhelgaas@google.com>
+Reviewed-by: K. Y. Srinivasan <kys@microsoft.com>
+Acked-by: <ohering@suse.de>
+---
+ drivers/pci/host/pci-hyperv.c | 12 ++++++++++++
+ 1 file changed, 12 insertions(+)
+
+diff --git a/drivers/pci/host/pci-hyperv.c b/drivers/pci/host/pci-hyperv.c
+index cd114c6787be..ada98569b78e 100644
+--- a/drivers/pci/host/pci-hyperv.c
++++ b/drivers/pci/host/pci-hyperv.c
+@@ -1317,6 +1317,18 @@ static struct hv_pci_dev *new_pcichild_device(struct hv_pcibus_device *hbus,
+ 	get_pcichild(hpdev, hv_pcidev_ref_initial);
+ 	get_pcichild(hpdev, hv_pcidev_ref_childlist);
+ 	spin_lock_irqsave(&hbus->device_list_lock, flags);
++
++	/*
++	 * When a device is being added to the bus, we set the PCI domain
++	 * number to be the device serial number, which is non-zero and
++	 * unique on the same VM.  The serial numbers start with 1, and
++	 * increase by 1 for each device.  So device names including this
++	 * can have shorter names than based on the bus instance UUID.
++	 * Only the first device serial number is used for domain, so the
++	 * domain number will not change after the first device is added.
++	 */
++	if (list_empty(&hbus->children))
++		hbus->sysdata.domain = desc->ser;
+ 	list_add_tail(&hpdev->list_entry, &hbus->children);
+ 	spin_unlock_irqrestore(&hbus->device_list_lock, flags);
+ 	return hpdev;

@@ -1,0 +1,36 @@
+From: Dexuan Cui <decui@microsoft.com>
+Date: Sat, 4 Mar 2017 18:14:00 -0700
+Patch-mainline: v4.11-rc4
+Subject: Drivers: hv: util: don't forget to init host_ts.lock
+Git-commit: 5a16dfc855127906fcd2935fb039bc8989313915
+References: bsc#1031206
+
+Without the patch, I always get a "BUG: spinlock bad magic" warning.
+
+Fixes: 3716a49a81ba ("hv_utils: implement Hyper-V PTP source")
+
+Signed-off-by: Dexuan Cui <decui@microsoft.com>
+Cc: Vitaly Kuznetsov <vkuznets@redhat.com>
+Cc: "K. Y. Srinivasan" <kys@microsoft.com>
+Cc: Haiyang Zhang <haiyangz@microsoft.com>
+Cc: Stephen Hemminger <sthemmin@microsoft.com>
+Signed-off-by: K. Y. Srinivasan <kys@microsoft.com>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Acked-by: <ohering@suse.de>
+---
+ drivers/hv/hv_util.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/drivers/hv/hv_util.c b/drivers/hv/hv_util.c
+index 3042eaa13062..186b10083c55 100644
+--- a/drivers/hv/hv_util.c
++++ b/drivers/hv/hv_util.c
+@@ -590,6 +590,8 @@ static int hv_timesync_init(struct hv_util_service *srv)
+ 	if (!hyperv_cs)
+ 		return -ENODEV;
+ 
++	spin_lock_init(&host_ts.lock);
++
+ 	INIT_WORK(&wrk.work, hv_set_host_time);
+ 
+ 	/*

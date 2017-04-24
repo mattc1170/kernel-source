@@ -3,7 +3,7 @@ Date: Mon, 14 Dec 2015 19:02:01 -0800
 Patch-mainline: v4.5-rc1
 Subject: Drivers: hv: ring_buffer: eliminate hv_ringbuffer_peek()
 Git-commit: 940b68e2c3e4ebf032885203c3970e9649f814af
-Reference: fate#315887
+References: fate#315887
 
 Currently, there is only one user for hv_ringbuffer_read()/
 hv_ringbuffer_peak() functions and the usage of these functions is:

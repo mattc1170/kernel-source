@@ -27,19 +27,17 @@ Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 Signed-off-by: Linus Torvalds <torvalds@linux-foundation.org>
 Acked-by: Jeff Mahoney <jeffm@suse.com>
 ---
- arch/powerpc/sysdev/axonram.c |  9 +++---
- drivers/block/brd.c           |  7 +++--
- drivers/nvdimm/pmem.c         | 13 ++++++---
- drivers/s390/block/dcssblk.c  | 11 ++++---
- fs/dax.c                      | 11 ++++---
- include/linux/blkdev.h        |  5 ++--
- include/linux/pfn.h           |  9 ++++++
- include/linux/pfn_t.h         | 67 +++++++++++++++++++++++++++++++++++++++++++
- kernel/memremap.c             |  7 +++++
+ arch/powerpc/sysdev/axonram.c |    9 ++---
+ drivers/block/brd.c           |    7 +++-
+ drivers/nvdimm/pmem.c         |   13 +++++---
+ drivers/s390/block/dcssblk.c  |   11 +++---
+ fs/dax.c                      |   11 ++++--
+ include/linux/blkdev.h        |    5 +--
+ include/linux/pfn.h           |    9 +++++
+ include/linux/pfn_t.h         |   67 ++++++++++++++++++++++++++++++++++++++++++
+ kernel/memremap.c             |    7 ++++
  9 files changed, 116 insertions(+), 23 deletions(-)
 
-diff --git a/arch/powerpc/sysdev/axonram.c b/arch/powerpc/sysdev/axonram.c
-index c713b34..0d112b9 100644
 --- a/arch/powerpc/sysdev/axonram.c
 +++ b/arch/powerpc/sysdev/axonram.c
 @@ -43,6 +43,7 @@
@@ -50,7 +48,7 @@ index c713b34..0d112b9 100644
  
  #include <asm/page.h>
  #include <asm/prom.h>
-@@ -142,15 +143,13 @@ axon_ram_make_request(struct request_queue *queue, struct bio *bio)
+@@ -142,15 +143,13 @@ axon_ram_make_request(struct request_que
   */
  static long
  axon_ram_direct_access(struct block_device *device, sector_t sector,
@@ -69,8 +67,6 @@ index c713b34..0d112b9 100644
  	return bank->size - offset;
  }
  
-diff --git a/drivers/block/brd.c b/drivers/block/brd.c
-index a5880f4..cb27190 100644
 --- a/drivers/block/brd.c
 +++ b/drivers/block/brd.c
 @@ -19,6 +19,9 @@
@@ -83,7 +79,7 @@ index a5880f4..cb27190 100644
  
  #include <asm/uaccess.h>
  
-@@ -378,7 +381,7 @@ static int brd_rw_page(struct block_device *bdev, sector_t sector,
+@@ -378,7 +381,7 @@ static int brd_rw_page(struct block_devi
  
  #ifdef CONFIG_BLK_DEV_RAM_DAX
  static long brd_direct_access(struct block_device *bdev, sector_t sector,
@@ -92,7 +88,7 @@ index a5880f4..cb27190 100644
  {
  	struct brd_device *brd = bdev->bd_disk->private_data;
  	struct page *page;
-@@ -389,7 +392,7 @@ static long brd_direct_access(struct block_device *bdev, sector_t sector,
+@@ -389,7 +392,7 @@ static long brd_direct_access(struct blo
  	if (!page)
  		return -ENOSPC;
  	*kaddr = (void __pmem *)page_address(page);
@@ -101,8 +97,6 @@ index a5880f4..cb27190 100644
  
  	return PAGE_SIZE;
  }
-diff --git a/drivers/nvdimm/pmem.c b/drivers/nvdimm/pmem.c
-index b493ff3..5def7f4 100644
 --- a/drivers/nvdimm/pmem.c
 +++ b/drivers/nvdimm/pmem.c
 @@ -25,6 +25,7 @@
@@ -121,7 +115,7 @@ index b493ff3..5def7f4 100644
  	void __pmem		*virt_addr;
  	size_t			size;
  	struct badblocks	bb;
-@@ -135,13 +137,13 @@ static int pmem_rw_page(struct block_device *bdev, sector_t sector,
+@@ -135,13 +137,13 @@ static int pmem_rw_page(struct block_dev
  }
  
  static long pmem_direct_access(struct block_device *bdev, sector_t sector,
@@ -137,7 +131,7 @@ index b493ff3..5def7f4 100644
  
  	return pmem->size - offset;
  }
-@@ -174,9 +176,11 @@ static struct pmem_device *pmem_alloc(struct device *dev,
+@@ -174,9 +176,11 @@ static struct pmem_device *pmem_alloc(st
  		return ERR_PTR(-EBUSY);
  	}
  
@@ -151,7 +145,7 @@ index b493ff3..5def7f4 100644
  		pmem->virt_addr = (void __pmem *) devm_memremap(dev,
  				pmem->phys_addr, pmem->size,
  				ARCH_MEMREMAP_PMEM);
-@@ -384,6 +388,7 @@ static int nvdimm_namespace_attach_pfn(struct nd_namespace_common *ndns)
+@@ -383,6 +387,7 @@ static int nvdimm_namespace_attach_pfn(s
  	pmem = dev_get_drvdata(dev);
  	devm_memunmap(dev, (void __force *) pmem->virt_addr);
  	pmem->virt_addr = (void __pmem *) devm_memremap_pages(dev, &nsio->res);
@@ -159,8 +153,6 @@ index b493ff3..5def7f4 100644
  	if (IS_ERR(pmem->virt_addr)) {
  		rc = PTR_ERR(pmem->virt_addr);
  		goto err;
-diff --git a/drivers/s390/block/dcssblk.c b/drivers/s390/block/dcssblk.c
-index 94a8f4a..ce7b701 100644
 --- a/drivers/s390/block/dcssblk.c
 +++ b/drivers/s390/block/dcssblk.c
 @@ -17,6 +17,7 @@
@@ -171,7 +163,7 @@ index 94a8f4a..ce7b701 100644
  #include <asm/extmem.h>
  #include <asm/io.h>
  
-@@ -30,7 +31,7 @@ static void dcssblk_release(struct gendisk *disk, fmode_t mode);
+@@ -30,7 +31,7 @@ static void dcssblk_release(struct gendi
  static blk_qc_t dcssblk_make_request(struct request_queue *q,
  						struct bio *bio);
  static long dcssblk_direct_access(struct block_device *bdev, sector_t secnum,
@@ -194,7 +186,7 @@ index 94a8f4a..ce7b701 100644
  	dev_info = bdev->bd_disk->private_data;
  	if (!dev_info)
  		return -ENODEV;
- 	dev_sz = dev_info->end - dev_info->start;
+ 	dev_sz = dev_info->end - dev_info->start + 1;
  	offset = secnum * 512;
 -	addr = (void *) (dev_info->start + offset);
 -	*pfn = virt_to_phys(addr) >> PAGE_SHIFT;
@@ -204,8 +196,6 @@ index 94a8f4a..ce7b701 100644
  
  	return dev_sz - offset;
  }
-diff --git a/fs/dax.c b/fs/dax.c
-index 3220da7..6b13d6c 100644
 --- a/fs/dax.c
 +++ b/fs/dax.c
 @@ -28,6 +28,7 @@
@@ -216,7 +206,7 @@ index 3220da7..6b13d6c 100644
  #include <linux/sizes.h>
  
  static long dax_map_atomic(struct block_device *bdev, struct blk_dax_ctl *dax)
-@@ -362,7 +363,7 @@ static int dax_insert_mapping(struct inode *inode, struct buffer_head *bh,
+@@ -362,7 +363,7 @@ static int dax_insert_mapping(struct ino
  	}
  	dax_unmap_atomic(bdev, &dax);
  
@@ -225,7 +215,7 @@ index 3220da7..6b13d6c 100644
  
   out:
  	i_mmap_unlock_read(mapping);
-@@ -667,7 +668,8 @@ int __dax_pmd_fault(struct vm_area_struct *vma, unsigned long address,
+@@ -667,7 +668,8 @@ int __dax_pmd_fault(struct vm_area_struc
  			result = VM_FAULT_SIGBUS;
  			goto out;
  		}
@@ -235,7 +225,7 @@ index 3220da7..6b13d6c 100644
  			dax_unmap_atomic(bdev, &dax);
  			goto fallback;
  		}
-@@ -676,7 +678,7 @@ int __dax_pmd_fault(struct vm_area_struct *vma, unsigned long address,
+@@ -676,7 +678,7 @@ int __dax_pmd_fault(struct vm_area_struc
  		 * TODO: teach vmf_insert_pfn_pmd() to support
  		 * 'pte_special' for pmds
  		 */
@@ -244,7 +234,7 @@ index 3220da7..6b13d6c 100644
  			dax_unmap_atomic(bdev, &dax);
  			goto fallback;
  		}
-@@ -690,7 +692,8 @@ int __dax_pmd_fault(struct vm_area_struct *vma, unsigned long address,
+@@ -690,7 +692,8 @@ int __dax_pmd_fault(struct vm_area_struc
  		}
  		dax_unmap_atomic(bdev, &dax);
  
@@ -254,8 +244,6 @@ index 3220da7..6b13d6c 100644
  	}
  
   out:
-diff --git a/include/linux/blkdev.h b/include/linux/blkdev.h
-index 88821fa..bfb64d6 100644
 --- a/include/linux/blkdev.h
 +++ b/include/linux/blkdev.h
 @@ -15,6 +15,7 @@
@@ -266,7 +254,7 @@ index 88821fa..bfb64d6 100644
  #include <linux/bio.h>
  #include <linux/stringify.h>
  #include <linux/gfp.h>
-@@ -1628,7 +1629,7 @@ struct blk_dax_ctl {
+@@ -1640,7 +1641,7 @@ struct blk_dax_ctl {
  	sector_t sector;
  	void __pmem *addr;
  	long size;
@@ -275,7 +263,7 @@ index 88821fa..bfb64d6 100644
  };
  
  struct block_device_operations {
-@@ -1638,7 +1639,7 @@ struct block_device_operations {
+@@ -1650,7 +1651,7 @@ struct block_device_operations {
  	int (*ioctl) (struct block_device *, fmode_t, unsigned, unsigned long);
  	int (*compat_ioctl) (struct block_device *, fmode_t, unsigned, unsigned long);
  	long (*direct_access)(struct block_device *, sector_t, void __pmem **,
@@ -284,8 +272,6 @@ index 88821fa..bfb64d6 100644
  	unsigned int (*check_events) (struct gendisk *disk,
  				      unsigned int clearing);
  	/* ->media_changed() is DEPRECATED, use ->check_events() instead */
-diff --git a/include/linux/pfn.h b/include/linux/pfn.h
-index 97f3e88..2d8e497 100644
 --- a/include/linux/pfn.h
 +++ b/include/linux/pfn.h
 @@ -3,6 +3,15 @@
@@ -304,9 +290,6 @@ index 97f3e88..2d8e497 100644
  #endif
  
  #define PFN_ALIGN(x)	(((unsigned long)(x) + (PAGE_SIZE - 1)) & PAGE_MASK)
-diff --git a/include/linux/pfn_t.h b/include/linux/pfn_t.h
-new file mode 100644
-index 0000000..c557a0e
 --- /dev/null
 +++ b/include/linux/pfn_t.h
 @@ -0,0 +1,67 @@
@@ -377,8 +360,6 @@ index 0000000..c557a0e
 +	return pfn_to_pfn_t(page_to_pfn(page));
 +}
 +#endif /* _LINUX_PFN_T_H_ */
-diff --git a/kernel/memremap.c b/kernel/memremap.c
-index 7658d32..449cb6a 100644
 --- a/kernel/memremap.c
 +++ b/kernel/memremap.c
 @@ -12,6 +12,7 @@
@@ -389,7 +370,7 @@ index 7658d32..449cb6a 100644
  #include <linux/io.h>
  #include <linux/mm.h>
  #include <linux/memory_hotplug.h>
-@@ -147,6 +148,12 @@ void devm_memunmap(struct device *dev, void *addr)
+@@ -149,6 +150,12 @@ void devm_memunmap(struct device *dev, v
  }
  EXPORT_SYMBOL(devm_memunmap);
  
@@ -402,5 +383,3 @@ index 7658d32..449cb6a 100644
  #ifdef CONFIG_ZONE_DEVICE
  struct page_map {
  	struct resource res;
-
-

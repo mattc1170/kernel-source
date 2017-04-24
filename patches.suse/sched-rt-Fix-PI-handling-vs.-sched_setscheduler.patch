@@ -1,0 +1,466 @@
+From: Peter Zijlstra <peterz@infradead.org>
+Date: Mon, 18 Jan 2016 15:27:07 +0100
+Subject: sched/rt: Fix PI handling vs. sched_setscheduler()
+Git-commit: ff77e468535987b3d21b7bd4da15608ea3ce7d0b
+Patch-mainline: v4.6-rc1
+References: bnc#1022476
+
+Andrea Parri reported:
+
+> I found that the following scenario (with CONFIG_RT_GROUP_SCHED=y) is not
+> handled correctly:
+>
+>     T1 (prio = 20)
+>        lock(rtmutex);
+>
+>     T2 (prio = 20)
+>        blocks on rtmutex  (rt_nr_boosted = 0 on T1's rq)
+>
+>     T1 (prio = 20)
+>        sys_set_scheduler(prio = 0)
+>           [new_effective_prio == oldprio]
+>           T1 prio = 20    (rt_nr_boosted = 0 on T1's rq)
+>
+> The last step is incorrect as T1 is now boosted (c.f., rt_se_boosted());
+> in particular, if we continue with
+>
+>    T1 (prio = 20)
+>       unlock(rtmutex)
+>          wakeup(T2)
+>          adjust_prio(T1)
+>             [prio != rt_mutex_getprio(T1)]
+>	    dequeue(T1)
+>	       rt_nr_boosted = (unsigned long)(-1)
+>	       ...
+>             T1 prio = 0
+>
+> then we end up leaving rt_nr_boosted in an "inconsistent" state.
+>
+> The simple program attached could reproduce the previous scenario; note
+> that, as a consequence of the presence of this state, the "assertion"
+>
+>     WARN_ON(!rt_nr_running && rt_nr_boosted)
+>
+> from dec_rt_group() may trigger.
+
+So normally we dequeue/enqueue tasks in sched_setscheduler(), which
+would ensure the accounting stays correct. However in the early PI path
+we fail to do so.
+
+So this was introduced at around v3.14, by:
+
+  c365c292d059 ("sched: Consider pi boosting in setscheduler()")
+
+which fixed another problem exactly because that dequeue/enqueue, joy.
+
+Fix this by teaching rt about DEQUEUE_SAVE/ENQUEUE_RESTORE and have it
+preserve runqueue location with that option. This requires decoupling
+the on_rt_rq() state from being on the list.
+
+In order to allow for explicit movement during the SAVE/RESTORE,
+introduce {DE,EN}QUEUE_MOVE. We still must use SAVE/RESTORE in these
+cases to preserve other invariants.
+
+Respecting the SAVE/RESTORE flags also has the (nice) side-effect that
+things like sys_nice()/sys_sched_setaffinity() also do not reorder
+FIFO tasks (whereas they used to before this patch).
+
+Reported-by: Andrea Parri <parri.andrea@gmail.com>
+Tested-by: Andrea Parri <parri.andrea@gmail.com>
+Signed-off-by: Peter Zijlstra (Intel) <peterz@infradead.org>
+Cc: Juri Lelli <juri.lelli@arm.com>
+Cc: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: Mike Galbraith <efault@gmx.de>
+Cc: Peter Zijlstra <peterz@infradead.org>
+Cc: Steven Rostedt <rostedt@goodmis.org>
+Cc: Thomas Gleixner <tglx@linutronix.de>
+Signed-off-by: Ingo Molnar <mingo@kernel.org>
+Signed-off-by: Mike Galbraith <mgalbraith@suse.de>
+---
+ include/linux/sched.h |    4 ++
+ kernel/sched/core.c   |   39 ++++++++++++----------
+ kernel/sched/rt.c     |   86 ++++++++++++++++++++++++++++++++++----------------
+ kernel/sched/sched.h  |   36 ++++++++++++++++----
+ 4 files changed, 115 insertions(+), 50 deletions(-)
+
+--- a/include/linux/sched.h
++++ b/include/linux/sched.h
+@@ -1342,6 +1342,10 @@ struct sched_rt_entity {
+ 	unsigned long timeout;
+ 	unsigned long watchdog_stamp;
+ 	unsigned int time_slice;
++#ifndef __GENKSYMS__
++	unsigned short on_rq;
++	unsigned short on_list;
++#endif
+ 
+ 	struct sched_rt_entity *back;
+ #ifdef CONFIG_RT_GROUP_SCHED
+--- a/kernel/sched/core.c
++++ b/kernel/sched/core.c
+@@ -2245,6 +2245,10 @@ static void __sched_fork(unsigned long c
+ 	__dl_clear_params(p);
+ 
+ 	INIT_LIST_HEAD(&p->rt.run_list);
++	p->rt.timeout		= 0;
++	p->rt.time_slice	= sched_rr_timeslice;
++	p->rt.on_rq		= 0;
++	p->rt.on_list		= 0;
+ 
+ #ifdef CONFIG_PREEMPT_NOTIFIERS
+ 	INIT_HLIST_HEAD(&p->preempt_notifiers);
+@@ -3612,7 +3616,7 @@ EXPORT_SYMBOL(default_wake_function);
+  */
+ void rt_mutex_setprio(struct task_struct *p, int prio)
+ {
+-	int oldprio, queued, running, enqueue_flag = ENQUEUE_RESTORE;
++	int oldprio, queued, running, queue_flag = DEQUEUE_SAVE | DEQUEUE_MOVE;
+ 	struct rq *rq;
+ 	const struct sched_class *prev_class;
+ 
+@@ -3640,11 +3644,15 @@ void rt_mutex_setprio(struct task_struct
+ 
+ 	trace_sched_pi_setprio(p, prio);
+ 	oldprio = p->prio;
++
++	if (oldprio == prio)
++		queue_flag &= ~DEQUEUE_MOVE;
++
+ 	prev_class = p->sched_class;
+ 	queued = task_on_rq_queued(p);
+ 	running = task_current(rq, p);
+ 	if (queued)
+-		dequeue_task(rq, p, DEQUEUE_SAVE);
++		dequeue_task(rq, p, queue_flag);
+ 	if (running)
+ 		put_prev_task(rq, p);
+ 
+@@ -3662,7 +3670,7 @@ void rt_mutex_setprio(struct task_struct
+ 		if (!dl_prio(p->normal_prio) ||
+ 		    (pi_task && dl_entity_preempt(&pi_task->dl, &p->dl))) {
+ 			p->dl.dl_boosted = 1;
+-			enqueue_flag |= ENQUEUE_REPLENISH;
++			queue_flag |= ENQUEUE_REPLENISH;
+ 		} else
+ 			p->dl.dl_boosted = 0;
+ 		p->sched_class = &dl_sched_class;
+@@ -3670,7 +3678,7 @@ void rt_mutex_setprio(struct task_struct
+ 		if (dl_prio(oldprio))
+ 			p->dl.dl_boosted = 0;
+ 		if (oldprio < prio)
+-			enqueue_flag |= ENQUEUE_HEAD;
++			queue_flag |= ENQUEUE_HEAD;
+ 		p->sched_class = &rt_sched_class;
+ 	} else {
+ 		if (dl_prio(oldprio))
+@@ -3685,7 +3693,7 @@ void rt_mutex_setprio(struct task_struct
+ 	if (running)
+ 		p->sched_class->set_curr_task(rq);
+ 	if (queued)
+-		enqueue_task(rq, p, enqueue_flag);
++		enqueue_task(rq, p, queue_flag);
+ 
+ 	check_class_changed(rq, p, prev_class, oldprio);
+ out_unlock:
+@@ -4041,6 +4049,7 @@ static int __sched_setscheduler(struct t
+ 	const struct sched_class *prev_class;
+ 	struct rq *rq;
+ 	int reset_on_fork;
++	int queue_flags = DEQUEUE_SAVE | DEQUEUE_MOVE;
+ 
+ 	/* may grab non-irq protected spin_locks */
+ 	BUG_ON(in_interrupt());
+@@ -4223,17 +4232,14 @@ static int __sched_setscheduler(struct t
+ 		 * itself.
+ 		 */
+ 		new_effective_prio = rt_mutex_get_effective_prio(p, newprio);
+-		if (new_effective_prio == oldprio) {
+-			__setscheduler_params(p, attr);
+-			task_rq_unlock(rq, p, &flags);
+-			return 0;
+-		}
++		if (new_effective_prio == oldprio)
++			queue_flags &= ~DEQUEUE_MOVE;
+ 	}
+ 
+ 	queued = task_on_rq_queued(p);
+ 	running = task_current(rq, p);
+ 	if (queued)
+-		dequeue_task(rq, p, DEQUEUE_SAVE);
++		dequeue_task(rq, p, queue_flags);
+ 	if (running)
+ 		put_prev_task(rq, p);
+ 
+@@ -4243,15 +4249,14 @@ static int __sched_setscheduler(struct t
+ 	if (running)
+ 		p->sched_class->set_curr_task(rq);
+ 	if (queued) {
+-		int enqueue_flags = ENQUEUE_RESTORE;
+ 		/*
+ 		 * We enqueue to tail when the priority of a task is
+ 		 * increased (user space view).
+ 		 */
+-		if (oldprio <= p->prio)
+-			enqueue_flags |= ENQUEUE_HEAD;
++		if (oldprio < p->prio)
++			queue_flags |= ENQUEUE_HEAD;
+ 
+-		enqueue_task(rq, p, enqueue_flags);
++		enqueue_task(rq, p, queue_flags);
+ 	}
+ 
+ 	check_class_changed(rq, p, prev_class, oldprio);
+@@ -8091,7 +8096,7 @@ void sched_move_task(struct task_struct
+ 	queued = task_on_rq_queued(tsk);
+ 
+ 	if (queued)
+-		dequeue_task(rq, tsk, DEQUEUE_SAVE);
++		dequeue_task(rq, tsk, DEQUEUE_SAVE | DEQUEUE_MOVE);
+ 	if (unlikely(running))
+ 		put_prev_task(rq, tsk);
+ 
+@@ -8100,7 +8105,7 @@ void sched_move_task(struct task_struct
+ 	if (unlikely(running))
+ 		tsk->sched_class->set_curr_task(rq);
+ 	if (queued)
+-		enqueue_task(rq, tsk, ENQUEUE_RESTORE);
++		enqueue_task(rq, tsk, ENQUEUE_RESTORE | ENQUEUE_MOVE);
+ 
+ 	task_rq_unlock(rq, tsk, &flags);
+ }
+--- a/kernel/sched/rt.c
++++ b/kernel/sched/rt.c
+@@ -436,7 +436,7 @@ static void dequeue_top_rt_rq(struct rt_
+ 
+ static inline int on_rt_rq(struct sched_rt_entity *rt_se)
+ {
+-	return !list_empty(&rt_se->run_list);
++	return rt_se->on_rq;
+ }
+ 
+ #ifdef CONFIG_RT_GROUP_SCHED
+@@ -482,8 +482,8 @@ static inline struct rt_rq *group_rt_rq(
+ 	return rt_se->my_q;
+ }
+ 
+-static void enqueue_rt_entity(struct sched_rt_entity *rt_se, bool head);
+-static void dequeue_rt_entity(struct sched_rt_entity *rt_se);
++static void enqueue_rt_entity(struct sched_rt_entity *rt_se, unsigned int flags);
++static void dequeue_rt_entity(struct sched_rt_entity *rt_se, unsigned int flags);
+ 
+ static void sched_rt_rq_enqueue(struct rt_rq *rt_rq)
+ {
+@@ -499,7 +499,7 @@ static void sched_rt_rq_enqueue(struct r
+ 		if (!rt_se)
+ 			enqueue_top_rt_rq(rt_rq);
+ 		else if (!on_rt_rq(rt_se))
+-			enqueue_rt_entity(rt_se, false);
++			enqueue_rt_entity(rt_se, 0);
+ 
+ 		if (rt_rq->highest_prio.curr < curr->prio)
+ 			resched_curr(rq);
+@@ -516,7 +516,7 @@ static void sched_rt_rq_dequeue(struct r
+ 	if (!rt_se)
+ 		dequeue_top_rt_rq(rt_rq);
+ 	else if (on_rt_rq(rt_se))
+-		dequeue_rt_entity(rt_se);
++		dequeue_rt_entity(rt_se, 0);
+ }
+ 
+ static inline int rt_rq_throttled(struct rt_rq *rt_rq)
+@@ -1166,7 +1166,30 @@ void dec_rt_tasks(struct sched_rt_entity
+ 	dec_rt_group(rt_se, rt_rq);
+ }
+ 
+-static void __enqueue_rt_entity(struct sched_rt_entity *rt_se, bool head)
++/*
++ * Change rt_se->run_list location unless SAVE && !MOVE
++ *
++ * assumes ENQUEUE/DEQUEUE flags match
++ */
++static inline bool move_entity(unsigned int flags)
++{
++	if ((flags & (DEQUEUE_SAVE | DEQUEUE_MOVE)) == DEQUEUE_SAVE)
++		return false;
++
++	return true;
++}
++
++static void __delist_rt_entity(struct sched_rt_entity *rt_se, struct rt_prio_array *array)
++{
++	list_del_init(&rt_se->run_list);
++
++	if (list_empty(array->queue + rt_se_prio(rt_se)))
++		__clear_bit(rt_se_prio(rt_se), array->bitmap);
++
++	rt_se->on_list = 0;
++}
++
++static void __enqueue_rt_entity(struct sched_rt_entity *rt_se, unsigned int flags)
+ {
+ 	struct rt_rq *rt_rq = rt_rq_of_se(rt_se);
+ 	struct rt_prio_array *array = &rt_rq->active;
+@@ -1179,26 +1202,37 @@ static void __enqueue_rt_entity(struct s
+ 	 * get throttled and the current group doesn't have any other
+ 	 * active members.
+ 	 */
+-	if (group_rq && (rt_rq_throttled(group_rq) || !group_rq->rt_nr_running))
++	if (group_rq && (rt_rq_throttled(group_rq) || !group_rq->rt_nr_running)) {
++		if (rt_se->on_list)
++			__delist_rt_entity(rt_se, array);
+ 		return;
++	}
+ 
+-	if (head)
+-		list_add(&rt_se->run_list, queue);
+-	else
+-		list_add_tail(&rt_se->run_list, queue);
+-	__set_bit(rt_se_prio(rt_se), array->bitmap);
++	if (move_entity(flags)) {
++		WARN_ON_ONCE(rt_se->on_list);
++		if (flags & ENQUEUE_HEAD)
++			list_add(&rt_se->run_list, queue);
++		else
++			list_add_tail(&rt_se->run_list, queue);
++
++		__set_bit(rt_se_prio(rt_se), array->bitmap);
++		rt_se->on_list = 1;
++	}
++	rt_se->on_rq = 1;
+ 
+ 	inc_rt_tasks(rt_se, rt_rq);
+ }
+ 
+-static void __dequeue_rt_entity(struct sched_rt_entity *rt_se)
++static void __dequeue_rt_entity(struct sched_rt_entity *rt_se, unsigned int flags)
+ {
+ 	struct rt_rq *rt_rq = rt_rq_of_se(rt_se);
+ 	struct rt_prio_array *array = &rt_rq->active;
+ 
+-	list_del_init(&rt_se->run_list);
+-	if (list_empty(array->queue + rt_se_prio(rt_se)))
+-		__clear_bit(rt_se_prio(rt_se), array->bitmap);
++	if (move_entity(flags)) {
++		WARN_ON_ONCE(!rt_se->on_list);
++		__delist_rt_entity(rt_se, array);
++	}
++	rt_se->on_rq = 0;
+ 
+ 	dec_rt_tasks(rt_se, rt_rq);
+ }
+@@ -1207,7 +1241,7 @@ static void __dequeue_rt_entity(struct s
+  * Because the prio of an upper entry depends on the lower
+  * entries, we must remove entries top - down.
+  */
+-static void dequeue_rt_stack(struct sched_rt_entity *rt_se)
++static void dequeue_rt_stack(struct sched_rt_entity *rt_se, unsigned int flags)
+ {
+ 	struct sched_rt_entity *back = NULL;
+ 
+@@ -1220,31 +1254,31 @@ static void dequeue_rt_stack(struct sche
+ 
+ 	for (rt_se = back; rt_se; rt_se = rt_se->back) {
+ 		if (on_rt_rq(rt_se))
+-			__dequeue_rt_entity(rt_se);
++			__dequeue_rt_entity(rt_se, flags);
+ 	}
+ }
+ 
+-static void enqueue_rt_entity(struct sched_rt_entity *rt_se, bool head)
++static void enqueue_rt_entity(struct sched_rt_entity *rt_se, unsigned int flags)
+ {
+ 	struct rq *rq = rq_of_rt_se(rt_se);
+ 
+-	dequeue_rt_stack(rt_se);
++	dequeue_rt_stack(rt_se, flags);
+ 	for_each_sched_rt_entity(rt_se)
+-		__enqueue_rt_entity(rt_se, head);
++		__enqueue_rt_entity(rt_se, flags);
+ 	enqueue_top_rt_rq(&rq->rt);
+ }
+ 
+-static void dequeue_rt_entity(struct sched_rt_entity *rt_se)
++static void dequeue_rt_entity(struct sched_rt_entity *rt_se, unsigned int flags)
+ {
+ 	struct rq *rq = rq_of_rt_se(rt_se);
+ 
+-	dequeue_rt_stack(rt_se);
++	dequeue_rt_stack(rt_se, flags);
+ 
+ 	for_each_sched_rt_entity(rt_se) {
+ 		struct rt_rq *rt_rq = group_rt_rq(rt_se);
+ 
+ 		if (rt_rq && rt_rq->rt_nr_running)
+-			__enqueue_rt_entity(rt_se, false);
++			__enqueue_rt_entity(rt_se, flags);
+ 	}
+ 	enqueue_top_rt_rq(&rq->rt);
+ }
+@@ -1260,7 +1294,7 @@ enqueue_task_rt(struct rq *rq, struct ta
+ 	if (flags & ENQUEUE_WAKEUP)
+ 		rt_se->timeout = 0;
+ 
+-	enqueue_rt_entity(rt_se, flags & ENQUEUE_HEAD);
++	enqueue_rt_entity(rt_se, flags);
+ 
+ 	if (!task_current(rq, p) && p->nr_cpus_allowed > 1)
+ 		enqueue_pushable_task(rq, p);
+@@ -1271,7 +1305,7 @@ static void dequeue_task_rt(struct rq *r
+ 	struct sched_rt_entity *rt_se = &p->rt;
+ 
+ 	update_curr_rt(rq);
+-	dequeue_rt_entity(rt_se);
++	dequeue_rt_entity(rt_se, flags);
+ 
+ 	dequeue_pushable_task(rq, p);
+ }
+--- a/kernel/sched/sched.h
++++ b/kernel/sched/sched.h
+@@ -1138,18 +1138,40 @@ static inline void finish_lock_switch(st
+ extern const int sched_prio_to_weight[40];
+ extern const u32 sched_prio_to_wmult[40];
+ 
++/*
++ * {de,en}queue flags:
++ *
++ * DEQUEUE_SLEEP  - task is no longer runnable
++ * ENQUEUE_WAKEUP - task just became runnable
++ *
++ * SAVE/RESTORE - an otherwise spurious dequeue/enqueue, done to ensure tasks
++ *                are in a known state which allows modification. Such pairs
++ *                should preserve as much state as possible.
++ *
++ * MOVE - paired with SAVE/RESTORE, explicitly does not preserve the location
++ *        in the runqueue.
++ *
++ * ENQUEUE_HEAD      - place at front of runqueue (tail if not specified)
++ * ENQUEUE_REPLENISH - CBS (replenish runtime and postpone deadline)
++ * ENQUEUE_MIGRATED  - the task was migrated during wakeup
++ *
++ */
++
++#define DEQUEUE_SLEEP		0x01
++#define DEQUEUE_SAVE		0x02 /* matches ENQUEUE_RESTORE */
++#define DEQUEUE_MOVE		0x04 /* matches ENQUEUE_MOVE */
++
+ #define ENQUEUE_WAKEUP		0x01
+-#define ENQUEUE_HEAD		0x02
++#define ENQUEUE_RESTORE		0x02
++#define ENQUEUE_MOVE		0x04
++
++#define ENQUEUE_HEAD		0x08
++#define ENQUEUE_REPLENISH	0x10
+ #ifdef CONFIG_SMP
+-#define ENQUEUE_MIGRATED	0x04
++#define ENQUEUE_MIGRATED	0x20
+ #else
+ #define ENQUEUE_MIGRATED	0x00
+ #endif
+-#define ENQUEUE_REPLENISH	0x08
+-#define ENQUEUE_RESTORE	0x10
+-
+-#define DEQUEUE_SLEEP		0x01
+-#define DEQUEUE_SAVE		0x02
+ 
+ #define RETRY_TASK		((void *)-1UL)
+ 

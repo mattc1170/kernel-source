@@ -1,0 +1,27 @@
+From: "David S. Miller" <davem@davemloft.net>
+Date: Thu, 13 Oct 2016 11:04:07 -0400
+Patch-mainline: v4.9-rc1
+Subject: netvsc: Remove mistaken udp.h inclusion.
+Git-commit: 3f2b0a5a3583a2c6c3aeb2d59e7f775d43faa89c
+References: fate#320485
+
+Based upon v2 of Stephen's patch.
+
+Signed-off-by: David S. Miller <davem@davemloft.net>
+Acked-by: <ohering@suse.de>
+---
+ drivers/net/hyperv/netvsc_drv.c | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/drivers/net/hyperv/netvsc_drv.c b/drivers/net/hyperv/netvsc_drv.c
+index 9570d21..f0919bd 100644
+--- a/drivers/net/hyperv/netvsc_drv.c
++++ b/drivers/net/hyperv/netvsc_drv.c
+@@ -36,7 +36,6 @@
+ #include <net/arp.h>
+ #include <net/route.h>
+ #include <net/sock.h>
+-#include <net/udp.h>
+ #include <net/pkt_sched.h>
+ 
+ #include "hyperv_net.h"

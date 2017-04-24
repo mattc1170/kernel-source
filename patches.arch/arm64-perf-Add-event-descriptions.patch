@@ -4,7 +4,7 @@ Date: Thu, 22 Oct 2015 07:07:32 -0700
 Subject: [PATCH 2/2] arm64: perf: Add event descriptions
 Git-commit: 9e9caa6a496174e53d7753baa4779717771da4a7
 Patch-mainline: v4.5-rc1
-Reference: fate#319982
+References: fate#319982
 
 Add additional information about the ARM architected hardware events
 to make counters self describing. This makes the hardware PMUs easier

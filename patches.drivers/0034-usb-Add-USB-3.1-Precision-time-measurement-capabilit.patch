@@ -1,11 +1,10 @@
-From 6ae58f26f25b9273a7dd19118c9d8166e7e47356 Mon Sep 17 00:00:00 2001
 From: Mathias Nyman <mathias.nyman@linux.intel.com>
 Date: Fri, 12 Feb 2016 16:40:14 +0200
 Subject: [PATCH 34/41] usb: Add USB 3.1 Precision time measurement capability
  descriptor support
+Patch-mainline: v4.6-rc1
+Git-commit: faee822c5a7ab99de25cd34fcde3f8d37b6b9923
 References: FATE#319959
-Git-Commit: faee822c5a7ab99de25cd34fcde3f8d37b6b9923
-Patch-Mainline: v4.6
 
 USB 3.1 devices that support precision time measurement have an
 additional PTM cabaility descriptor as part of the full BOS descriptor
@@ -17,11 +16,23 @@ Signed-off-by: Mathias Nyman <mathias.nyman@linux.intel.com>
 Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
 Signed-off-by: Oliver Neukum <oneukum@suse.com>
 ---
- include/linux/usb.h | 1 +
- 1 file changed, 1 insertion(+)
+ drivers/usb/core/config.c    |    3 +++
+ include/linux/usb.h          |    1 +
+ include/uapi/linux/usb/ch9.h |   10 ++++++++++
+ 3 files changed, 14 insertions(+)
 
-diff --git a/include/linux/usb.h b/include/linux/usb.h
-index 7cb9b43..d5324db 100644
+--- a/drivers/usb/core/config.c
++++ b/drivers/usb/core/config.c
+@@ -960,6 +960,9 @@ int usb_get_bos_descriptor(struct usb_de
+ 			dev->bos->ss_id =
+ 				(struct usb_ss_container_id_descriptor *)buffer;
+ 			break;
++		case USB_PTM_CAP_TYPE:
++			dev->bos->ptm_cap =
++				(struct usb_ptm_cap_descriptor *)buffer;
+ 		default:
+ 			break;
+ 		}
 --- a/include/linux/usb.h
 +++ b/include/linux/usb.h
 @@ -332,6 +332,7 @@ struct usb_host_bos {
@@ -32,6 +43,22 @@ index 7cb9b43..d5324db 100644
  	void *suse_kabi_padding;
  };
  
--- 
-2.1.4
-
+--- a/include/uapi/linux/usb/ch9.h
++++ b/include/uapi/linux/usb/ch9.h
+@@ -912,6 +912,16 @@ struct usb_ssp_cap_descriptor {
+ #define USB_SSP_SUBLINK_SPEED_LSM	(0xff << 16)	/* Lanespeed mantissa */
+ } __attribute__((packed));
+ 
++/*
++ * Precision time measurement capability descriptor: advertised by devices and
++ * hubs that support PTM
++ */
++#define	USB_PTM_CAP_TYPE	0xb
++struct usb_ptm_cap_descriptor {
++	__u8  bLength;
++	__u8  bDescriptorType;
++	__u8  bDevCapabilityType;
++} __attribute__((packed));
+ 
+ /*-------------------------------------------------------------------------*/
+ 

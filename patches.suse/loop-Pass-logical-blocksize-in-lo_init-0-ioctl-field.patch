@@ -10,14 +10,12 @@ LO_FLAGS_BLOCKSIZE flag to pass in the new logical blocksize.
 
 Signed-off-by: Hannes Reinecke <hare@suse.de>
 ---
- drivers/block/loop.c | 24 +++++++++++++++++++-----
- 1 file changed, 19 insertions(+), 5 deletions(-)
+ drivers/block/loop.c |   28 +++++++++++++++++++++++-----
+ 1 file changed, 23 insertions(+), 5 deletions(-)
 
-diff --git a/drivers/block/loop.c b/drivers/block/loop.c
-index d0b8754..ce3ba840 100644
 --- a/drivers/block/loop.c
 +++ b/drivers/block/loop.c
-@@ -221,7 +221,8 @@ static void __loop_update_dio(struct loop_device *lo, bool dio)
+@@ -221,7 +221,8 @@ static void __loop_update_dio(struct loo
  }
  
  static int
@@ -27,7 +25,7 @@ index d0b8754..ce3ba840 100644
  {
  	loff_t size = get_size(offset, sizelimit, lo->lo_backing_file);
  	sector_t x = (sector_t)size;
-@@ -234,6 +235,7 @@ figure_loop_size(struct loop_device *lo, loff_t offset, loff_t sizelimit)
+@@ -234,6 +235,7 @@ figure_loop_size(struct loop_device *lo,
  	if (lo->lo_sizelimit != sizelimit)
  		lo->lo_sizelimit = sizelimit;
  	if (lo->lo_flags & LO_FLAGS_BLOCKSIZE) {
@@ -35,9 +33,9 @@ index d0b8754..ce3ba840 100644
  		blk_queue_physical_block_size(lo->lo_queue, lo->lo_blocksize);
  		blk_queue_logical_block_size(lo->lo_queue,
  					     lo->lo_logical_blocksize);
-@@ -1129,13 +1131,24 @@ loop_set_status(struct loop_device *lo, const struct loop_info64 *info)
+@@ -1138,13 +1140,28 @@ loop_set_status(struct loop_device *lo,
  	if (err)
- 		return err;
+ 		goto exit;
  
 -	if (info->lo_flags & LO_FLAGS_BLOCKSIZE)
 +	if (info->lo_flags & LO_FLAGS_BLOCKSIZE) {
@@ -45,25 +43,29 @@ index d0b8754..ce3ba840 100644
 +		if ((info->lo_init[0] != 512) &&
 +		    (info->lo_init[0] != 1024) &&
 +		    (info->lo_init[0] != 2048) &&
-+		    (info->lo_init[0] != 4096))
-+			return -EINVAL;
-+		if (info->lo_init[0] > lo->lo_blocksize)
-+			return -EINVAL;
++		    (info->lo_init[0] != 4096)) {
++			err = -EINVAL;
++			goto exit;
++		}
++		if (info->lo_init[0] > lo->lo_blocksize) {
++			err = -EINVAL;
++			goto exit;
++		}
 +	}
  
  	if (lo->lo_offset != info->lo_offset ||
  	    lo->lo_sizelimit != info->lo_sizelimit ||
 -	    lo->lo_flags != lo_flags)
--		if (figure_loop_size(lo, info->lo_offset, info->lo_sizelimit))
+-		if (figure_loop_size(lo, info->lo_offset, info->lo_sizelimit)) {
 +	    lo->lo_flags != lo_flags ||
 +	    ((lo->lo_flags & LO_FLAGS_BLOCKSIZE) &&
 +	     (lo->lo_logical_blocksize != info->lo_init[0])))
 +		if (figure_loop_size(lo, info->lo_offset, info->lo_sizelimit,
-+				     info->lo_init[0]))
- 			return -EFBIG;
- 
- 	loop_config_discard(lo);
-@@ -1320,7 +1333,8 @@ static int loop_set_capacity(struct loop_device *lo)
++				     info->lo_init[0])) {
+ 			err = -EFBIG;
+ 			goto exit;
+ 		}
+@@ -1334,7 +1351,8 @@ static int loop_set_capacity(struct loop
  	if (unlikely(lo->lo_state != Lo_bound))
  		return -ENXIO;
  
@@ -73,6 +75,3 @@ index d0b8754..ce3ba840 100644
  }
  
  static int loop_set_dio(struct loop_device *lo, unsigned long arg)
--- 
-1.8.5.6
-

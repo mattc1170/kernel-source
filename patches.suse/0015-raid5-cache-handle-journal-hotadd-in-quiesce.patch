@@ -4,7 +4,7 @@ Date: Wed, 6 Jan 2016 14:37:15 -0800
 Subject: [PATCH] raid5-cache: handle journal hotadd in quiesce
 Patch-mainline: v4.5-rc1
 Git-commit: 16a43f6a65002ba9a5b063764b4ad5d288a1c15e
-Reference: fate#320291
+References: fate#320291
 
 Handle journal hotadd in quiesce to avoid creating duplicated threads.
 

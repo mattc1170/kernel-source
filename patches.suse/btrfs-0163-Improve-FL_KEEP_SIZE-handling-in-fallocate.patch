@@ -1,0 +1,40 @@
+From: Davide Italiano <dccitaliano@gmail.com>
+Date: Mon, 6 Apr 2015 22:09:15 -0700
+Patch-mainline: 4.6
+Git-commit: 2a162ce93232eb78124601996744f8eafec845ab
+References: bsc#1012452
+Subject: [PATCH] Btrfs: Improve FL_KEEP_SIZE handling in fallocate
+
+- We call inode_size_ok() only if FL_KEEP_SIZE isn't specified.
+- As an optimisation we can skip the call if (off + len)
+  isn't greater than the current size of the file. This operation
+  is called under the lock so the less work we do, the better.
+- If we call inode_size_ok() pass to it the correct value rather
+  than a more conservative estimation.
+
+Signed-off-by: Davide Italiano <dccitaliano@gmail.com>
+Reviewed-by: Liu Bo <bo.li.liu@oracle.com>
+Reviewed-by: David Sterba <dsterba@suse.com>
+Signed-off-by: David Sterba <dsterba@suse.com>
+---
+ fs/btrfs/file.c |    9 ++++++---
+ 1 file changed, 6 insertions(+), 3 deletions(-)
+
+--- a/fs/btrfs/file.c
++++ b/fs/btrfs/file.c
+@@ -2684,9 +2684,12 @@ static long btrfs_fallocate(struct file
+ 		return ret;
+ 
+ 	mutex_lock(&inode->i_mutex);
+-	ret = inode_newsize_ok(inode, alloc_end);
+-	if (ret)
+-		goto out;
++
++	if (!(mode & FALLOC_FL_KEEP_SIZE) && offset + len > inode->i_size) {
++		ret = inode_newsize_ok(inode, offset + len);
++		if (ret)
++			goto out;
++	}
+ 
+ 	/*
+ 	 * TODO: Move these two operations after we have checked

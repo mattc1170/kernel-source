@@ -1,0 +1,54 @@
+From: =?UTF-8?q?Tom=C3=A1=C5=A1=20Pila=C5=99?= <tpilar@solarflare.com>
+Date: Wed, 25 Jan 2017 13:48:17 +0000
+Subject: sfc: reduce severity of PIO buffer alloc failures
+Patch-mainline: Queued in subsystem maintainer repository
+Git-repo: git://git.kernel.org/pub/scm/linux/kernel/git/davem/net-next.git
+Git-commit: 6eacfb54ea1825a3f1062bbfd71669b594168646
+References: bsc#1019168
+
+PIO buffer allocation can fail for two valid reasons:
+ - we've run out of them (results in -ENOSPC)
+ - the NIC configuration doesn't support them (results in -EPERM)
+Since both these failures are expected netif_err is excessive.
+
+Signed-off-by: Bert Kenward <bkenward@solarflare.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+Acked-by: Benjamin Poirier <bpoirier@suse.com>
+---
+ drivers/net/ethernet/sfc/ef10.c |   18 +++++++++++++++---
+ 1 file changed, 15 insertions(+), 3 deletions(-)
+
+--- a/drivers/net/ethernet/sfc/ef10.c
++++ b/drivers/net/ethernet/sfc/ef10.c
+@@ -862,7 +862,13 @@ static int efx_ef10_dimension_resources(
+ 				     ER_DZ_TX_PIOBUF_SIZE / efx_piobuf_size);
+ 
+ 		rc = efx_ef10_alloc_piobufs(efx, n_piobufs);
+-		if (rc)
++		if (rc == -ENOSPC)
++			netif_dbg(efx, probe, efx->net_dev,
++				  "out of PIO buffers; cannot allocate more\n");
++		else if (rc == -EPERM)
++			netif_dbg(efx, probe, efx->net_dev,
++				  "not permitted to allocate PIO buffers\n");
++		else if (rc)
+ 			netif_err(efx, probe, efx->net_dev,
+ 				  "failed to allocate PIO buffers (%d)\n", rc);
+ 		else
+@@ -1009,8 +1015,14 @@ static int efx_ef10_init_nic(struct efx_
+ 				efx_ef10_free_piobufs(efx);
+ 		}
+ 
+-		/* Log an error on failure, but this is non-fatal */
+-		if (rc)
++		/* Log an error on failure, but this is non-fatal.
++		 * Permission errors are less important - we've presumably
++		 * had the PIO buffer licence removed.
++		 */
++		if (rc == -EPERM)
++			netif_dbg(efx, drv, efx->net_dev,
++				  "not permitted to restore PIO buffers\n");
++		else if (rc)
+ 			netif_err(efx, drv, efx->net_dev,
+ 				  "failed to restore PIO buffers (%d)\n", rc);
+ 		nic_data->must_restore_piobufs = false;

@@ -4,7 +4,7 @@ Date: Mon, 21 Mar 2016 19:19:30 +0800
 Subject: [PATCH] md: fix a trivial typo in comments
 Git-commit: 466ad292235bd7f23d5cf04c7b507d146424d019
 Patch-mainline: v4.6-rc3
-Reference: fate#320291
+References: fate#320291
 
 Fix a trivial typo in md_ioctl().
 

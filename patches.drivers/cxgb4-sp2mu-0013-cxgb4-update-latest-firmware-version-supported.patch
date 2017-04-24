@@ -1,0 +1,56 @@
+From: Ganesh Goudar <ganeshgr@chelsio.com>
+Date: Tue, 5 Jul 2016 18:07:24 +0530
+Subject: cxgb4: update latest firmware version supported
+Patch-mainline: v4.7-rc7
+Git-commit: f5d6516120ee5c777fb7b1ba9d39031881ad511b
+References: bsc#1021424
+
+Change t4fw_version.h to update latest firmware version number
+
+Signed-off-by: Ganesh Goudar <ganeshgr@chelsio.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+Acked-by: Thomas Bogendoerfer <tbogendoerfer@suse.de>
+---
+ drivers/net/ethernet/chelsio/cxgb4/t4fw_version.h | 12 ++++++------
+ 1 file changed, 6 insertions(+), 6 deletions(-)
+
+diff --git a/drivers/net/ethernet/chelsio/cxgb4/t4fw_version.h b/drivers/net/ethernet/chelsio/cxgb4/t4fw_version.h
+index c4b262ca7d43..2accab386323 100644
+--- a/drivers/net/ethernet/chelsio/cxgb4/t4fw_version.h
++++ b/drivers/net/ethernet/chelsio/cxgb4/t4fw_version.h
+@@ -36,8 +36,8 @@
+ #define __T4FW_VERSION_H__
+ 
+ #define T4FW_VERSION_MAJOR 0x01
+-#define T4FW_VERSION_MINOR 0x0E
+-#define T4FW_VERSION_MICRO 0x04
++#define T4FW_VERSION_MINOR 0x0F
++#define T4FW_VERSION_MICRO 0x25
+ #define T4FW_VERSION_BUILD 0x00
+ 
+ #define T4FW_MIN_VERSION_MAJOR 0x01
+@@ -45,8 +45,8 @@
+ #define T4FW_MIN_VERSION_MICRO 0x00
+ 
+ #define T5FW_VERSION_MAJOR 0x01
+-#define T5FW_VERSION_MINOR 0x0E
+-#define T5FW_VERSION_MICRO 0x04
++#define T5FW_VERSION_MINOR 0x0F
++#define T5FW_VERSION_MICRO 0x25
+ #define T5FW_VERSION_BUILD 0x00
+ 
+ #define T5FW_MIN_VERSION_MAJOR 0x00
+@@ -54,8 +54,8 @@
+ #define T5FW_MIN_VERSION_MICRO 0x00
+ 
+ #define T6FW_VERSION_MAJOR 0x01
+-#define T6FW_VERSION_MINOR 0x0E
+-#define T6FW_VERSION_MICRO 0x04
++#define T6FW_VERSION_MINOR 0x0F
++#define T6FW_VERSION_MICRO 0x25
+ #define T6FW_VERSION_BUILD 0x00
+ 
+ #define T6FW_MIN_VERSION_MAJOR 0x00
+-- 
+1.8.5.6
+

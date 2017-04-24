@@ -3,7 +3,7 @@ Date: Wed, 23 Mar 2016 14:54:48 -0700
 Patch-mainline: v4.6-rc1
 Subject: hv_netvsc: Fix the order of num_sc_offered decrement
 Git-commit: 3f735131d9c2523eb54a6c5099fa8c60a4292d48
-Reference: fate#320485
+References: fate#320485
 
 Reorder the code in netvsc_sc_open(), so num_sc_offered is only decremented
 after vmbus_open() is called. This avoid pontential race of removing device

@@ -1,0 +1,367 @@
+From: Varun Prakash <varun@chelsio.com>
+Date: Thu, 1 Dec 2016 20:28:29 +0530
+Subject: scsi: cxgb4i: libcxgbi: cxgb4: add T6 iSCSI completion feature
+Patch-mainline: v4.10-rc1
+Git-commit: 44830d8fd28a729729d14bb160341a6170631eb7
+References: bsc#1021424
+
+T6 adapters reduce number of completions to host by generating single
+completion for all the directly placed(DDP) iSCSI pdus in a sequence.
+
+This patch adds new structure for completion hw cmd (struct
+cpl_rx_iscsi_cmp) and implements T6 completion feature.
+
+Signed-off-by: Varun Prakash <varun@chelsio.com>
+Signed-off-by: Martin K. Petersen <martin.petersen@oracle.com>
+Acked-by: Thomas Bogendoerfer <tbogendoerfer@suse.de>
+---
+ drivers/net/ethernet/chelsio/cxgb4/t4_msg.h |  13 ++
+ drivers/scsi/cxgbi/cxgb4i/cxgb4i.c          | 219 ++++++++++++++++++++++++----
+ drivers/scsi/cxgbi/libcxgbi.c               |  19 +++
+ drivers/scsi/cxgbi/libcxgbi.h               |   1 +
+ 4 files changed, 226 insertions(+), 26 deletions(-)
+
+diff --git a/drivers/net/ethernet/chelsio/cxgb4/t4_msg.h b/drivers/net/ethernet/chelsio/cxgb4/t4_msg.h
+index 80417fc564d4..5f575373c07d 100644
+--- a/drivers/net/ethernet/chelsio/cxgb4/t4_msg.h
++++ b/drivers/net/ethernet/chelsio/cxgb4/t4_msg.h
+@@ -75,6 +75,7 @@ enum {
+ 	CPL_PASS_ESTABLISH    = 0x41,
+ 	CPL_RX_DATA_DDP       = 0x42,
+ 	CPL_PASS_ACCEPT_REQ   = 0x44,
++	CPL_RX_ISCSI_CMP      = 0x45,
+ 	CPL_TRACE_PKT_T5      = 0x48,
+ 	CPL_RX_ISCSI_DDP      = 0x49,
+ 
+@@ -925,6 +926,18 @@ struct cpl_iscsi_data {
+ 	__u8 status;
+ };
+ 
++struct cpl_rx_iscsi_cmp {
++	union opcode_tid ot;
++	__be16 pdu_len_ddp;
++	__be16 len;
++	__be32 seq;
++	__be16 urg;
++	__u8 rsvd;
++	__u8 status;
++	__be32 ulp_crc;
++	__be32 ddpvld;
++};
++
+ struct cpl_tx_data_iso {
+ 	__be32 op_to_scsi;
+ 	__u8   reserved1;
+diff --git a/drivers/scsi/cxgbi/cxgb4i/cxgb4i.c b/drivers/scsi/cxgbi/cxgb4i/cxgb4i.c
+index 339f6b7f4803..c46e4edf07ab 100644
+--- a/drivers/scsi/cxgbi/cxgb4i/cxgb4i.c
++++ b/drivers/scsi/cxgbi/cxgb4i/cxgb4i.c
+@@ -1164,6 +1164,101 @@ rel_skb:
+ 	__kfree_skb(skb);
+ }
+ 
++static void do_rx_iscsi_data(struct cxgbi_device *cdev, struct sk_buff *skb)
++{
++	struct cxgbi_sock *csk;
++	struct cpl_iscsi_hdr *cpl = (struct cpl_iscsi_hdr *)skb->data;
++	struct cxgb4_lld_info *lldi = cxgbi_cdev_priv(cdev);
++	struct tid_info *t = lldi->tids;
++	struct sk_buff *lskb;
++	u32 tid = GET_TID(cpl);
++	u16 pdu_len_ddp = be16_to_cpu(cpl->pdu_len_ddp);
++
++	csk = lookup_tid(t, tid);
++	if (unlikely(!csk)) {
++		pr_err("can't find conn. for tid %u.\n", tid);
++		goto rel_skb;
++	}
++
++	log_debug(1 << CXGBI_DBG_TOE | 1 << CXGBI_DBG_PDU_RX,
++		  "csk 0x%p,%u,0x%lx, tid %u, skb 0x%p,%u, 0x%x.\n",
++		  csk, csk->state, csk->flags, csk->tid, skb,
++		  skb->len, pdu_len_ddp);
++
++	spin_lock_bh(&csk->lock);
++
++	if (unlikely(csk->state >= CTP_PASSIVE_CLOSE)) {
++		log_debug(1 << CXGBI_DBG_TOE | 1 << CXGBI_DBG_SOCK,
++			  "csk 0x%p,%u,0x%lx,%u, bad state.\n",
++			  csk, csk->state, csk->flags, csk->tid);
++
++		if (csk->state != CTP_ABORTING)
++			goto abort_conn;
++		else
++			goto discard;
++	}
++
++	cxgbi_skcb_tcp_seq(skb) = be32_to_cpu(cpl->seq);
++	cxgbi_skcb_flags(skb) = 0;
++
++	skb_reset_transport_header(skb);
++	__skb_pull(skb, sizeof(*cpl));
++	__pskb_trim(skb, ntohs(cpl->len));
++
++	if (!csk->skb_ulp_lhdr)
++		csk->skb_ulp_lhdr = skb;
++
++	lskb = csk->skb_ulp_lhdr;
++	cxgbi_skcb_set_flag(lskb, SKCBF_RX_DATA);
++
++	log_debug(1 << CXGBI_DBG_TOE | 1 << CXGBI_DBG_PDU_RX,
++		  "csk 0x%p,%u,0x%lx, skb 0x%p data, 0x%p.\n",
++		  csk, csk->state, csk->flags, skb, lskb);
++
++	__skb_queue_tail(&csk->receive_queue, skb);
++	spin_unlock_bh(&csk->lock);
++	return;
++
++abort_conn:
++	send_abort_req(csk);
++discard:
++	spin_unlock_bh(&csk->lock);
++rel_skb:
++	__kfree_skb(skb);
++}
++
++static void
++cxgb4i_process_ddpvld(struct cxgbi_sock *csk,
++		      struct sk_buff *skb, u32 ddpvld)
++{
++	if (ddpvld & (1 << CPL_RX_DDP_STATUS_HCRC_SHIFT)) {
++		pr_info("csk 0x%p, lhdr 0x%p, status 0x%x, hcrc bad 0x%lx.\n",
++			csk, skb, ddpvld, cxgbi_skcb_flags(skb));
++		cxgbi_skcb_set_flag(skb, SKCBF_RX_HCRC_ERR);
++	}
++
++	if (ddpvld & (1 << CPL_RX_DDP_STATUS_DCRC_SHIFT)) {
++		pr_info("csk 0x%p, lhdr 0x%p, status 0x%x, dcrc bad 0x%lx.\n",
++			csk, skb, ddpvld, cxgbi_skcb_flags(skb));
++		cxgbi_skcb_set_flag(skb, SKCBF_RX_DCRC_ERR);
++	}
++
++	if (ddpvld & (1 << CPL_RX_DDP_STATUS_PAD_SHIFT)) {
++		log_debug(1 << CXGBI_DBG_PDU_RX,
++			  "csk 0x%p, lhdr 0x%p, status 0x%x, pad bad.\n",
++			  csk, skb, ddpvld);
++		cxgbi_skcb_set_flag(skb, SKCBF_RX_PAD_ERR);
++	}
++
++	if ((ddpvld & (1 << CPL_RX_DDP_STATUS_DDP_SHIFT)) &&
++	    !cxgbi_skcb_test_flag(skb, SKCBF_RX_DATA)) {
++		log_debug(1 << CXGBI_DBG_PDU_RX,
++			  "csk 0x%p, lhdr 0x%p, 0x%x, data ddp'ed.\n",
++			  csk, skb, ddpvld);
++		cxgbi_skcb_set_flag(skb, SKCBF_RX_DATA_DDPD);
++	}
++}
++
+ static void do_rx_data_ddp(struct cxgbi_device *cdev,
+ 				  struct sk_buff *skb)
+ {
+@@ -1173,7 +1268,7 @@ static void do_rx_data_ddp(struct cxgbi_device *cdev,
+ 	unsigned int tid = GET_TID(rpl);
+ 	struct cxgb4_lld_info *lldi = cxgbi_cdev_priv(cdev);
+ 	struct tid_info *t = lldi->tids;
+-	unsigned int status = ntohl(rpl->ddpvld);
++	u32 ddpvld = be32_to_cpu(rpl->ddpvld);
+ 
+ 	csk = lookup_tid(t, tid);
+ 	if (unlikely(!csk)) {
+@@ -1183,7 +1278,7 @@ static void do_rx_data_ddp(struct cxgbi_device *cdev,
+ 
+ 	log_debug(1 << CXGBI_DBG_TOE | 1 << CXGBI_DBG_PDU_RX,
+ 		"csk 0x%p,%u,0x%lx, skb 0x%p,0x%x, lhdr 0x%p.\n",
+-		csk, csk->state, csk->flags, skb, status, csk->skb_ulp_lhdr);
++		csk, csk->state, csk->flags, skb, ddpvld, csk->skb_ulp_lhdr);
+ 
+ 	spin_lock_bh(&csk->lock);
+ 
+@@ -1211,29 +1306,8 @@ static void do_rx_data_ddp(struct cxgbi_device *cdev,
+ 		pr_info("tid 0x%x, RX_DATA_DDP pdulen %u != %u.\n",
+ 			csk->tid, ntohs(rpl->len), cxgbi_skcb_rx_pdulen(lskb));
+ 
+-	if (status & (1 << CPL_RX_DDP_STATUS_HCRC_SHIFT)) {
+-		pr_info("csk 0x%p, lhdr 0x%p, status 0x%x, hcrc bad 0x%lx.\n",
+-			csk, lskb, status, cxgbi_skcb_flags(lskb));
+-		cxgbi_skcb_set_flag(lskb, SKCBF_RX_HCRC_ERR);
+-	}
+-	if (status & (1 << CPL_RX_DDP_STATUS_DCRC_SHIFT)) {
+-		pr_info("csk 0x%p, lhdr 0x%p, status 0x%x, dcrc bad 0x%lx.\n",
+-			csk, lskb, status, cxgbi_skcb_flags(lskb));
+-		cxgbi_skcb_set_flag(lskb, SKCBF_RX_DCRC_ERR);
+-	}
+-	if (status & (1 << CPL_RX_DDP_STATUS_PAD_SHIFT)) {
+-		log_debug(1 << CXGBI_DBG_PDU_RX,
+-			"csk 0x%p, lhdr 0x%p, status 0x%x, pad bad.\n",
+-			csk, lskb, status);
+-		cxgbi_skcb_set_flag(lskb, SKCBF_RX_PAD_ERR);
+-	}
+-	if ((status & (1 << CPL_RX_DDP_STATUS_DDP_SHIFT)) &&
+-		!cxgbi_skcb_test_flag(lskb, SKCBF_RX_DATA)) {
+-		log_debug(1 << CXGBI_DBG_PDU_RX,
+-			"csk 0x%p, lhdr 0x%p, 0x%x, data ddp'ed.\n",
+-			csk, lskb, status);
+-		cxgbi_skcb_set_flag(lskb, SKCBF_RX_DATA_DDPD);
+-	}
++	cxgb4i_process_ddpvld(csk, lskb, ddpvld);
++
+ 	log_debug(1 << CXGBI_DBG_PDU_RX,
+ 		"csk 0x%p, lskb 0x%p, f 0x%lx.\n",
+ 		csk, lskb, cxgbi_skcb_flags(lskb));
+@@ -1251,6 +1325,98 @@ rel_skb:
+ 	__kfree_skb(skb);
+ }
+ 
++static void
++do_rx_iscsi_cmp(struct cxgbi_device *cdev, struct sk_buff *skb)
++{
++	struct cxgbi_sock *csk;
++	struct cpl_rx_iscsi_cmp *rpl = (struct cpl_rx_iscsi_cmp *)skb->data;
++	struct cxgb4_lld_info *lldi = cxgbi_cdev_priv(cdev);
++	struct tid_info *t = lldi->tids;
++	struct sk_buff *data_skb = NULL;
++	u32 tid = GET_TID(rpl);
++	u32 ddpvld = be32_to_cpu(rpl->ddpvld);
++	u32 seq = be32_to_cpu(rpl->seq);
++	u16 pdu_len_ddp = be16_to_cpu(rpl->pdu_len_ddp);
++
++	csk = lookup_tid(t, tid);
++	if (unlikely(!csk)) {
++		pr_err("can't find connection for tid %u.\n", tid);
++		goto rel_skb;
++	}
++
++	log_debug(1 << CXGBI_DBG_TOE | 1 << CXGBI_DBG_PDU_RX,
++		  "csk 0x%p,%u,0x%lx, skb 0x%p,0x%x, lhdr 0x%p, len %u, "
++		  "pdu_len_ddp %u, status %u.\n",
++		  csk, csk->state, csk->flags, skb, ddpvld, csk->skb_ulp_lhdr,
++		  ntohs(rpl->len), pdu_len_ddp,  rpl->status);
++
++	spin_lock_bh(&csk->lock);
++
++	if (unlikely(csk->state >= CTP_PASSIVE_CLOSE)) {
++		log_debug(1 << CXGBI_DBG_TOE | 1 << CXGBI_DBG_SOCK,
++			  "csk 0x%p,%u,0x%lx,%u, bad state.\n",
++			  csk, csk->state, csk->flags, csk->tid);
++
++		if (csk->state != CTP_ABORTING)
++			goto abort_conn;
++		else
++			goto discard;
++	}
++
++	cxgbi_skcb_tcp_seq(skb) = seq;
++	cxgbi_skcb_flags(skb) = 0;
++	cxgbi_skcb_rx_pdulen(skb) = 0;
++
++	skb_reset_transport_header(skb);
++	__skb_pull(skb, sizeof(*rpl));
++	__pskb_trim(skb, be16_to_cpu(rpl->len));
++
++	csk->rcv_nxt = seq + pdu_len_ddp;
++
++	if (csk->skb_ulp_lhdr) {
++		data_skb = skb_peek(&csk->receive_queue);
++		if (!data_skb ||
++		    !cxgbi_skcb_test_flag(data_skb, SKCBF_RX_DATA)) {
++			pr_err("Error! freelist data not found 0x%p, tid %u\n",
++			       data_skb, tid);
++
++			goto abort_conn;
++		}
++		__skb_unlink(data_skb, &csk->receive_queue);
++
++		cxgbi_skcb_set_flag(skb, SKCBF_RX_DATA);
++
++		__skb_queue_tail(&csk->receive_queue, skb);
++		__skb_queue_tail(&csk->receive_queue, data_skb);
++	} else {
++		 __skb_queue_tail(&csk->receive_queue, skb);
++	}
++
++	csk->skb_ulp_lhdr = NULL;
++
++	cxgbi_skcb_set_flag(skb, SKCBF_RX_HDR);
++	cxgbi_skcb_set_flag(skb, SKCBF_RX_STATUS);
++	cxgbi_skcb_set_flag(skb, SKCBF_RX_ISCSI_COMPL);
++	cxgbi_skcb_rx_ddigest(skb) = be32_to_cpu(rpl->ulp_crc);
++
++	cxgb4i_process_ddpvld(csk, skb, ddpvld);
++
++	log_debug(1 << CXGBI_DBG_PDU_RX, "csk 0x%p, skb 0x%p, f 0x%lx.\n",
++		  csk, skb, cxgbi_skcb_flags(skb));
++
++	cxgbi_conn_pdu_ready(csk);
++	spin_unlock_bh(&csk->lock);
++
++	return;
++
++abort_conn:
++	send_abort_req(csk);
++discard:
++	spin_unlock_bh(&csk->lock);
++rel_skb:
++	__kfree_skb(skb);
++}
++
+ static void do_fw4_ack(struct cxgbi_device *cdev, struct sk_buff *skb)
+ {
+ 	struct cxgbi_sock *csk;
+@@ -1512,10 +1678,11 @@ cxgb4i_cplhandler_func cxgb4i_cplhandlers[NUM_CPL_CMDS] = {
+ 	[CPL_CLOSE_CON_RPL] = do_close_con_rpl,
+ 	[CPL_FW4_ACK] = do_fw4_ack,
+ 	[CPL_ISCSI_HDR] = do_rx_iscsi_hdr,
+-	[CPL_ISCSI_DATA] = do_rx_iscsi_hdr,
++	[CPL_ISCSI_DATA] = do_rx_iscsi_data,
+ 	[CPL_SET_TCB_RPL] = do_set_tcb_rpl,
+ 	[CPL_RX_DATA_DDP] = do_rx_data_ddp,
+ 	[CPL_RX_ISCSI_DDP] = do_rx_data_ddp,
++	[CPL_RX_ISCSI_CMP] = do_rx_iscsi_cmp,
+ 	[CPL_RX_DATA] = do_rx_data,
+ };
+ 
+diff --git a/drivers/scsi/cxgbi/libcxgbi.c b/drivers/scsi/cxgbi/libcxgbi.c
+index ead83a24bcd1..1dee2fcdf782 100644
+--- a/drivers/scsi/cxgbi/libcxgbi.c
++++ b/drivers/scsi/cxgbi/libcxgbi.c
+@@ -1839,6 +1839,25 @@ static int skb_read_pdu_bhs(struct iscsi_conn *conn, struct sk_buff *skb)
+ 		return -EIO;
+ 	}
+ 
++	if (cxgbi_skcb_test_flag(skb, SKCBF_RX_ISCSI_COMPL) &&
++	    cxgbi_skcb_test_flag(skb, SKCBF_RX_DATA_DDPD)) {
++		/* If completion flag is set and data is directly
++		 * placed in to the host memory then update
++		 * task->exp_datasn to the datasn in completion
++		 * iSCSI hdr as T6 adapter generates completion only
++		 * for the last pdu of a sequence.
++		 */
++		itt_t itt = ((struct iscsi_data *)skb->data)->itt;
++		struct iscsi_task *task = iscsi_itt_to_ctask(conn, itt);
++		u32 data_sn = be32_to_cpu(((struct iscsi_data *)
++							skb->data)->datasn);
++		if (task && task->sc) {
++			struct iscsi_tcp_task *tcp_task = task->dd_data;
++
++			tcp_task->exp_datasn = data_sn;
++		}
++	}
++
+ 	return read_pdu_skb(conn, skb, 0, 0);
+ }
+ 
+diff --git a/drivers/scsi/cxgbi/libcxgbi.h b/drivers/scsi/cxgbi/libcxgbi.h
+index 9842301f7980..e7d55634314b 100644
+--- a/drivers/scsi/cxgbi/libcxgbi.h
++++ b/drivers/scsi/cxgbi/libcxgbi.h
+@@ -283,6 +283,7 @@ enum cxgbi_skcb_flags {
+ 	SKCBF_RX_HDR,		/* received pdu header */
+ 	SKCBF_RX_DATA,		/* received pdu payload */
+ 	SKCBF_RX_STATUS,	/* received ddp status */
++	SKCBF_RX_ISCSI_COMPL,   /* received iscsi completion */
+ 	SKCBF_RX_DATA_DDPD,	/* pdu payload ddp'd */
+ 	SKCBF_RX_HCRC_ERR,	/* header digest error */
+ 	SKCBF_RX_DCRC_ERR,	/* data digest error */
+-- 
+1.8.5.6
+

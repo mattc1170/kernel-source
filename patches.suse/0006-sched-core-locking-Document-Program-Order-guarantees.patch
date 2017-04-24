@@ -1,9 +1,8 @@
-From 8643cda549ca49a403160892db68504569ac9052 Mon Sep 17 00:00:00 2001
 From: Peter Zijlstra <peterz@infradead.org>
 Date: Tue, 17 Nov 2015 19:01:11 +0100
 Subject: [PATCH 6/9] sched/core, locking: Document Program-Order guarantees
-Git-commit: 64d816cba06c67eeee455b8c78ebcda349d49c24
-Patch-mainline: 4.5
+Patch-mainline: v4.5-rc1
+Git-commit: 8643cda549ca49a403160892db68504569ac9052
 References: fate#320355
 
 These are some notes on the scheduler locking and how it provides

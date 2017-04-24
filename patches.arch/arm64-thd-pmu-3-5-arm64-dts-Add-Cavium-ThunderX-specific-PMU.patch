@@ -12,7 +12,7 @@ Cc: linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org,
 Date: Thu, 18 Feb 2016 17:50:12 +0100
 Patch-mainline: v4.6-rc1
 Git-commit: 94085fe570e7b87597d4695e6fa77d4256efd29e
-Reference: fate#319982
+References: fate#319982
 
 
 Add a compatible string for the Cavium ThunderX PMU.

@@ -1,9 +1,8 @@
-From cd0272fab785077c121aa91ec2401090965bbc37 Mon Sep 17 00:00:00 2001
 From: Waiman Long <Waiman.Long@hpe.com>
 Date: Mon, 9 Nov 2015 19:09:27 -0500
 Subject: [PATCH 9/9] locking/pvqspinlock: Queue node adaptive spinning
-Git-commit: 64d816cba06c67eeee455b8c78ebcda349d49c24
-Patch-mainline: 4.5
+Patch-mainline: v4.5-rc1
+Git-commit: cd0272fab785077c121aa91ec2401090965bbc37
 References: fate#320355
 
 In an overcommitted guest where some vCPUs have to be halted to make

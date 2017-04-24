@@ -3,7 +3,7 @@ Date: Tue, 1 Dec 2015 16:43:18 -0800
 Patch-mainline: v4.5-rc1
 Subject: hv_netvsc: Eliminate status from struct hv_netvsc_packet
 Git-commit: 10082f98878a9dff1563745f9f1dd9d1ff142700
-Reference: fate#315887
+References: fate#315887
 
 Eliminate status from struct hv_netvsc_packet.
 

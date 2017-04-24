@@ -1,7 +1,8 @@
 From: NeilBrown <neilb@suse.com>
 Date: Thu, 28 Jul 2016 16:20:15 +1000
 Subject: [PATCH] exportfs: be careful to only return expected errors.
-Patch-mainline: Not yet, under test
+Patch-mainline: v4.9
+Git-commit: 09bb8bfffd29c3dffb72bc2c69a062dfb1ae624c
 References: bsc#989116
 
 When nfsd calls fh_to_dentry, it expect ESTALE or ENOMEM as errors.

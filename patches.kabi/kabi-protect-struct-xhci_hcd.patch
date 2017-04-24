@@ -1,0 +1,38 @@
+From: Jiri Slaby <jslaby@suse.cz>
+Subject: kABI: protect struct xhci_hcd
+Patch-mainline: never, kabi
+References: kabi
+
+In 4.4.42, commit ce737ba8e23e36bc7d921a68b225781b2d040019 (xhci: Use
+delayed_work instead of timer for command timeout), upstream commit
+cb4d5ce588c5ff68e0fdd30370a0e6bc2c0a736b changed cmd_timer from
+timer_list to delayed_work. Later, commit
+59185ef00b46e50598ae941a7a153ecb87adb429 (xhci: Fix race related to
+abort operation), upstream commit
+1c111b6c3844a142e03bcfc2fa17bfbdea08e9dc added
+cmd_ring_stop_completion to struct xhci_hcd. kABI checker started
+to report breakages, obviously.
+
+The structure is internal-only, so protect the changes by __GENKSYMS__
+and be done with it.
+
+Signed-off-by: Jiri Slaby <jslaby@suse.cz>
+---
+ drivers/usb/host/xhci.h |    4 ++++
+ 1 file changed, 4 insertions(+)
+
+--- a/drivers/usb/host/xhci.h
++++ b/drivers/usb/host/xhci.h
+@@ -1561,8 +1561,12 @@ struct xhci_hcd {
+ #define CMD_RING_STATE_STOPPED         (1 << 2)
+ 	struct list_head        cmd_list;
+ 	unsigned int		cmd_ring_reserved_trbs;
++#ifdef __GENKSYMS__
++	struct timer_list	cmd_timer;
++#else
+ 	struct delayed_work	cmd_timer;
+ 	struct completion	cmd_ring_stop_completion;
++#endif
+ 	struct xhci_command	*current_cmd;
+ 	struct xhci_ring	*event_ring;
+ 	struct xhci_erst	erst;

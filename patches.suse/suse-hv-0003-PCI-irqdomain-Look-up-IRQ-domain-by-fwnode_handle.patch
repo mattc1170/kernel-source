@@ -3,7 +3,7 @@ Date: Tue, 16 Feb 2016 21:56:22 +0000
 Subject: PCI: Look up IRQ domain by fwnode_handle
 Patch-mainline: v4.6-rc1
 Git-commit: 788858ebc49a07fe5f812778f245a51b0d800d82
-Reference: fate#320295
+References: fate#320295
 
 If pci_host_bridge_msi_domain() can't find an IRQ domain through the OF
 tree, try to look it up directly through the fwnode_handle.

@@ -3,7 +3,7 @@ Date: Thu, 10 Dec 2015 08:55:27 -0800
 Subject: acpi: pci: Setup MSI domain for ACPI based pci devices
 Patch-mainline: v4.5-rc1
 Git-commit: 471036b2b895789c2305428fd879006468e4a758
-Reference: fate#320295
+References: fate#320295
 
 This patch introduces pci_msi_register_fwnode_provider() for irqchip
 to register a callback, to provide a way to determine appropriate MSI

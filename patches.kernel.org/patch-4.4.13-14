@@ -1,7 +1,7 @@
 From: Jiri Slaby <jslaby@suse.cz>
 Subject: Linux 4.4.14
 Patch-mainline: 4.4.14
-References: CVE-2016-3134 CVE-2016-4951 CVE-2016-4997 CVE-2016-4998 bsc#971126 bsc#981058 bsc#986362 bsc#986365 bsc#983458
+References: CVE-2016-3134 CVE-2016-4951 CVE-2016-4997 CVE-2016-4998 CVE-2016-9806 bsc#971126 bsc#981058 bsc#986362 bsc#986365 bsc#983458 bsc#1013540
 Git-commit: d7591f0c41ce3e67600a982bab6989ef0f07b3ce
 Git-commit: 09d9686047dbbe1cf4faa558d3ecc4aae2046054
 Git-commit: 0188346f21e6546498c2a0f84888797ad4063fc5

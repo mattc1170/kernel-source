@@ -1,0 +1,48 @@
+From 4f78ce870a4da0cf4db265ec4fd31eb4fb7f9c57 Mon Sep 17 00:00:00 2001
+From: Giovanni Cabiddu <giovanni.cabiddu@intel.com>
+Date: Thu, 22 Dec 2016 15:00:12 +0000
+Subject: [PATCH] crypto: qat - fix bar discovery for c62x
+Git-Commit: 4f78ce870a4da0cf4db265ec4fd31eb4fb7f9c57
+Patch-Mainline: Queued
+Git-Repo: git://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git
+References: bsc#1021251
+
+Some accelerators of the c62x series have only two bars.
+This patch skips BAR0 if the accelerator does not have it.
+
+Signed-off-by: Giovanni Cabiddu <giovanni.cabiddu@intel.com>
+Signed-off-by: Herbert Xu <herbert@gondor.apana.org.au>
+Signed-off-by: Oliver Neukum <oneukum@suse.com>
+---
+ drivers/crypto/qat/qat_c62x/adf_drv.c             | 2 +-
+ drivers/crypto/qat/qat_common/adf_accel_devices.h | 1 +
+ 2 files changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/crypto/qat/qat_c62x/adf_drv.c b/drivers/crypto/qat/qat_c62x/adf_drv.c
+index bc5cbc1..5b2d78a 100644
+--- a/drivers/crypto/qat/qat_c62x/adf_drv.c
++++ b/drivers/crypto/qat/qat_c62x/adf_drv.c
+@@ -233,7 +233,7 @@ static int adf_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
+ 			      &hw_data->accel_capabilities_mask);
+ 
+ 	/* Find and map all the device's BARS */
+-	i = 0;
++	i = (hw_data->fuses & ADF_DEVICE_FUSECTL_MASK) ? 1 : 0;
+ 	bar_mask = pci_select_bars(pdev, IORESOURCE_MEM);
+ 	for_each_set_bit(bar_nr, (const unsigned long *)&bar_mask,
+ 			 ADF_PCI_MAX_BARS * 2) {
+diff --git a/drivers/crypto/qat/qat_common/adf_accel_devices.h b/drivers/crypto/qat/qat_common/adf_accel_devices.h
+index e882253..33f0a62 100644
+--- a/drivers/crypto/qat/qat_common/adf_accel_devices.h
++++ b/drivers/crypto/qat/qat_common/adf_accel_devices.h
+@@ -69,6 +69,7 @@
+ #define ADF_ERRSOU5 (0x3A000 + 0xD8)
+ #define ADF_DEVICE_FUSECTL_OFFSET 0x40
+ #define ADF_DEVICE_LEGFUSE_OFFSET 0x4C
++#define ADF_DEVICE_FUSECTL_MASK 0x80000000
+ #define ADF_PCI_MAX_BARS 3
+ #define ADF_DEVICE_NAME_LENGTH 32
+ #define ADF_ETR_MAX_RINGS_PER_BANK 16
+-- 
+2.10.2
+

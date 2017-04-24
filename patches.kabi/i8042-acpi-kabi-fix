@@ -1,0 +1,27 @@
+From: Takashi Iwai <tiwai@suse.de>
+Subject: Fix kABI breakage by linux/acpi.h inclusion in i8042-x86ia46io.h
+Patch-mainline: Never, SLE12-SP2 only
+References: bsc#1011660
+
+patches.drivers/Input-i8042-Trust-firmware-a-bit-more-when-probing-o
+introduced a kABI breakage due to the inclusion of linux/acpi.h, as
+it's in the header file.  Hide it via __GENKSYMS__ as a hack.
+
+Signed-off-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/input/serio/i8042-x86ia64io.h |    2 ++
+ 1 file changed, 2 insertions(+)
+
+--- a/drivers/input/serio/i8042-x86ia64io.h
++++ b/drivers/input/serio/i8042-x86ia64io.h
+@@ -891,7 +891,9 @@ static const struct dmi_system_id __init
+ 
+ #ifdef CONFIG_PNP
+ #include <linux/pnp.h>
++#ifndef __GENKSYMS__
+ #include <linux/acpi.h>
++#endif
+ 
+ static bool i8042_pnp_kbd_registered;
+ static unsigned int i8042_pnp_kbd_devices;

@@ -3,7 +3,7 @@ Date: Mon, 14 Dec 2015 19:01:56 -0800
 Patch-mainline: v4.5-rc1
 Subject: Drivers: hv: utils: fix crash when device is removed from host side
 Git-commit: 9420098adc50a88d4a441e0f92d54bfa7af44448
-Reference: fate#315887
+References: fate#315887
 
 The crash is observed when a service is being disabled host side while
 userspace daemon is connected to the device:

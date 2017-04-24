@@ -3,7 +3,7 @@ Date: Fri, 26 Feb 2016 15:13:15 -0800
 Patch-mainline: v4.6-rc1
 Subject: Drivers: hv: vmbus: don't loose HVMSG_TIMER_EXPIRED messages
 Git-commit: 7be3e169444d2c625f15a0b6639252b98d1f226a
-Reference: fate#320485
+References: fate#320485
 MIME-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 8bit

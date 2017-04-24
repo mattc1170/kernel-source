@@ -4,7 +4,7 @@ Date: Tue, 29 Mar 2016 14:00:19 -0700
 Subject: [PATCH] MD: add rdev reference for super write
 Git-commit: ed3b98c71cd91fa05954df52a79dcd6be08dd730
 Patch-mainline: v4.6-rc3
-Reference: fate#320291
+References: fate#320291
 
 Xiao Ni reported below crash:
 [26396.335146] BUG: unable to handle kernel NULL pointer dereference at 00000000000002a8

@@ -1,6 +1,7 @@
 From: NeilBrown <neilb@suse.de>
 Subject: md/raid10: Don't print RAID10 conf messages for large arrays.
-Patch-mainline: Not yet, haven't tried submitting
+Patch-mainline: v4.10
+Git-commit: 1d41c216febe43150e99b24fde5eda9e8097dccc
 References: bnc#768084
 
 For small arrays, the "RAID10 conf printout" messages can be useful.

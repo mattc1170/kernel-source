@@ -1,0 +1,36 @@
+From 656455bf19f6a58e3fc5441a4cdcc8f598979329 Mon Sep 17 00:00:00 2001
+From: Tobias Klauser <tklauser@distanz.ch>
+Date: Mon, 27 Mar 2017 08:56:59 +0200
+Subject: [PATCH] net: ibmvnic: Remove unused net_stats member from struct
+ ibmvnic_adapter
+
+References: fate#322021, bsc#1031512
+Patch-mainline: queued, next-20170328
+Git-repo: https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git
+Git-commit: 656455bf19f6a58e3fc5441a4cdcc8f598979329
+
+The ibmvnic driver keeps its statistics in net_device->stats, so the
+net_stats member in struct ibmvnic_adapter is unused. Remove it.
+
+Signed-off-by: Tobias Klauser <tklauser@distanz.ch>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+Acked-by: Michal Suchanek <msuchanek@suse.de>
+---
+ drivers/net/ethernet/ibm/ibmvnic.h | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/drivers/net/ethernet/ibm/ibmvnic.h b/drivers/net/ethernet/ibm/ibmvnic.h
+index 10ad259208cb..42ad648c174d 100644
+--- a/drivers/net/ethernet/ibm/ibmvnic.h
++++ b/drivers/net/ethernet/ibm/ibmvnic.h
+@@ -953,7 +953,6 @@ struct ibmvnic_adapter {
+ 	dma_addr_t bounce_buffer_dma;
+ 
+ 	/* Statistics */
+-	struct net_device_stats net_stats;
+ 	struct ibmvnic_statistics stats;
+ 	dma_addr_t stats_token;
+ 	struct completion stats_done;
+-- 
+2.10.2
+

@@ -3,7 +3,7 @@ Date: Thu, 10 Dec 2015 17:52:59 +0000
 Subject: genirq/msi: Export functions to allow MSI domains in modules
 Patch-mainline: v4.5-rc1
 Git-commit: a4289dc2ec3a5821076a78ee9678909b4eff297e
-Reference: fate#320295
+References: fate#320295
 
 The Linux kernel already has the concept of IRQ domain, wherein a
 component can expose a set of IRQs which are managed by a particular

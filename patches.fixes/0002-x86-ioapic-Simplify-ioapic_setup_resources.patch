@@ -1,0 +1,68 @@
+From a3eac2ea5b492f37422e08ae3ce7d0e1387f3f89 Mon Sep 17 00:00:00 2001
+From: Rui Wang <rui.y.wang@intel.com>
+Date: Wed, 8 Jun 2016 14:59:53 +0800
+Git-commit: 4855531eb8582a98cb905d2baf86021254d7a675
+Patch-mainline: v4.8
+References: bsc#1027153, bsc#1027616
+Subject: [PATCH 2/9] x86/ioapic: Simplify ioapic_setup_resources()
+
+Optimize the function by removing the variable 'num'.
+
+Signed-off-by: Rui Wang <rui.y.wang@intel.com>
+Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
+Cc: tony.luck@intel.com
+Cc: linux-pci@vger.kernel.org
+Cc: rjw@rjwysocki.net
+Cc: linux-acpi@vger.kernel.org
+Cc: bhelgaas@google.com
+Link: http://lkml.kernel.org/r/1465369193-4816-4-git-send-email-rui.y.wang@intel.com
+Signed-off-by: Ingo Molnar <mingo@kernel.org>
+Acked-by: Joerg Roedel <jroedel@suse.de>
+---
+ arch/x86/kernel/apic/io_apic.c | 18 +++++++-----------
+ 1 file changed, 7 insertions(+), 11 deletions(-)
+
+diff --git a/arch/x86/kernel/apic/io_apic.c b/arch/x86/kernel/apic/io_apic.c
+index 96e52172e341..5c92097c3a80 100644
+--- a/arch/x86/kernel/apic/io_apic.c
++++ b/arch/x86/kernel/apic/io_apic.c
+@@ -2569,29 +2569,25 @@ static struct resource * __init ioapic_setup_resources(void)
+ 	unsigned long n;
+ 	struct resource *res;
+ 	char *mem;
+-	int i, num = 0;
++	int i;
+ 
+-	for_each_ioapic(i)
+-		num++;
+-	if (num == 0)
++	if (nr_ioapics == 0)
+ 		return NULL;
+ 
+ 	n = IOAPIC_RESOURCE_NAME_SIZE + sizeof(struct resource);
+-	n *= num;
++	n *= nr_ioapics;
+ 
+ 	mem = alloc_bootmem(n);
+ 	res = (void *)mem;
+ 
+-	mem += sizeof(struct resource) * num;
++	mem += sizeof(struct resource) * nr_ioapics;
+ 
+-	num = 0;
+ 	for_each_ioapic(i) {
+-		res[num].name = mem;
+-		res[num].flags = IORESOURCE_MEM | IORESOURCE_BUSY;
++		res[i].name = mem;
++		res[i].flags = IORESOURCE_MEM | IORESOURCE_BUSY;
+ 		snprintf(mem, IOAPIC_RESOURCE_NAME_SIZE, "IOAPIC %u", i);
+ 		mem += IOAPIC_RESOURCE_NAME_SIZE;
+-		ioapics[i].iomem_res = &res[num];
+-		num++;
++		ioapics[i].iomem_res = &res[i];
+ 	}
+ 
+ 	ioapic_resources = res;
+-- 
+2.11.0.258.ge05806d
+

@@ -3,7 +3,7 @@ Date: Mon, 14 Dec 2015 16:01:50 -0800
 Patch-mainline: v4.5-rc1
 Subject: Drivers: hv: vmbus: release relid on error in vmbus_process_offer()
 Git-commit: f52078cf5711ce47c113a58702b35c8ff5f212f5
-Reference: fate#315887
+References: fate#315887
 
 We want to simplify vmbus_onoffer_rescind() by not invoking
 hv_process_channel_removal(NULL, ...).

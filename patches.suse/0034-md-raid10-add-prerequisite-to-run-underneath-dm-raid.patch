@@ -4,7 +4,7 @@ Date: Tue, 3 May 2016 19:43:24 +0200
 Subject: [PATCH] md: raid10: add prerequisite to run underneath dm-raid
 Git-commit: 859644f0fa2141b5f7db0e3744999ec3bb5719d3
 Patch-mainline: v4.7-rc1
-Reference: fate#320291
+References: fate#320291
 
 In case md runs underneath the dm-raid target, the mddev does not have
 a request queue or gendisk, thus avoid accesses to it.

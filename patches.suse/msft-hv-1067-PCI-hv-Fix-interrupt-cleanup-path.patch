@@ -3,7 +3,7 @@ Date: Tue, 12 Jul 2016 11:31:24 -0400
 Patch-mainline: v4.8-rc1
 Subject: PCI: hv: Fix interrupt cleanup path
 Git-commit: 0c6e617f656ec259162a41c0849e3a7557c99d95
-Reference: fate#320485
+References: fate#320485
 
 SR-IOV disabled from the host causes a memory leak.  pci-hyperv usually
 first receives a PCI_EJECT notification and then proceeds to delete the

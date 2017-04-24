@@ -3,7 +3,7 @@ Date: Wed, 27 Jan 2016 22:29:44 -0800
 Patch-mainline: v4.6-rc1
 Subject: Drivers: hv: vmbus: Eliminate the spin lock on the read path
 Git-commit: 3eba9a77d5fc2cee486a16fff435686f024f61cf
-Reference: fate#320485
+References: fate#320485
 
 The function hv_ringbuffer_read() is called always on a pre-assigned
 CPU. Each chnnel is bound to a specific CPU and this function is

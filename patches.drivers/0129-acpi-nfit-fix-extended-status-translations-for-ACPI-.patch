@@ -1,0 +1,69 @@
+From e7e7eef512404cf7999dd070206728974c2f9d3f Mon Sep 17 00:00:00 2001
+From: Vishal Verma <vishal.l.verma@intel.com>
+Date: Mon, 5 Dec 2016 17:00:37 -0700
+Subject: acpi, nfit: fix extended status translations for ACPI DSMs
+Git-commit: 9a901f5495e26e691c7d0ea7b6057a2f3e6330ed
+Patch-mainline: v4.9
+References: bsc#1031717
+
+ACPI DSMs can have an 'extended' status which can be non-zero to convey
+additional information about the command. In the xlat_status routine,
+where we translate the command statuses, we were returning an error for
+a non-zero extended status, even if the primary status indicated success.
+
+Return from each command's 'case' once we have verified both its status
+and extend status are good.
+
+Cc: <stable@vger.kernel.org>
+Fixes: 11294d63ac91 ("nfit: fail DSMs that return non-zero status by default")
+Signed-off-by: Vishal Verma <vishal.l.verma@intel.com>
+Signed-off-by: Dan Williams <dan.j.williams@intel.com>
+Signed-off-by: Johannes Thumshirn <jthumshirn@suse.de>
+
+---
+ drivers/acpi/nfit.c | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/drivers/acpi/nfit.c b/drivers/acpi/nfit.c
+index 13e817a..3ee54af 100644
+--- a/drivers/acpi/nfit.c
++++ b/drivers/acpi/nfit.c
+@@ -109,7 +109,7 @@ static int xlat_bus_status(void *buf, unsigned int cmd, u32 status)
+ 		flags = ND_ARS_PERSISTENT | ND_ARS_VOLATILE;
+ 		if ((status >> 16 & flags) == 0)
+ 			return -ENOTTY;
+-		break;
++		return 0;
+ 	case ND_CMD_ARS_START:
+ 		/* ARS is in progress */
+ 		if ((status & 0xffff) == NFIT_ARS_START_BUSY)
+@@ -118,7 +118,7 @@ static int xlat_bus_status(void *buf, unsigned int cmd, u32 status)
+ 		/* Command failed */
+ 		if (status & 0xffff)
+ 			return -EIO;
+-		break;
++		return 0;
+ 	case ND_CMD_ARS_STATUS:
+ 		ars_status = buf;
+ 		/* Command failed */
+@@ -151,7 +151,7 @@ static int xlat_bus_status(void *buf, unsigned int cmd, u32 status)
+ 		/* Unknown status */
+ 		if (status >> 16)
+ 			return -EIO;
+-		break;
++		return 0;
+ 	case ND_CMD_CLEAR_ERROR:
+ 		clear_err = buf;
+ 		if (status & 0xffff)
+@@ -160,7 +160,7 @@ static int xlat_bus_status(void *buf, unsigned int cmd, u32 status)
+ 			return -EIO;
+ 		if (clear_err->length > clear_err->cleared)
+ 			return clear_err->cleared;
+-		break;
++		return 0;
+ 	default:
+ 		break;
+ 	}
+-- 
+1.8.5.6
+

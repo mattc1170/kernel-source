@@ -1,0 +1,73 @@
+From a57a5d25a56bd9625722d17fecacf21cbe9818d8 Mon Sep 17 00:00:00 2001
+From: John Allen <jallen@linux.vnet.ibm.com>
+Date: Fri, 17 Mar 2017 17:13:41 -0500
+Subject: [PATCH] ibmvnic: Move login to its own routine
+
+References: fate#322021, bsc#1031512
+Patch-mainline: queued, next-20170328
+Git-repo: https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git
+Git-commit: a57a5d25a56bd9625722d17fecacf21cbe9818d8
+
+Move the code that handles login and renegotiation of ibmvnic
+capabilities to its own routine.
+
+Signed-off-by: Nathan Fontenot <nfont@linux.vnet.ibm.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+Acked-by: Michal Suchanek <msuchanek@suse.de>
+---
+ drivers/net/ethernet/ibm/ibmvnic.c | 28 ++++++++++++++++++++--------
+ 1 file changed, 20 insertions(+), 8 deletions(-)
+
+diff --git a/drivers/net/ethernet/ibm/ibmvnic.c b/drivers/net/ethernet/ibm/ibmvnic.c
+index 61d9d4045b4c..04f8feb0f2a3 100644
+--- a/drivers/net/ethernet/ibm/ibmvnic.c
++++ b/drivers/net/ethernet/ibm/ibmvnic.c
+@@ -371,18 +371,11 @@ static void free_rx_pool(struct ibmvnic_adapter *adapter,
+ 	pool->rx_buff = NULL;
+ }
+ 
+-static int ibmvnic_open(struct net_device *netdev)
++static int ibmvnic_login(struct net_device *netdev)
+ {
+ 	struct ibmvnic_adapter *adapter = netdev_priv(netdev);
+ 	unsigned long timeout = msecs_to_jiffies(30000);
+ 	struct device *dev = &adapter->vdev->dev;
+-	struct ibmvnic_tx_pool *tx_pool;
+-	union ibmvnic_crq crq;
+-	int rxadd_subcrqs;
+-	u64 *size_array;
+-	int tx_subcrqs;
+-	int rc = 0;
+-	int i, j;
+ 
+ 	do {
+ 		if (adapter->renegotiate) {
+@@ -407,6 +400,25 @@ static int ibmvnic_open(struct net_device *netdev)
+ 		}
+ 	} while (adapter->renegotiate);
+ 
++	return 0;
++}
++
++static int ibmvnic_open(struct net_device *netdev)
++{
++	struct ibmvnic_adapter *adapter = netdev_priv(netdev);
++	struct device *dev = &adapter->vdev->dev;
++	struct ibmvnic_tx_pool *tx_pool;
++	union ibmvnic_crq crq;
++	int rxadd_subcrqs;
++	u64 *size_array;
++	int tx_subcrqs;
++	int rc = 0;
++	int i, j;
++
++	rc = ibmvnic_login(netdev);
++	if (rc)
++		return rc;
++
+ 	rc = netif_set_real_num_tx_queues(netdev, adapter->req_tx_queues);
+ 	if (rc) {
+ 		dev_err(dev, "failed to set the number of tx queues\n");
+-- 
+2.10.2
+

@@ -2,9 +2,8 @@ From: NeilBrown <neilb@suse.com>
 Date: Wed, 31 Aug 2016 12:59:29 +1000
 Subject: [PATCH] cephfs: remove warning when ceph_releasepage() is called on
  dirty page.
-Git-commit: 3392c0269c5a0111e83bc26063c49469446f6dba
-Git-repo: git://github.com/ceph/ceph-client.git testing
-Patch-mainline: Queued in subsystem maintainer repository
+Git-commit: e55f1a1871b148802b42ee3807edcb6528ffc27d
+Patch-mainline: v4.9
 References: bsc#995153
 
 If O_DIRECT writes are racing with buffered writes, then

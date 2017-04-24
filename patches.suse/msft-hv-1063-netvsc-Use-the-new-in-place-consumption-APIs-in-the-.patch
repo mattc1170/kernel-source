@@ -3,7 +3,7 @@ Date: Tue, 5 Jul 2016 16:52:46 -0700
 Patch-mainline: v4.8-rc1
 Subject: netvsc: Use the new in-place consumption APIs in the rx path
 Git-commit: 99a50bb11cad44cd1d478256d2388e7afce982ac
-Reference: fate#320485
+References: fate#320485
 
 Use the new APIs for eliminating a copy on the receive path. These new APIs also
 help in minimizing the number of memory barriers we end up issuing (in the

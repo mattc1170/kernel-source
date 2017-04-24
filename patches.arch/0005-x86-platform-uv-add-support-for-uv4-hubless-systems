@@ -1,0 +1,107 @@
+From: "travis@sgi.com" <travis@sgi.com>
+Date: Wed, 25 Jan 2017 10:35:18 -0600
+Subject: x86/platform/UV: Add Support for UV4 Hubless systems
+Git-commit: 74862b03b46a852662c1a30c859b985261ff5d5c
+Patch-mainline: v3.20-rc1
+References: bsc#1023866
+
+Add recognition and support for UV4 hubless systems.
+
+Signed-off-by: Mike Travis <travis@sgi.com>
+Reviewed-by: Russ Anderson <rja@hpe.com>
+Acked-by: Thomas Gleixner <tglx@linutronix.de>
+Acked-by: Dimitri Sivanich <sivanich@hpe.com>
+Cc: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: Peter Zijlstra <peterz@infradead.org>
+Link: http://lkml.kernel.org/r/20170125163517.398537358@asylum.americas.sgi.com
+Signed-off-by: Ingo Molnar <mingo@kernel.org>
+Acked-by: Joerg Roedel <jroedel@suse.de>
+---
+ arch/x86/include/asm/uv/uv.h       |  2 ++
+ arch/x86/kernel/apic/x2apic_uv_x.c | 30 ++++++++++++++++++++++++++++--
+ 2 files changed, 30 insertions(+), 2 deletions(-)
+
+--- a/arch/x86/include/asm/uv/uv.h
++++ b/arch/x86/include/asm/uv/uv.h
+@@ -10,6 +10,7 @@ struct mm_struct;
+ 
+ extern enum uv_system_type get_uv_system_type(void);
+ extern int is_uv_system(void);
++extern int is_uv_hubless(void);
+ extern void uv_cpu_init(void);
+ extern void uv_nmi_init(void);
+ extern void uv_system_init(void);
+@@ -23,6 +24,7 @@ extern const struct cpumask *uv_flush_tl
+ 
+ static inline enum uv_system_type get_uv_system_type(void) { return UV_NONE; }
+ static inline int is_uv_system(void)	{ return 0; }
++static inline int is_uv_hubless(void)	{ return 0; }
+ static inline void uv_cpu_init(void)	{ }
+ static inline void uv_system_init(void)	{ }
+ static inline const struct cpumask *
+--- a/arch/x86/kernel/apic/x2apic_uv_x.c
++++ b/arch/x86/kernel/apic/x2apic_uv_x.c
+@@ -42,6 +42,7 @@
+ DEFINE_PER_CPU(int, x2apic_extra_bits);
+ 
+ static enum uv_system_type	uv_system_type;
++static bool			uv_hubless_system;
+ static u64			gru_start_paddr, gru_end_paddr;
+ static u64			gru_dist_base, gru_first_node_paddr = -1LL, gru_last_node_paddr;
+ static u64			gru_dist_lmask, gru_dist_umask;
+@@ -225,8 +226,14 @@ static int __init uv_acpi_madt_oem_check
+ 	int pnodeid;
+ 	int uv_apic;
+ 
+-	if (strncmp(oem_id, "SGI", 3) != 0)
++	if (strncmp(oem_id, "SGI", 3) != 0) {
++		if (strncmp(oem_id, "NSGI", 4) == 0) {
++			uv_hubless_system = true;
++			pr_info("UV: OEM IDs %s/%s, HUBLESS\n",
++				oem_id, oem_table_id);
++		}
+ 		return 0;
++	}
+ 
+ 	if (numa_off) {
+ 		pr_err("UV: NUMA is off, disabling UV support\n");
+@@ -300,6 +307,12 @@ int is_uv_system(void)
+ }
+ EXPORT_SYMBOL_GPL(is_uv_system);
+ 
++int is_uv_hubless(void)
++{
++	return uv_hubless_system;
++}
++EXPORT_SYMBOL_GPL(is_uv_hubless);
++
+ void **__uv_hub_info_list;
+ EXPORT_SYMBOL_GPL(__uv_hub_info_list);
+ 
+@@ -1374,7 +1387,7 @@ static void __init build_socket_tables(v
+ 	}
+ }
+ 
+-void __init uv_system_init(void)
++static void __init uv_system_init_hub(void)
+ {
+ 	struct uv_hub_info_s hub_info = {0};
+ 	int bytes, cpu, nodeid;
+@@ -1510,4 +1523,17 @@ void __init uv_system_init(void)
+ 		reboot_type = BOOT_ACPI;
+ }
+ 
++/*
++ * There is a small amount of UV specific code needed to initialize a
++ * UV system that does not have a "UV HUB" (referred to as "hubless").
++ */
++void __init uv_system_init(void)
++{
++	if (likely(!is_uv_system() && !is_uv_hubless()))
++		return;
++
++	if (is_uv_system())
++		uv_system_init_hub();
++}
++
+ apic_driver(apic_x2apic_uv_x);

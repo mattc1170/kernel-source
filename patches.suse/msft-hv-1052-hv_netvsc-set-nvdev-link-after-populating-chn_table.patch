@@ -3,7 +3,7 @@ Date: Fri, 13 May 2016 13:55:25 +0200
 Patch-mainline: v4.7-rc1
 Subject: hv_netvsc: set nvdev link after populating chn_table
 Git-commit: 88098834827025cc04c15f1b4b0d9bbef3cf55af
-Reference: fate#320485
+References: fate#320485
 
 Crash in netvsc_send() is observed when netvsc device is re-created on
 mtu change/set channels. The crash is caused by dereferencing of NULL

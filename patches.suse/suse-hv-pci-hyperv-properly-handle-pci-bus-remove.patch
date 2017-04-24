@@ -2,7 +2,7 @@ From: Long Li <longli@microsoft.com>
 Date: Mon, 12 Sep 2016 16:54:00 -0700
 Subject: pci-hyperv: properly handle pci bus remove
 Patch-mainline: submitted (lkml - https://lkml.org/lkml/2016/9/12/1127)
-Reference: fate#320295, bnc#998664
+References: fate#320295, bnc#998664
 
 hv_pci_devices_present is called in hv_pci_remove when we remove a PCI device
 from host (e.g. by disabling SRIOV on a device). In hv_pci_remove, the bus is
@@ -106,4 +106,4 @@ index 6955ffdb..f6a7417 100644
 +		hbus->state = hv_pcibus_removed;
  	}
  
- 	ret = hv_send_resources_released(hdev);
+ 	hv_pci_bus_exit(hdev);

@@ -3,7 +3,7 @@ Date: Tue, 1 Dec 2015 16:43:12 -0800
 Patch-mainline: v4.5-rc1
 Subject: hv_netvsc: remove locking in netvsc_send()
 Git-commit: 2a04ae8acb144996eba6e3d69ab2a7156c775416
-Reference: fate#315887
+References: fate#315887
 
 Packet scheduler guarantees there won't be multiple senders for the same
 queue and as we use q_idx for multi_send_data the spinlock is redundant.

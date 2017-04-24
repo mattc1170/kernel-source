@@ -1,0 +1,89 @@
+From: Hariprasad Shenai <hariprasad@chelsio.com>
+Date: Thu, 5 May 2016 11:05:39 +0530
+Subject: cxgb4: Reset dcb state machine and tx queue prio only if dcb is
+ enabled
+Patch-mainline: v4.7-rc1
+Git-commit: 218d48e701f08a71df57c410e596e30b3285bd25
+References: bsc#1021424
+
+When cxgb4 is enabled with CONFIG_CHELSIO_T4_DCB set, VI enable command
+gets called with DCB enabled. But when we have a back to back setup with
+DCB enabled on one side and non-DCB on the Peer side. Firmware doesn't
+send any DCB_L2_CFG, and DCB priority is never set for Tx queue.
+But driver resets the queue priority and state machine whenever there
+is a link down, this patch fixes it by adding a check to reset only if
+cxgb4_dcb_enabled() returns true.
+
+Signed-off-by: Hariprasad Shenai <hariprasad@chelsio.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+Acked-by: Thomas Bogendoerfer <tbogendoerfer@suse.de>
+---
+ drivers/net/ethernet/chelsio/cxgb4/cxgb4_main.c | 38 +++++++++++++------------
+ 1 file changed, 20 insertions(+), 18 deletions(-)
+
+diff --git a/drivers/net/ethernet/chelsio/cxgb4/cxgb4_main.c b/drivers/net/ethernet/chelsio/cxgb4/cxgb4_main.c
+index 3d41fcfb89e4..403b0c5abdd6 100644
+--- a/drivers/net/ethernet/chelsio/cxgb4/cxgb4_main.c
++++ b/drivers/net/ethernet/chelsio/cxgb4/cxgb4_main.c
+@@ -305,6 +305,22 @@ static void dcb_tx_queue_prio_enable(struct net_device *dev, int enable)
+ }
+ #endif /* CONFIG_CHELSIO_T4_DCB */
+ 
++int cxgb4_dcb_enabled(const struct net_device *dev)
++{
++#ifdef CONFIG_CHELSIO_T4_DCB
++	struct port_info *pi = netdev_priv(dev);
++
++	if (!pi->dcb.enabled)
++		return 0;
++
++	return ((pi->dcb.state == CXGB4_DCB_STATE_FW_ALLSYNCED) ||
++		(pi->dcb.state == CXGB4_DCB_STATE_HOST));
++#else
++	return 0;
++#endif
++}
++EXPORT_SYMBOL(cxgb4_dcb_enabled);
++
+ void t4_os_link_changed(struct adapter *adapter, int port_id, int link_stat)
+ {
+ 	struct net_device *dev = adapter->port[port_id];
+@@ -315,8 +331,10 @@ void t4_os_link_changed(struct adapter *adapter, int port_id, int link_stat)
+ 			netif_carrier_on(dev);
+ 		else {
+ #ifdef CONFIG_CHELSIO_T4_DCB
+-			cxgb4_dcb_state_init(dev);
+-			dcb_tx_queue_prio_enable(dev, false);
++			if (cxgb4_dcb_enabled(dev)) {
++				cxgb4_dcb_state_init(dev);
++				dcb_tx_queue_prio_enable(dev, false);
++			}
+ #endif /* CONFIG_CHELSIO_T4_DCB */
+ 			netif_carrier_off(dev);
+ 		}
+@@ -492,22 +510,6 @@ static int link_start(struct net_device *dev)
+ 	return ret;
+ }
+ 
+-int cxgb4_dcb_enabled(const struct net_device *dev)
+-{
+-#ifdef CONFIG_CHELSIO_T4_DCB
+-	struct port_info *pi = netdev_priv(dev);
+-
+-	if (!pi->dcb.enabled)
+-		return 0;
+-
+-	return ((pi->dcb.state == CXGB4_DCB_STATE_FW_ALLSYNCED) ||
+-		(pi->dcb.state == CXGB4_DCB_STATE_HOST));
+-#else
+-	return 0;
+-#endif
+-}
+-EXPORT_SYMBOL(cxgb4_dcb_enabled);
+-
+ #ifdef CONFIG_CHELSIO_T4_DCB
+ /* Handle a Data Center Bridging update message from the firmware. */
+ static void dcb_rpl(struct adapter *adap, const struct fw_port_cmd *pcmd)
+-- 
+1.8.5.6
+

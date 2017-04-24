@@ -3,7 +3,7 @@ Date: Mon, 15 Aug 2016 17:48:40 +0200
 Patch-mainline: v4.8-rc3
 Subject: hv_netvsc: avoid deadlocks between rtnl lock and vf_use_cnt wait
 Git-commit: d072218f214929194db06069564495b6b9fff34a
-Reference: fate#320485
+References: fate#320485
 
 Here is a deadlock scenario:
 - netvsc_vf_up() schedules netvsc_notify_peers() work and quits.

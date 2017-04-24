@@ -3,7 +3,7 @@ Date: Thu, 4 Feb 2016 15:49:34 -0800
 Patch-mainline: v4.6-rc1
 Subject: hv_netvsc: cleanup netdev feature flags for netvsc
 Git-commit: a060679c6b3da17dc9e95d0500f811de118ec901
-Reference: fate#320485
+References: fate#320485
 
 1. Adding NETIF_F_TSO6 feature flag;
 2. Adding NETIF_F_HW_CSUM. NETIF_F_IPV6_CSUM and NETIF_F_IP_CSUM are

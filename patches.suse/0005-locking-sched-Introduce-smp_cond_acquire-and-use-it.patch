@@ -1,9 +1,8 @@
-From b3e0b1b6d841a4b2f64fc09ea728913da8218424 Mon Sep 17 00:00:00 2001
 From: Peter Zijlstra <peterz@infradead.org>
 Date: Fri, 16 Oct 2015 14:39:38 +0200
 Subject: [PATCH 5/9] locking, sched: Introduce smp_cond_acquire() and use it
-Git-commit: 64d816cba06c67eeee455b8c78ebcda349d49c24
-Patch-mainline: 4.5
+Patch-mainline: v4.5-rc1
+Git-commit: b3e0b1b6d841a4b2f64fc09ea728913da8218424
 References: fate#320355
 
 Introduce smp_cond_acquire() which combines a control dependency and a

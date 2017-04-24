@@ -20,6 +20,8 @@ kvmppc_clear_ref_hpte		PASS
 kvmppc_invalidate_hpte		PASS
 kvmppc_hv_find_lock_hpte	PASS
 
+drivers/hv/*			PASS
+
 arch/s390/*			PASS
 drivers/s390/*			PASS
 net/iucv/*			PASS
@@ -34,3 +36,5 @@ sound/soc/intel/*		PASS
 amd_core_mcablock_names		PASS
 amd_df_mcablock_names		PASS
 amd_hwids			PASS
+
+uv_cpu_nmi			PASS

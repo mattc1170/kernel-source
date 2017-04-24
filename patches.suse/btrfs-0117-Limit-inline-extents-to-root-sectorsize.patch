@@ -1,0 +1,29 @@
+From: Chandan Rajendra <chandan@linux.vnet.ibm.com>
+Date: Thu, 21 Jan 2016 15:56:01 +0530
+Patch-mainline: 4.6
+Git-commit: 0c29ba993e4b08771deb20f8717a4b57cc7e678b
+References: bsc#1012452
+Subject: [PATCH] Btrfs: Limit inline extents to root->sectorsize
+
+cow_file_range_inline() limits the size of an inline extent to
+PAGE_CACHE_SIZE. This breaks in subpagesize-blocksize scenarios. Fix this by
+comparing against root->sectorsize.
+
+Reviewed-by: Josef Bacik <jbacik@fb.com>
+Signed-off-by: Chandan Rajendra <chandan@linux.vnet.ibm.com>
+Signed-off-by: David Sterba <dsterba@suse.com>
+---
+ fs/btrfs/inode.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+--- a/fs/btrfs/inode.c
++++ b/fs/btrfs/inode.c
+@@ -263,7 +263,7 @@ static noinline int cow_file_range_inlin
+ 		data_len = compressed_size;
+ 
+ 	if (start > 0 ||
+-	    actual_end > PAGE_CACHE_SIZE ||
++	    actual_end > root->sectorsize ||
+ 	    data_len > BTRFS_MAX_INLINE_DATA_SIZE(root) ||
+ 	    (!compressed_size &&
+ 	    (actual_end & (root->sectorsize - 1)) == 0) ||

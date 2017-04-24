@@ -4,7 +4,7 @@ Date: Mon, 21 Dec 2015 10:51:02 +1100
 Subject: [PATCH] raid5-cache: add journal hot add/remove support
 Patch-mainline: v4.5-rc1
 Git-commit: f6b6ec5cfac306c1eea66f074050864efcb11851
-Reference: fate#320291
+References: fate#320291
 
 Add support for journal disk hot add/remove. Mostly trival checks in md
 part. The raid5 part is a little tricky. For hot-remove, we can't wait

@@ -46,7 +46,7 @@ Signed-off-by: Neil Brown <neilb@suse.de>
  #define QUEUE_FLAG_INIT_DONE   20	/* queue is initialized */
  #define QUEUE_FLAG_NO_SG_MERGE 21	/* don't attempt to merge SG segments*/
  #define QUEUE_FLAG_POLL	       22	/* IO polling enabled if set */
-+#define QUEUE_FLAG_NO_ROUND    23	/* Don't round timeout up to next second */
++#define QUEUE_FLAG_NO_ROUND    26	/* Don't round timeout up to next second */
  
  #define QUEUE_FLAG_DEFAULT	((1 << QUEUE_FLAG_IO_STAT) |		\
  				 (1 << QUEUE_FLAG_STACKABLE)	|	\

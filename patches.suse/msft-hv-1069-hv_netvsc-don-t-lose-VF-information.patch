@@ -3,7 +3,7 @@ Date: Mon, 15 Aug 2016 17:48:39 +0200
 Patch-mainline: v4.8-rc3
 Subject: hv_netvsc: don't lose VF information
 Git-commit: f9a7da9130ef0143eb900794c7863dc5c9051fbc
-Reference: fate#320485
+References: fate#320485
 
 struct netvsc_device is not suitable for storing VF information as this
 structure is being destroyed on MTU change / set channel operation (see

@@ -3,7 +3,7 @@ Date: Tue, 1 Dec 2015 16:43:03 -0800
 Patch-mainline: v4.5-rc1
 Subject: hv_netvsc: Resize some of the variables in hv_netvsc_packet
 Git-commit: 22e9dd249bd4bcf338c282d90df08ccf5dbfbee2
-Reference: fate#315887
+References: fate#315887
 
 As part of reducing the size of the hv_netvsc_packet, resize some of the
 variables based on their usage.

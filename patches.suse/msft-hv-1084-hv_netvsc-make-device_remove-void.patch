@@ -1,0 +1,51 @@
+From: Stephen Hemminger <sthemmin@microsoft.com>
+Date: Tue, 23 Aug 2016 12:17:50 -0700
+Patch-mainline: v4.9-rc1
+Subject: hv_netvsc: make device_remove void
+Git-commit: e08f3ea586d4145e36c77f0dd1602374b5d7e928
+References: fate#320485
+
+Always returns 0 and no callers check.
+
+Signed-off-by: Stephen Hemminger <sthemmin@microsoft.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+Acked-by: <ohering@suse.de>
+---
+ drivers/net/hyperv/hyperv_net.h | 2 +-
+ drivers/net/hyperv/netvsc.c     | 3 +--
+ 2 files changed, 2 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/net/hyperv/hyperv_net.h b/drivers/net/hyperv/hyperv_net.h
+index b58e559..8031dee 100644
+--- a/drivers/net/hyperv/hyperv_net.h
++++ b/drivers/net/hyperv/hyperv_net.h
+@@ -173,7 +173,7 @@ struct rndis_device {
+ struct rndis_message;
+ struct netvsc_device;
+ int netvsc_device_add(struct hv_device *device, void *additional_info);
+-int netvsc_device_remove(struct hv_device *device);
++void netvsc_device_remove(struct hv_device *device);
+ int netvsc_send(struct hv_device *device,
+ 		struct hv_netvsc_packet *packet,
+ 		struct rndis_message *rndis_msg,
+diff --git a/drivers/net/hyperv/netvsc.c b/drivers/net/hyperv/netvsc.c
+index 110bbb8..2ece27a 100644
+--- a/drivers/net/hyperv/netvsc.c
++++ b/drivers/net/hyperv/netvsc.c
+@@ -648,7 +648,7 @@ static void netvsc_disconnect_vsp(struct hv_device *device)
+ /*
+  * netvsc_device_remove - Callback when the root bus device is removed
+  */
+-int netvsc_device_remove(struct hv_device *device)
++void netvsc_device_remove(struct hv_device *device)
+ {
+ 	struct net_device *ndev = hv_get_drvdata(device);
+ 	struct net_device_context *net_device_ctx = netdev_priv(ndev);
+@@ -670,7 +670,6 @@ int netvsc_device_remove(struct hv_device *device)
+ 	/* Release all resources */
+ 	vfree(net_device->sub_cb_buf);
+ 	free_netvsc_device(net_device);
+-	return 0;
+ }
+ 
+ #define RING_AVAIL_PERCENT_HIWATER 20

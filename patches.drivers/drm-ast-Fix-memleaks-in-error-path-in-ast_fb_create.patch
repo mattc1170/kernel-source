@@ -1,8 +1,9 @@
 From: Egbert Eich <eich@suse.de>
 Date: Wed Jun 11 14:51:56 2014 +0200
 Subject: drm/ast: Fix memleaks in error path in ast_fb_create()
-Patch-mainline: Not yet, ported from SLE-12
-References: 
+Patch-mainline: v4.10-rc1
+Git-commit: 554dd692afd5d449168b5007841742db4a2ed17b
+References: bsc#1028158
 
 Some mmemory allocated in astfb_create() was not properly
 freed before the function returned with an error.
@@ -25,4 +26,4 @@ index a37e7ea..73009cc 100644
 +	vfree(sysram);
  	return ret;
  }
- 
+

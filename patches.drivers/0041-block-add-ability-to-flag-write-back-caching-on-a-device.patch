@@ -146,7 +146,7 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
  #define QUEUE_FLAG_POLL	       22	/* IO polling enabled if set */
 +#define QUEUE_FLAG_WC	       23	/* Write back caching */
 +#define QUEUE_FLAG_FUA	       24	/* device supports FUA writes */
- #define QUEUE_FLAG_NO_ROUND    23	/* Don't round timeout up to next second */
+ #define QUEUE_FLAG_NO_ROUND    26	/* Don't round timeout up to next second */
  
  #define QUEUE_FLAG_DEFAULT	((1 << QUEUE_FLAG_IO_STAT) |		\
 @@ -1009,6 +1011,7 @@ extern void blk_queue_rq_timed_out(struc

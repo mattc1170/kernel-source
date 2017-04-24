@@ -3,7 +3,7 @@ Date: Sun, 7 Feb 2016 21:52:23 +0100
 Patch-mainline: v4.6-rc1
 Subject: ethtool: make validate_speed accept all speeds between 0 and INT_MAX
 Git-commit: e02564ee334a7ae46b71fc18576391cb9455433e
-Reference: fate#320485
+References: fate#320485
 
 Devices these days can have any speed and as was recently pointed out
 any speed from 0 to INT_MAX is valid so adjust speed validation to

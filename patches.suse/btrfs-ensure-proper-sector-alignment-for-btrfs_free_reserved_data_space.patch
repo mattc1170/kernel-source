@@ -2,7 +2,8 @@ From: Jeff Mahoney <jeffm@suse.com>
 Subject: btrfs: Ensure proper sector alignment for
  btrfs_free_reserved_data_space
 References: bsc#1005666
-Patch-mainline: Submitted 18 Nov 2016, linux-btrfs
+Patch-mainline: v4.10-rc1
+Git-commit: 0c476a5d7f63bdae0b6188a191a6e9eb8f1024d7
 
 This fixes the WARN_ON on BTRFS_I(inode)->reserved_extents in
 btrfs_destroy_inode and the WARN_ON on nonzero delalloc bytes on umount

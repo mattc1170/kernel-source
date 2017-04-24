@@ -1,0 +1,117 @@
+From 7f81a852e2951c5766eb1c0ffc775250903e3ea1 Mon Sep 17 00:00:00 2001
+From: Thomas Bogendoerfer <tbogendoerfer@suse.de>
+Date: Fri, 21 Apr 2017 17:17:07 +0200
+Subject: kabi: hide bsc#1021424 changes
+Patch-mainline: Never, kabi workaround
+References: bsc#1021424
+
+Backported commits for bsc#1021424 add fields to struct tp_param,
+struct adapter_param and struct adapter. Hide these changes from genksyms
+and add them at the end of the struct
+
+Signed-off-by: Thomas Bogendoerfer <tbogendoerfer@suse.de>
+---
+ drivers/net/ethernet/chelsio/cxgb4/cxgb4.h | 41 +++++++++++++++++-------------
+ 1 file changed, 24 insertions(+), 17 deletions(-)
+
+diff --git a/drivers/net/ethernet/chelsio/cxgb4/cxgb4.h b/drivers/net/ethernet/chelsio/cxgb4/cxgb4.h
+index 2e59b672f9ec..80635ac87231 100644
+--- a/drivers/net/ethernet/chelsio/cxgb4/cxgb4.h
++++ b/drivers/net/ethernet/chelsio/cxgb4/cxgb4.h
+@@ -261,11 +261,6 @@ struct tp_params {
+ 	u32 vlan_pri_map;               /* cached TP_VLAN_PRI_MAP */
+ 	u32 ingress_config;             /* cached TP_INGRESS_CONFIG */
+ 
+-	/* cached TP_OUT_CONFIG compressed error vector
+-	 * and passing outer header info for encapsulated packets.
+-	 */
+-	int rx_pkt_encap;
+-
+ 	/* TP_VLAN_PRI_MAP Compressed Filter Tuple field offsets.  This is a
+ 	 * subset of the set of fields which may be present in the Compressed
+ 	 * Filter Tuple portion of filters and TCP TCB connections.  The
+@@ -281,6 +276,13 @@ struct tp_params {
+ 	int vnic_shift;
+ 	int port_shift;
+ 	int protocol_shift;
++
++#ifndef __GENKSYMS__
++	/* cached TP_OUT_CONFIG compressed error vector
++	 * and passing outer header info for encapsulated packets.
++	 */
++	int rx_pkt_encap;
++#endif
+ };
+ 
+ struct vpd_params {
+@@ -329,9 +331,7 @@ struct adapter_params {
+ 	unsigned int sf_fw_start;         /* start of FW image in flash */
+ 
+ 	unsigned int fw_vers;
+-	unsigned int bs_vers;		/* bootstrap version */
+ 	unsigned int tp_vers;
+-	unsigned int er_vers;		/* expansion ROM version */
+ 	u8 api_vers[7];
+ 
+ 	unsigned short mtus[NMTUS];
+@@ -351,6 +351,11 @@ struct adapter_params {
+ 
+ 	unsigned int max_ordird_qp;       /* Max read depth per RDMA QP */
+ 	unsigned int max_ird_adapter;     /* Max read depth per adapter */
++
++#ifndef __GENKSYMS__
++	unsigned int bs_vers;		/* bootstrap version */
++	unsigned int er_vers;		/* expansion ROM version */
++#endif
+ };
+ 
+ /* State needed to monitor the forward progress of SGE Ingress DMA activities
+@@ -788,11 +793,9 @@ struct adapter {
+ 	u32 t4_bar0;
+ 	struct pci_dev *pdev;
+ 	struct device *pdev_dev;
+-	const char *name;
+ 	unsigned int mbox;
+ 	unsigned int pf;
+ 	unsigned int flags;
+-	unsigned int adap_idx;
+ 	enum chip_type chip;
+ 
+ 	int msg_enable;
+@@ -835,14 +838,6 @@ struct adapter {
+ 	struct work_struct db_drop_task;
+ 	bool tid_release_task_busy;
+ 
+-	/* lock for mailbox cmd list */
+-	spinlock_t mbox_lock;
+-	struct mbox_list mlist;
+-
+-	/* support for mailbox command/reply logging */
+-#define T4_OS_LOG_MBOX_CMDS 256
+-	struct mbox_cmd_log *mbox_log;
+-
+ 	struct dentry *debugfs_root;
+ 	bool use_bd;     /* Use SGE Back Door intfc for reading SGE Contexts */
+ 	bool trace_rss;	/* 1 implies that different RSS flit per filter is
+@@ -852,6 +847,18 @@ struct adapter {
+ 
+ 	spinlock_t stats_lock;
+ 	spinlock_t win0_lock ____cacheline_aligned_in_smp;
++
++#ifndef __GENKSYMS__
++	const char *name;
++	unsigned int adap_idx;
++	/* lock for mailbox cmd list */
++	spinlock_t mbox_lock;
++	struct mbox_list mlist;
++
++	/* support for mailbox command/reply logging */
++#define T4_OS_LOG_MBOX_CMDS 256
++	struct mbox_cmd_log *mbox_log;
++#endif
+ };
+ 
+ /* Defined bit width of user definable filter tuples
+-- 
+1.8.5.6
+

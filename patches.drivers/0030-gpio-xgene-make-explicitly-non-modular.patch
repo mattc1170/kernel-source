@@ -1,0 +1,72 @@
+From e220fca60138165639db5a209180994933706277 Mon Sep 17 00:00:00 2001
+From: Paul Gortmaker <paul.gortmaker@windriver.com>
+Date: Sun, 27 Mar 2016 11:44:48 -0400
+Subject: [PATCH 30/36] gpio: xgene: make explicitly non-modular
+
+Git-commit: b33d12d3d72df3272c9c017cd93577ba1c9b24bb
+Patch-mainline: v4.7-rc1
+References: bsc#1019351
+
+The Kconfig currently controlling compilation of this code is:
+
+drivers/gpio/Kconfig:config GPIO_XGENE
+drivers/gpio/Kconfig:   bool "APM X-Gene GPIO controller support"
+
+...meaning that it currently is not being built as a module by anyone.
+
+Lets remove the modular code that is essentially orphaned, so that
+when reading the driver there is no doubt it is builtin-only.
+
+Since module_platform_driver() uses the same init level priority as
+builtin_platform_driver() the init ordering remains unchanged with
+this commit.
+
+Also note that MODULE_DEVICE_TABLE is a no-op for non-modular code.
+
+We also delete the MODULE_LICENSE tag etc. since all that information
+is already contained at the top of the file in the comments.
+
+Cc: Feng Kan <fkan@apm.com>
+Cc: Alexandre Courbot <gnurou@gmail.com>
+Cc: linux-gpio@vger.kernel.org
+Signed-off-by: Paul Gortmaker <paul.gortmaker@windriver.com>
+Signed-off-by: Linus Walleij <linus.walleij@linaro.org>
+Signed-off-by: Mian Yousaf Kaukab <yousaf.kaukab@suse.com>
+---
+ drivers/gpio/gpio-xgene.c | 9 +--------
+ 1 file changed, 1 insertion(+), 8 deletions(-)
+
+diff --git a/drivers/gpio/gpio-xgene.c b/drivers/gpio/gpio-xgene.c
+index e5c4b8029f21..2c3715fa1ed0 100644
+--- a/drivers/gpio/gpio-xgene.c
++++ b/drivers/gpio/gpio-xgene.c
+@@ -17,7 +17,6 @@
+  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+  */
+ 
+-#include <linux/module.h>
+ #include <linux/kernel.h>
+ #include <linux/init.h>
+ #include <linux/io.h>
+@@ -229,7 +228,6 @@ static const struct of_device_id xgene_gpio_of_match[] = {
+ 	{ .compatible = "apm,xgene-gpio", },
+ 	{},
+ };
+-MODULE_DEVICE_TABLE(of, xgene_gpio_of_match);
+ 
+ static struct platform_driver xgene_gpio_driver = {
+ 	.driver = {
+@@ -240,9 +238,4 @@ static struct platform_driver xgene_gpio_driver = {
+ 	.probe = xgene_gpio_probe,
+ 	.remove = xgene_gpio_remove,
+ };
+-
+-module_platform_driver(xgene_gpio_driver);
+-
+-MODULE_AUTHOR("Feng Kan <fkan@apm.com>");
+-MODULE_DESCRIPTION("APM X-Gene GPIO driver");
+-MODULE_LICENSE("GPL");
++builtin_platform_driver(xgene_gpio_driver);
+-- 
+2.11.0
+

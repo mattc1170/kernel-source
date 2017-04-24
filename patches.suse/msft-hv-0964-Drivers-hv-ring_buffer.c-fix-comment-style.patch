@@ -3,7 +3,7 @@ Date: Mon, 14 Dec 2015 19:01:57 -0800
 Patch-mainline: v4.5-rc1
 Subject: Drivers: hv: ring_buffer.c: fix comment style
 Git-commit: 822f18d4d3e9d4efb4996bbe562d0f99ab82d7dd
-Reference: fate#315887
+References: fate#315887
 
 Convert 6+-string comments repeating function names to normal kernel-style
 comments and fix a couple of other comment style issues. No textual or

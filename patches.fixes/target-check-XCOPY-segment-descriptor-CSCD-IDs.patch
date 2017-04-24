@@ -1,0 +1,66 @@
+From 061f73bfa7033ba430d16fe846d67c67e952e345 Mon Sep 17 00:00:00 2001
+From: David Disseldorp <ddiss@suse.de>
+Date: Mon, 2 Jan 2017 18:04:06 +0100
+Subject: [PATCH 07/10] target: check XCOPY segment descriptor CSCD IDs
+Git-commit: f184210bca6c9d0091ff5e5629dea4cbb8a17c0f
+Patch-mainline: v4.10-rc4
+References: bsc#1017170
+
+Ensure that the segment descriptor CSCD descriptor ID values correspond
+to CSCD descriptor entries located in the XCOPY command parameter list.
+SPC4r37 6.4.6.1 Table 150 specifies this range as 0000h to 07FFh, where
+the CSCD descriptor location in the parameter list can be located via:
+16 + (id * 32)
+
+Signed-off-by: David Disseldorp <ddiss@suse.de>
+Reviewed-by: Christoph Hellwig <hch@lst.de>
+[ bvanassche: inserted "; " in the format string of an error message
+  and also moved a "||" operator from the start of a line to the end
+  of the previous line ]
+
+Signed-off-by: Bart Van Assche <bart.vanassche@sandisk.com>
+
+---
+ drivers/target/target_core_xcopy.c | 8 ++++++++
+ drivers/target/target_core_xcopy.h | 6 ++++++
+ 2 files changed, 14 insertions(+)
+
+diff --git a/drivers/target/target_core_xcopy.c b/drivers/target/target_core_xcopy.c
+index 7c2d5a2..45720bd 100644
+--- a/drivers/target/target_core_xcopy.c
++++ b/drivers/target/target_core_xcopy.c
+@@ -277,6 +277,14 @@ static int target_xcopy_parse_segdesc_02(struct se_cmd *se_cmd, struct xcopy_op
+ 
+ 	xop->stdi = get_unaligned_be16(&desc[4]);
+ 	xop->dtdi = get_unaligned_be16(&desc[6]);
++
++	if (xop->stdi > XCOPY_CSCD_DESC_ID_LIST_OFF_MAX ||
++	    xop->dtdi > XCOPY_CSCD_DESC_ID_LIST_OFF_MAX) {
++		pr_err("XCOPY segment desc 0x02: unsupported CSCD ID > 0x%x; stdi: %hu dtdi: %hu\n",
++			XCOPY_CSCD_DESC_ID_LIST_OFF_MAX, xop->stdi, xop->dtdi);
++		return -EINVAL;
++	}
++
+ 	pr_debug("XCOPY seg desc 0x02: desc_len: %hu stdi: %hu dtdi: %hu, DC: %d\n",
+ 		desc_len, xop->stdi, xop->dtdi, dc);
+ 
+diff --git a/drivers/target/target_core_xcopy.h b/drivers/target/target_core_xcopy.h
+index 700a981c..c68d24a 100644
+--- a/drivers/target/target_core_xcopy.h
++++ b/drivers/target/target_core_xcopy.h
+@@ -3,6 +3,12 @@
+ #define XCOPY_NAA_IEEE_REGEX_LEN	16
+ #define XCOPY_MAX_SECTORS		1024
+ 
++/*
++ * SPC4r37 6.4.6.1
++ * Table 150 — CSCD descriptor ID values
++ */
++#define XCOPY_CSCD_DESC_ID_LIST_OFF_MAX	0x07FF
++
+ enum xcopy_origin_list {
+ 	XCOL_SOURCE_RECV_OP = 0x01,
+ 	XCOL_DEST_RECV_OP = 0x02,
+-- 
+2.10.2
+

@@ -4,7 +4,7 @@ Date: Fri, 1 Apr 2016 17:08:49 +0800
 Subject: [PATCH] md/bitmap: clear bitmap if bitmap_create failed
 Git-commit: f9a67b1182e5abfcfcec24762ea95a77332f035e
 Patch-mainline: v4.6-rc3
-Reference: fate#320291
+References: fate#320291
 
 If bitmap_create returns an error, we need to call
 either bitmap_destroy or bitmap_free to do clean up,

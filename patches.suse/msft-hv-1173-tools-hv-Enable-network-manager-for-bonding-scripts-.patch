@@ -1,0 +1,43 @@
+From: Haiyang Zhang <haiyangz@microsoft.com>
+Date: Fri, 2 Dec 2016 15:55:38 -0800
+Patch-mainline: v4.10-rc1
+Subject: tools: hv: Enable network manager for bonding scripts on RHEL
+Git-commit: fd7aabb062fa1a8331a786d617744de220eaf002
+References: fate#320485
+
+We found network manager is necessary on RHEL to make the synthetic
+NIC, VF NIC bonding operations handled automatically. So, enabling
+network manager here.
+
+Signed-off-by: Haiyang Zhang <haiyangz@microsoft.com>
+Reviewed-by: K. Y. Srinivasan <kys@microsoft.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+Acked-by: <ohering@suse.de>
+---
+ tools/hv/bondvf.sh | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/tools/hv/bondvf.sh b/tools/hv/bondvf.sh
+index 8e960234013d..4aa5369ffa4e 100755
+--- a/tools/hv/bondvf.sh
++++ b/tools/hv/bondvf.sh
+@@ -74,8 +74,8 @@ function create_eth_cfg_redhat {
+ 	echo DEVICE=$1 >>$fn
+ 	echo TYPE=Ethernet >>$fn
+ 	echo BOOTPROTO=none >>$fn
++	echo UUID=`uuidgen` >>$fn
+ 	echo ONBOOT=yes >>$fn
+-	echo NM_CONTROLLED=no >>$fn
+ 	echo PEERDNS=yes >>$fn
+ 	echo IPV6INIT=yes >>$fn
+ 	echo MASTER=$2 >>$fn
+@@ -93,8 +93,8 @@ function create_bond_cfg_redhat {
+ 	echo DEVICE=$1 >>$fn
+ 	echo TYPE=Bond >>$fn
+ 	echo BOOTPROTO=dhcp >>$fn
++	echo UUID=`uuidgen` >>$fn
+ 	echo ONBOOT=yes >>$fn
+-	echo NM_CONTROLLED=no >>$fn
+ 	echo PEERDNS=yes >>$fn
+ 	echo IPV6INIT=yes >>$fn
+ 	echo BONDING_MASTER=yes >>$fn

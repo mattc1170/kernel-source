@@ -1,0 +1,42 @@
+From: NeilBrown <neilb@suse.com>
+Subject: KABI fix
+Patch-mainline: Never, kabi
+References: bsc#1014410
+
+If this struct is used by an external module, it might
+embed it in a larger struct, so changing size it not acceptable.
+Fortunately:
+1/ we only need 32 bits.  This number is at most as few minutes, measured in
+   jiffies.  32bits gives 1 fortnight at 1024Hz.
+2/ There are several 4-bytes holes in the struct, reported by pahole.
+
+So make the field an 'int', and move it to a hole.
+
+Acked-by: NeilBrown <neilb@suse.com>
+---
+ include/linux/sunrpc/xprt.h |    7 +++++--
+ 1 file changed, 5 insertions(+), 2 deletions(-)
+
+--- a/include/linux/sunrpc/xprt.h
++++ b/include/linux/sunrpc/xprt.h
+@@ -181,6 +181,10 @@ struct rpc_xprt {
+ 	/*
+ 	 * Connection of transports
+ 	 */
++#ifndef __GENKSYMS__
++	/* pahole says this is a hole - on 64 bit archs */
++	unsigned int            max_reconnect_timeout;
++#endif
+ 	unsigned long		bind_timeout,
+ 				reestablish_timeout;
+ 	unsigned int		connect_cookie;	/* A cookie that gets bumped
+@@ -193,8 +197,7 @@ struct rpc_xprt {
+ 	struct work_struct	task_cleanup;
+ 	struct timer_list	timer;
+ 	unsigned long		last_used,
+-				idle_timeout,
+-				max_reconnect_timeout;
++				idle_timeout;
+ 
+ 	/*
+ 	 * Send stuff

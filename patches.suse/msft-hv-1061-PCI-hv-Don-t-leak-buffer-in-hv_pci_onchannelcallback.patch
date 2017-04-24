@@ -3,7 +3,7 @@ Date: Mon, 30 May 2016 16:17:58 +0200
 Patch-mainline: v4.8-rc1
 Subject: PCI: hv: Don't leak buffer in hv_pci_onchannelcallback()
 Git-commit: 60fcdac8136b4275da42d6edf9ddb10439350289
-Reference: fate#320485
+References: fate#320485
 
 We don't free buffer on several code paths in hv_pci_onchannelcallback(),
 put kfree() to the end of the function to fix the issue.  Direct { kfree();

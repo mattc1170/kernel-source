@@ -1,9 +1,8 @@
-From d78045306c41bd9334b956e4e7fa77cc72f06a40 Mon Sep 17 00:00:00 2001
 From: Waiman Long <Waiman.Long@hpe.com>
 Date: Mon, 9 Nov 2015 19:09:24 -0500
 Subject: [PATCH 4/9] locking/pvqspinlock, x86: Optimize the PV unlock code path
-Git-commit: 64d816cba06c67eeee455b8c78ebcda349d49c24
-Patch-mainline: 4.5
+Patch-mainline: v4.5-rc1
+Git-commit: d78045306c41bd9334b956e4e7fa77cc72f06a40
 References: fate#320355
 
 The unlock function in queued spinlocks was optimized for better

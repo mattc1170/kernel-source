@@ -3,7 +3,7 @@ Date: Fri, 26 Feb 2016 15:13:17 -0800
 Patch-mainline: v4.6-rc1
 Subject: Drivers: hv: vmbus: remove code duplication in message handling
 Git-commit: 0f70b66975ce4331e9002b792d5aa6787a110181
-Reference: fate#320485
+References: fate#320485
 
 We have 3 functions dealing with messages and they all implement
 the same logic to finalize reads, move it to vmbus_signal_eom().

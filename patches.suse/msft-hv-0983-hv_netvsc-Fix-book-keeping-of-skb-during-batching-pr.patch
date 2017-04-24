@@ -3,7 +3,7 @@ Date: Mon, 25 Jan 2016 09:49:31 -0800
 Patch-mainline: v4.5-rc3
 Subject: hv_netvsc: Fix book keeping of skb during batching process
 Git-commit: c85e4924452ae8225c8829f3fa8a2f7baa34bc5c
-Reference: fate#320485
+References: fate#320485
 
 Since eliminating send_completion_tid from struct hv_netvsc_packet, we
 haven't add proper book keeping for the skb of the batched packet. This

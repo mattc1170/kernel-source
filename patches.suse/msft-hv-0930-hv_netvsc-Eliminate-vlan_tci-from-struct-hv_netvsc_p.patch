@@ -3,7 +3,7 @@ Date: Tue, 1 Dec 2015 16:43:19 -0800
 Patch-mainline: v4.5-rc1
 Subject: hv_netvsc: Eliminate vlan_tci from struct hv_netvsc_packet
 Git-commit: 760d1e36cc16fa6444dd2000ac645455de1ecd51
-Reference: fate#315887
+References: fate#315887
 
 Eliminate vlan_tci from struct hv_netvsc_packet.
 

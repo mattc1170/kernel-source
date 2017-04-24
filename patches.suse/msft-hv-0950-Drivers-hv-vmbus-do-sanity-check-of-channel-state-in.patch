@@ -3,7 +3,7 @@ Date: Mon, 14 Dec 2015 16:01:48 -0800
 Patch-mainline: v4.5-rc1
 Subject: Drivers: hv: vmbus: do sanity check of channel state in vmbus_close_internal()
 Git-commit: 64b7faf903dae2df94d89edf2c688b16751800e4
-Reference: fate#315887
+References: fate#315887
 
 This fixes an incorrect assumption of channel state in the function.
 

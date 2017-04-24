@@ -1,6 +1,7 @@
 From: David Altobelli <david.altobelli@hpe.com>
 Subject: [PATCH] hpilo: Add support for iLO5
-Patch-mainline: Not yet, internal review
+Patch-mainline: 4.9-rc1
+Git-commit: c9fef1cc3dd3677633e6fd6ea5bd7ef3b741fab3
 References: bsc#999101
 
 Due to changes in iLO firmware a changes is needed for the hpilo

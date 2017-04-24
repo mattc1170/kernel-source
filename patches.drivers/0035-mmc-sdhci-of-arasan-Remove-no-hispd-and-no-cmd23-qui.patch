@@ -1,0 +1,42 @@
+From 0a2d9c94770f38182e10bfc823da0d6fb84e5bf3 Mon Sep 17 00:00:00 2001
+From: Rameshwar Prasad Sahu <rsahu@apm.com>
+Date: Wed, 23 Dec 2015 18:59:51 +0530
+Subject: [PATCH 35/36] mmc: sdhci-of-arasan: Remove no-hispd and no-cmd23
+ quirks for sdhci-arasan4.9a
+
+Git-commit: e99369dc95fe99d4ee5f8a0f8bef59062365b7d1
+Patch-mainline: v4.6-rc1
+References: bsc#1019351
+
+The Arason SD host controller supports set block count command (cmd23)
+and high speed mode. This patch re-enable both of these features that
+was disabled. For device that doesn't support high speed, it should
+configure its capability register accordingly instead disables it
+explicitly.
+
+Signed-off-by: Rameshwar Prasad Sahu <rsahu@apm.com>
+Signed-off-by: Ulf Hansson <ulf.hansson@linaro.org>
+Signed-off-by: Mian Yousaf Kaukab <yousaf.kaukab@suse.com>
+---
+ drivers/mmc/host/sdhci-of-arasan.c | 5 -----
+ 1 file changed, 5 deletions(-)
+
+diff --git a/drivers/mmc/host/sdhci-of-arasan.c b/drivers/mmc/host/sdhci-of-arasan.c
+index 75379cb0fb35..5d9fdb353446 100644
+--- a/drivers/mmc/host/sdhci-of-arasan.c
++++ b/drivers/mmc/host/sdhci-of-arasan.c
+@@ -172,11 +172,6 @@ static int sdhci_arasan_probe(struct platform_device *pdev)
+ 		goto clk_disable_all;
+ 	}
+ 
+-	if (of_device_is_compatible(pdev->dev.of_node, "arasan,sdhci-4.9a")) {
+-		host->quirks |= SDHCI_QUIRK_NO_HISPD_BIT;
+-		host->quirks2 |= SDHCI_QUIRK2_HOST_NO_CMD23;
+-	}
+-
+ 	sdhci_get_of_property(pdev);
+ 	pltfm_host = sdhci_priv(host);
+ 	pltfm_host->priv = sdhci_arasan;
+-- 
+2.11.0
+

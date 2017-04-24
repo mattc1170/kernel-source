@@ -1,0 +1,50 @@
+From 152e6744ebfc8fa6cc9fff4ba36271f5f1ba2821 Mon Sep 17 00:00:00 2001
+From: Michal Marek <mmarek@suse.com>
+Date: Tue, 22 Nov 2016 22:34:30 +0100
+Subject: [PATCH 2/6] arm: Use full path in KBUILD_IMAGE definition
+Git-commit: 152e6744ebfc8fa6cc9fff4ba36271f5f1ba2821
+Patch-mainline: Queued in subsystem maintainer repository
+Git-repo: git://git.kernel.org/pub/scm/linux/kernel/git/masahiroy/linux-kbuild.git
+References: bsc#1010032
+
+The KBUILD_IMAGE variable is used by the rpm and deb-pkg targets, which
+expect it to point to the image file in the build directory. The
+builddeb script has a workaround for architectures which only provide
+the basename, but let's provide a clean interface for packaging tools.
+
+Cc: Russell King <linux@armlinux.org.uk>
+Cc: linux-arm-kernel@lists.infradead.org
+Signed-off-by: Michal Marek <mmarek@suse.com>
+Signed-off-by: Masahiro Yamada <yamada.masahiro@socionext.com>
+
+---
+ arch/arm/Makefile |    8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+--- a/arch/arm/Makefile
++++ b/arch/arm/Makefile
+@@ -294,10 +294,11 @@ drivers-$(CONFIG_OPROFILE)      += arch/
+ libs-y				:= arch/arm/lib/ $(libs-y)
+ 
+ # Default target when executing plain make
++boot := arch/arm/boot
+ ifeq ($(CONFIG_XIP_KERNEL),y)
+-KBUILD_IMAGE := xipImage
++KBUILD_IMAGE := $(boot)/xipImage
+ else
+-KBUILD_IMAGE := zImage
++KBUILD_IMAGE := $(boot)/zImage
+ endif
+ 
+ # Build the DT binary blobs if we have OF configured
+@@ -305,9 +306,8 @@ ifeq ($(CONFIG_USE_OF),y)
+ KBUILD_DTBS := dtbs
+ endif
+ 
+-all:	$(KBUILD_IMAGE) $(KBUILD_DTBS)
++all:	$(notdir $(KBUILD_IMAGE)) $(KBUILD_DTBS)
+ 
+-boot := arch/arm/boot
+ 
+ archprepare:
+ 	$(Q)$(MAKE) $(build)=arch/arm/tools include/generated/mach-types.h

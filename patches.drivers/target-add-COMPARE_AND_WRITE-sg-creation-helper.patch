@@ -18,8 +18,8 @@ Acked-by: David Disseldorp <ddiss@suse.de>
 
 --- a/drivers/target/target_core_sbc.c
 +++ b/drivers/target/target_core_sbc.c
-@@ -464,13 +464,60 @@ static sense_reason_t compare_and_write_
- 	return TCM_NO_SENSE;
+@@ -468,13 +468,60 @@ static sense_reason_t compare_and_write_
+ 	return ret;
  }
  
 +/**
@@ -80,7 +80,7 @@ Acked-by: David Disseldorp <ddiss@suse.de>
  	unsigned int offset = 0, len;
  	unsigned int nlbas = cmd->t_task_nolb;
  	unsigned int block_size = dev->dev_attrib.block_size;
-@@ -506,14 +553,12 @@ static sense_reason_t compare_and_write_
+@@ -510,14 +557,12 @@ static sense_reason_t compare_and_write_
  		goto out;
  	}
  
@@ -96,7 +96,7 @@ Acked-by: David Disseldorp <ddiss@suse.de>
  	/*
  	 * Setup verify and write data payloads from total NumberLBAs.
  	 */
-@@ -550,27 +595,6 @@ static sense_reason_t compare_and_write_
+@@ -554,27 +599,6 @@ static sense_reason_t compare_and_write_
  			break;
  	}
  

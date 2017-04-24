@@ -1,0 +1,70 @@
+From: Thomas Falcon <tlfalcon@linux.vnet.ibm.com>
+Date: Tue, 14 Feb 2017 10:22:59 -0600
+Subject: ibmvnic: Fix initial MTU settings
+Patch-mainline: v4.10
+Git-commit: f39f0d1e1e93145a0e91d9a7a639c42fd037ecc3
+References: bsc#1015416 bsc#1027968 bsc#1031512
+
+In the current driver, the MTU is set to the maximum value
+capable for the backing device. This decision turned out to
+be a mistake as it led to confusion among users. The expected
+initial MTU value used for other IBM vNIC capable operating
+systems is 1500, with the maximum value (9000) reserved for
+when Jumbo frames are enabled. This patch sets the MTU to
+the default value for a net device.
+
+It also corrects a discrepancy between MTU values received from
+firmware, which includes the ethernet header length, and net
+device MTU values.
+
+Finally, it removes redundant min/max MTU assignments after device
+initialization.
+
+Signed-off-by: Thomas Falcon <tlfalcon@linux.vnet.ibm.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+Acked-by: Benjamin Poirier <bpoirier@suse.com>
+---
+ drivers/net/ethernet/ibm/ibmvnic.c | 9 +++++----
+ 1 file changed, 5 insertions(+), 4 deletions(-)
+
+diff --git a/drivers/net/ethernet/ibm/ibmvnic.c b/drivers/net/ethernet/ibm/ibmvnic.c
+index 07ff6e6..864a4b0 100644
+--- a/drivers/net/ethernet/ibm/ibmvnic.c
++++ b/drivers/net/ethernet/ibm/ibmvnic.c
+@@ -905,7 +905,8 @@ static int ibmvnic_change_mtu(struct net_device *netdev, int new_mtu)
+ {
+ 	struct ibmvnic_adapter *adapter = netdev_priv(netdev);
+ 
+-	if (new_mtu > adapter->max_mtu || new_mtu < adapter->min_mtu)
++	if (new_mtu > adapter->max_mtu - ETH_HLEN ||
++            new_mtu < adapter->min_mtu - ETH_HLEN)
+ 		return -EINVAL;
+ 
+ 	netdev->mtu = new_mtu;
+@@ -1508,7 +1509,7 @@ static void init_sub_crqs(struct ibmvnic_adapter *adapter, int retry)
+ 		adapter->req_rx_queues = adapter->opt_rx_comp_queues;
+ 		adapter->req_rx_add_queues = adapter->max_rx_add_queues;
+ 
+-		adapter->req_mtu = adapter->max_mtu;
++		adapter->req_mtu = adapter->netdev->mtu + ETH_HLEN;
+ 	}
+ 
+ 	total_queues = adapter->req_tx_queues + adapter->req_rx_queues;
+@@ -3666,7 +3667,7 @@ static void handle_crq_init_rsp(struct work_struct *work)
+ 		goto task_failed;
+ 
+ 	netdev->real_num_tx_queues = adapter->req_tx_queues;
+-	netdev->mtu = adapter->req_mtu;
++	netdev->mtu = adapter->req_mtu - ETH_HLEN;
+ 
+ 	if (adapter->failover) {
+ 		adapter->failover = false;
+@@ -3806,7 +3807,7 @@ static int ibmvnic_probe(struct vio_dev *dev, const struct vio_device_id *id)
+ 	}
+ 
+ 	netdev->real_num_tx_queues = adapter->req_tx_queues;
+-	netdev->mtu = adapter->req_mtu;
++	netdev->mtu = adapter->req_mtu - ETH_HLEN;
+ 
+ 	rc = register_netdev(netdev);
+ 	if (rc) {

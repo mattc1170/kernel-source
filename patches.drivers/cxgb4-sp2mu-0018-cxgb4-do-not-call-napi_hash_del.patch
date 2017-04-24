@@ -1,0 +1,36 @@
+From: Eric Dumazet <edumazet@google.com>
+Date: Wed, 16 Nov 2016 06:19:02 -0800
+Subject: cxgb4: do not call napi_hash_del()
+Patch-mainline: v4.9-rc7
+Git-commit: 5f00a8d8a2c2fd99528ab1a3632f0e77f4d25202
+References: bsc#1021424
+
+Calling napi_hash_del() before netif_napi_del() is dangerous
+if a synchronize_rcu() is not enforced before NAPI struct freeing.
+
+Lets leave this detail to core networking stack and feel
+more comfortable.
+
+Signed-off-by: Eric Dumazet <edumazet@google.com>
+Cc: Hariprasad S <hariprasad@chelsio.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+Acked-by: Thomas Bogendoerfer <tbogendoerfer@suse.de>
+---
+ drivers/net/ethernet/chelsio/cxgb4/sge.c | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/drivers/net/ethernet/chelsio/cxgb4/sge.c b/drivers/net/ethernet/chelsio/cxgb4/sge.c
+index ad3552df0545..e41c5613592e 100644
+--- a/drivers/net/ethernet/chelsio/cxgb4/sge.c
++++ b/drivers/net/ethernet/chelsio/cxgb4/sge.c
+@@ -2939,7 +2939,6 @@ static void free_rspq_fl(struct adapter *adap, struct sge_rspq *rq,
+ 		   rq->cntxt_id, fl_id, 0xffff);
+ 	dma_free_coherent(adap->pdev_dev, (rq->size + 1) * rq->iqe_len,
+ 			  rq->desc, rq->phys_addr);
+-	napi_hash_del(&rq->napi);
+ 	netif_napi_del(&rq->napi);
+ 	rq->netdev = NULL;
+ 	rq->cntxt_id = rq->abs_id = 0;
+-- 
+1.8.5.6
+

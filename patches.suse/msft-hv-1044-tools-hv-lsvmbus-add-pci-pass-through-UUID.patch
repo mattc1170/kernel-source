@@ -3,7 +3,7 @@ Date: Sat, 30 Apr 2016 19:21:37 -0700
 Patch-mainline: v4.7-rc1
 Subject: tools: hv: lsvmbus: add pci pass-through UUID
 Git-commit: 552beb4930ef3889d42a049eb9ba3533b4cbe0f6
-Reference: fate#320485
+References: fate#320485
 
 lsvmbus keeps its own copy of all VMBus UUIDs, add PCIe pass-through
 device there to not report 'Unknown' for such devices.

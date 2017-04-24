@@ -4,7 +4,7 @@ Date: Wed, 6 Jan 2016 14:37:13 -0800
 Subject: [PATCH] md: set MD_HAS_JOURNAL in correct places
 Patch-mainline: v4.5-rc1
 Git-commit: a62ab49eb502a07814f9942770893118c6281223
-Reference: fate#320291
+References: fate#320291
 
 Set MD_HAS_JOURNAL when a array is loaded or journal is initialized.
 This is to avoid the flags set too early in journal disk hotadd.

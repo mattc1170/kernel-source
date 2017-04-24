@@ -3,7 +3,7 @@ Date: Fri, 13 May 2016 13:55:24 +0200
 Patch-mainline: v4.7-rc1
 Subject: hv_netvsc: synchronize netvsc_change_mtu()/netvsc_set_channels() with netvsc_remove()
 Git-commit: 6da7225f5a95ba68e3c6225c4051182bef30eed4
-Reference: fate#320485
+References: fate#320485
 
 When netvsc device is removed during mtu change or channels setup we get
 into troubles as both paths are trying to remove the device. Synchronize

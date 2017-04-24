@@ -1,0 +1,52 @@
+From: Stephen Hemminger <sthemmin@microsoft.com>
+Date: Tue, 23 Aug 2016 12:17:56 -0700
+Patch-mainline: v4.9-rc1
+Subject: hv_netvsc: report vmbus name in ethtool
+Git-commit: e3f74b841d482e962b9f5a907eeb25eeeb09aa60
+References: fate#320485
+
+Make netvsc on vmbus behave more like PCI.
+
+Signed-off-by: Stephen Hemminger <sthemmin@microsoft.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+Acked-by: <ohering@suse.de>
+---
+ drivers/net/hyperv/netvsc_drv.c | 4 ++++
+ include/linux/hyperv.h          | 7 +++++++
+ 2 files changed, 11 insertions(+)
+
+diff --git a/drivers/net/hyperv/netvsc_drv.c b/drivers/net/hyperv/netvsc_drv.c
+index 7ed9f13..b874ab1 100644
+--- a/drivers/net/hyperv/netvsc_drv.c
++++ b/drivers/net/hyperv/netvsc_drv.c
+@@ -734,8 +734,12 @@ vf_injection_done:
+ static void netvsc_get_drvinfo(struct net_device *net,
+ 			       struct ethtool_drvinfo *info)
+ {
++	struct net_device_context *net_device_ctx = netdev_priv(net);
++	struct hv_device *dev = net_device_ctx->device_ctx;
++
+ 	strlcpy(info->driver, KBUILD_MODNAME, sizeof(info->driver));
+ 	strlcpy(info->fw_version, "N/A", sizeof(info->fw_version));
++	strlcpy(info->bus_info, vmbus_dev_name(dev), sizeof(info->bus_info));
+ }
+ 
+ static void netvsc_get_channels(struct net_device *net,
+diff --git a/include/linux/hyperv.h b/include/linux/hyperv.h
+index a6bc974..b01c8c3 100644
+--- a/include/linux/hyperv.h
++++ b/include/linux/hyperv.h
+@@ -1114,6 +1114,13 @@ int __must_check __vmbus_driver_register(struct hv_driver *hv_driver,
+ 					 const char *mod_name);
+ void vmbus_driver_unregister(struct hv_driver *hv_driver);
+ 
++static inline const char *vmbus_dev_name(const struct hv_device *device_obj)
++{
++	const struct kobject *kobj = &device_obj->device.kobj;
++
++	return kobj->name;
++}
++
+ void vmbus_hvsock_device_unregister(struct vmbus_channel *channel);
+ 
+ int vmbus_allocate_mmio(struct resource **new, struct hv_device *device_obj,

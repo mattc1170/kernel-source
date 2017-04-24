@@ -3,7 +3,7 @@ Date: Fri, 22 Jul 2016 18:14:50 -0700
 Patch-mainline: v4.8-rc1
 Subject: hv_netvsc: Fix VF register on bonding devices
 Git-commit: e2b9f1f7af1dfe20df8e68849ebb4bbafed5727a
-Reference: fate#320485
+References: fate#320485
 
 Added a condition to avoid bonding devices with same MAC registering
 as VF.

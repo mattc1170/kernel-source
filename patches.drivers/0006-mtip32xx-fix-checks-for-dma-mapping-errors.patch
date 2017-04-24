@@ -4,7 +4,7 @@ Date: Sat, 19 Mar 2016 01:35:54 +0300
 Subject: [PATCH] mtip32xx: fix checks for dma mapping errors
 Git-commit: 5173cb814b36439a9d9537016965e75798b9f130
 Patch-mainline: v4.6-rc1
-Reference: fate#319999
+References: fate#319999
 
 exec_drive_taskfile() checks for dma mapping errors by comparison
 returned address with zero, while pci_dma_mapping_error() should be used.

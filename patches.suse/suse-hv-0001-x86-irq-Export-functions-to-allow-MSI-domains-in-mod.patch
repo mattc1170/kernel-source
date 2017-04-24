@@ -3,7 +3,7 @@ Date: Thu, 10 Dec 2015 17:52:59 +0000
 Subject: x86/irq: Export functions to allow MSI domains in modules
 Patch-mainline: v4.5-rc1
 Git-commit: c8f3e518d3444ee9200a4987421fcee60f768f11
-Reference: fate#320295
+References: fate#320295
 
 The Linux kernel already has the concept of IRQ domain, wherein a
 component can expose a set of IRQs which are managed by a particular

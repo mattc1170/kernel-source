@@ -19,15 +19,16 @@ Tested-by: Jiri Kosina <jkosina@suse.com>
 Signed-off-by: Lee, Chun-Yi <jlee@suse.com>
 ---
  arch/x86/boot/compressed/Makefile     |    1 
+ arch/x86/boot/compressed/eboot.h      |    5 ++
  arch/x86/boot/compressed/efi_random.c |   80 ++++++++++++++++++++++++++++++++++
  arch/x86/boot/compressed/misc.c       |    4 -
  arch/x86/boot/compressed/misc.h       |    2 
- 4 files changed, 84 insertions(+), 3 deletions(-)
+ 5 files changed, 89 insertions(+), 3 deletions(-)
  create mode 100644 arch/x86/boot/compressed/efi_random.c
 
 --- a/arch/x86/boot/compressed/Makefile
 +++ b/arch/x86/boot/compressed/Makefile
-@@ -49,6 +49,7 @@ vmlinux-objs-$(CONFIG_RANDOMIZE_BASE) +=
+@@ -61,6 +61,7 @@ vmlinux-objs-$(CONFIG_RANDOMIZE_BASE) +=
  
  $(obj)/eboot.o: KBUILD_CFLAGS += -fshort-wchar -mno-red-zone
  
@@ -35,6 +36,18 @@ Signed-off-by: Lee, Chun-Yi <jlee@suse.com>
  vmlinux-objs-$(CONFIG_EFI_STUB) += $(obj)/eboot.o $(obj)/efi_stub_$(BITS).o \
  	$(objtree)/drivers/firmware/efi/libstub/lib.a
  vmlinux-objs-$(CONFIG_EFI_MIXED) += $(obj)/efi_thunk_$(BITS).o
+--- a/arch/x86/boot/compressed/eboot.h
++++ b/arch/x86/boot/compressed/eboot.h
+@@ -103,4 +103,9 @@ struct efi_uga_draw_protocol {
+ 	void *blt;
+ };
+ 
++#if CONFIG_HIBERNATE_VERIFICATION
++extern void efi_get_random_key(efi_system_table_t *sys_table,
++		struct boot_params *params, u8 key[], unsigned int size);
++#endif
++
+ #endif /* BOOT_COMPRESSED_EBOOT_H */
 --- /dev/null
 +++ b/arch/x86/boot/compressed/efi_random.c
 @@ -0,0 +1,80 @@

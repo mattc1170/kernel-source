@@ -3,7 +3,7 @@ Date: Mon, 14 Dec 2015 16:01:45 -0800
 Patch-mainline: v4.5-rc1
 Subject: Drivers: hv: vmbus: Get rid of the unused macro
 Git-commit: 90e031fa06ad6b660a8e9bebbb80bd30e555a2a5
-Reference: fate#315887
+References: fate#315887
 
 The macro VMBUS_DEVICE() is unused; get rid of it.
 

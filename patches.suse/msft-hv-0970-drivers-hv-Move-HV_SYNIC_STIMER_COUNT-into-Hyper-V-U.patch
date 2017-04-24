@@ -3,7 +3,7 @@ Date: Mon, 30 Nov 2015 19:22:14 +0300
 Patch-mainline: v4.5-rc1
 Subject: drivers/hv: Move HV_SYNIC_STIMER_COUNT into Hyper-V UAPI x86 header
 Git-commit: 4f39bcfd1c132522380138a323f9af7902766301
-Reference: fate#315887
+References: fate#315887
 
 This constant is required for Hyper-V SynIC timers MSR's
 support by userspace(QEMU).

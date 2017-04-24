@@ -4,7 +4,7 @@ Date: Mon, 21 Dec 2015 10:51:01 +1100
 Subject: [PATCH] md: update comment for md_allow_write
 Git-commit: abf3508d8faa281e01a780e022a6f43d1731fe0b
 Patch-mainline: v4.5-rc1
-Reference: fate#320291
+References: fate#320291
 
 MD_CHANGE_CLEAN had been replaced with MD_CHANGE_PENDING after
 commit 070dc6 ("md: resolve confusion of MD_CHANGE_CLEAN"),

@@ -3,7 +3,7 @@ Date: Mon, 15 Aug 2016 17:48:41 +0200
 Patch-mainline: v4.8-rc3
 Subject: hv_netvsc: reset vf_inject on VF removal
 Git-commit: 57c1826b991244d2144eb6e3d5d1b13a53cbea63
-Reference: fate#320485
+References: fate#320485
 
 We reset vf_inject on VF going down (netvsc_vf_down()) but we don't on
 VF removal (netvsc_unregister_vf()) so vf_inject stays 'true' while

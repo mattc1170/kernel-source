@@ -1,0 +1,133 @@
+From: Thomas Gleixner <tglx@linutronix.de>
+Date: Thu, 10 Mar 2016 12:54:10 +0100
+Subject: sched: Allow hotplug notifiers to be setup early
+Git-commit: e26fbffd32c28107d9d268b432706ccf84fb6411
+Patch-mainline: v4.7-rc1
+References: bnc#1022476
+
+Prevent the SMP scheduler related notifiers to be executed before the smp
+scheduler is initialized and install them early.
+
+This is a preparatory change for further consolidation of the hotplug notifier
+maze.
+
+Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
+Acked-by: Peter Zijlstra <peterz@infradead.org>
+Cc: rt@linutronix.de
+Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
+Signed-off-by: Mike Galbraith <mgalbraith@suse.de>
+---
+ kernel/sched/core.c |   59 +++++++++++++++++++++++++++++++---------------------
+ 1 file changed, 36 insertions(+), 23 deletions(-)
+
+--- a/kernel/sched/core.c
++++ b/kernel/sched/core.c
+@@ -5382,6 +5382,8 @@ int task_can_attach(struct task_struct *
+ 
+ #ifdef CONFIG_SMP
+ 
++static bool sched_smp_initialized __read_mostly;
++
+ #ifdef CONFIG_NUMA_BALANCING
+ /* Migrate current task p to target_cpu */
+ int migrate_task_to(struct task_struct *p, int target_cpu)
+@@ -5912,25 +5914,6 @@ static int sched_cpu_inactive(struct not
+ 	}
+ }
+ 
+-static int __init migration_init(void)
+-{
+-	void *cpu = (void *)(long)smp_processor_id();
+-	int err;
+-
+-	/* Initialize migration for the boot CPU */
+-	err = migration_call(&migration_notifier, CPU_UP_PREPARE, cpu);
+-	BUG_ON(err == NOTIFY_BAD);
+-	migration_call(&migration_notifier, CPU_ONLINE, cpu);
+-	register_cpu_notifier(&migration_notifier);
+-
+-	/* Register cpu active notifiers */
+-	cpu_notifier(sched_cpu_active, CPU_PRI_SCHED_ACTIVE);
+-	cpu_notifier(sched_cpu_inactive, CPU_PRI_SCHED_INACTIVE);
+-
+-	return 0;
+-}
+-early_initcall(migration_init);
+-
+ static cpumask_var_t sched_domains_tmpmask; /* sched_domains_mutex */
+ 
+ #ifdef CONFIG_SCHED_DEBUG
+@@ -7105,6 +7088,9 @@ static int sched_domains_numa_masks_upda
+ {
+ 	int cpu = (long)hcpu;
+ 
++	if (!sched_smp_initialized)
++		return NOTIFY_DONE;
++
+ 	switch (action & ~CPU_TASKS_FROZEN) {
+ 	case CPU_ONLINE:
+ 		sched_domains_numa_masks_set(cpu);
+@@ -7523,6 +7509,9 @@ static int num_cpus_frozen;	/* used to m
+ static int cpuset_cpu_active(struct notifier_block *nfb, unsigned long action,
+ 			     void *hcpu)
+ {
++	if (!sched_smp_initialized)
++		return NOTIFY_DONE;
++
+ 	switch (action) {
+ 	case CPU_ONLINE_FROZEN:
+ 	case CPU_DOWN_FAILED_FROZEN:
+@@ -7563,6 +7552,9 @@ static int cpuset_cpu_inactive(struct no
+ 	bool overflow;
+ 	int cpus;
+ 
++	if (!sched_smp_initialized)
++		return NOTIFY_DONE;
++
+ 	switch (action) {
+ 	case CPU_DOWN_PREPARE:
+ 		rcu_read_lock_sched();
+@@ -7610,10 +7602,6 @@ void __init sched_init_smp(void)
+ 		cpumask_set_cpu(smp_processor_id(), non_isolated_cpus);
+ 	mutex_unlock(&sched_domains_mutex);
+ 
+-	hotcpu_notifier(sched_domains_numa_masks_update, CPU_PRI_SCHED_ACTIVE);
+-	hotcpu_notifier(cpuset_cpu_active, CPU_PRI_CPUSET_ACTIVE);
+-	hotcpu_notifier(cpuset_cpu_inactive, CPU_PRI_CPUSET_INACTIVE);
+-
+ 	init_hrtick();
+ 
+ 	/* Move init over to a non-isolated CPU */
+@@ -7624,7 +7612,32 @@ void __init sched_init_smp(void)
+ 
+ 	init_sched_rt_class();
+ 	init_sched_dl_class();
++	sched_smp_initialized = true;
+ }
++
++static int __init migration_init(void)
++{
++	void *cpu = (void *)(long)smp_processor_id();
++	int err;
++
++	/* Initialize migration for the boot CPU */
++	err = migration_call(&migration_notifier, CPU_UP_PREPARE, cpu);
++	BUG_ON(err == NOTIFY_BAD);
++	migration_call(&migration_notifier, CPU_ONLINE, cpu);
++	register_cpu_notifier(&migration_notifier);
++
++	/* Register cpu active notifiers */
++	cpu_notifier(sched_cpu_active, CPU_PRI_SCHED_ACTIVE);
++	cpu_notifier(sched_cpu_inactive, CPU_PRI_SCHED_INACTIVE);
++
++	hotcpu_notifier(sched_domains_numa_masks_update, CPU_PRI_SCHED_ACTIVE);
++	hotcpu_notifier(cpuset_cpu_active, CPU_PRI_CPUSET_ACTIVE);
++	hotcpu_notifier(cpuset_cpu_inactive, CPU_PRI_CPUSET_INACTIVE);
++
++	return 0;
++}
++early_initcall(migration_init);
++
+ #else
+ void __init sched_init_smp(void)
+ {

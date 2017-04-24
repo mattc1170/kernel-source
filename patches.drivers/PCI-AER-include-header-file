@@ -1,0 +1,38 @@
+From c89e5b80245899fc51fb1d83880e2f5762fcf350 Mon Sep 17 00:00:00 2001
+From: Sudip Mukherjee <sudipm.mukherjee@gmail.com>
+Date: Wed, 23 Dec 2015 21:05:26 +0530
+Subject: [PATCH] PCI/AER: include header file
+Git-commit: c89e5b80245899fc51fb1d83880e2f5762fcf350
+Patch-mainline: 4.5-rc1
+References: bsc#964944,FATE#319965
+
+We are having build failure with sparc allmodconfig with the error:
+
+drivers/nvme/host/pci.c:15:0:
+Include/linux/aer.h: In function 'pci_enable_pcie_error_reporting':
+include/linux/aer.h:49:10: error: 'EINVAL' undeclared (first use in this function)
+
+The file aer.h is using the error values but they are defined in
+errno.h. Include errno.h so that we have the definitions of the error
+codes.
+
+Fixes: a0a3408ee614 ("NVMe: Add pci error handlers")
+Cc: Keith Busch <keith.busch@intel.com>
+Signed-off-by: Sudip Mukherjee <sudip@vectorindia.org>
+Signed-off-by: Jens Axboe <axboe@fb.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ include/linux/aer.h |    1 +
+ 1 file changed, 1 insertion(+)
+
+--- a/include/linux/aer.h
++++ b/include/linux/aer.h
+@@ -7,6 +7,7 @@
+ #ifndef _AER_H_
+ #define _AER_H_
+ 
++#include <linux/errno.h>
+ #include <linux/types.h>
+ 
+ #define AER_NONFATAL			0

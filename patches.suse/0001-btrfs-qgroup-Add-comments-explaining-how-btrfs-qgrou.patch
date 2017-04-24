@@ -3,7 +3,8 @@ From: Qu Wenruo <quwenruo@cn.fujitsu.com>
 Date: Tue, 18 Oct 2016 09:31:26 +0800
 Subject: [PATCH 1/4] btrfs: qgroup: Add comments explaining how btrfs qgroup  works
 References: bsc983087, bsc986255
-Patch-mainline: Submitted, https://patchwork.kernel.org/patch/9380979/
+Patch-mainline: v4.10-rc1
+Git-commit: 1d2beaa95b307db5aacd527065d16ed48854d04e
 
 Add explain how btrfs qgroup works.
 

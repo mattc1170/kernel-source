@@ -3,7 +3,7 @@ Date: Wed, 23 Dec 2015 13:15:50 -0800
 Patch-mainline: v4.5-rc1
 Subject: storvsc: Refactor the code in storvsc_channel_init()
 Git-commit: 59635018f9b7ae8b3e304d7a5da6f628b5a1dcf6
-Reference: fate#315887
+References: fate#315887
 
 The function storvsc_channel_init() repeatedly interacts with the host
 to extract various channel properties. Refactor this code to eliminate

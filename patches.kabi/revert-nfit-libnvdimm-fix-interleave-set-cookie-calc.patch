@@ -1,0 +1,164 @@
+From: Jiri Slaby <jslaby@suse.cz>
+Date: Tue, 21 Mar 2017 18:26:42 +0100
+Subject: Revert "nfit, libnvdimm: fix interleave set cookie calculation"
+Patch-mainline: never, kabi
+References: kabi
+
+This reverts commit 66dd58f56eabe2795ed8f83a8480f0e8aace908f, upstream
+commit 86ef58a4e35e8fa66afb5898cf6dec6a3bb29f67. It breaks kABI and the
+affected structure is allocated in the nfit driver. It is built as a
+module which can be potentially replaced by a KMP. So revert the change.
+
+Signed-off-by: Jiri Slaby <jslaby@suse.cz>
+---
+ drivers/acpi/nfit.c             | 16 +---------------
+ drivers/nvdimm/namespace_devs.c | 28 +++++++---------------------
+ drivers/nvdimm/nd.h             |  1 -
+ drivers/nvdimm/region_devs.c    |  9 ---------
+ include/linux/libnvdimm.h       |  2 --
+ 5 files changed, 8 insertions(+), 48 deletions(-)
+
+diff --git a/drivers/acpi/nfit.c b/drivers/acpi/nfit.c
+index 14c2a07c9f3f..c097f477c74c 100644
+--- a/drivers/acpi/nfit.c
++++ b/drivers/acpi/nfit.c
+@@ -965,7 +965,7 @@ static size_t sizeof_nfit_set_info(int num_mappings)
+ 		+ num_mappings * sizeof(struct nfit_set_info_map);
+ }
+ 
+-static int cmp_map_compat(const void *m0, const void *m1)
++static int cmp_map(const void *m0, const void *m1)
+ {
+ 	const struct nfit_set_info_map *map0 = m0;
+ 	const struct nfit_set_info_map *map1 = m1;
+@@ -974,14 +974,6 @@ static int cmp_map_compat(const void *m0, const void *m1)
+ 			sizeof(u64));
+ }
+ 
+-static int cmp_map(const void *m0, const void *m1)
+-{
+-	const struct nfit_set_info_map *map0 = m0;
+-	const struct nfit_set_info_map *map1 = m1;
+-
+-	return map0->region_offset - map1->region_offset;
+-}
+-
+ /* Retrieve the nth entry referencing this spa */
+ static struct acpi_nfit_memory_map *memdev_from_spa(
+ 		struct acpi_nfit_desc *acpi_desc, u16 range_index, int n)
+@@ -1037,12 +1029,6 @@ static int acpi_nfit_init_interleave_set(struct acpi_nfit_desc *acpi_desc,
+ 	sort(&info->mapping[0], nr, sizeof(struct nfit_set_info_map),
+ 			cmp_map, NULL);
+ 	nd_set->cookie = nd_fletcher64(info, sizeof_nfit_set_info(nr), 0);
+-
+-	/* support namespaces created with the wrong sort order */
+-	sort(&info->mapping[0], nr, sizeof(struct nfit_set_info_map),
+-			cmp_map_compat, NULL);
+-	nd_set->altcookie = nd_fletcher64(info, sizeof_nfit_set_info(nr), 0);
+-
+ 	ndr_desc->nd_set = nd_set;
+ 	devm_kfree(dev, info);
+ 
+diff --git a/drivers/nvdimm/namespace_devs.c b/drivers/nvdimm/namespace_devs.c
+index aae7379af4e4..62120c38d56b 100644
+--- a/drivers/nvdimm/namespace_devs.c
++++ b/drivers/nvdimm/namespace_devs.c
+@@ -1534,7 +1534,6 @@ static int select_pmem_id(struct nd_region *nd_region, u8 *pmem_id)
+ static int find_pmem_label_set(struct nd_region *nd_region,
+ 		struct nd_namespace_pmem *nspm)
+ {
+-	u64 altcookie = nd_region_interleave_set_altcookie(nd_region);
+ 	u64 cookie = nd_region_interleave_set_cookie(nd_region);
+ 	struct nd_namespace_label *nd_label;
+ 	u8 select_id[NSLABEL_UUID_LEN];
+@@ -1543,10 +1542,8 @@ static int find_pmem_label_set(struct nd_region *nd_region,
+ 	int rc = -ENODEV, l;
+ 	u16 i;
+ 
+-	if (cookie == 0) {
+-		dev_dbg(&nd_region->dev, "invalid interleave-set-cookie\n");
++	if (cookie == 0)
+ 		return -ENXIO;
+-	}
+ 
+ 	/*
+ 	 * Find a complete set of labels by uuid.  By definition we can start
+@@ -1555,24 +1552,13 @@ static int find_pmem_label_set(struct nd_region *nd_region,
+ 	for_each_label(l, nd_label, nd_region->mapping[0].labels) {
+ 		u64 isetcookie = __le64_to_cpu(nd_label->isetcookie);
+ 
+-		if (isetcookie != cookie) {
+-			dev_dbg(&nd_region->dev, "invalid cookie in label: %pUb\n",
+-					nd_label->uuid);
+-			if (isetcookie != altcookie)
+-				continue;
+-
+-			dev_dbg(&nd_region->dev, "valid altcookie in label: %pUb\n",
+-					nd_label->uuid);
+-		}
+-
+-		for (i = 0; nd_region->ndr_mappings; i++) {
+-			if (has_uuid_at_pos(nd_region, nd_label->uuid, cookie, i))
+-				continue;
+-			if (has_uuid_at_pos(nd_region, nd_label->uuid, altcookie, i))
+-				continue;
+-			break;
+-		}
++		if (isetcookie != cookie)
++			continue;
+ 
++		for (i = 0; nd_region->ndr_mappings; i++)
++			if (!has_uuid_at_pos(nd_region, nd_label->uuid,
++						cookie, i))
++				break;
+ 		if (i < nd_region->ndr_mappings) {
+ 			/*
+ 			 * Give up if we don't find an instance of a
+diff --git a/drivers/nvdimm/nd.h b/drivers/nvdimm/nd.h
+index fc870e55bb66..417e521d299c 100644
+--- a/drivers/nvdimm/nd.h
++++ b/drivers/nvdimm/nd.h
+@@ -245,7 +245,6 @@ struct nd_region *to_nd_region(struct device *dev);
+ int nd_region_to_nstype(struct nd_region *nd_region);
+ int nd_region_register_namespaces(struct nd_region *nd_region, int *err);
+ u64 nd_region_interleave_set_cookie(struct nd_region *nd_region);
+-u64 nd_region_interleave_set_altcookie(struct nd_region *nd_region);
+ void nvdimm_bus_lock(struct device *dev);
+ void nvdimm_bus_unlock(struct device *dev);
+ bool is_nvdimm_bus_locked(struct device *dev);
+diff --git a/drivers/nvdimm/region_devs.c b/drivers/nvdimm/region_devs.c
+index dc2e919daa39..9521696c9385 100644
+--- a/drivers/nvdimm/region_devs.c
++++ b/drivers/nvdimm/region_devs.c
+@@ -379,15 +379,6 @@ u64 nd_region_interleave_set_cookie(struct nd_region *nd_region)
+ 	return 0;
+ }
+ 
+-u64 nd_region_interleave_set_altcookie(struct nd_region *nd_region)
+-{
+-	struct nd_interleave_set *nd_set = nd_region->nd_set;
+-
+-	if (nd_set)
+-		return nd_set->altcookie;
+-	return 0;
+-}
+-
+ /*
+  * Upon successful probe/remove, take/release a reference on the
+  * associated interleave set (if present), and plant new btt + namespace
+diff --git a/include/linux/libnvdimm.h b/include/linux/libnvdimm.h
+index 30201b9be7bc..3f021dc5da8c 100644
+--- a/include/linux/libnvdimm.h
++++ b/include/linux/libnvdimm.h
+@@ -83,8 +83,6 @@ struct nd_cmd_desc {
+ 
+ struct nd_interleave_set {
+ 	u64 cookie;
+-	/* compatibility with initial buggy Linux implementation */
+-	u64 altcookie;
+ };
+ 
+ struct nd_region_desc {
+-- 
+2.12.0
+

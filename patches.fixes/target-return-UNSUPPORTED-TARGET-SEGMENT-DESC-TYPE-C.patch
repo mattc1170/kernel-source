@@ -1,0 +1,60 @@
+From ce8e06e9ece71afe6143657088dbf8081a94259a Mon Sep 17 00:00:00 2001
+From: David Disseldorp <ddiss@suse.de>
+Date: Mon, 2 Jan 2017 18:04:04 +0100
+Subject: [PATCH 05/10] target: return UNSUPPORTED TARGET/SEGMENT DESC TYPE
+ CODE sense
+Git-commit: c243849720ac237e9e7191fe57f619bb3a871d4c
+Patch-mainline: v4.10-rc4
+References: bsc#991273
+
+Use UNSUPPORTED TARGET DESCRIPTOR TYPE CODE and UNSUPPORTED SEGMENT
+DESCRIPTOR TYPE CODE additional sense codes if a descriptor type in an
+XCOPY request is not supported, as specified in spc4r37 6.4.5 and 6.4.6.
+
+Signed-off-by: David Disseldorp <ddiss@suse.de>
+Reviewed-by: Christoph Hellwig <hch@lst.de>
+Signed-off-by: Bart Van Assche <bart.vanassche@sandisk.com>
+
+---
+ drivers/target/target_core_xcopy.c | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/drivers/target/target_core_xcopy.c b/drivers/target/target_core_xcopy.c
+index fa50935..beb9417 100644
+--- a/drivers/target/target_core_xcopy.c
++++ b/drivers/target/target_core_xcopy.c
+@@ -198,6 +198,7 @@ static int target_xcopy_parse_target_descriptors(struct se_cmd *se_cmd,
+ 	if (offset != 0) {
+ 		pr_err("XCOPY target descriptor list length is not"
+ 			" multiple of %d\n", XCOPY_TARGET_DESC_LEN);
++		*sense_ret = TCM_UNSUPPORTED_TARGET_DESC_TYPE_CODE;
+ 		return -EINVAL;
+ 	}
+ 	if (tdll > RCR_OP_MAX_TARGET_DESC_COUNT * XCOPY_TARGET_DESC_LEN) {
+@@ -239,6 +240,7 @@ static int target_xcopy_parse_target_descriptors(struct se_cmd *se_cmd,
+ 		default:
+ 			pr_err("XCOPY unsupported descriptor type code:"
+ 					" 0x%02x\n", desc[0]);
++			*sense_ret = TCM_UNSUPPORTED_TARGET_DESC_TYPE_CODE;
+ 			goto out;
+ 		}
+ 	}
+@@ -318,6 +320,7 @@ static int target_xcopy_parse_segment_descriptors(struct se_cmd *se_cmd,
+ 	if (offset != 0) {
+ 		pr_err("XCOPY segment descriptor list length is not"
+ 			" multiple of %d\n", XCOPY_SEGMENT_DESC_LEN);
++		*sense_ret = TCM_UNSUPPORTED_SEGMENT_DESC_TYPE_CODE;
+ 		return -EINVAL;
+ 	}
+ 	if (sdll > RCR_OP_MAX_SG_DESC_COUNT * XCOPY_SEGMENT_DESC_LEN) {
+@@ -345,6 +348,7 @@ static int target_xcopy_parse_segment_descriptors(struct se_cmd *se_cmd,
+ 		default:
+ 			pr_err("XCOPY unsupported segment descriptor"
+ 				"type: 0x%02x\n", desc[0]);
++			*sense_ret = TCM_UNSUPPORTED_SEGMENT_DESC_TYPE_CODE;
+ 			goto out;
+ 		}
+ 	}
+-- 
+2.10.2
+

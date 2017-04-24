@@ -1,7 +1,8 @@
 From: NeilBrown <neilb@suse.com>
 Date: Mon, 5 Dec 2016 14:35:42 +1100
 Subject: [PATCH] SUNRPC: fix refcounting problems with auth_gss messages.
-Patch-mainline: Submitted, linux-nfs@vger.kernel.org - Mon, 05 Dec 2016 15:10:11 +1100
+Patch-mainline: v4.10
+Git-commit: 1cded9d2974fe4fe339fc0ccd6638b80d465ab2c
 References: boo#1011250
 
 There are two problems with refcounting of auth_gss messages.

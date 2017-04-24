@@ -3,7 +3,7 @@ Date: Thu, 11 Feb 2016 16:44:57 +0300
 Patch-mainline: v4.6-rc1
 Subject: kvm/x86: Rename Hyper-V long spin wait hypercall
 Git-commit: 8ed6d76781dd01451546d402a2136b6389861d81
-Reference: fate#320485
+References: fate#320485
 
 Rename HV_X64_HV_NOTIFY_LONG_SPIN_WAIT by HVCALL_NOTIFY_LONG_SPIN_WAIT,
 so the name is more consistent with the other hypercalls.

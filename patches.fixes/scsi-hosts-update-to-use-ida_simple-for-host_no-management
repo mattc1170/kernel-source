@@ -6,7 +6,7 @@ Date: Wed, 7 Oct 2015 11:00:41 -0700
 Subject: [PATCH] SCSI: hosts: update to use ida_simple for host_no management
 Patch-mainline: v4.6-rc1
 Git-commit: 126a4fe010fd86cf3eaac9a481f0698e39dc3c0d
-Reference: bsc#939926
+References: bsc#939926
 
 Update the SCSI hosts module to use the ida_simple*() routines
 to manage its host_no index instead of an ATOMIC integer. This

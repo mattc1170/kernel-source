@@ -3,7 +3,7 @@ Date: Fri, 3 Jun 2016 17:50:58 +0200
 Patch-mainline: v4.8-rc1
 Subject: hv_netvsc: remove redundant assignment in netvsc_recv_callback()
 Git-commit: 4baa994dc93287321c1b712d98cb6f721652891b
-Reference: fate#320485
+References: fate#320485
 
 net_device_ctx is assigned in the very beginning of the function and 'net'
 pointer doesn't change.

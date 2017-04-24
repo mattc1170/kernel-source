@@ -4,7 +4,7 @@ Date: Mon, 21 Dec 2015 10:51:02 +1100
 Subject: [PATCH] raid5-cache: use a mempool for the metadata block
 Git-commit: e8deb6381051bf3ce9d817020e8ba972b405a070
 Patch-mainline: v4.5-rc1
-Reference: fate#320291
+References: fate#320291
 
 We only have a limited number in flight, so use a page based mempool.
 

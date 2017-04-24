@@ -4,7 +4,7 @@ Date: Mon, 25 Jan 2016 17:31:13 +0000
 Subject: arm64: perf: Count EL2 events if the kernel is running in HYP
 Git-commit: d98ecdaca296815b3c4d11032b3699af6b49b70b
 Patch-mainline: v4.6-rc1
-Reference: fate#319982
+References: fate#319982
 
 When the kernel is running in HYP (with VHE), it is necessary to
 include EL2 events if the user requests counting kernel or

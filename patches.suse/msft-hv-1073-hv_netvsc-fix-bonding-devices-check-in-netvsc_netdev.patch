@@ -3,7 +3,7 @@ Date: Mon, 15 Aug 2016 17:48:43 +0200
 Patch-mainline: v4.8-rc3
 Subject: hv_netvsc: fix bonding devices check in netvsc_netdev_event()
 Git-commit: 0dbff144a1e7310e2f8b7a957352c4be9aeb38e4
-Reference: fate#320485
+References: fate#320485
 
 Bonding driver sets IFF_BONDING on both master (the bonding device) and
 slave (the real NIC) devices and in netvsc_netdev_event() we want to skip

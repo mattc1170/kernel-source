@@ -3,7 +3,7 @@ Date: Sat, 30 Apr 2016 19:21:36 -0700
 Patch-mainline: v4.7-rc1
 Subject: Drivers: hv: balloon: reset host_specified_ha_region
 Git-commit: d19a55d6ed5bf0ffe553df2d8bf91d054ddf2d76
-Reference: fate#320485
+References: fate#320485
 
 We set host_specified_ha_region = true on certain request but this is a
 global state which stays 'true' forever. We need to reset it when we

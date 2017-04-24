@@ -1,7 +1,8 @@
 From: NeilBrown <neilb@suse.com>
 Date: Wed, 5 Oct 2016 14:38:52 +1100
 Subject: [PATCH] NFSv4: add flock_owner to open context
-Patch-mainline: Submitted, Thu, 13 Oct 2016 15:26:47 +1100 - linux-nfs@vger.kernel.org
+Patch-mainline: v4.10
+Git-commit: 532d4def2f95623a9b8b2cef7723e14521377911
 References: bnc#998689
 
 An open file description (struct file) in a given process can be

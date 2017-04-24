@@ -3,7 +3,7 @@ Date: Fri, 4 Dec 2015 00:07:24 -0800
 Patch-mainline: v4.5-rc1
 Subject: storvsc: add logging for error/warning messages
 Git-commit: f8aea701b77c26732f151aab4f0a70e62eb53d86
-Reference: fate#315887
+References: fate#315887
 
 Introduce a logging level for storvsc to log certain error/warning
 messages. Those messages are helpful in some environments,

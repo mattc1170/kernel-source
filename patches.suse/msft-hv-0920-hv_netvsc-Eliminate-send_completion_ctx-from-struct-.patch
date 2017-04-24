@@ -3,7 +3,7 @@ Date: Tue, 1 Dec 2015 16:43:09 -0800
 Patch-mainline: v4.5-rc1
 Subject: hv_netvsc: Eliminate send_completion_ctx from struct hv_netvsc_packet
 Git-commit: 074c2fe5ef3d09e9a1008d307a22ab5086e22728
-Reference: fate#315887
+References: fate#315887
 
 Eliminate send_completion_ctx from struct hv_netvsc_packet.
 

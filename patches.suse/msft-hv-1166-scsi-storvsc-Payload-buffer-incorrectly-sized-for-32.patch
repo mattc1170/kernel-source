@@ -1,0 +1,36 @@
+From: Cathy Avery <cavery@redhat.com>
+Date: Wed, 23 Nov 2016 08:46:33 -0500
+Patch-mainline: v4.10-rc1
+Subject: scsi: storvsc: Payload buffer incorrectly sized for 32 bit kernels.
+Git-commit: b0120d9906253570f593daf82016a5331bbee2b8
+References: fate#320485
+
+On a 32 bit kernel sizeof(void *) is not 64 bits as hv_mpb_array
+requires. Also the buffer needs to be cleared or the upper bytes will
+contain junk.
+
+Suggested-by: Vitaly Kuznetsov <vkuznets@redhat.com>
+Signed-off-by: Cathy Avery <cavery@redhat.com>
+Reviewed-by: K. Y. Srinivasan <kys@microsoft.com>
+Signed-off-by: Martin K. Petersen <martin.petersen@oracle.com>
+Acked-by: <ohering@suse.de>
+---
+ drivers/scsi/storvsc_drv.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/scsi/storvsc_drv.c b/drivers/scsi/storvsc_drv.c
+index 8ccfc9ea874b..05526b71541b 100644
+--- a/drivers/scsi/storvsc_drv.c
++++ b/drivers/scsi/storvsc_drv.c
+@@ -1495,9 +1495,9 @@ static int storvsc_queuecommand(struct Scsi_Host *host, struct scsi_cmnd *scmnd)
+ 	if (sg_count) {
+ 		if (sg_count > MAX_PAGE_BUFFER_COUNT) {
+ 
+-			payload_sz = (sg_count * sizeof(void *) +
++			payload_sz = (sg_count * sizeof(u64) +
+ 				      sizeof(struct vmbus_packet_mpb_array));
+-			payload = kmalloc(payload_sz, GFP_ATOMIC);
++			payload = kzalloc(payload_sz, GFP_ATOMIC);
+ 			if (!payload)
+ 				return SCSI_MLQUEUE_DEVICE_BUSY;
+ 		}

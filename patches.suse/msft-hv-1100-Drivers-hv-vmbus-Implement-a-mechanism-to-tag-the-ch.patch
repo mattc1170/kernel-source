@@ -1,0 +1,96 @@
+From: "K. Y. Srinivasan" <kys@microsoft.com>
+Date: Fri, 1 Jul 2016 16:26:37 -0700
+Patch-mainline: v4.9-rc1
+Subject: Drivers: hv: vmbus: Implement a mechanism to tag the channel for low latency
+Git-commit: 3724287c0ec472815ebe5ae3790f77965c6aa557
+References: fate#320485
+
+On Hyper-V, performance critical channels use the monitor
+mechanism to signal the host when the guest posts mesages
+for the host. This mechanism minimizes the hypervisor intercepts
+and also makes the host more efficient in that each time the
+host is woken up, it processes a batch of messages as opposed to
+just one. The goal here is improve the throughput and this is at
+the expense of increased latency.
+Implement a mechanism to let the client driver decide if latency
+is important.
+
+Signed-off-by: K. Y. Srinivasan <kys@microsoft.com>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Acked-by: <ohering@suse.de>
+---
+ drivers/hv/channel.c   |  7 ++++++-
+ include/linux/hyperv.h | 35 +++++++++++++++++++++++++++++++++++
+ 2 files changed, 41 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/hv/channel.c b/drivers/hv/channel.c
+index 9a49505..884cebf 100644
+--- a/drivers/hv/channel.c
++++ b/drivers/hv/channel.c
+@@ -43,7 +43,12 @@ static void vmbus_setevent(struct vmbus_channel *channel)
+ {
+ 	struct hv_monitor_page *monitorpage;
+ 
+-	if (channel->offermsg.monitor_allocated) {
++	/*
++	 * For channels marked as in "low latency" mode
++	 * bypass the monitor page mechanism.
++	 */
++	if ((channel->offermsg.monitor_allocated) &&
++	    (!channel->low_latency)) {
+ 		/* Each u32 represents 32 channels */
+ 		sync_set_bit(channel->offermsg.child_relid & 31,
+ 			(unsigned long *) vmbus_connection.send_int_page +
+diff --git a/include/linux/hyperv.h b/include/linux/hyperv.h
+index 50f493e..755e8f5 100644
+--- a/include/linux/hyperv.h
++++ b/include/linux/hyperv.h
+@@ -850,6 +850,31 @@ struct vmbus_channel {
+ 	 * ring lock to preserve the current behavior.
+ 	 */
+ 	bool acquire_ring_lock;
++	/*
++	 * For performance critical channels (storage, networking
++	 * etc,), Hyper-V has a mechanism to enhance the throughput
++	 * at the expense of latency:
++	 * When the host is to be signaled, we just set a bit in a shared page
++	 * and this bit will be inspected by the hypervisor within a certain
++	 * window and if the bit is set, the host will be signaled. The window
++	 * of time is the monitor latency - currently around 100 usecs. This
++	 * mechanism improves throughput by:
++	 *
++	 * A) Making the host more efficient - each time it wakes up,
++	 *    potentially it will process morev number of packets. The
++	 *    monitor latency allows a batch to build up.
++	 * B) By deferring the hypercall to signal, we will also minimize
++	 *    the interrupts.
++	 *
++	 * Clearly, these optimizations improve throughput at the expense of
++	 * latency. Furthermore, since the channel is shared for both
++	 * control and data messages, control messages currently suffer
++	 * unnecessary latency adversley impacting performance and boot
++	 * time. To fix this issue, permit tagging the channel as being
++	 * in "low latency" mode. In this mode, we will bypass the monitor
++	 * mechanism.
++	 */
++	bool low_latency;
+ 
+ };
+ 
+@@ -891,6 +916,16 @@ static inline void set_channel_pending_send_size(struct vmbus_channel *c,
+ 	c->outbound.ring_buffer->pending_send_sz = size;
+ }
+ 
++static inline void set_low_latency_mode(struct vmbus_channel *c)
++{
++	c->low_latency = true;
++}
++
++static inline void clear_low_latency_mode(struct vmbus_channel *c)
++{
++	c->low_latency = false;
++}
++
+ void vmbus_onmessage(void *context);
+ 
+ int vmbus_request_offers(void);

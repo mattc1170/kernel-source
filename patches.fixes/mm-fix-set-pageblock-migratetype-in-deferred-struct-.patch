@@ -1,0 +1,98 @@
+From e780149bcd4be171421535db0514fa9ff556cb87 Mon Sep 17 00:00:00 2001
+From: Xishi Qiu <qiuxishi@huawei.com>
+Date: Fri, 7 Oct 2016 16:58:09 -0700
+Subject: [PATCH] mm: fix set pageblock migratetype in deferred struct page
+ init
+Git-commit: e780149bcd4be171421535db0514fa9ff556cb87
+Patch-mainline: v4.8
+References: bnc#1027195
+
+On x86_64 MAX_ORDER_NR_PAGES is usually 4M, and a pageblock is usually
+2M, so we only set one pageblock's migratetype in deferred_free_range()
+if pfn is aligned to MAX_ORDER_NR_PAGES.  That means it causes
+uninitialized migratetype blocks, you can see from "cat
+/proc/pagetypeinfo", almost half blocks are Unmovable.
+
+Also we missed freeing the last block in deferred_init_memmap(), it
+causes memory leak.
+
+Fixes: ac5d2539b238 ("mm: meminit: reduce number of times pageblocks are set during struct page init")
+Link: http://lkml.kernel.org/r/57A3260F.4050709@huawei.com
+Signed-off-by: Xishi Qiu <qiuxishi@huawei.com>
+Cc: Taku Izumi <izumi.taku@jp.fujitsu.com>
+Cc: Vlastimil Babka <vbabka@suse.cz>
+Cc: Mel Gorman <mgorman@techsingularity.net>
+Cc: Michal Hocko <mhocko@suse.com>
+Cc: David Rientjes <rientjes@google.com>
+Cc: Joonsoo Kim <iamjoonsoo.kim@lge.com>
+Cc: "Kirill A . Shutemov" <kirill.shutemov@linux.intel.com>
+Cc: Kamezawa Hiroyuki <kamezawa.hiroyu@jp.fujitsu.com>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+Signed-off-by: Linus Torvalds <torvalds@linux-foundation.org>
+Acked-by: Michal Hocko <mhocko@suse.cz>
+
+---
+ mm/page_alloc.c | 20 +++++++++++++-------
+ 1 file changed, 13 insertions(+), 7 deletions(-)
+
+diff --git a/mm/page_alloc.c b/mm/page_alloc.c
+index 26246fdf45b5..0c34633720c0 100644
+--- a/mm/page_alloc.c
++++ b/mm/page_alloc.c
+@@ -1393,15 +1393,18 @@ static void __init deferred_free_range(struct page *page,
+ 		return;
+ 
+ 	/* Free a large naturally-aligned chunk if possible */
+-	if (nr_pages == MAX_ORDER_NR_PAGES &&
+-	    (pfn & (MAX_ORDER_NR_PAGES-1)) == 0) {
++	if (nr_pages == pageblock_nr_pages &&
++	    (pfn & (pageblock_nr_pages - 1)) == 0) {
+ 		set_pageblock_migratetype(page, MIGRATE_MOVABLE);
+-		__free_pages_boot_core(page, MAX_ORDER-1);
++		__free_pages_boot_core(page, pageblock_order);
+ 		return;
+ 	}
+ 
+-	for (i = 0; i < nr_pages; i++, page++)
++	for (i = 0; i < nr_pages; i++, page++, pfn++) {
++		if ((pfn & (pageblock_nr_pages - 1)) == 0)
++			set_pageblock_migratetype(page, MIGRATE_MOVABLE);
+ 		__free_pages_boot_core(page, 0);
++	}
+ }
+ 
+ /* Completion tracking for deferred_init_memmap() threads */
+@@ -1469,9 +1472,9 @@ static int __init deferred_init_memmap(void *data)
+ 
+ 			/*
+ 			 * Ensure pfn_valid is checked every
+-			 * MAX_ORDER_NR_PAGES for memory holes
++			 * pageblock_nr_pages for memory holes
+ 			 */
+-			if ((pfn & (MAX_ORDER_NR_PAGES - 1)) == 0) {
++			if ((pfn & (pageblock_nr_pages - 1)) == 0) {
+ 				if (!pfn_valid(pfn)) {
+ 					page = NULL;
+ 					goto free_range;
+@@ -1484,7 +1487,7 @@ static int __init deferred_init_memmap(void *data)
+ 			}
+ 
+ 			/* Minimise pfn page lookups and scheduler checks */
+-			if (page && (pfn & (MAX_ORDER_NR_PAGES - 1)) != 0) {
++			if (page && (pfn & (pageblock_nr_pages - 1)) != 0) {
+ 				page++;
+ 			} else {
+ 				nr_pages += nr_to_free;
+@@ -1520,6 +1523,9 @@ static int __init deferred_init_memmap(void *data)
+ 			free_base_page = NULL;
+ 			free_base_pfn = nr_to_free = 0;
+ 		}
++		/* Free the last block of pages to allocator */
++		nr_pages += nr_to_free;
++		deferred_free_range(free_base_page, free_base_pfn, nr_to_free);
+ 
+ 		first_init_pfn = max(end_pfn, first_init_pfn);
+ 	}
+-- 
+1.8.5.6
+

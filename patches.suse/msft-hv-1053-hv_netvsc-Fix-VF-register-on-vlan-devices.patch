@@ -3,7 +3,7 @@ Date: Thu, 2 Jun 2016 12:02:04 -0700
 Patch-mainline: v4.8-rc1
 Subject: hv_netvsc: Fix VF register on vlan devices
 Git-commit: cb2911fed61497e4d0383355f1c865fcdaa94061
-Reference: fate#320485, bnc#984609
+References: fate#320485, bnc#984609
 
 Added a condition to avoid vlan devices with same MAC registering
 as VF.

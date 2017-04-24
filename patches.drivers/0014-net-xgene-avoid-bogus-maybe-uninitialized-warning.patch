@@ -1,0 +1,49 @@
+From 44c43dbcf18110749838f231be0318c6710cf644 Mon Sep 17 00:00:00 2001
+From: Arnd Bergmann <arnd@arndb.de>
+Date: Thu, 8 Dec 2016 22:57:05 +0100
+Subject: [PATCH 14/36] net: xgene: avoid bogus maybe-uninitialized warning
+
+Git-commit: f006b2c5dff35cb32ee77a0cbcabb52d90118c19
+Patch-mainline: v4.10-rc1
+References: bsc#1019351
+
+In some configurations, gcc cannot trace the state of variables
+across a spin_unlock() barrier, leading to a warning about
+correct code:
+
+xgene_enet_main.c: In function 'xgene_enet_start_xmit':
+../../../phy/mdio-xgene.h:112:14: error: 'mss_index' may be used uninitialized in this function [-Werror=maybe-uninitialized]
+
+Here we can trivially move the assignment before that spin_unlock,
+which reliably avoids the warning.
+
+Fixes: e3978673f514 ("drivers: net: xgene: Fix MSS programming")
+Signed-off-by: Arnd Bergmann <arnd@arndb.de>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+Signed-off-by: Mian Yousaf Kaukab <yousaf.kaukab@suse.com>
+---
+ drivers/net/ethernet/apm/xgene/xgene_enet_main.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/net/ethernet/apm/xgene/xgene_enet_main.c b/drivers/net/ethernet/apm/xgene/xgene_enet_main.c
+index 70f6b07eedd1..23d30d04261a 100644
+--- a/drivers/net/ethernet/apm/xgene/xgene_enet_main.c
++++ b/drivers/net/ethernet/apm/xgene/xgene_enet_main.c
+@@ -319,11 +319,11 @@ static int xgene_enet_setup_mss(struct net_device *ndev, u32 mss)
+ 		}
+ 	}
+ 
+-	spin_unlock(&pdata->mss_lock);
+-
+ 	/* No slots with ref_count = 0 available, return busy */
+ 	if (!mss_index_found)
+-		return -EBUSY;
++		mss_index = -EBUSY;
++
++	spin_unlock(&pdata->mss_lock);
+ 
+ 	return mss_index;
+ }
+-- 
+2.11.0
+

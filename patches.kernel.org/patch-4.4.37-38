@@ -1,7 +1,7 @@
 From: Jiri Slaby <jslaby@suse.cz>
 Subject: Linux 4.4.38
 Patch-mainline: 4.4.38
-References: CVE-2016-9576 bnc#1012382 bsc#1013604 CVE-2016-8655 bsc#1012754 CVE-2016-9793 bsc#1013531
+References: CVE-2016-9576 bnc#1012382 bsc#1013604 CVE-2016-8655 bsc#1012754 CVE-2016-9793 bsc#1013531 CVE-2016-10200 bsc#1028415
 Git-commit: a55e23864d381c5a4ef110df94b00b2fe121a70d
 Git-commit: 7c7fedd51c02f4418e8b2eed64bdab601f882aa4
 Git-commit: f4180439109aa720774baafdd798b3234ab1a0d2

@@ -1,0 +1,76 @@
+From c010a46d0a31d7ec7dc17f73811aee8b45d7a7c2 Mon Sep 17 00:00:00 2001
+From: Tin Huynh <tnhuynh@apm.com>
+Date: Wed, 14 Dec 2016 16:23:58 +0700
+Subject: [PATCH 19/36] i2c: designware: fix wrong Tx/Rx FIFO for ACPI
+
+Git-commit: 8e598769c55dd6c442a1c6cbd21e7abda2a52215
+Patch-mainline: v4.10-rc1
+References: bsc#1019351
+
+ACPI always sets Tx/Rx FIFO to 32. This configuration will
+cause problem if the IP core supports a FIFO size of less than 32.
+The driver should read the FIFO size from the IP and select the smaller
+one of the two.
+
+Signed-off-by: Tin Huynh <tnhuynh@apm.com>
+Acked-by: Jarkko Nikula <jarkko.nikula@linux.intel.com>
+Reviewed-by: Mika Westerberg <mika.westerberg@linux.intel.com>
+Reviewed-by: Andy Shevchenko <andriy.shevchenko@linux.intel.com>
+Signed-off-by: Wolfram Sang <wsa@the-dreams.de>
+Signed-off-by: Mian Yousaf Kaukab <yousaf.kaukab@suse.com>
+---
+ drivers/i2c/busses/i2c-designware-platdrv.c | 31 ++++++++++++++++++++++-------
+ 1 file changed, 24 insertions(+), 7 deletions(-)
+
+diff --git a/drivers/i2c/busses/i2c-designware-platdrv.c b/drivers/i2c/busses/i2c-designware-platdrv.c
+index ebc65de24f64..65538149ae0a 100644
+--- a/drivers/i2c/busses/i2c-designware-platdrv.c
++++ b/drivers/i2c/busses/i2c-designware-platdrv.c
+@@ -132,6 +132,29 @@ static inline int dw_i2c_acpi_configure(struct platform_device *pdev)
+ }
+ #endif
+ 
++static void dw_i2c_set_fifo_size(struct dw_i2c_dev *dev, int id)
++{
++	u32 param, tx_fifo_depth, rx_fifo_depth;
++
++	/*
++	 * Try to detect the FIFO depth if not set by interface driver,
++	 * the depth could be from 2 to 256 from HW spec.
++	 */
++	param = i2c_dw_read_comp_param(dev);
++	tx_fifo_depth = ((param >> 16) & 0xff) + 1;
++	rx_fifo_depth = ((param >> 8)  & 0xff) + 1;
++	if (!dev->tx_fifo_depth) {
++		dev->tx_fifo_depth = tx_fifo_depth;
++		dev->rx_fifo_depth = rx_fifo_depth;
++		dev->adapter.nr = id;
++	} else if (tx_fifo_depth >= 2) {
++		dev->tx_fifo_depth = min_t(u32, dev->tx_fifo_depth,
++				tx_fifo_depth);
++		dev->rx_fifo_depth = min_t(u32, dev->rx_fifo_depth,
++				rx_fifo_depth);
++	}
++}
++
+ static int dw_i2c_plat_probe(struct platform_device *pdev)
+ {
+ 	struct dw_i2c_dev *dev;
+@@ -222,13 +245,7 @@ static int dw_i2c_plat_probe(struct platform_device *pdev)
+ 					     1000000);
+ 	}
+ 
+-	if (!dev->tx_fifo_depth) {
+-		u32 param1 = i2c_dw_read_comp_param(dev);
+-
+-		dev->tx_fifo_depth = ((param1 >> 16) & 0xff) + 1;
+-		dev->rx_fifo_depth = ((param1 >> 8)  & 0xff) + 1;
+-		dev->adapter.nr = pdev->id;
+-	}
++	dw_i2c_set_fifo_size(dev, pdev->id);
+ 
+ 	adap = &dev->adapter;
+ 	adap->owner = THIS_MODULE;
+-- 
+2.11.0
+

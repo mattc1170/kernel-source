@@ -1,0 +1,93 @@
+From 6c267b3dea09aebe84752cfedcab140c908830bb Mon Sep 17 00:00:00 2001
+From: Thomas Falcon <tlfalcon@linux.vnet.ibm.com>
+Date: Wed, 15 Feb 2017 12:17:58 -0600
+Subject: [PATCH] ibmvnic: Handle processing of CRQ messages in a tasklet
+
+References: fate#322021, bsc#1031512
+Patch-mainline: v4.11-rc1
+Git-commit: 6c267b3dea09aebe84752cfedcab140c908830bb
+
+Create a tasklet to process queued commands or messages received from
+firmware instead of processing them in the interrupt handler. Note that
+this handler does not process network traffic, but communications related
+to resource allocation and device settings.
+
+Signed-off-by: Thomas Falcon <tlfalcon@linux.vnet.ibm.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+Acked-by: Michal Suchanek <msuchanek@suse.de>
+---
+ drivers/net/ethernet/ibm/ibmvnic.c | 18 +++++++++++++++++-
+ drivers/net/ethernet/ibm/ibmvnic.h |  1 +
+ 2 files changed, 18 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/net/ethernet/ibm/ibmvnic.c b/drivers/net/ethernet/ibm/ibmvnic.c
+index 0c94e23985be..c573ba8654e2 100644
+--- a/drivers/net/ethernet/ibm/ibmvnic.c
++++ b/drivers/net/ethernet/ibm/ibmvnic.c
+@@ -3420,6 +3420,18 @@ static void ibmvnic_handle_crq(union ibmvnic_crq *crq,
+ static irqreturn_t ibmvnic_interrupt(int irq, void *instance)
+ {
+ 	struct ibmvnic_adapter *adapter = instance;
++	unsigned long flags;
++
++	spin_lock_irqsave(&adapter->crq.lock, flags);
++	vio_disable_interrupts(adapter->vdev);
++	tasklet_schedule(&adapter->tasklet);
++	spin_unlock_irqrestore(&adapter->crq.lock, flags);
++	return IRQ_HANDLED;
++}
++
++static void ibmvnic_tasklet(void *data)
++{
++	struct ibmvnic_adapter *adapter = data;
+ 	struct ibmvnic_crq_queue *queue = &adapter->crq;
+ 	struct vio_dev *vdev = adapter->vdev;
+ 	union ibmvnic_crq *crq;
+@@ -3445,7 +3457,6 @@ static irqreturn_t ibmvnic_interrupt(int irq, void *instance)
+ 		}
+ 	}
+ 	spin_unlock_irqrestore(&queue->lock, flags);
+-	return IRQ_HANDLED;
+ }
+ 
+ static int ibmvnic_reenable_crq_queue(struct ibmvnic_adapter *adapter)
+@@ -3500,6 +3511,7 @@ static void ibmvnic_release_crq_queue(struct ibmvnic_adapter *adapter)
+ 
+ 	netdev_dbg(adapter->netdev, "Releasing CRQ\n");
+ 	free_irq(vdev->irq, adapter);
++	tasklet_kill(&adapter->tasklet);
+ 	do {
+ 		rc = plpar_hcall_norets(H_FREE_CRQ, vdev->unit_address);
+ 	} while (rc == H_BUSY || H_IS_LONG_BUSY(rc));
+@@ -3545,6 +3557,9 @@ static int ibmvnic_init_crq_queue(struct ibmvnic_adapter *adapter)
+ 
+ 	retrc = 0;
+ 
++	tasklet_init(&adapter->tasklet, (void *)ibmvnic_tasklet,
++		     (unsigned long)adapter);
++
+ 	netdev_dbg(adapter->netdev, "registering irq 0x%x\n", vdev->irq);
+ 	rc = request_irq(vdev->irq, ibmvnic_interrupt, 0, IBMVNIC_NAME,
+ 			 adapter);
+@@ -3566,6 +3581,7 @@ static int ibmvnic_init_crq_queue(struct ibmvnic_adapter *adapter)
+ 	return retrc;
+ 
+ req_irq_failed:
++	tasklet_kill(&adapter->tasklet);
+ 	do {
+ 		rc = plpar_hcall_norets(H_FREE_CRQ, vdev->unit_address);
+ 	} while (rc == H_BUSY || H_IS_LONG_BUSY(rc));
+diff --git a/drivers/net/ethernet/ibm/ibmvnic.h b/drivers/net/ethernet/ibm/ibmvnic.h
+index dd775d951b73..0d0edc36107a 100644
+--- a/drivers/net/ethernet/ibm/ibmvnic.h
++++ b/drivers/net/ethernet/ibm/ibmvnic.h
+@@ -1049,5 +1049,6 @@ struct ibmvnic_adapter {
+ 
+ 	struct work_struct vnic_crq_init;
+ 	struct work_struct ibmvnic_xport;
++	struct tasklet_struct tasklet;
+ 	bool failover;
+ };
+-- 
+2.10.2
+

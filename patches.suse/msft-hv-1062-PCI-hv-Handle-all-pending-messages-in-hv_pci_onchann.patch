@@ -3,7 +3,7 @@ Date: Fri, 17 Jun 2016 12:45:30 -0500
 Patch-mainline: v4.8-rc1
 Subject: PCI: hv: Handle all pending messages in hv_pci_onchannelcallback()
 Git-commit: 837d741ea2e6bb23da9cad1667776fc6f0cb67dd
-Reference: fate#320485
+References: fate#320485
 
 When we have an interrupt from the host we have a bit set in event page
 indicating there are messages for the particular channel.  We need to read

@@ -1,11 +1,10 @@
-From 80c02e35079545d46cc5bd48e77fb6f721452ee1 Mon Sep 17 00:00:00 2001
 From: Mathias Nyman <mathias.nyman@linux.intel.com>
 Date: Fri, 12 Feb 2016 16:40:12 +0200
 Subject: [PATCH 32/41] usb: Add USB3.1 SuperSpeedPlus Isoc Endpoint Companion
  descriptor
+Patch-mainline: v4.6-rc1
+Git-commit: c8b1d8977eee3acc63a65811dd72ec4a93b74388
 References: FATE#319959
-Git-Commit: b37d83a6a41499d582b8faedff1913ec75d9e70b
-Patch-Mainline: v4.6
 
 USB3.1 specifies a SuperSpeedPlus Isoc endpoint companion descriptor
 which is returned as part of the devices complete configuration

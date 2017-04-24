@@ -3,7 +3,7 @@ Date: Fri, 3 Jun 2016 17:51:00 +0200
 Patch-mainline: v4.8-rc1
 Subject: hv_netvsc: pass struct netvsc_device to rndis_filter_{open, close}()
 Git-commit: 2f5fa6c869e8f8c340dd05a2817eecbcea382c35
-Reference: fate#320485
+References: fate#320485
 
 Both rndis_filter_open()/rndis_filter_close() use struct hv_device to
 reach to struct netvsc_device only and all callers have it already.

@@ -3,7 +3,7 @@ Date: Mon, 14 Dec 2015 19:01:55 -0800
 Patch-mainline: v4.5-rc1
 Subject: Drivers: hv: utils: introduce HVUTIL_TRANSPORT_DESTROY mode
 Git-commit: a15025660d4703a8b37290a14734cb4a84875770
-Reference: fate#315887
+References: fate#315887
 
 When Hyper-V host asks us to remove some util driver by closing the
 appropriate channel there is no easy way to force the current file

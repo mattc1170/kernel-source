@@ -3,7 +3,7 @@ Date: Mon, 14 Dec 2015 16:01:39 -0800
 Patch-mainline: v4.5-rc1
 Subject: drivers:hv: Export a function that maps Linux CPU num onto Hyper-V proc num
 Git-commit: 619848bd074343ff2bdeeafca0be39748f6da372
-Reference: fate#315887
+References: fate#315887
 
 This patch exposes the mapping between Linux CPU number and Hyper-V virtual
 processor number.  This is necessary because the hypervisor needs to know which

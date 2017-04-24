@@ -1,0 +1,47 @@
+From 06995804b5762f016c7a80503406da853a8f3785 Mon Sep 17 00:00:00 2001
+From: Michal Marek <mmarek@suse.com>
+Date: Tue, 22 Nov 2016 22:34:29 +0100
+Subject: [PATCH 1/6] arm64: Use full path in KBUILD_IMAGE definition
+Git-commit: 06995804b5762f016c7a80503406da853a8f3785
+Patch-mainline: Queued in subsystem maintainer repository
+Git-repo: git://git.kernel.org/pub/scm/linux/kernel/git/masahiroy/linux-kbuild.git
+References: bsc#1010032
+
+The KBUILD_IMAGE variable is used by the rpm and deb-pkg targets, which
+expect it to point to the image file in the build directory. The
+builddeb script has a workaround for architectures which only provide
+the basename, but let's provide a clean interface for packaging tools.
+
+Cc: Catalin Marinas <catalin.marinas@arm.com>
+Cc: linux-arm-kernel@lists.infradead.org
+Signed-off-by: Michal Marek <mmarek@suse.com>
+Acked-by: Will Deacon <will.deacon@arm.com>
+Signed-off-by: Masahiro Yamada <yamada.masahiro@socionext.com>
+
+---
+ arch/arm64/Makefile | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/arch/arm64/Makefile b/arch/arm64/Makefile
+index b9a4a934ca05..adf977fd39f1 100644
+--- a/arch/arm64/Makefile
++++ b/arch/arm64/Makefile
+@@ -100,12 +100,12 @@ libs-y		:= arch/arm64/lib/ $(libs-y)
+ core-$(CONFIG_EFI_STUB) += $(objtree)/drivers/firmware/efi/libstub/lib.a
+ 
+ # Default target when executing plain make
+-KBUILD_IMAGE	:= Image.gz
++boot		:= arch/arm64/boot
++KBUILD_IMAGE	:= $(boot)/Image.gz
+ KBUILD_DTBS	:= dtbs
+ 
+-all:	$(KBUILD_IMAGE) $(KBUILD_DTBS)
++all:	Image.gz $(KBUILD_DTBS)
+ 
+-boot := arch/arm64/boot
+ 
+ Image: vmlinux
+ 	$(Q)$(MAKE) $(build)=$(boot) $(boot)/$@
+-- 
+2.6.6
+

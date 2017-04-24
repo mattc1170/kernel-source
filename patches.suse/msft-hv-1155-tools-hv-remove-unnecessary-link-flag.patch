@@ -1,0 +1,32 @@
+From: Weibing Zhang <atheism.zhang@gmail.com>
+Date: Sun, 6 Nov 2016 13:14:13 -0800
+Patch-mainline: v4.10-rc1
+Subject: tools: hv: remove unnecessary link flag
+Git-commit: 822114aaf5eea275398f79e668f14e0cf39d0f17
+References: fate#320485
+
+The link flag pthread is not needed.
+
+Signed-off-by: Weibing Zhang <atheism.zhang@gmail.com>
+Signed-off-by: K. Y. Srinivasan <kys@microsoft.com>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Acked-by: <ohering@suse.de>
+---
+ tools/hv/Makefile | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
+
+diff --git a/tools/hv/Makefile b/tools/hv/Makefile
+index a8c4644022a6..0d1e61b81844 100644
+--- a/tools/hv/Makefile
++++ b/tools/hv/Makefile
+@@ -1,9 +1,8 @@
+ # Makefile for Hyper-V tools
+ 
+ CC = $(CROSS_COMPILE)gcc
+-PTHREAD_LIBS = -lpthread
+ WARNINGS = -Wall -Wextra
+-CFLAGS = $(WARNINGS) -g $(PTHREAD_LIBS) $(shell getconf LFS_CFLAGS)
++CFLAGS = $(WARNINGS) -g $(shell getconf LFS_CFLAGS)
+ 
+ CFLAGS += -D__EXPORTED_HEADERS__ -I../../include/uapi -I../../include
+ 

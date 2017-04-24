@@ -3,7 +3,7 @@ From: Jan Glauber <jglauber@cavium.com>
 Date: Thu, 18 Feb 2016 17:50:13 +0100
 Patch-mainline: v4.6-rc1
 Git-commit: 7175f0591eb9714fa71d499c59c35bcbd030931a
-Reference: fate#319982
+References: fate#319982
 
 With the long cycle counter bit (LC) disabled the cycle counter is not
 working on ThunderX SOC (ThunderX only implements Aarch64).

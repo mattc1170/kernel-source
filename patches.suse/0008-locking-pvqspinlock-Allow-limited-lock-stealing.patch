@@ -1,9 +1,8 @@
-From 1c4941fd53afb46ab15826628e4819866d008a28 Mon Sep 17 00:00:00 2001
 From: Waiman Long <Waiman.Long@hpe.com>
 Date: Tue, 10 Nov 2015 16:18:56 -0500
 Subject: [PATCH 8/9] locking/pvqspinlock: Allow limited lock stealing
-Git-commit: 64d816cba06c67eeee455b8c78ebcda349d49c24
-Patch-mainline: 4.5
+Patch-mainline: v4.5-rc1
+Git-commit: 1c4941fd53afb46ab15826628e4819866d008a28
 References: fate#320355
 
 This patch allows one attempt for the lock waiter to steal the lock

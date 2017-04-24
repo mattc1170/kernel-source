@@ -1,0 +1,36 @@
+From 7bac66f5d6c150be11a5dae7badb60d53c075406 Mon Sep 17 00:00:00 2001
+From: Axel Lin <axel.lin@ingics.com>
+Date: Mon, 21 Mar 2016 20:12:20 +0800
+Subject: [PATCH 16/36] mailbox: xgene-slimpro: Fix wrong test for devm_kzalloc
+
+Git-commit: a61b37ead51488e321fe559a4edd0325c6d4c937
+Patch-mainline: v4.6-rc4
+References: bsc#1019351
+
+devm_kzalloc() returns NULL on failure.
+
+Signed-off-by: Axel Lin <axel.lin@ingics.com>
+Signed-off-by: Jassi Brar <jaswinder.singh@linaro.org>
+Signed-off-by: Mian Yousaf Kaukab <yousaf.kaukab@suse.com>
+---
+ drivers/mailbox/mailbox-xgene-slimpro.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/mailbox/mailbox-xgene-slimpro.c b/drivers/mailbox/mailbox-xgene-slimpro.c
+index bd07f39f0692..dd2afbca51c9 100644
+--- a/drivers/mailbox/mailbox-xgene-slimpro.c
++++ b/drivers/mailbox/mailbox-xgene-slimpro.c
+@@ -189,8 +189,8 @@ static int slimpro_mbox_probe(struct platform_device *pdev)
+ 	int i;
+ 
+ 	ctx = devm_kzalloc(&pdev->dev, sizeof(struct slimpro_mbox), GFP_KERNEL);
+-	if (IS_ERR(ctx))
+-		return PTR_ERR(ctx);
++	if (!ctx)
++		return -ENOMEM;
+ 
+ 	platform_set_drvdata(pdev, ctx);
+ 
+-- 
+2.11.0
+

@@ -1,0 +1,77 @@
+From: Weibing Zhang <atheism.zhang@gmail.com>
+Date: Sun, 6 Nov 2016 13:14:15 -0800
+Patch-mainline: v4.10-rc1
+Subject: tools: hv: remove unnecessary header files and netlink related code
+Git-commit: 0c38cda64aecb4a821210bb2d3d04092c181c0ae
+References: fate#320485
+
+Remove unnecessary header files and netlink related code as the daemons
+do not use netlink to communicate with the kernel now.
+
+Signed-off-by: Weibing Zhang <atheism.zhang@gmail.com>
+Signed-off-by: K. Y. Srinivasan <kys@microsoft.com>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Acked-by: <ohering@suse.de>
+---
+ tools/hv/hv_fcopy_daemon.c | 7 -------
+ tools/hv/hv_kvp_daemon.c   | 7 -------
+ 2 files changed, 14 deletions(-)
+
+diff --git a/tools/hv/hv_fcopy_daemon.c b/tools/hv/hv_fcopy_daemon.c
+index fdc9ca4c0356..26ae609a9448 100644
+--- a/tools/hv/hv_fcopy_daemon.c
++++ b/tools/hv/hv_fcopy_daemon.c
+@@ -18,21 +18,14 @@
+ 
+ 
+ #include <sys/types.h>
+-#include <sys/socket.h>
+-#include <sys/poll.h>
+-#include <linux/types.h>
+-#include <linux/kdev_t.h>
+ #include <stdio.h>
+ #include <stdlib.h>
+ #include <unistd.h>
+-#include <string.h>
+-#include <ctype.h>
+ #include <errno.h>
+ #include <linux/hyperv.h>
+ #include <syslog.h>
+ #include <sys/stat.h>
+ #include <fcntl.h>
+-#include <dirent.h>
+ #include <getopt.h>
+ 
+ static int target_fd;
+diff --git a/tools/hv/hv_kvp_daemon.c b/tools/hv/hv_kvp_daemon.c
+index bb0719b11475..d791dbf05d9b 100644
+--- a/tools/hv/hv_kvp_daemon.c
++++ b/tools/hv/hv_kvp_daemon.c
+@@ -22,8 +22,6 @@
+  */
+ 
+ 
+-#include <sys/types.h>
+-#include <sys/socket.h>
+ #include <sys/poll.h>
+ #include <sys/utsname.h>
+ #include <stdio.h>
+@@ -34,7 +32,6 @@
+ #include <errno.h>
+ #include <arpa/inet.h>
+ #include <linux/hyperv.h>
+-#include <linux/netlink.h>
+ #include <ifaddrs.h>
+ #include <netdb.h>
+ #include <syslog.h>
+@@ -99,10 +96,6 @@ static struct utsname uts_buf;
+ #define MAX_FILE_NAME 100
+ #define ENTRIES_PER_BLOCK 50
+ 
+-#ifndef SOL_NETLINK
+-#define SOL_NETLINK 270
+-#endif
+-
+ struct kvp_record {
+ 	char key[HV_KVP_EXCHANGE_MAX_KEY_SIZE];
+ 	char value[HV_KVP_EXCHANGE_MAX_VALUE_SIZE];

@@ -11,15 +11,13 @@ loop_set_status ioctl.
 
 Signed-off-by: Hannes Reinecke <hare@suse.de>
 ---
- drivers/block/loop.c      | 9 ++++++++-
- include/uapi/linux/loop.h | 1 +
+ drivers/block/loop.c      |    9 ++++++++-
+ include/uapi/linux/loop.h |    1 +
  2 files changed, 9 insertions(+), 1 deletion(-)
 
-diff --git a/drivers/block/loop.c b/drivers/block/loop.c
-index 8bcbbfb..7272055 100644
 --- a/drivers/block/loop.c
 +++ b/drivers/block/loop.c
-@@ -233,6 +233,8 @@ figure_loop_size(struct loop_device *lo, loff_t offset, loff_t sizelimit)
+@@ -233,6 +233,8 @@ figure_loop_size(struct loop_device *lo,
  		lo->lo_offset = offset;
  	if (lo->lo_sizelimit != sizelimit)
  		lo->lo_sizelimit = sizelimit;
@@ -28,7 +26,7 @@ index 8bcbbfb..7272055 100644
  	set_capacity(lo->lo_disk, x);
  	bd_set_size(bdev, (loff_t)get_capacity(bdev->bd_disk) << 9);
  	/* let user-space know about the new size */
-@@ -1092,6 +1094,7 @@ loop_set_status(struct loop_device *lo, const struct loop_info64 *info)
+@@ -1098,6 +1100,7 @@ loop_set_status(struct loop_device *lo,
  	int err;
  	struct loop_func_table *xfer;
  	kuid_t uid = current_uid();
@@ -36,9 +34,9 @@ index 8bcbbfb..7272055 100644
  
  	if (lo->lo_encrypt_key_size &&
  	    !uid_eq(lo->lo_key_owner, uid) &&
-@@ -1121,8 +1124,12 @@ loop_set_status(struct loop_device *lo, const struct loop_info64 *info)
+@@ -1130,8 +1133,12 @@ loop_set_status(struct loop_device *lo,
  	if (err)
- 		return err;
+ 		goto exit;
  
 +	if (info->lo_flags & LO_FLAGS_BLOCKSIZE)
 +		lo->lo_flags |= LO_FLAGS_BLOCKSIZE;
@@ -47,11 +45,9 @@ index 8bcbbfb..7272055 100644
 -	    lo->lo_sizelimit != info->lo_sizelimit)
 +	    lo->lo_sizelimit != info->lo_sizelimit ||
 +	    lo->lo_flags != lo_flags)
- 		if (figure_loop_size(lo, info->lo_offset, info->lo_sizelimit))
- 			return -EFBIG;
- 
-diff --git a/include/uapi/linux/loop.h b/include/uapi/linux/loop.h
-index c8125ec..2691c1c 100644
+ 		if (figure_loop_size(lo, info->lo_offset, info->lo_sizelimit)) {
+ 			err = -EFBIG;
+ 			goto exit;
 --- a/include/uapi/linux/loop.h
 +++ b/include/uapi/linux/loop.h
 @@ -22,6 +22,7 @@ enum {
@@ -62,6 +58,3 @@ index c8125ec..2691c1c 100644
  };
  
  #include <asm/posix_types.h>	/* for __kernel_old_dev_t */
--- 
-1.8.5.6
-

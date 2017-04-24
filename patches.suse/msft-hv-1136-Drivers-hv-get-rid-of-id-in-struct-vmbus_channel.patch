@@ -1,0 +1,51 @@
+From: Vitaly Kuznetsov <vkuznets@redhat.com>
+Date: Fri, 16 Sep 2016 09:01:18 -0700
+Patch-mainline: v4.9-rc1
+Subject: Drivers: hv: get rid of id in struct vmbus_channel
+Git-commit: e7fca5d860aeeb1e606448f5191cea8d925cc7a3
+References: fate#320485
+
+The auto incremented counter is not being used anymore, get rid of it.
+
+Signed-off-by: Vitaly Kuznetsov <vkuznets@redhat.com>
+Signed-off-by: K. Y. Srinivasan <kys@microsoft.com>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Acked-by: <ohering@suse.de>
+---
+ drivers/hv/channel_mgmt.c | 2 --
+ include/linux/hyperv.h    | 3 ---
+ 2 files changed, 5 deletions(-)
+
+diff --git a/drivers/hv/channel_mgmt.c b/drivers/hv/channel_mgmt.c
+index 759ba4d..96a85cd 100644
+--- a/drivers/hv/channel_mgmt.c
++++ b/drivers/hv/channel_mgmt.c
+@@ -274,14 +274,12 @@ EXPORT_SYMBOL_GPL(vmbus_prep_negotiate_resp);
+  */
+ static struct vmbus_channel *alloc_channel(void)
+ {
+-	static atomic_t chan_num = ATOMIC_INIT(0);
+ 	struct vmbus_channel *channel;
+ 
+ 	channel = kzalloc(sizeof(*channel), GFP_ATOMIC);
+ 	if (!channel)
+ 		return NULL;
+ 
+-	channel->id = atomic_inc_return(&chan_num);
+ 	channel->acquire_ring_lock = true;
+ 	spin_lock_init(&channel->inbound_lock);
+ 	spin_lock_init(&channel->lock);
+diff --git a/include/linux/hyperv.h b/include/linux/hyperv.h
+index 7d7cbff..cd184bd 100644
+--- a/include/linux/hyperv.h
++++ b/include/linux/hyperv.h
+@@ -706,9 +706,6 @@ struct vmbus_device {
+ };
+ 
+ struct vmbus_channel {
+-	/* Unique channel id */
+-	int id;
+-
+ 	struct list_head listentry;
+ 
+ 	struct hv_device *device_obj;

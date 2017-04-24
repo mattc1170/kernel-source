@@ -1,0 +1,163 @@
+From 33346955ae8460bede5a8152abc1e32f71c5f974 Mon Sep 17 00:00:00 2001
+From: Jens Axboe <axboe@fb.com>
+Date: Wed, 24 Aug 2016 15:34:35 -0600
+Subject: blk-mq: don't overwrite rq->mq_ctx
+References: bsc#1020817
+Git-commit: e57690fe009b2ab0cee8a57f53be634540e49c9d
+Patch-mainline: v4.8-rc4
+
+We do this in a few places, if the CPU is offline. This isn't allowed,
+though, since on multi queue hardware, we can't just move a request
+from one software queue to another, if they map to different hardware
+queues. The request and tag isn't valid on another hardware queue.
+
+This can happen if plugging races with CPU offlining. But it does
+no harm, since it can only happen in the window where we are
+currently busy freezing the queue and flushing IO, in preparation
+for redoing the software <-> hardware queue mappings.
+
+Signed-off-by: Jens Axboe <axboe@fb.com>
+
+Signed-off-by: Johannes Thumshirn <jthumshirn@suse.de>
+
+---
+ block/blk-mq.c | 55 ++++++++++++++++---------------------------------------
+ 1 file changed, 16 insertions(+), 39 deletions(-)
+
+diff --git a/block/blk-mq.c b/block/blk-mq.c
+index 73b1a2b..928f432 100644
+--- a/block/blk-mq.c
++++ b/block/blk-mq.c
+@@ -979,10 +979,11 @@ void blk_mq_delay_queue(struct blk_mq_hw_ctx *hctx, unsigned long msecs)
+ EXPORT_SYMBOL(blk_mq_delay_queue);
+ 
+ static inline void __blk_mq_insert_req_list(struct blk_mq_hw_ctx *hctx,
+-					    struct blk_mq_ctx *ctx,
+ 					    struct request *rq,
+ 					    bool at_head)
+ {
++	struct blk_mq_ctx *ctx = rq->mq_ctx;
++
+ 	trace_block_rq_insert(hctx->queue, rq);
+ 
+ 	if (at_head)
+@@ -996,20 +997,16 @@ static void __blk_mq_insert_request(struct blk_mq_hw_ctx *hctx,
+ {
+ 	struct blk_mq_ctx *ctx = rq->mq_ctx;
+ 
+-	__blk_mq_insert_req_list(hctx, ctx, rq, at_head);
++	__blk_mq_insert_req_list(hctx, rq, at_head);
+ 	blk_mq_hctx_mark_pending(hctx, ctx);
+ }
+ 
+ void blk_mq_insert_request(struct request *rq, bool at_head, bool run_queue,
+-		bool async)
++			   bool async)
+ {
++	struct blk_mq_ctx *ctx = rq->mq_ctx;
+ 	struct request_queue *q = rq->q;
+ 	struct blk_mq_hw_ctx *hctx;
+-	struct blk_mq_ctx *ctx = rq->mq_ctx, *current_ctx;
+-
+-	current_ctx = blk_mq_get_ctx(q);
+-	if (!cpu_online(ctx->cpu))
+-		rq->mq_ctx = ctx = current_ctx;
+ 
+ 	hctx = q->mq_ops->map_queue(q, ctx->cpu);
+ 
+@@ -1019,8 +1016,6 @@ void blk_mq_insert_request(struct request *rq, bool at_head, bool run_queue,
+ 
+ 	if (run_queue)
+ 		blk_mq_run_hw_queue(hctx, async);
+-
+-	blk_mq_put_ctx(current_ctx);
+ }
+ 
+ static void blk_mq_insert_requests(struct request_queue *q,
+@@ -1031,14 +1026,9 @@ static void blk_mq_insert_requests(struct request_queue *q,
+ 
+ {
+ 	struct blk_mq_hw_ctx *hctx;
+-	struct blk_mq_ctx *current_ctx;
+ 
+ 	trace_block_unplug(q, depth, !from_schedule);
+ 
+-	current_ctx = blk_mq_get_ctx(q);
+-
+-	if (!cpu_online(ctx->cpu))
+-		ctx = current_ctx;
+ 	hctx = q->mq_ops->map_queue(q, ctx->cpu);
+ 
+ 	/*
+@@ -1050,15 +1040,14 @@ static void blk_mq_insert_requests(struct request_queue *q,
+ 		struct request *rq;
+ 
+ 		rq = list_first_entry(list, struct request, queuelist);
++		BUG_ON(rq->mq_ctx != ctx);
+ 		list_del_init(&rq->queuelist);
+-		rq->mq_ctx = ctx;
+-		__blk_mq_insert_req_list(hctx, ctx, rq, false);
++		__blk_mq_insert_req_list(hctx, rq, false);
+ 	}
+ 	blk_mq_hctx_mark_pending(hctx, ctx);
+ 	spin_unlock(&ctx->lock);
+ 
+ 	blk_mq_run_hw_queue(hctx, from_schedule);
+-	blk_mq_put_ctx(current_ctx);
+ }
+ 
+ static int plug_ctx_cmp(void *priv, struct list_head *a, struct list_head *b)
+@@ -1572,16 +1561,17 @@ static int blk_mq_alloc_bitmap(struct blk_mq_ctxmap *bitmap, int node)
+ 	return 0;
+ }
+ 
++/*
++ * 'cpu' is going away. splice any existing rq_list entries from this
++ * software queue to the hw queue dispatch list, and ensure that it
++ * gets run.
++ */
+ static int blk_mq_hctx_cpu_offline(struct blk_mq_hw_ctx *hctx, int cpu)
+ {
+-	struct request_queue *q = hctx->queue;
+ 	struct blk_mq_ctx *ctx;
+ 	LIST_HEAD(tmp);
+ 
+-	/*
+-	 * Move ctx entries to new CPU, if this one is going away.
+-	 */
+-	ctx = __blk_mq_get_ctx(q, cpu);
++	ctx = __blk_mq_get_ctx(hctx->queue, cpu);
+ 
+ 	spin_lock(&ctx->lock);
+ 	if (!list_empty(&ctx->rq_list)) {
+@@ -1593,24 +1583,11 @@ static int blk_mq_hctx_cpu_offline(struct blk_mq_hw_ctx *hctx, int cpu)
+ 	if (list_empty(&tmp))
+ 		return NOTIFY_OK;
+ 
+-	ctx = blk_mq_get_ctx(q);
+-	spin_lock(&ctx->lock);
+-
+-	while (!list_empty(&tmp)) {
+-		struct request *rq;
+-
+-		rq = list_first_entry(&tmp, struct request, queuelist);
+-		rq->mq_ctx = ctx;
+-		list_move_tail(&rq->queuelist, &ctx->rq_list);
+-	}
+-
+-	hctx = q->mq_ops->map_queue(q, ctx->cpu);
+-	blk_mq_hctx_mark_pending(hctx, ctx);
+-
+-	spin_unlock(&ctx->lock);
++	spin_lock(&hctx->lock);
++	list_splice_tail_init(&tmp, &hctx->dispatch);
++	spin_unlock(&hctx->lock);
+ 
+ 	blk_mq_run_hw_queue(hctx, true);
+-	blk_mq_put_ctx(ctx);
+ 	return NOTIFY_OK;
+ }
+ 
+-- 
+1.8.5.6
+

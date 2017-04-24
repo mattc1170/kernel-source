@@ -1,0 +1,245 @@
+From 2fcefda4a3380bc93f7675011f75fa65ca794d26 Mon Sep 17 00:00:00 2001
+From: Jeff Mahoney <jeffm@suse.com>
+Date: Wed, 25 Jan 2017 09:50:33 -0500
+Subject: [PATCH 1/3] btrfs: allow unlink to exceed subvolume quota
+Git-commit: 003d7c59e8afc9b2c6b0d163e8e115406c4faecc
+Patch-mainline: v4.10-rc8
+References: bsc#1019614
+
+Once a qgroup limit is exceeded, it's impossible to restore normal
+operation to the subvolume without modifying the limit or removing
+the subvolume.  This is a surprising situation for many users used
+to the typical workflow with quotas on other file systems where it's
+possible to remove files until the used space is back under the limit.
+
+When we go to unlink a file and start the transaction, we'll hit
+the qgroup limit while trying to reserve space for the items we'll
+modify while removing the file.  We discussed last month how best
+to handle this situation and agreed that there is no perfect solution.
+The best principle-of-least-surprise solution is to handle it similarly
+to how we already handle ENOSPC when unlinking, which is to allow
+the operation to succeed with the expectation that it will ultimately
+release space under most circumstances.
+
+This patch modifies the transaction start path to select whether to
+honor the qgroups limits.  btrfs_start_transaction_fallback_global_rsv
+is the only caller that skips enforcement.  The reservation and tracking
+still happens normally -- it just skips the enforcement step.
+
+Signed-off-by: Jeff Mahoney <jeffm@suse.com>
+Reviewed-by: Qu Wenruo <quwenruo@cn.fujitsu.com>
+---
+ fs/btrfs/extent-tree.c |  4 ++--
+ fs/btrfs/qgroup.c      | 34 ++++++++++++++++++++--------------
+ fs/btrfs/qgroup.h      |  3 ++-
+ fs/btrfs/transaction.c | 30 ++++++++++++++++++++----------
+ 4 files changed, 44 insertions(+), 27 deletions(-)
+
+diff --git a/fs/btrfs/extent-tree.c b/fs/btrfs/extent-tree.c
+index 4ffef7e..3733867 100644
+--- a/fs/btrfs/extent-tree.c
++++ b/fs/btrfs/extent-tree.c
+@@ -5516,7 +5516,7 @@ int btrfs_subvolume_reserve_metadata(struct btrfs_root *root,
+ 	if (root->fs_info->quota_enabled) {
+ 		/* One for parent inode, two for dir entries */
+ 		num_bytes = 3 * root->nodesize;
+-		ret = btrfs_qgroup_reserve_meta(root, num_bytes);
++		ret = btrfs_qgroup_reserve_meta(root, num_bytes, true);
+ 		if (ret)
+ 			return ret;
+ 	} else {
+@@ -5697,7 +5697,7 @@ int btrfs_delalloc_reserve_metadata(struct inode *inode, u64 num_bytes)
+ 
+ 	if (root->fs_info->quota_enabled) {
+ 		ret = btrfs_qgroup_reserve_meta(root,
+-				nr_extents * root->nodesize);
++				nr_extents * root->nodesize, true);
+ 		if (ret)
+ 			goto out_fail;
+ 	}
+diff --git a/fs/btrfs/qgroup.c b/fs/btrfs/qgroup.c
+index 8769cee..18fc143 100644
+--- a/fs/btrfs/qgroup.c
++++ b/fs/btrfs/qgroup.c
+@@ -2319,7 +2319,21 @@ out:
+ 	return ret;
+ }
+ 
+-static int qgroup_reserve(struct btrfs_root *root, u64 num_bytes)
++static bool qgroup_check_limits(const struct btrfs_qgroup *qg, u64 num_bytes)
++{
++	if ((qg->lim_flags & BTRFS_QGROUP_LIMIT_MAX_RFER) &&
++	    qg->reserved + (s64)qg->rfer + num_bytes > qg->max_rfer)
++		return false;
++
++	if ((qg->lim_flags & BTRFS_QGROUP_LIMIT_MAX_EXCL) &&
++	    qg->reserved + (s64)qg->excl + num_bytes > qg->max_excl)
++		return false;
++
++	return true;
++}
++
++
++static int qgroup_reserve(struct btrfs_root *root, u64 num_bytes, bool enforce)
+ {
+ 	struct btrfs_root *quota_root;
+ 	struct btrfs_qgroup *qgroup;
+@@ -2360,16 +2374,7 @@ static int qgroup_reserve(struct btrfs_root *root, u64 num_bytes)
+ 
+ 		qg = u64_to_ptr(unode->aux);
+ 
+-		if ((qg->lim_flags & BTRFS_QGROUP_LIMIT_MAX_RFER) &&
+-		    qg->reserved + (s64)qg->rfer + num_bytes >
+-		    qg->max_rfer) {
+-			ret = -EDQUOT;
+-			goto out;
+-		}
+-
+-		if ((qg->lim_flags & BTRFS_QGROUP_LIMIT_MAX_EXCL) &&
+-		    qg->reserved + (s64)qg->excl + num_bytes >
+-		    qg->max_excl) {
++		if (enforce && !qgroup_check_limits(qg, num_bytes)) {
+ 			ret = -EDQUOT;
+ 			goto out;
+ 		}
+@@ -2825,7 +2830,7 @@ int btrfs_qgroup_reserve_data(struct inode *inode, u64 start, u64 len)
+ 					QGROUP_RESERVE);
+ 	if (ret < 0)
+ 		goto cleanup;
+-	ret = qgroup_reserve(root, changeset.bytes_changed);
++	ret = qgroup_reserve(root, changeset.bytes_changed, true);
+ 	if (ret < 0)
+ 		goto cleanup;
+ 
+@@ -2907,7 +2912,8 @@ int btrfs_qgroup_release_data(struct inode *inode, u64 start, u64 len)
+ 	return __btrfs_qgroup_release_data(inode, start, len, 0);
+ }
+ 
+-int btrfs_qgroup_reserve_meta(struct btrfs_root *root, int num_bytes)
++int btrfs_qgroup_reserve_meta(struct btrfs_root *root, int num_bytes,
++			      bool enforce)
+ {
+ 	int ret;
+ 
+@@ -2916,7 +2922,7 @@ int btrfs_qgroup_reserve_meta(struct btrfs_root *root, int num_bytes)
+ 		return 0;
+ 
+ 	BUG_ON(num_bytes != round_down(num_bytes, root->nodesize));
+-	ret = qgroup_reserve(root, num_bytes);
++	ret = qgroup_reserve(root, num_bytes, enforce);
+ 	if (ret < 0)
+ 		return ret;
+ 	atomic_add(num_bytes, &root->qgroup_meta_rsv);
+diff --git a/fs/btrfs/qgroup.h b/fs/btrfs/qgroup.h
+index c3f8cfc..01bc2f4 100644
+--- a/fs/btrfs/qgroup.h
++++ b/fs/btrfs/qgroup.h
+@@ -209,7 +209,8 @@ int btrfs_qgroup_reserve_data(struct inode *inode, u64 start, u64 len);
+ int btrfs_qgroup_release_data(struct inode *inode, u64 start, u64 len);
+ int btrfs_qgroup_free_data(struct inode *inode, u64 start, u64 len);
+ 
+-int btrfs_qgroup_reserve_meta(struct btrfs_root *root, int num_bytes);
++int btrfs_qgroup_reserve_meta(struct btrfs_root *root, int num_bytes,
++			      bool enforce);
+ void btrfs_qgroup_free_meta_all(struct btrfs_root *root);
+ void btrfs_qgroup_free_meta(struct btrfs_root *root, int num_bytes);
+ void btrfs_qgroup_check_reserved_leak(struct inode *inode);
+diff --git a/fs/btrfs/transaction.c b/fs/btrfs/transaction.c
+index 69314ad..729b1ca 100644
+--- a/fs/btrfs/transaction.c
++++ b/fs/btrfs/transaction.c
+@@ -467,7 +467,8 @@ static inline bool need_reserve_reloc_root(struct btrfs_root *root)
+ 
+ static struct btrfs_trans_handle *
+ start_transaction(struct btrfs_root *root, unsigned int num_items,
+-		  unsigned int type, enum btrfs_reserve_flush_enum flush)
++		  unsigned int type, enum btrfs_reserve_flush_enum flush,
++		  bool enforce_qgroups)
+ {
+ 	struct btrfs_trans_handle *h;
+ 	struct btrfs_transaction *cur_trans;
+@@ -498,7 +499,8 @@ start_transaction(struct btrfs_root *root, unsigned int num_items,
+ 	 */
+ 	if (num_items > 0 && root != root->fs_info->chunk_root) {
+ 		qgroup_reserved = num_items * root->nodesize;
+-		ret = btrfs_qgroup_reserve_meta(root, qgroup_reserved);
++		ret = btrfs_qgroup_reserve_meta(root, qgroup_reserved,
++				enforce_qgroups);
+ 		if (ret)
+ 			return ERR_PTR(ret);
+ 
+@@ -607,8 +609,9 @@ struct btrfs_trans_handle *btrfs_start_transaction(struct btrfs_root *root,
+ 						   unsigned int num_items)
+ {
+ 	return start_transaction(root, num_items, TRANS_START,
+-				 BTRFS_RESERVE_FLUSH_ALL);
++				 BTRFS_RESERVE_FLUSH_ALL, true);
+ }
++
+ struct btrfs_trans_handle *btrfs_start_transaction_fallback_global_rsv(
+ 					struct btrfs_root *root,
+ 					unsigned int num_items,
+@@ -618,7 +621,14 @@ struct btrfs_trans_handle *btrfs_start_transaction_fallback_global_rsv(
+ 	u64 num_bytes;
+ 	int ret;
+ 
+-	trans = btrfs_start_transaction(root, num_items);
++	/*
++	 * We have two callers: unlink and block group removal.  The
++	 * former should succeed even if we will temporarily exceed
++	 * quota and the latter operates on the extent root so
++	 * qgroup enforcement is ignored anyway.
++	 */
++	trans = start_transaction(root, num_items, TRANS_START,
++				  BTRFS_RESERVE_FLUSH_ALL, false);
+ 	if (!IS_ERR(trans) || PTR_ERR(trans) != -ENOSPC)
+ 		return trans;
+ 
+@@ -647,22 +657,22 @@ struct btrfs_trans_handle *btrfs_start_transaction_lflush(
+ 					unsigned int num_items)
+ {
+ 	return start_transaction(root, num_items, TRANS_START,
+-				 BTRFS_RESERVE_FLUSH_LIMIT);
++				 BTRFS_RESERVE_FLUSH_LIMIT, true);
+ }
+ 
+ struct btrfs_trans_handle *btrfs_join_transaction(struct btrfs_root *root)
+ {
+-	return start_transaction(root, 0, TRANS_JOIN, 0);
++	return start_transaction(root, 0, TRANS_JOIN, 0, true);
+ }
+ 
+ struct btrfs_trans_handle *btrfs_join_transaction_nolock(struct btrfs_root *root)
+ {
+-	return start_transaction(root, 0, TRANS_JOIN_NOLOCK, 0);
++	return start_transaction(root, 0, TRANS_JOIN_NOLOCK, 0, true);
+ }
+ 
+ struct btrfs_trans_handle *btrfs_start_ioctl_transaction(struct btrfs_root *root)
+ {
+-	return start_transaction(root, 0, TRANS_USERSPACE, 0);
++	return start_transaction(root, 0, TRANS_USERSPACE, 0, true);
+ }
+ 
+ /*
+@@ -680,7 +690,7 @@ struct btrfs_trans_handle *btrfs_start_ioctl_transaction(struct btrfs_root *root
+  */
+ struct btrfs_trans_handle *btrfs_attach_transaction(struct btrfs_root *root)
+ {
+-	return start_transaction(root, 0, TRANS_ATTACH, 0);
++	return start_transaction(root, 0, TRANS_ATTACH, 0, true);
+ }
+ 
+ /*
+@@ -695,7 +705,7 @@ btrfs_attach_transaction_barrier(struct btrfs_root *root)
+ {
+ 	struct btrfs_trans_handle *trans;
+ 
+-	trans = start_transaction(root, 0, TRANS_ATTACH, 0);
++	trans = start_transaction(root, 0, TRANS_ATTACH, 0, true);
+ 	if (IS_ERR(trans) && PTR_ERR(trans) == -ENOENT)
+ 		btrfs_wait_for_commit(root, 0);
+ 
+-- 
+2.10.2
+

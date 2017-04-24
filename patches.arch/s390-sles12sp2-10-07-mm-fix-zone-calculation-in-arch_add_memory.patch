@@ -1,0 +1,115 @@
+From: Gerald Schaefer <gerald.schaefer@de.ibm.com>
+Subject: s390/mm: fix zone calculation in arch_add_memory()
+Patch-mainline: v4.9-rc3
+Git-commit: 4a65429457a5d271dd3b00598b3ec75fe8b5103c
+References: bnc#1025683, LTC#152318
+
+Description:  s390/mm: fix zone calculation in arch_add_memory()
+Symptom:      Hotplug (standby) memory will not be added to ZONE_MOVABLE when
+              set online, so the chance to set it offline again will be greatly
+              reduced.
+Problem:      After commit 199071f1 "s390/mm: make arch_add_memory() NUMA
+              aware", arch_add_memory() used memblock_end_of_DRAM() to find out
+              the end of ZONE_NORMAL and the beginning of ZONE_MOVABLE.
+              However, commit 7f36e3e5 "memory-hotplug: add hot-added memory
+              ranges to memblock before allocate node_data for a node." moved
+              the call of memblock_add_node() before the call of
+              arch_add_memory() in add_memory_resource(), and thus changed the
+              return value of memblock_end_of_DRAM() when called in
+              arch_add_memory(). As a result, arch_add_memory() will think that
+              all memory blocks should be added to ZONE_NORMAL.
+Solution:     Change the logic in arch_add_memory() so that it will manually
+              iterate over all zones of a given node to find out which zone
+              a memory block should be added to.
+Reproduction: Set standby memory online and try to set it offline again.
+
+Upstream-Description:
+
+              s390/mm: fix zone calculation in arch_add_memory()
+
+              Standby (hotplug) memory should be added to ZONE_MOVABLE on s390. After
+              commit 199071f1 "s390/mm: make arch_add_memory() NUMA aware",
+              arch_add_memory() used memblock_end_of_DRAM() to find out the end of
+              ZONE_NORMAL and the beginning of ZONE_MOVABLE. However, commit 7f36e3e5
+              "memory-hotplug: add hot-added memory ranges to memblock before allocate
+              node_data for a node." moved the call of memblock_add_node() before
+              the call of arch_add_memory() in add_memory_resource(), and thus changed
+              the return value of memblock_end_of_DRAM() when called in
+              arch_add_memory(). As a result, arch_add_memory() will think that all
+              memory blocks should be added to ZONE_NORMAL.
+
+              Fix this by changing the logic in arch_add_memory() so that it will
+              manually iterate over all zones of a given node to find out which zone
+              a memory block should be added to.
+
+              Reviewed-by: Heiko Carstens <heiko.carstens@de.ibm.com>
+              Signed-off-by: Gerald Schaefer <gerald.schaefer@de.ibm.com>
+              Signed-off-by: Martin Schwidefsky <schwidefsky@de.ibm.com>
+
+
+Signed-off-by: Gerald Schaefer <gerald.schaefer@de.ibm.com>
+Acked-by: John Jolly <jjolly@suse.com>
+---
+ arch/s390/mm/init.c |   38 +++++++++++++++++++++-----------------
+ 1 file changed, 21 insertions(+), 17 deletions(-)
+
+--- a/arch/s390/mm/init.c
++++ b/arch/s390/mm/init.c
+@@ -148,36 +148,40 @@ void __init free_initrd_mem(unsigned lon
+ #ifdef CONFIG_MEMORY_HOTPLUG
+ int arch_add_memory(int nid, u64 start, u64 size, bool for_device)
+ {
+-	unsigned long normal_end_pfn = PFN_DOWN(memblock_end_of_DRAM());
+-	unsigned long dma_end_pfn = PFN_DOWN(MAX_DMA_ADDRESS);
++	unsigned long zone_start_pfn, zone_end_pfn, nr_pages;
+ 	unsigned long start_pfn = PFN_DOWN(start);
+ 	unsigned long size_pages = PFN_DOWN(size);
+-	unsigned long nr_pages;
+-	int rc, zone_enum;
++	pg_data_t *pgdat = NODE_DATA(nid);
++	struct zone *zone;
++	int rc, i;
+ 
+ 	rc = vmem_add_mapping(start, size);
+ 	if (rc)
+ 		return rc;
+ 
+-	while (size_pages > 0) {
+-		if (start_pfn < dma_end_pfn) {
+-			nr_pages = (start_pfn + size_pages > dma_end_pfn) ?
+-				   dma_end_pfn - start_pfn : size_pages;
+-			zone_enum = ZONE_DMA;
+-		} else if (start_pfn < normal_end_pfn) {
+-			nr_pages = (start_pfn + size_pages > normal_end_pfn) ?
+-				   normal_end_pfn - start_pfn : size_pages;
+-			zone_enum = ZONE_NORMAL;
++	for (i = 0; i < MAX_NR_ZONES; i++) {
++		zone = pgdat->node_zones + i;
++		if (zone_idx(zone) != ZONE_MOVABLE) {
++			/* Add range within existing zone limits, if possible */
++			zone_start_pfn = zone->zone_start_pfn;
++			zone_end_pfn = zone->zone_start_pfn +
++				       zone->spanned_pages;
+ 		} else {
+-			nr_pages = size_pages;
+-			zone_enum = ZONE_MOVABLE;
++			/* Add remaining range to ZONE_MOVABLE */
++			zone_start_pfn = start_pfn;
++			zone_end_pfn = start_pfn + size_pages;
+ 		}
+-		rc = __add_pages(nid, NODE_DATA(nid)->node_zones + zone_enum,
+-				 start_pfn, size_pages);
++		if (start_pfn < zone_start_pfn || start_pfn >= zone_end_pfn)
++			continue;
++		nr_pages = (start_pfn + size_pages > zone_end_pfn) ?
++			   zone_end_pfn - start_pfn : size_pages;
++		rc = __add_pages(nid, zone, start_pfn, nr_pages);
+ 		if (rc)
+ 			break;
+ 		start_pfn += nr_pages;
+ 		size_pages -= nr_pages;
++		if (!size_pages)
++			break;
+ 	}
+ 	if (rc)
+ 		vmem_remove_mapping(start, size);

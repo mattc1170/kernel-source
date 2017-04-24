@@ -1,7 +1,7 @@
 From: David Daney <david.daney@cavium.com>
 Date: Thu, 11 Feb 2016 21:50:24 +0530
 Subject: net: thunderx: bgx: Use standard firmware node infrastructure.
-Reference: fate#319484
+References: fate#319484
 Patch-mainline: v4.6-rc1
 Git-commit: eee326fd83348ed39a06c0db999ed513d10d9c39
 

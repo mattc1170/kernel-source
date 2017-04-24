@@ -3,7 +3,7 @@ Date: Fri, 13 May 2016 13:55:21 +0200
 Patch-mainline: v4.7-rc1
 Subject: hv_netvsc: use start_remove flag to protect netvsc_link_change()
 Git-commit: 1bdcec8a5f05445752a0639edd603ac09ae6c553
-Reference: fate#320485
+References: fate#320485
 
 netvsc_link_change() can race with netvsc_change_mtu() or
 netvsc_set_channels() as these functions destroy struct netvsc_device and

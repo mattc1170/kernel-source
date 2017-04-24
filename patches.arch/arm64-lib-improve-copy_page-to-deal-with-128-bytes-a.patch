@@ -4,7 +4,7 @@ Date: Tue, 2 Feb 2016 12:46:25 +0000
 Subject: arm64: lib: improve copy_page to deal with 128 bytes at a time
 Git-commit: 223e23e8aa26b0bb62c597637e77295e14f6a62c
 Patch-mainline: v4.6-rc1
-Reference: fate#319977
+References: fate#319977
 
 We want to avoid lots of different copy_page implementations, settling
 for something that is "good enough" everywhere and hopefully easy to

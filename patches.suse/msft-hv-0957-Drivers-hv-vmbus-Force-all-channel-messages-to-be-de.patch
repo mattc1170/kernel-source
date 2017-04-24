@@ -3,7 +3,7 @@ Date: Mon, 14 Dec 2015 16:01:56 -0800
 Patch-mainline: v4.5-rc1
 Subject: Drivers: hv: vmbus: Force all channel messages to be delivered on CPU 0
 Git-commit: b282e4c06fe89fc750fb26791c0bd7b25315973a
-Reference: fate#315887
+References: fate#315887
 
 Force all channel messages to be delivered on CPU0. These messages are not
 performance critical and are used during the setup and teardown of the

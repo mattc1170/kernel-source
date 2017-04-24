@@ -1,23 +1,26 @@
+From b4ff47d2843f7df61b956c8ee4a576bf83b11fab Mon Sep 17 00:00:00 2001
 From: Takashi Iwai <tiwai@suse.de>
-Subject: [PATCH] ASoC: rt5670: Enable Braswell platform workaround for Dell Wyse 3040
 Date: Wed, 30 Nov 2016 17:19:20 +0100
-Message-id: <20161130161920.10817-1-tiwai@suse.de>
+Subject: [PATCH] ASoC: rt5670: Enable Braswell platform workaround for Dell Wyse 3040
+Git-commit: b4ff47d2843f7df61b956c8ee4a576bf83b11fab
+Patch-mainline: 4.10-rc1
 References: bsc#1010690
-Patch-mainline: Submitted, alsa-devel ML  Wed, 30 Nov 2016
 
 Dell Wyse 3040 requires the platform workaround for enabling dmic and
 jack detection as defined for Braswell CRB.
 
 Signed-off-by: Takashi Iwai <tiwai@suse.de>
+Signed-off-by: Mark Brown <broonie@kernel.org>
 
 ---
-
- sound/soc/codecs/rt5670.c |    7 +++++++
+ sound/soc/codecs/rt5670.c | 7 +++++++
  1 file changed, 7 insertions(+)
 
+diff --git a/sound/soc/codecs/rt5670.c b/sound/soc/codecs/rt5670.c
+index 12d3bc14a558..d32ebe73c2c9 100644
 --- a/sound/soc/codecs/rt5670.c
 +++ b/sound/soc/codecs/rt5670.c
-@@ -2825,6 +2825,13 @@ static const struct dmi_system_id dmi_pl
+@@ -2826,6 +2826,13 @@ static const struct dmi_system_id dmi_platform_intel_braswell[] = {
  			DMI_MATCH(DMI_BOARD_NAME, "Braswell CRB"),
  		},
  	},
@@ -31,3 +34,6 @@ Signed-off-by: Takashi Iwai <tiwai@suse.de>
  	{}
  };
  
+-- 
+2.11.0
+

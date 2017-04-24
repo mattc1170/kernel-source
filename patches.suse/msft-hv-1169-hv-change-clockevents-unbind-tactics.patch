@@ -1,0 +1,51 @@
+From: Vitaly Kuznetsov <vkuznets@redhat.com>
+Date: Sat, 3 Dec 2016 12:34:35 -0800
+Patch-mainline: v4.10-rc1
+Subject: hv: change clockevents unbind tactics
+Git-commit: 6ffc4b85358f6b7d252420cfa5862312cf5f83d8
+References: fate#320485
+
+To get prepared to CPU offlining support we need co change the way how we
+unbind clockevent devices. As one CPU may go online/offline multiple times
+we need to bind it in hv_synic_init() and unbind it in hv_synic_cleanup().
+There is an additional corner case: when we unload the module completely we
+need to switch to some other clockevent mechanism before stopping VMBus or
+we will hang. We can't call hv_synic_cleanup() before unloading VMBus as
+we won't be able to send UNLOAD request and get a response so
+hv_synic_clockevents_cleanup() has to live. Luckily, we can always call
+clockevents_unbind_device(), even if it wasn't bound before and there is
+no issue if we call it twice.
+
+Signed-off-by: Vitaly Kuznetsov <vkuznets@redhat.com>
+Signed-off-by: K. Y. Srinivasan <kys@microsoft.com>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Acked-by: <ohering@suse.de>
+---
+ drivers/hv/hv.c | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/hv/hv.c b/drivers/hv/hv.c
+index 60dbd6cb4640..446802ae8f1b 100644
+--- a/drivers/hv/hv.c
++++ b/drivers/hv/hv.c
+@@ -575,7 +575,7 @@ void hv_synic_clockevents_cleanup(void)
+ 	if (!(ms_hyperv.features & HV_X64_MSR_SYNTIMER_AVAILABLE))
+ 		return;
+ 
+-	for_each_online_cpu(cpu)
++	for_each_present_cpu(cpu)
+ 		clockevents_unbind_device(hv_context.clk_evt[cpu], cpu);
+ }
+ 
+@@ -594,8 +594,10 @@ void hv_synic_cleanup(void *arg)
+ 		return;
+ 
+ 	/* Turn off clockevent device */
+-	if (ms_hyperv.features & HV_X64_MSR_SYNTIMER_AVAILABLE)
++	if (ms_hyperv.features & HV_X64_MSR_SYNTIMER_AVAILABLE) {
++		clockevents_unbind_device(hv_context.clk_evt[cpu], cpu);
+ 		hv_ce_shutdown(hv_context.clk_evt[cpu]);
++	}
+ 
+ 	rdmsrl(HV_X64_MSR_SINT0 + VMBUS_MESSAGE_SINT, shared_sint.as_uint64);
+ 

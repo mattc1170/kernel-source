@@ -3,7 +3,7 @@ Date: Thu, 11 Feb 2016 21:50:22 +0530
 Subject: net: thunderx: Use napi_schedule_irqoff()
 Patch-mainline: v4.6-rc1
 Git-commit: ef0a4d8601760b346d9d0893f2a554c338861c4f
-Reference: fate#319980
+References: fate#319980
 
 napi_schedule is being called from hard irq context, hence
 switch to napi_schedule_irqoff which avoids unneeded call

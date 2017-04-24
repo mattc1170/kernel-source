@@ -1,0 +1,125 @@
+From 1874f6895c92d991ccf85edcc55a0d9dd552d71c Mon Sep 17 00:00:00 2001
+From: Dave Hansen <dave.hansen@linux.intel.com>
+Date: Fri, 12 Feb 2016 13:02:18 -0800
+Subject: [PATCH] x86/mm/gup: Simplify get_user_pages() PTE bit handling
+Git-commit: 1874f6895c92d991ccf85edcc55a0d9dd552d71c
+Patch-mainline: v4.6-rc1
+References: bsc#1026405
+
+The current get_user_pages() code is a wee bit more complicated
+than it needs to be for pte bit checking.  Currently, it establishes
+a mask of required pte _PAGE_* bits and ensures that the pte it
+goes after has all those bits.
+
+This consolidates the three identical copies of this code.
+
+Signed-off-by: Dave Hansen <dave.hansen@linux.intel.com>
+Reviewed-by: Thomas Gleixner <tglx@linutronix.de>
+Cc: Andrew Morton <akpm@linux-foundation.org>
+Cc: Andy Lutomirski <luto@amacapital.net>
+Cc: Borislav Petkov <bp@alien8.de>
+Cc: Brian Gerst <brgerst@gmail.com>
+Cc: Dave Hansen <dave@sr71.net>
+Cc: Denys Vlasenko <dvlasenk@redhat.com>
+Cc: H. Peter Anvin <hpa@zytor.com>
+Cc: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: Peter Zijlstra <peterz@infradead.org>
+Cc: Rik van Riel <riel@redhat.com>
+Cc: linux-mm@kvack.org
+Link: http://lkml.kernel.org/r/20160212210218.3A2D4045@viggo.jf.intel.com
+Signed-off-by: Ingo Molnar <mingo@kernel.org>
+Signed-off-by: Jan Kara <jack@suse.cz>
+
+---
+ arch/x86/mm/gup.c | 38 ++++++++++++++++++++++----------------
+ 1 file changed, 22 insertions(+), 16 deletions(-)
+
+diff --git a/arch/x86/mm/gup.c b/arch/x86/mm/gup.c
+index ce5e4545203b..2f0a32945cda 100644
+--- a/arch/x86/mm/gup.c
++++ b/arch/x86/mm/gup.c
+@@ -75,6 +75,24 @@ static void undo_dev_pagemap(int *nr, int nr_start, struct page **pages)
+ }
+ 
+ /*
++ * 'pteval' can come from a pte, pmd or pud.  We only check
++ * _PAGE_PRESENT, _PAGE_USER, and _PAGE_RW in here which are the
++ * same value on all 3 types.
++ */
++static inline int pte_allows_gup(unsigned long pteval, int write)
++{
++	unsigned long need_pte_bits = _PAGE_PRESENT|_PAGE_USER;
++
++	if (write)
++		need_pte_bits |= _PAGE_RW;
++
++	if ((pteval & need_pte_bits) != need_pte_bits)
++		return 0;
++
++	return 1;
++}
++
++/*
+  * The performance critical leaf functions are made noinline otherwise gcc
+  * inlines everything into a single function which results in too much
+  * register pressure.
+@@ -83,14 +101,9 @@ static noinline int gup_pte_range(pmd_t pmd, unsigned long addr,
+ 		unsigned long end, int write, struct page **pages, int *nr)
+ {
+ 	struct dev_pagemap *pgmap = NULL;
+-	unsigned long mask;
+ 	int nr_start = *nr;
+ 	pte_t *ptep;
+ 
+-	mask = _PAGE_PRESENT|_PAGE_USER;
+-	if (write)
+-		mask |= _PAGE_RW;
+-
+ 	ptep = pte_offset_map(&pmd, addr);
+ 	do {
+ 		pte_t pte = gup_get_pte(ptep);
+@@ -110,7 +123,8 @@ static noinline int gup_pte_range(pmd_t pmd, unsigned long addr,
+ 				pte_unmap(ptep);
+ 				return 0;
+ 			}
+-		} else if ((pte_flags(pte) & (mask | _PAGE_SPECIAL)) != mask) {
++		} else if (!pte_allows_gup(pte_val(pte), write) ||
++			   pte_special(pte)) {
+ 			pte_unmap(ptep);
+ 			return 0;
+ 		}
+@@ -164,14 +178,10 @@ static int __gup_device_huge_pmd(pmd_t pmd, unsigned long addr,
+ static noinline int gup_huge_pmd(pmd_t pmd, unsigned long addr,
+ 		unsigned long end, int write, struct page **pages, int *nr)
+ {
+-	unsigned long mask;
+ 	struct page *head, *page;
+ 	int refs;
+ 
+-	mask = _PAGE_PRESENT|_PAGE_USER;
+-	if (write)
+-		mask |= _PAGE_RW;
+-	if ((pmd_flags(pmd) & mask) != mask)
++	if (!pte_allows_gup(pmd_val(pmd), write))
+ 		return 0;
+ 
+ 	VM_BUG_ON(!pfn_valid(pmd_pfn(pmd)));
+@@ -231,14 +241,10 @@ static int gup_pmd_range(pud_t pud, unsigned long addr, unsigned long end,
+ static noinline int gup_huge_pud(pud_t pud, unsigned long addr,
+ 		unsigned long end, int write, struct page **pages, int *nr)
+ {
+-	unsigned long mask;
+ 	struct page *head, *page;
+ 	int refs;
+ 
+-	mask = _PAGE_PRESENT|_PAGE_USER;
+-	if (write)
+-		mask |= _PAGE_RW;
+-	if ((pud_flags(pud) & mask) != mask)
++	if (!pte_allows_gup(pud_val(pud), write))
+ 		return 0;
+ 	/* hugepages are never "special" */
+ 	VM_BUG_ON(pud_flags(pud) & _PAGE_SPECIAL);
+-- 
+2.10.2
+

@@ -1,0 +1,39 @@
+From: Jiri Slaby <jslaby@suse.cz>
+Subject: kABI: protect struct task_struct
+Patch-mainline: never, kabi
+References: kabi
+
+In 4.4.40, commit 1c1f15f8ebfbd5042883a1c9ae4b18a6299c9c5f (ptrace:
+Capture the ptracer's creds not PT_PTRACE_CAP), upstream commit
+64b875f7ac8a5d60a4e191479299e931ee949b67 added one member to struct
+task_struct and it indeed changed kABI of literally everything.
+
+Use suse_kabi_padding to cover the newly added member.
+
+Signed-off-by: Jiri Slaby <jslaby@suse.cz>
+---
+ include/linux/sched.h |    5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+--- a/include/linux/sched.h
++++ b/include/linux/sched.h
+@@ -1542,7 +1542,6 @@ struct task_struct {
+ 	struct list_head cpu_timers[3];
+ 
+ /* process credentials */
+-	const struct cred __rcu *ptracer_cred; /* Tracer's credentials at attach */
+ 	const struct cred __rcu *real_cred; /* objective and real subjective task
+ 					 * credentials (COW) */
+ 	const struct cred __rcu *cred;	/* effective (overridable) subjective task
+@@ -1819,7 +1818,11 @@ struct task_struct {
+ #endif
+ 	int pagefault_disabled;
+ 
++#ifdef __GENKSYMS__
+ 	void *suse_kabi_padding;
++#else
++	const struct cred __rcu *ptracer_cred; /* Tracer's credentials at attach */
++#endif
+ 
+ /* CPU-specific state of this task */
+ 	struct thread_struct thread;

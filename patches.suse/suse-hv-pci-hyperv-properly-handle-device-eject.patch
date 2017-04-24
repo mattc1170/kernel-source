@@ -2,7 +2,7 @@ From: Long Li <longli@microsoft.com>
 Date: Mon, 12 Sep 2016 16:54:01 -0700
 Subject: pci-hyperv: properly handle device eject
 Patch-mainline: submitted (lkml - https://lkml.org/lkml/2016/9/12/1129)
-Reference: fate#320295, bnc#998664
+References: fate#320295, bnc#998664
 
 A PCI_EJECT message can arrive at the same time we are calling
 pci_scan_child_bus in the workqueue for the previous PCI_BUS_RELATIONS

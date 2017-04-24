@@ -4,7 +4,7 @@ Date: Mon, 2 May 2016 11:50:16 -0400
 Subject: [PATCH] md-cluster: fix ifnullfree.cocci warnings
 Git-commit: bc47e84258be3e49c14be65a111f2117ecc986f6
 Patch-mainline: v4.7-rc1
-Reference: fate#316335
+References: fate#316335
 
 drivers/md/bitmap.c:2049:6-11: WARNING: NULL check before freeing functions like kfree, debugfs_remove, debugfs_remove_recursive or usb_free_urb is not needed. Maybe consider reorganizing relevant code to avoid passing NULL values.
 

@@ -12,7 +12,7 @@ Cc: linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org,
 Date: Thu, 18 Feb 2016 17:50:10 +0100
 Patch-mainline: v4.6-rc1
 Git-commit: 5f140ccef3e1f15873c8e2c47d15b03099623ec0
-Reference: fate#319982
+References: fate#319982
 
 The implemented Cortex A57 events are strictly-speaking not
 A57 specific. They are ARM recommended implementation defined events

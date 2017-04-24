@@ -4,7 +4,7 @@ Date: Mon, 21 Dec 2015 10:51:01 +1100
 Subject: [PATCH] raid5-cache: free meta_page earlier
 Git-commit: ad66d445ee5a5f548142b880e1642c711fbcacd1
 Patch-mainline: v4.5-rc1
-Reference: fate#320291
+References: fate#320291
 
 Once the I/O completed we don't need the meta page anymore.  As the iounits
 can live on for a long time this reduces memory pressure a bit.

@@ -3,7 +3,7 @@ Date: Fri, 26 Feb 2016 15:13:18 -0800
 Patch-mainline: v4.6-rc1
 Subject: Drivers: hv: vmbus: avoid unneeded compiler optimizations in vmbus_wait_for_unload()
 Git-commit: d452ab7b4c65dfcaee88a0d6866eeeb98a3d1884
-Reference: fate#320485
+References: fate#320485
 
 Message header is modified by the hypervisor and we read it in a loop,
 we need to prevent compilers from optimizing accesses. There are no such

@@ -3,7 +3,7 @@ Date: Thu, 11 Feb 2016 16:44:58 +0300
 Patch-mainline: v4.6-rc1
 Subject: drivers/hv: Move VMBus hypercall codes into Hyper-V UAPI header
 Git-commit: 18f098618aa031f4c8a907c550fcd6785280c977
-Reference: fate#320485
+References: fate#320485
 
 VMBus hypercall codes inside Hyper-V UAPI header will
 be used by QEMU to implement VMBus host devices support.

@@ -1,0 +1,39 @@
+From: Alex Ng <alexng@messages.microsoft.com>
+Date: Sun, 6 Nov 2016 13:14:12 -0800
+Patch-mainline: v4.10-rc1
+Subject: Drivers: hv: balloon: Fix info request to show max page count
+Git-commit: 8500096017e3a1baadbdefe8b84a99117472af46
+References: fate#320485
+
+Balloon driver was only printing the size of the info blob and not the
+actual content. This fixes it so that the info blob (max page count as
+configured in Hyper-V) is printed out.
+
+Signed-off-by: Alex Ng <alexng@microsoft.com>
+Signed-off-by: K. Y. Srinivasan <kys@microsoft.com>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Acked-by: <ohering@suse.de>
+---
+ drivers/hv/hv_balloon.c | 9 +++++++--
+ 1 file changed, 7 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/hv/hv_balloon.c b/drivers/hv/hv_balloon.c
+index 8cac29a24f21..14c3dc4bd23c 100644
+--- a/drivers/hv/hv_balloon.c
++++ b/drivers/hv/hv_balloon.c
+@@ -1034,8 +1034,13 @@ static void process_info(struct hv_dynmem_device *dm, struct dm_info_msg *msg)
+ 
+ 	switch (info_hdr->type) {
+ 	case INFO_TYPE_MAX_PAGE_CNT:
+-		pr_info("Received INFO_TYPE_MAX_PAGE_CNT\n");
+-		pr_info("Data Size is %d\n", info_hdr->data_size);
++		if (info_hdr->data_size == sizeof(__u64)) {
++			__u64 *max_page_count = (__u64 *)&info_hdr[1];
++
++			pr_info("INFO_TYPE_MAX_PAGE_CNT = %llu\n",
++				*max_page_count);
++		}
++
+ 		break;
+ 	default:
+ 		pr_info("Received Unknown type: %d\n", info_hdr->type);

@@ -3,7 +3,7 @@ Date: Fri, 26 Feb 2016 15:13:21 -0800
 Patch-mainline: v4.6-rc1
 Subject: Drivers: hv: vmbus: Support handling messages on multiple CPUs
 Git-commit: d81274aae61c0a045cd0f34191c51fa64ba58bc4
-Reference: fate#320485
+References: fate#320485
 
 Starting with Windows 2012 R2, message inteerupts can be delivered
 on any VCPU in the guest. Support this functionality.

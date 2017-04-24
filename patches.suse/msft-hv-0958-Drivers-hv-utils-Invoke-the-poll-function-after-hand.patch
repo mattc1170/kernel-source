@@ -3,7 +3,7 @@ Date: Mon, 14 Dec 2015 16:01:57 -0800
 Patch-mainline: v4.5-rc1
 Subject: Drivers: hv: utils: Invoke the poll function after handshake
 Git-commit: 2d0c3b5ad739697a68dc8a444f5b9f4817cf8f8f
-Reference: fate#315887
+References: fate#315887
 
 When the handshake with daemon is complete, we should poll the channel since
 during the handshake, we will not be processing any messages. This is a

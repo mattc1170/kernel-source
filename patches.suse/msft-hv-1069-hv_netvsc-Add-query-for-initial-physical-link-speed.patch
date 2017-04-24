@@ -1,0 +1,79 @@
+From: Haiyang Zhang <haiyangz@microsoft.com>
+Date: Thu, 4 Aug 2016 10:42:14 -0700
+Patch-mainline: v4.9-rc1
+Subject: hv_netvsc: Add query for initial physical link speed
+Git-commit: b37879e6ca7079943542048da37f00a386c30cee
+References: fate#320485
+
+The physical link speed value will be reported by ethtool command.
+The real speed is available from Windows 2016 host or later.
+
+Signed-off-by: Haiyang Zhang <haiyangz@microsoft.com>
+Reviewed-by: K. Y. Srinivasan <kys@microsoft.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+Acked-by: <ohering@suse.de>
+---
+ drivers/net/hyperv/netvsc_drv.c   |    4 ++--
+ drivers/net/hyperv/rndis_filter.c |   24 ++++++++++++++++++++++++
+ 2 files changed, 26 insertions(+), 2 deletions(-)
+
+--- a/drivers/net/hyperv/netvsc_drv.c
++++ b/drivers/net/hyperv/netvsc_drv.c
+@@ -1354,6 +1354,8 @@ static int netvsc_probe(struct hv_device
+ 
+ 	netif_carrier_off(net);
+ 
++	netvsc_init_settings(net);
++
+ 	net_device_ctx = netdev_priv(net);
+ 	net_device_ctx->device_ctx = dev;
+ 	net_device_ctx->msg_enable = netif_msg_init(debug, default_msg);
+@@ -1413,8 +1415,6 @@ static int netvsc_probe(struct hv_device
+ 	netif_set_real_num_rx_queues(net, nvdev->num_chn);
+ 	netif_set_gso_max_size(net, NETVSC_GSO_MAX_SIZE);
+ 
+-	netvsc_init_settings(net);
+-
+ 	ret = register_netdev(net);
+ 	if (ret != 0) {
+ 		pr_err("Unable to register netdev.\n");
+--- a/drivers/net/hyperv/rndis_filter.c
++++ b/drivers/net/hyperv/rndis_filter.c
+@@ -752,6 +752,28 @@ static int rndis_filter_query_device_lin
+ 	return ret;
+ }
+ 
++static int rndis_filter_query_link_speed(struct rndis_device *dev)
++{
++	u32 size = sizeof(u32);
++	u32 link_speed;
++	struct net_device_context *ndc;
++	int ret;
++
++	ret = rndis_filter_query_device(dev, RNDIS_OID_GEN_LINK_SPEED,
++					&link_speed, &size);
++
++	if (!ret) {
++		ndc = netdev_priv(dev->ndev);
++
++		/* The link speed reported from host is in 100bps unit, so
++		 * we convert it to Mbps here.
++		 */
++		ndc->speed = link_speed / 10000;
++	}
++
++	return ret;
++}
++
+ int rndis_filter_set_packet_filter(struct rndis_device *dev, u32 new_filter)
+ {
+ 	struct rndis_request *request;
+@@ -1044,6 +1066,8 @@ int rndis_filter_device_add(struct hv_de
+ 	if (net_device->nvsp_version < NVSP_PROTOCOL_VERSION_5)
+ 		return 0;
+ 
++	rndis_filter_query_link_speed(rndis_device);
++
+ 	/* vRSS setup */
+ 	memset(&rsscap, 0, rsscap_size);
+ 	ret = rndis_filter_query_device(rndis_device,

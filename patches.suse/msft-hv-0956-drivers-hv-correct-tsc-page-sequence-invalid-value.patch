@@ -3,7 +3,7 @@ Date: Mon, 14 Dec 2015 16:01:55 -0800
 Patch-mainline: v4.5-rc1
 Subject: drivers/hv: correct tsc page sequence invalid value
 Git-commit: c35b82ef0294ae5052120615f5cfcef17c5a6bf7
-Reference: fate#315887
+References: fate#315887
 
 Hypervisor Top Level Functional Specification v3/4 says
 that TSC page sequence value = -1(0xFFFFFFFF) is used to

@@ -4,7 +4,7 @@ Date: Thu, 14 Jan 2016 15:22:16 -0800
 Subject: [PATCH] drivers/base/memory.c: fix kernel warning during memory
  hotplug on ppc64
 Git-commit: cb5490a5eea415106d7438df440da5fb1e17318d
-Reference: bsc#963827
+References: bsc#963827
 Patch-mainline: v4.5-rc1
 
 Fix a bug where a kernel warning is triggered when performing a memory

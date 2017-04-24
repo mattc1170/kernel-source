@@ -1,0 +1,72 @@
+From: Josef Bacik <jbacik@fb.com>
+Date: Mon, 11 Jan 2016 17:28:38 -0500
+Patch-mainline: 4.6
+Git-commit: fb4b10e5d56639389fbc46dc8a87e81578af0b64
+References: bsc#1012452
+Subject: [PATCH] Btrfs: change how we update the global block rsv
+
+I'm writing a tool to visualize the enospc system in order to help debug enospc
+bugs and I found weird data and ran it down to when we update the global block
+rsv.  We add all of the remaining free space to the block rsv, do a trace event,
+then remove the extra and do another trace event.  This makes my visualization
+look silly and is unintuitive code as well.  Fix this stuff to only add the
+amount we are missing, or free the amount we are missing.  This is less clean to
+read but more explicit in what it is doing, as well as only emitting events for
+values that make sense.  Thanks,
+
+Signed-off-by: Josef Bacik <jbacik@fb.com>
+Signed-off-by: David Sterba <dsterba@suse.com>
+---
+ fs/btrfs/extent-tree.c |   34 ++++++++++++++++++++--------------
+ 1 file changed, 20 insertions(+), 14 deletions(-)
+
+--- a/fs/btrfs/extent-tree.c
++++ b/fs/btrfs/extent-tree.c
+@@ -5360,27 +5360,33 @@ static void update_global_block_rsv(stru
+ 
+ 	block_rsv->size = min_t(u64, num_bytes, 512 * 1024 * 1024);
+ 
+-	num_bytes = sinfo->bytes_used + sinfo->bytes_pinned +
+-		    sinfo->bytes_reserved + sinfo->bytes_readonly +
+-		    sinfo->bytes_may_use;
+-
+-	if (sinfo->total_bytes > num_bytes) {
+-		num_bytes = sinfo->total_bytes - num_bytes;
+-		block_rsv->reserved += num_bytes;
+-		sinfo->bytes_may_use += num_bytes;
+-		trace_btrfs_space_reservation(fs_info, "space_info",
+-				      sinfo->flags, num_bytes, 1);
+-	}
+-
+-	if (block_rsv->reserved >= block_rsv->size) {
++	if (block_rsv->reserved < block_rsv->size) {
++		num_bytes = sinfo->bytes_used + sinfo->bytes_pinned +
++			sinfo->bytes_reserved + sinfo->bytes_readonly +
++			sinfo->bytes_may_use;
++		if (sinfo->total_bytes > num_bytes) {
++			num_bytes = sinfo->total_bytes - num_bytes;
++			num_bytes = min(num_bytes,
++					block_rsv->size - block_rsv->reserved);
++			block_rsv->reserved += num_bytes;
++			sinfo->bytes_may_use += num_bytes;
++			trace_btrfs_space_reservation(fs_info, "space_info",
++						      sinfo->flags, num_bytes,
++						      1);
++		}
++	} else if (block_rsv->reserved > block_rsv->size) {
+ 		num_bytes = block_rsv->reserved - block_rsv->size;
+ 		sinfo->bytes_may_use -= num_bytes;
+ 		trace_btrfs_space_reservation(fs_info, "space_info",
+ 				      sinfo->flags, num_bytes, 0);
+ 		block_rsv->reserved = block_rsv->size;
+-		block_rsv->full = 1;
+ 	}
+ 
++	if (block_rsv->reserved == block_rsv->size)
++		block_rsv->full = 1;
++	else
++		block_rsv->full = 0;
++
+ 	spin_unlock(&block_rsv->lock);
+ 	spin_unlock(&sinfo->lock);
+ }

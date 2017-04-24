@@ -1,0 +1,38 @@
+From 909a0ddea7ddaba1ee098ab5a6d86596bcf8d8ce Mon Sep 17 00:00:00 2001
+From: Arvind Yadav <arvind.yadav.cs@gmail.com>
+Date: Wed, 14 Sep 2016 16:25:39 +0530
+Subject: [PATCH 36/36] power: reset: xgene-reboot: Unmap region obtained by
+ of_iomap
+
+Git-commit: 896af83ef69b0a325816fe270440baa27238f531
+Patch-mainline: v4.9-rc1
+References: bsc#1019351
+
+Free memory mapping, if probe is not successful.
+
+Signed-off-by: Arvind Yadav <arvind.yadav.cs@gmail.com>
+Signed-off-by: Sebastian Reichel <sre@kernel.org>
+Signed-off-by: Mian Yousaf Kaukab <yousaf.kaukab@suse.com>
+---
+ drivers/power/reset/xgene-reboot.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/power/reset/xgene-reboot.c b/drivers/power/reset/xgene-reboot.c
+index f07e93c97ba3..73c3d93e5318 100644
+--- a/drivers/power/reset/xgene-reboot.c
++++ b/drivers/power/reset/xgene-reboot.c
+@@ -81,8 +81,10 @@ static int xgene_reboot_probe(struct platform_device *pdev)
+ 	ctx->restart_handler.notifier_call = xgene_restart_handler;
+ 	ctx->restart_handler.priority = 128;
+ 	err = register_restart_handler(&ctx->restart_handler);
+-	if (err)
++	if (err) {
++		iounmap(ctx->csr);
+ 		dev_err(dev, "cannot register restart handler (err=%d)\n", err);
++	}
+ 
+ 	return err;
+ }
+-- 
+2.11.0
+

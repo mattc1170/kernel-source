@@ -1,9 +1,8 @@
-From 64d816cba06c67eeee455b8c78ebcda349d49c24 Mon Sep 17 00:00:00 2001
 From: Waiman Long <Waiman.Long@hpe.com>
 Date: Mon, 9 Nov 2015 19:09:21 -0500
 Subject: [PATCH 1/2] locking/qspinlock: Use _acquire/_release() versions of cmpxchg() & xchg()
+Patch-mainline: v4.5-rc1
 Git-commit: 64d816cba06c67eeee455b8c78ebcda349d49c24
-Patch-mainline: 4.5
 References: fate#320355
 
 This patch replaces the cmpxchg() and xchg() calls in the native

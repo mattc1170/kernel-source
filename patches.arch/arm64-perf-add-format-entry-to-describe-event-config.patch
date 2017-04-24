@@ -5,7 +5,7 @@ Subject: [PATCH] arm64: perf: add format entry to describe event -> config
  mapping
 Git-commit: 57d74123954dfe70fad12724d19f743ed14cec90
 Patch-mainline: v4.5-rc1
-Reference: fate#319982
+References: fate#319982
 
 It's all very well providing an events directory to userspace that
 details our events in terms of "event=0xNN", but if we don't define how

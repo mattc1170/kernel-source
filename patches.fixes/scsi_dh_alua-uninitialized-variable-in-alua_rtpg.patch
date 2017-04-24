@@ -1,0 +1,36 @@
+From 19fc2b4f18e6849884bcfbf130b371a534300c35 Mon Sep 17 00:00:00 2001
+From: Dan Carpenter <dan.carpenter@oracle.com>
+Date: Thu, 14 Apr 2016 21:20:34 +0300
+Subject: [PATCH] scsi_dh_alua: uninitialized variable in alua_rtpg()
+Git-commit: a4bd85203190990ad808abbd4a5dc848a950002c
+Patch-Mainline: 4.6
+References: bsc#1012910
+
+It's possible to use "err" without initializing it.  If it happens to be
+a 2 which is SCSI_DH_RETRY then that could cause a bug.  Bart Van Assche
+pointed out that we should probably re-initialize it for every iteration
+through the retry loop.
+
+Signed-off-by: Dan Carpenter <dan.carpenter@oracle.com>
+Reviewed-by: Hannes Reinicke <hare@suse.de>
+Signed-off-by: Martin K. Petersen <martin.petersen@oracle.com>
+Signed-off-by: James Bottomley <jejb@linux.vnet.ibm.com>
+---
+ drivers/scsi/device_handler/scsi_dh_alua.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/drivers/scsi/device_handler/scsi_dh_alua.c b/drivers/scsi/device_handler/scsi_dh_alua.c
+index e773b73..00b7c69 100644
+--- a/drivers/scsi/device_handler/scsi_dh_alua.c
++++ b/drivers/scsi/device_handler/scsi_dh_alua.c
+@@ -541,6 +541,7 @@ static int alua_rtpg(struct scsi_device *sdev, struct alua_port_group *pg)
+ 		return SCSI_DH_DEV_TEMP_BUSY;
+ 
+  retry:
++	err = 0;
+ 	retval = submit_rtpg(sdev, buff, bufflen, &sense_hdr, pg->flags);
+ 
+ 	if (retval) {
+-- 
+1.8.5.6
+

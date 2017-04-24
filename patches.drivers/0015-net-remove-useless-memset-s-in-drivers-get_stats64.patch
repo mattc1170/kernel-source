@@ -1,0 +1,62 @@
+From 438c8a69fb1baeb7261d935196b964ac0dddc4a8 Mon Sep 17 00:00:00 2001
+From: stephen hemminger <stephen@networkplumber.org>
+Date: Fri, 6 Jan 2017 19:12:53 -0800
+Subject: [PATCH 15/36] net: remove useless memset's in drivers get_stats64
+
+Git-commit: 5944701df90d9577658e2354cc27c4ceaeca30fe
+Patch-mainline: Queued
+Git-repo: git://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git
+References: bsc#1019351
+
+In dev_get_stats() the statistic structure storage has already been
+zeroed. Therefore network drivers do not need to call memset() again.
+
+Signed-off-by: Stephen Hemminger <sthemmin@microsoft.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+Signed-off-by: Mian Yousaf Kaukab <yousaf.kaukab@suse.com>
+---
+ drivers/net/ethernet/apm/xgene/xgene_enet_main.c | 1 -
+ drivers/net/ethernet/broadcom/bnxt/bnxt.c        | 2 --
+ drivers/net/ethernet/intel/e1000e/netdev.c       | 1 -
+ 3 files changed, 4 deletions(-)
+
+diff --git a/drivers/net/ethernet/apm/xgene/xgene_enet_main.c b/drivers/net/ethernet/apm/xgene/xgene_enet_main.c
+index 23d30d04261a..d1b78f3df52a 100644
+--- a/drivers/net/ethernet/apm/xgene/xgene_enet_main.c
++++ b/drivers/net/ethernet/apm/xgene/xgene_enet_main.c
+@@ -1462,7 +1462,6 @@ static struct rtnl_link_stats64 *xgene_enet_get_stats64(
+ 	struct xgene_enet_desc_ring *ring;
+ 	int i;
+ 
+-	memset(stats, 0, sizeof(struct rtnl_link_stats64));
+ 	for (i = 0; i < pdata->txq_cnt; i++) {
+ 		ring = pdata->tx_ring[i];
+ 		if (ring) {
+diff --git a/drivers/net/ethernet/broadcom/bnxt/bnxt.c b/drivers/net/ethernet/broadcom/bnxt/bnxt.c
+index 16735851a3c3..fc981ee7a6f6 100644
+--- a/drivers/net/ethernet/broadcom/bnxt/bnxt.c
++++ b/drivers/net/ethernet/broadcom/bnxt/bnxt.c
+@@ -5434,8 +5434,6 @@ bnxt_get_stats64(struct net_device *dev, struct rtnl_link_stats64 *stats)
+ 	u32 i;
+ 	struct bnxt *bp = netdev_priv(dev);
+ 
+-	memset(stats, 0, sizeof(struct rtnl_link_stats64));
+-
+ 	if (!bp->bnapi)
+ 		return stats;
+ 
+diff --git a/drivers/net/ethernet/intel/e1000e/netdev.c b/drivers/net/ethernet/intel/e1000e/netdev.c
+index 34fec5c536bf..d45634469290 100644
+--- a/drivers/net/ethernet/intel/e1000e/netdev.c
++++ b/drivers/net/ethernet/intel/e1000e/netdev.c
+@@ -5877,7 +5877,6 @@ struct rtnl_link_stats64 *e1000e_get_stats64(struct net_device *netdev,
+ {
+ 	struct e1000_adapter *adapter = netdev_priv(netdev);
+ 
+-	memset(stats, 0, sizeof(struct rtnl_link_stats64));
+ 	spin_lock(&adapter->stats64_lock);
+ 	e1000e_update_stats(adapter);
+ 	/* Fill out the OS statistics structure */
+-- 
+2.11.0
+

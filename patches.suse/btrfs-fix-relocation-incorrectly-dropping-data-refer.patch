@@ -1,6 +1,7 @@
 From: Filipe Manana <fdmanana@suse.com>
 Date: Tue, 1 Nov 2016 11:23:31 +0000
-Patch-mainline: submitted, https://patchwork.kernel.org/patch/9436087/
+Patch-mainline: v4.10-rc1
+Git-commit: 054570a1dc94de20e7a612cddcc5a97db9c37b6f
 References: bsc#990384
 Subject: [PATCH] Btrfs: fix relocation incorrectly dropping data references
 

@@ -1,0 +1,32 @@
+From: Vitaly Kuznetsov <vkuznets@redhat.com>
+Date: Sun, 6 Nov 2016 13:14:06 -0800
+Patch-mainline: v4.10-rc1
+Subject: Drivers: hv: utils: reduce HV_UTIL_NEGO_TIMEOUT timeout
+Git-commit: d7edd31ba9a661f1a3f357b43e84e84e5fad9538
+References: fate#320485
+
+I discovered that at least WS2016TP5 host has 60 seconds timeout for the
+ICMSGTYPE_NEGOTIATE message so we need to lower guest's timeout a little
+bit to make sure we always respond in time. Let's make it 55 seconds.
+
+Signed-off-by: Vitaly Kuznetsov <vkuznets@redhat.com>
+Signed-off-by: K. Y. Srinivasan <kys@microsoft.com>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Acked-by: <ohering@suse.de>
+---
+ drivers/hv/hyperv_vmbus.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/hv/hyperv_vmbus.h b/drivers/hv/hyperv_vmbus.h
+index a5b4442433c8..bdab7e7f2a15 100644
+--- a/drivers/hv/hyperv_vmbus.h
++++ b/drivers/hv/hyperv_vmbus.h
+@@ -38,7 +38,7 @@
+ /*
+  * Timeout for guest-host handshake for services.
+  */
+-#define HV_UTIL_NEGO_TIMEOUT 60
++#define HV_UTIL_NEGO_TIMEOUT 55
+ 
+ /*
+  * The below CPUID leaves are present if VersionAndFeatures.HypervisorPresent

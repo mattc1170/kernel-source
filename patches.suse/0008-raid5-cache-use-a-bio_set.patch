@@ -4,7 +4,7 @@ Date: Mon, 21 Dec 2015 10:51:02 +1100
 Subject: [PATCH] raid5-cache: use a bio_set
 Git-commit: c38d29b33bb3b3c792f3cca8a973422bb1897ebf
 Patch-mainline: v4.5-rc1
-Reference: fate#320291
+References: fate#320291
 
 This allows us to make guaranteed forward progress.
 

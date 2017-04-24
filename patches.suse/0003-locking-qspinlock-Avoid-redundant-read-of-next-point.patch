@@ -1,9 +1,8 @@
-From aa68744f80bfb6f26fbe7f10e42876066f7dac1b Mon Sep 17 00:00:00 2001
 From: Waiman Long <Waiman.Long@hpe.com>
 Date: Mon, 9 Nov 2015 19:09:23 -0500
 Subject: [PATCH 3/9] locking/qspinlock: Avoid redundant read of next pointer
-Git-commit: 64d816cba06c67eeee455b8c78ebcda349d49c24
-Patch-mainline: 4.5
+Patch-mainline: v4.5-rc1
+Git-commit: aa68744f80bfb6f26fbe7f10e42876066f7dac1b
 References: fate#320355
 
 With optimistic prefetch of the next node cacheline, the next pointer

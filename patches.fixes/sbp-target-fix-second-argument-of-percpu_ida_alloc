@@ -1,0 +1,32 @@
+From: Bart Van Assche <bart.vanassche@sandisk.com>
+Date: Fri, 18 Nov 2016 15:40:31 -0800
+Subject: sbp-target: Fix second argument of percpu_ida_alloc()
+Git-commit: 8456066a57940b3884aa080c58b166567dc9de39
+Patch-mainline: v4.10-rc1
+References: bsc#1032803
+
+Pass a task state as second argument to percpu_ida_alloc().
+
+Fixes: commit 5a3ee221b543 ("sbp-target: Conversion to percpu_ida tag pre-allocation")
+Signed-off-by: Bart Van Assche <bart.vanassche@sandisk.com>
+Cc: Chris Boot <bootc@bootc.net>
+
+Acked-by: Lee Duncan <lduncan@suse.com>
+---
+ drivers/target/sbp/sbp_target.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/target/sbp/sbp_target.c b/drivers/target/sbp/sbp_target.c
+index 58bb6ed18185..6ca388eca33b 100644
+--- a/drivers/target/sbp/sbp_target.c
++++ b/drivers/target/sbp/sbp_target.c
+@@ -928,7 +928,7 @@ static struct sbp_target_request *sbp_mgt_get_req(struct sbp_session *sess,
+ 	struct sbp_target_request *req;
+ 	int tag;
+ 
+-	tag = percpu_ida_alloc(&se_sess->sess_tag_pool, GFP_ATOMIC);
++	tag = percpu_ida_alloc(&se_sess->sess_tag_pool, TASK_RUNNING);
+ 	if (tag < 0)
+ 		return ERR_PTR(-ENOMEM);
+ 
+

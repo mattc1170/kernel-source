@@ -3,7 +3,7 @@ Date: Mon, 14 Dec 2015 19:01:54 -0800
 Patch-mainline: v4.5-rc1
 Subject: Drivers: hv: utils: rename outmsg_lock
 Git-commit: a72f3a4ccff22de879a1f599210ecdd9bd483a43
-Reference: fate#315887
+References: fate#315887
 
 As a preparation to reusing outmsg_lock to protect test-and-set openrations
 on 'mode' rename it the more general 'lock'.

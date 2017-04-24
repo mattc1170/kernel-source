@@ -3,7 +3,7 @@ Date: Fri, 4 Mar 2016 15:07:43 -0800
 Patch-mainline: v4.6-rc1
 Subject: hv_netvsc: Move subchannel waiting to rndis_filter_device_remove()
 Git-commit: d66ab51442211158b677c2f12310c314d9587f74
-Reference: fate#320485
+References: fate#320485
 
 During hot add, vmbus_device_register() is called from vmbus_onoffer(), on
 the same workqueue as the subchannel offer message work-queue, so

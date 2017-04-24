@@ -1,0 +1,43 @@
+From: "K. Y. Srinivasan" <kys@microsoft.com>
+Date: Fri, 1 Jul 2016 16:26:36 -0700
+Patch-mainline: v4.9-rc1
+Subject: Drivers: hv: vmbus: Reduce the delay between retries in vmbus_post_msg()
+Git-commit: 8de0d7e951826d7592e0ba1da655b175c4aa0923
+References: fate#320485
+
+The current delay between retries is unnecessarily high and is negatively
+affecting the time it takes to boot the system.
+
+Signed-off-by: K. Y. Srinivasan <kys@microsoft.com>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Acked-by: <ohering@suse.de>
+---
+ drivers/hv/connection.c | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/drivers/hv/connection.c b/drivers/hv/connection.c
+index fcf8a02..78e6368 100644
+--- a/drivers/hv/connection.c
++++ b/drivers/hv/connection.c
+@@ -439,7 +439,7 @@ int vmbus_post_msg(void *buffer, size_t buflen)
+ 	union hv_connection_id conn_id;
+ 	int ret = 0;
+ 	int retries = 0;
+-	u32 msec = 1;
++	u32 usec = 1;
+ 
+ 	conn_id.asu32 = 0;
+ 	conn_id.u.id = VMBUS_MESSAGE_CONNECTION_ID;
+@@ -472,9 +472,9 @@ int vmbus_post_msg(void *buffer, size_t buflen)
+ 		}
+ 
+ 		retries++;
+-		msleep(msec);
+-		if (msec < 2048)
+-			msec *= 2;
++		udelay(usec);
++		if (usec < 2048)
++			usec *= 2;
+ 	}
+ 	return ret;
+ }

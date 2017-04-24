@@ -3,7 +3,7 @@ Date: Fri, 13 May 2016 13:55:23 +0200
 Patch-mainline: v4.7-rc1
 Subject: hv_netvsc: get rid of struct net_device pointer in struct netvsc_device
 Git-commit: 0a1275ca5128b84ffffc149960969ed351ae00eb
-Reference: fate#320485
+References: fate#320485
 
 Simplify netvsvc pointer graph by getting rid of the redundant ndev
 pointer. We can always get a pointer to struct net_device from somewhere

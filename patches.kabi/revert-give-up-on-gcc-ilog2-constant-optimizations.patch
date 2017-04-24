@@ -1,0 +1,99 @@
+From: Jiri Slaby <jslaby@suse.cz>
+Date: Mon, 27 Mar 2017 17:34:17 +0200
+Subject: Revert "give up on gcc ilog2() constant optimizations"
+Patch-mainline: never, kabi
+References: kabi
+
+This reverts commit 4cb0c0b73d1c79a8ce260836b3f27650aa1c57f1, upstream
+commit 474c90156c8dcc2fa815e6716cc9394d7930cb9c. The kABI chekcer is
+fooled by the change below, particularly in struct kvm_vcpu_arch.
+roundup_pow_of_two there expands to a different string which I think
+matters.
+
+So revert it for now as we do not care about gcc 7 in 12SP2.
+
+Signed-off-by: Jiri Slaby <jslaby@suse.cz>
+---
+ include/linux/log2.h       | 13 +++++++++++--
+ tools/include/linux/log2.h | 13 +++++++++++--
+ 2 files changed, 22 insertions(+), 4 deletions(-)
+
+diff --git a/include/linux/log2.h b/include/linux/log2.h
+index f38fae23bdac..fd7ff3d91e6a 100644
+--- a/include/linux/log2.h
++++ b/include/linux/log2.h
+@@ -16,6 +16,12 @@
+ #include <linux/bitops.h>
+ 
+ /*
++ * deal with unrepresentable constant logarithms
++ */
++extern __attribute__((const, noreturn))
++int ____ilog2_NaN(void);
++
++/*
+  * non-constant log of base 2 calculators
+  * - the arch may override these in asm/bitops.h if they can be implemented
+  *   more efficiently than using fls() and fls64()
+@@ -79,7 +85,7 @@ unsigned long __rounddown_pow_of_two(unsigned long n)
+ #define ilog2(n)				\
+ (						\
+ 	__builtin_constant_p(n) ? (		\
+-		(n) < 2 ? 0 :			\
++		(n) < 1 ? ____ilog2_NaN() :	\
+ 		(n) & (1ULL << 63) ? 63 :	\
+ 		(n) & (1ULL << 62) ? 62 :	\
+ 		(n) & (1ULL << 61) ? 61 :	\
+@@ -142,7 +148,10 @@ unsigned long __rounddown_pow_of_two(unsigned long n)
+ 		(n) & (1ULL <<  4) ?  4 :	\
+ 		(n) & (1ULL <<  3) ?  3 :	\
+ 		(n) & (1ULL <<  2) ?  2 :	\
+-		1 ) :				\
++		(n) & (1ULL <<  1) ?  1 :	\
++		(n) & (1ULL <<  0) ?  0 :	\
++		____ilog2_NaN()			\
++				   ) :		\
+ 	(sizeof(n) <= 4) ?			\
+ 	__ilog2_u32(n) :			\
+ 	__ilog2_u64(n)				\
+diff --git a/tools/include/linux/log2.h b/tools/include/linux/log2.h
+index d5677d39c1e4..41446668ccce 100644
+--- a/tools/include/linux/log2.h
++++ b/tools/include/linux/log2.h
+@@ -13,6 +13,12 @@
+ #define _TOOLS_LINUX_LOG2_H
+ 
+ /*
++ * deal with unrepresentable constant logarithms
++ */
++extern __attribute__((const, noreturn))
++int ____ilog2_NaN(void);
++
++/*
+  * non-constant log of base 2 calculators
+  * - the arch may override these in asm/bitops.h if they can be implemented
+  *   more efficiently than using fls() and fls64()
+@@ -72,7 +78,7 @@ unsigned long __rounddown_pow_of_two(unsigned long n)
+ #define ilog2(n)				\
+ (						\
+ 	__builtin_constant_p(n) ? (		\
+-		(n) < 2 ? 0 :			\
++		(n) < 1 ? ____ilog2_NaN() :	\
+ 		(n) & (1ULL << 63) ? 63 :	\
+ 		(n) & (1ULL << 62) ? 62 :	\
+ 		(n) & (1ULL << 61) ? 61 :	\
+@@ -135,7 +141,10 @@ unsigned long __rounddown_pow_of_two(unsigned long n)
+ 		(n) & (1ULL <<  4) ?  4 :	\
+ 		(n) & (1ULL <<  3) ?  3 :	\
+ 		(n) & (1ULL <<  2) ?  2 :	\
+-		1 ) :				\
++		(n) & (1ULL <<  1) ?  1 :	\
++		(n) & (1ULL <<  0) ?  0 :	\
++		____ilog2_NaN()			\
++				   ) :		\
+ 	(sizeof(n) <= 4) ?			\
+ 	__ilog2_u32(n) :			\
+ 	__ilog2_u64(n)				\
+-- 
+2.12.2
+

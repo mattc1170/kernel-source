@@ -3,7 +3,7 @@ Date: Tue, 1 Dec 2015 16:43:13 -0800
 Patch-mainline: v4.5-rc1
 Subject: hv_netvsc: Eliminate page_buf from struct hv_netvsc_packet
 Git-commit: a9f2e2d6569d00ae8f9f832f1b56bc7702dfd2d3
-Reference: fate#315887
+References: fate#315887
 
 Eliminate page_buf from struct hv_netvsc_packet.
 

@@ -4,7 +4,7 @@ Date: Sat, 2 Jan 2016 14:56:33 -0500
 Subject: [PATCH] mtip32xx: don't open-code memdup_user()
 Patch-mainline: v4.5-rc1 
 Git-commit: 8ed6010d50ee010961ccecb4507470b244928603
-Reference: fate#319999
+References: fate#319999
 
 [folded a fix by Dan Carpenter]
 

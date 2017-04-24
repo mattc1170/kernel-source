@@ -1,6 +1,7 @@
 From: NeilBrown <neilb@suse.de>
 Subject: md/raid10: expedite the removal of lots of devices.
-Patch-mainline: Not yet, upstream doesn't really need this..
+Git-commit: d787be4092e27728cb4c012bee9762098ef3c662
+Patch-mainline: v4.8
 References: bnc#768084
 
 Currently each call to raid10_remove_disk() calls synchronize_rcu 

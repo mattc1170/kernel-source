@@ -3,7 +3,7 @@ Date: Fri, 3 Jun 2016 17:50:59 +0200
 Patch-mainline: v4.8-rc1
 Subject: hv_netvsc: introduce {net, hv}_device_to_netvsc_device() helpers
 Git-commit: 2625466d6d92f056da970bee990c862c54188819
-Reference: fate#320485
+References: fate#320485
 
 Make it easier to get 'struct netvsc_device' from 'struct net_device' and
 'struct hv_device' by introducing inline helpers.

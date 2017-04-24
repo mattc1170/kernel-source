@@ -86,10 +86,10 @@ Cc: Daniel Vetter <daniel@ffwll.ch>
  include/uapi/drm/i915_drm.h                |   16 ++++-
  5 files changed, 208 insertions(+), 10 deletions(-)
 
-diff --git a/drivers/gpu/drm/i915/Kconfig b/drivers/gpu/drm/i915/Kconfig
-index 051eab3..ae8e1ae 100644
---- a/drivers/gpu/drm/i915/Kconfig
-+++ b/drivers/gpu/drm/i915/Kconfig
+Index: current/drivers/gpu/drm/i915/Kconfig
+===================================================================
+--- current.orig/drivers/gpu/drm/i915/Kconfig
++++ current/drivers/gpu/drm/i915/Kconfig
 @@ -20,6 +20,10 @@ config DRM_I915
  	select INPUT if ACPI
  	select ACPI_VIDEO if ACPI
@@ -98,14 +98,14 @@ index 051eab3..ae8e1ae 100644
 +	# ANDROID is required for SYNC
 +	select ANDROID
 +	select SYNC
+ 	select IOSF_MBI
  	help
  	  Choose this option if you have a system that has "Intel Graphics
- 	  Media Accelerator" or "HD Graphics" integrated graphics,
-diff --git a/drivers/gpu/drm/i915/i915_drv.h b/drivers/gpu/drm/i915/i915_drv.h
-index 592e6cd..8da1826 100644
---- a/drivers/gpu/drm/i915/i915_drv.h
-+++ b/drivers/gpu/drm/i915/i915_drv.h
-@@ -2347,6 +2347,13 @@ void i915_gem_request_notify(struct intel_engine_cs *ring, bool fence_locked);
+Index: current/drivers/gpu/drm/i915/i915_drv.h
+===================================================================
+--- current.orig/drivers/gpu/drm/i915/i915_drv.h
++++ current/drivers/gpu/drm/i915/i915_drv.h
+@@ -2350,6 +2350,13 @@ void i915_gem_request_notify(struct inte
  int i915_create_fence_timeline(struct drm_device *dev,
  			       struct intel_context *ctx,
  			       struct intel_engine_cs *ring);
@@ -119,10 +119,10 @@ index 592e6cd..8da1826 100644
  
  static inline bool i915_gem_request_completed(struct drm_i915_gem_request *req)
  {
-diff --git a/drivers/gpu/drm/i915/i915_gem.c b/drivers/gpu/drm/i915/i915_gem.c
-index 1239393..2484ea7 100644
---- a/drivers/gpu/drm/i915/i915_gem.c
-+++ b/drivers/gpu/drm/i915/i915_gem.c
+Index: current/drivers/gpu/drm/i915/i915_gem.c
+===================================================================
+--- current.orig/drivers/gpu/drm/i915/i915_gem.c
++++ current/drivers/gpu/drm/i915/i915_gem.c
 @@ -38,6 +38,7 @@
  #include <linux/swap.h>
  #include <linux/pci.h>
@@ -131,7 +131,7 @@ index 1239393..2484ea7 100644
  
  #define RQ_BUG_ON(expr)
  
-@@ -2683,7 +2684,13 @@ void __i915_add_request(struct drm_i915_gem_request *request,
+@@ -2683,7 +2684,13 @@ void __i915_add_request(struct drm_i915_
  
  	/*
  	 * Add the fence to the pending list before emitting the commands to
@@ -146,7 +146,7 @@ index 1239393..2484ea7 100644
  	 */
  	i915_gem_request_submit(request);
  
-@@ -3067,6 +3074,87 @@ static unsigned i915_fence_timeline_get_next_seqno(struct i915_fence_timeline *t
+@@ -3067,6 +3074,87 @@ static unsigned i915_fence_timeline_get_
  	return seqno;
  }
  
@@ -234,10 +234,10 @@ index 1239393..2484ea7 100644
  int i915_gem_request_alloc(struct intel_engine_cs *ring,
  			   struct intel_context *ctx,
  			   struct drm_i915_gem_request **req_out)
-diff --git a/drivers/gpu/drm/i915/i915_gem_execbuffer.c b/drivers/gpu/drm/i915/i915_gem_execbuffer.c
-index 0d6cb2a..db71c1b 100644
---- a/drivers/gpu/drm/i915/i915_gem_execbuffer.c
-+++ b/drivers/gpu/drm/i915/i915_gem_execbuffer.c
+Index: current/drivers/gpu/drm/i915/i915_gem_execbuffer.c
+===================================================================
+--- current.orig/drivers/gpu/drm/i915/i915_gem_execbuffer.c
++++ current/drivers/gpu/drm/i915/i915_gem_execbuffer.c
 @@ -26,6 +26,7 @@
   *
   */
@@ -254,7 +254,7 @@ index 0d6cb2a..db71c1b 100644
  #include "i915_scheduler.h"
  
  #define  __EXEC_OBJECT_HAS_PIN (1<<31)
-@@ -1397,6 +1399,41 @@ eb_get_batch(struct eb_vmas *eb)
+@@ -1398,6 +1400,41 @@ eb_get_batch(struct eb_vmas *eb)
  	return vma->obj;
  }
  
@@ -296,7 +296,7 @@ index 0d6cb2a..db71c1b 100644
  static int
  i915_gem_do_execbuffer(struct drm_device *dev, void *data,
  		       struct drm_file *file,
-@@ -1416,6 +1453,18 @@ i915_gem_do_execbuffer(struct drm_device *dev, void *data,
+@@ -1417,6 +1454,18 @@ i915_gem_do_execbuffer(struct drm_device
  	u32 dispatch_flags;
  	int ret, i;
  	bool need_relocs;
@@ -315,7 +315,7 @@ index 0d6cb2a..db71c1b 100644
  
  	if (!i915_gem_check_execbuffer(args))
  		return -EINVAL;
-@@ -1499,6 +1548,17 @@ i915_gem_do_execbuffer(struct drm_device *dev, void *data,
+@@ -1500,6 +1549,17 @@ i915_gem_do_execbuffer(struct drm_device
  		dispatch_flags |= I915_DISPATCH_RS;
  	}
  
@@ -333,7 +333,7 @@ index 0d6cb2a..db71c1b 100644
  	intel_runtime_pm_get(dev_priv);
  
  	ret = i915_mutex_lock_interruptible(dev);
-@@ -1683,13 +1743,41 @@ i915_gem_do_execbuffer(struct drm_device *dev, void *data,
+@@ -1684,13 +1744,41 @@ i915_gem_do_execbuffer(struct drm_device
  	i915_gem_context_reference(ctx);
  	params->ctx = ctx;
  
@@ -376,7 +376,7 @@ index 0d6cb2a..db71c1b 100644
  	/*
  	 * The eb list is no longer required. The scheduler has extracted all
  	 * the information than needs to persist.
-@@ -1706,6 +1794,12 @@ i915_gem_do_execbuffer(struct drm_device *dev, void *data,
+@@ -1707,6 +1795,12 @@ i915_gem_do_execbuffer(struct drm_device
  
  	return 0;
  
@@ -389,7 +389,7 @@ index 0d6cb2a..db71c1b 100644
  err_batch_unpin:
  	if (dispatch_flags & I915_DISPATCH_SECURE)
  		i915_gem_execbuff_release_batch_obj(batch_obj);
-@@ -1863,11 +1957,6 @@ i915_gem_execbuffer2(struct drm_device *dev, void *data,
+@@ -1864,11 +1958,6 @@ i915_gem_execbuffer2(struct drm_device *
  		return -EINVAL;
  	}
  
@@ -401,10 +401,10 @@ index 0d6cb2a..db71c1b 100644
  	/* Throttle batch requests per device file */
  	if (i915_scheduler_file_queue_wait(file))
  		return -EAGAIN;
-diff --git a/include/uapi/drm/i915_drm.h b/include/uapi/drm/i915_drm.h
-index c3bb0af..52f6408 100644
---- a/include/uapi/drm/i915_drm.h
-+++ b/include/uapi/drm/i915_drm.h
+Index: current/include/uapi/drm/i915_drm.h
+===================================================================
+--- current.orig/include/uapi/drm/i915_drm.h
++++ current/include/uapi/drm/i915_drm.h
 @@ -250,7 +250,7 @@ typedef struct _drm_i915_sarea {
  #define DRM_IOCTL_I915_HWS_ADDR		DRM_IOW(DRM_COMMAND_BASE + DRM_I915_HWS_ADDR, struct drm_i915_gem_init)
  #define DRM_IOCTL_I915_GEM_INIT		DRM_IOW(DRM_COMMAND_BASE + DRM_I915_GEM_INIT, struct drm_i915_gem_init)
@@ -442,6 +442,3 @@ index c3bb0af..52f6408 100644
  
  #define I915_EXEC_CONTEXT_ID_MASK	(0xffffffff)
  #define i915_execbuffer2_set_context_id(eb2, context) \
--- 
-1.7.1
-
