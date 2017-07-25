@@ -1,0 +1,34 @@
+From fec17be0b6a151e4118d6f0dd211e964e635eeab Mon Sep 17 00:00:00 2001
+From: Zhipeng Gong <zhipeng.gong@intel.com>
+Date: Thu, 28 May 2015 16:15:22 +0800
+Subject: [PATCH 073/143] drm/i915: add MFD_MB_COUNT for error status report
+
+---
+ drivers/gpu/drm/i915/i915_cmd_parser.c |    1 +
+ drivers/gpu/drm/i915/i915_reg.h        |    1 +
+ 2 files changed, 2 insertions(+), 0 deletions(-)
+
+Index: current/drivers/gpu/drm/i915/i915_cmd_parser.c
+===================================================================
+--- current.orig/drivers/gpu/drm/i915/i915_cmd_parser.c
++++ current/drivers/gpu/drm/i915/i915_cmd_parser.c
+@@ -511,6 +511,7 @@ static const struct drm_i915_reg_descrip
+ 
+ static const struct drm_i915_reg_descriptor gen7_vcs_regs[] = {
+ 	REG32(MFD_ERROR_STATUS),
++	REG32(MFD_MB_COUNT),
+     REG32(MFC_BITSTREAM_BYTECOUNT_FRAME),
+     REG32(MFC_BITSTREAM_SE_BITCOUNT_FRAME),
+     REG32(MFC_IMAGE_STATUS_MASK),
+Index: current/drivers/gpu/drm/i915/i915_reg.h
+===================================================================
+--- current.orig/drivers/gpu/drm/i915/i915_reg.h
++++ current/drivers/gpu/drm/i915/i915_reg.h
+@@ -8169,6 +8169,7 @@ enum skl_disp_power_wells {
+ #define GEN9_BLT_MOCS_0		0xcc00	/* Blitter MOCS base register*/
+ 
+ #define MFD_ERROR_STATUS 0x12400
++#define MFD_MB_COUNT 0x12468
+ #define MFC_BITSTREAM_BYTECOUNT_FRAME 0x124A0
+ #define MFC_BITSTREAM_SE_BITCOUNT_FRAME 0x124A4
+ #define MFC_IMAGE_STATUS_MASK 0x124B4

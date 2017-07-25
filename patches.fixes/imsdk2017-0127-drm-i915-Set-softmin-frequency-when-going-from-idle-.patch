@@ -1,0 +1,46 @@
+From 633c994d3914d3e3bf3bafcd85a40d1771dc46a0 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Micha=C5=82=20Winiarski?= <michal.winiarski@intel.com>
+Date: Mon, 16 May 2016 09:36:19 +0200
+Subject: [PATCH 127/143] drm/i915: Set softmin frequency when going from idle to busy
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+If the GPU load is low enough, it's possible that we'll be stuck at idle
+frequency rather than transition into softmin frequency requested by
+userspace.
+Let's transition into softmin as soon as we're going from idle to busy.
+
+Change-Id: I53248c89152f8db1f5caf49f9519c032ac0babbd
+References: https://bugs.freedesktop.org/show_bug.cgi?id=89728
+Cc: Chris Wilson <chris@chris-wilson.co.uk>
+Cc: Imre Deak <imre.deak@intel.com>
+Signed-off-by: Michał Winiarski <michal.winiarski@intel.com>
+---
+ drivers/gpu/drm/i915/intel_pm.c |    6 ++----
+ 1 files changed, 2 insertions(+), 4 deletions(-)
+
+Index: current/drivers/gpu/drm/i915/intel_pm.c
+===================================================================
+--- current.orig/drivers/gpu/drm/i915/intel_pm.c
++++ current/drivers/gpu/drm/i915/intel_pm.c
+@@ -4500,6 +4500,7 @@ static void vlv_set_rps_idle(struct drm_
+ 	/* Wake up the media well, as that takes a lot less
+ 	 * power than the Render well. */
+ 	intel_uncore_forcewake_get(dev_priv, FORCEWAKE_MEDIA);
++		intel_set_rps(dev_priv->dev, dev_priv->rps.min_freq_softlimit);
+ 	valleyview_set_rps(dev_priv->dev, val);
+ 	intel_uncore_forcewake_put(dev_priv, FORCEWAKE_MEDIA);
+ }
+@@ -4522,10 +4523,7 @@ void gen6_rps_idle(struct drm_i915_priva
+ 
+ 	mutex_lock(&dev_priv->rps.hw_lock);
+ 	if (dev_priv->rps.enabled) {
+-		if (IS_VALLEYVIEW(dev))
+-			vlv_set_rps_idle(dev_priv);
+-		else
+-			gen6_set_rps(dev_priv->dev, dev_priv->rps.idle_freq);
++		intel_set_rps(dev_priv->dev, dev_priv->rps.idle_freq);
+ 		dev_priv->rps.last_adj = 0;
+ 		I915_WRITE(GEN6_PMINTRMSK,
+ 			   gen6_sanitize_rps_pm_mask(dev_priv, ~0));

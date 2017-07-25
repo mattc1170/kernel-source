@@ -60,7 +60,7 @@ License:        GPL-2.0
 Group:          System/Kernel
 Version:        @RPMVERSION@
 %if 0%{?is_kotd}
-Release:        <RELEASE>.g@COMMIT@
+Release:        <RELEASE>.venvr.imsdk.g@COMMIT@
 %else
 Release:        @RELEASE@
 %endif
@@ -230,6 +230,9 @@ Obsoletes:      cluster-network-kmp-%build_flavor < %version-%release
 Provides:       cluster-network-kmp = %version-%release
 Provides:       cluster-network-kmp-%build_flavor = %version-%release
 Obsoletes:      xf86-input-vmmouse < 13.1.0
+
+# Provides support for i915 drm needed by Intel Media SDK 2017R2
+Provides:       i915-imsdk = 16.5.1
 
 # Provide the exported symbols as "ksym(symbol) = hash"
 %define _use_internal_dependency_generator 0

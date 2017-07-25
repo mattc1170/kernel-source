@@ -1,0 +1,54 @@
+From 0a7ccc54f0fe7b895adbd965f6f7a1b2572fbc7b Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Micha=C5=82=20Winiarski?= <michal.winiarski@intel.com>
+Date: Fri, 20 Nov 2015 10:37:40 +0100
+Subject: [PATCH 068/143] [VPG]: drm/i915: Add WaDisableLSQCROPERFforOCL for BDW/SKL
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Change-Id: I08acd65ae2c437a9485a04a1d368dcef1bf9665a
+Signed-off-by: Michał Winiarski <michal.winiarski@intel.com>
+---
+ drivers/gpu/drm/i915/i915_reg.h         |    2 ++
+ drivers/gpu/drm/i915/intel_ringbuffer.c |    8 ++++++++
+ 2 files changed, 10 insertions(+), 0 deletions(-)
+
+Index: current/drivers/gpu/drm/i915/i915_reg.h
+===================================================================
+--- current.orig/drivers/gpu/drm/i915/i915_reg.h
++++ current/drivers/gpu/drm/i915/i915_reg.h
+@@ -5963,6 +5963,8 @@ enum skl_disp_power_wells {
+ #define  GEN8_LQSC_RO_PERF_DIS			(1<<27)
+ #define  GEN8_LQSC_FLUSH_COHERENT_LINES		(1<<21)
+ 
++#define GEN8_FORCE_TO_NONPRIV_0_RCS 0x24D0
++
+ /* GEN8 chicken */
+ #define HDC_CHICKEN0				0x7300
+ #define  HDC_FORCE_CSR_NON_COHERENT_OVR_DISABLE	(1<<15)
+Index: current/drivers/gpu/drm/i915/intel_ringbuffer.c
+===================================================================
+--- current.orig/drivers/gpu/drm/i915/intel_ringbuffer.c
++++ current/drivers/gpu/drm/i915/intel_ringbuffer.c
+@@ -854,6 +854,10 @@ static int gen8_init_workarounds(struct
+ 			    GEN6_WIZ_HASHING_MASK,
+ 			    GEN6_WIZ_HASHING_16x4);
+ 
++	/* WaDisableLSQCROPERFforOCL:bdw */
++	if (INTEL_REVID(dev) <= 0x9)
++		WA_WRITE(GEN8_FORCE_TO_NONPRIV_0_RCS, GEN8_L3SQCREG4);
++
+ 	return 0;
+ }
+ 
+@@ -1096,6 +1100,10 @@ static int skl_init_workarounds(struct i
+ 		WA_SET_BIT(GEN9_GAMT_ECO_REG_RW_IA,
+ 			   GAMT_ECO_ENABLE_IN_PLACE_DECOMPRESS);
+ 
++	/* WaDisableLSQCROPERFforOCL:skl */
++	if (INTEL_REVID(dev) <= SKL_REVID_E0)
++		WA_WRITE(GEN8_FORCE_TO_NONPRIV_0_RCS, GEN8_L3SQCREG4);
++
+ 	return skl_tune_iz_hashing(ring);
+ }
+ 
