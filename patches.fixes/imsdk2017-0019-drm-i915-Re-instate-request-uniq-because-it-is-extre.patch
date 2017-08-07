@@ -26,20 +26,20 @@ Conflicts:
  drivers/gpu/drm/i915/i915_trace.h |   32 ++++++++++++++++++++++----------
  3 files changed, 30 insertions(+), 11 deletions(-)
 
-diff --git a/drivers/gpu/drm/i915/i915_drv.h b/drivers/gpu/drm/i915/i915_drv.h
-index 4a580b7..ce0696f 100644
---- a/drivers/gpu/drm/i915/i915_drv.h
-+++ b/drivers/gpu/drm/i915/i915_drv.h
-@@ -1978,6 +1978,8 @@ struct drm_i915_private {
- 	/* perform PHY state sanity checks? */
- 	bool chv_phy_assert[2];
+Index: current/drivers/gpu/drm/i915/i915_drv.h
+===================================================================
+--- current.orig/drivers/gpu/drm/i915/i915_drv.h
++++ current/drivers/gpu/drm/i915/i915_drv.h
+@@ -1985,6 +1985,8 @@ struct drm_i915_private {
+ 
+ 	struct intel_encoder *dig_port_map[I915_MAX_PORTS];
  
 +	uint32_t request_uniq;
 +
  	/*
  	 * NOTE: This is the dri1/ums dungeon, don't add stuff here. Your patch
  	 * will be rejected. Instead look for a better place.
-@@ -2234,6 +2236,9 @@ struct drm_i915_gem_request {
+@@ -2241,6 +2243,9 @@ struct drm_i915_gem_request {
  	  */
  	u32 seqno;
  
@@ -49,11 +49,11 @@ index 4a580b7..ce0696f 100644
  	/** Position in the ringbuffer of the start of the request */
  	u32 head;
  
-diff --git a/drivers/gpu/drm/i915/i915_gem.c b/drivers/gpu/drm/i915/i915_gem.c
-index 32745e1..bb9d41b 100644
---- a/drivers/gpu/drm/i915/i915_gem.c
-+++ b/drivers/gpu/drm/i915/i915_gem.c
-@@ -2950,7 +2950,8 @@ static void i915_gem_request_fence_value_str(struct fence *req_fence,
+Index: current/drivers/gpu/drm/i915/i915_gem.c
+===================================================================
+--- current.orig/drivers/gpu/drm/i915/i915_gem.c
++++ current/drivers/gpu/drm/i915/i915_gem.c
+@@ -3026,7 +3026,8 @@ static void i915_gem_request_fence_value
  
  	req = container_of(req_fence, typeof(*req), fence);
  
@@ -63,7 +63,7 @@ index 32745e1..bb9d41b 100644
  }
  
  static const struct fence_ops i915_gem_request_fops = {
-@@ -3026,6 +3027,7 @@ int i915_gem_request_alloc(struct intel_engine_cs *ring,
+@@ -3102,6 +3103,7 @@ int i915_gem_request_alloc(struct intel_
  
  	req->i915 = dev_priv;
  	req->ring = ring;
@@ -71,10 +71,10 @@ index 32745e1..bb9d41b 100644
  	req->ctx  = ctx;
  	i915_gem_context_reference(req->ctx);
  
-diff --git a/drivers/gpu/drm/i915/i915_trace.h b/drivers/gpu/drm/i915/i915_trace.h
-index b3ae894..c8f3d35 100644
---- a/drivers/gpu/drm/i915/i915_trace.h
-+++ b/drivers/gpu/drm/i915/i915_trace.h
+Index: current/drivers/gpu/drm/i915/i915_trace.h
+===================================================================
+--- current.orig/drivers/gpu/drm/i915/i915_trace.h
++++ current/drivers/gpu/drm/i915/i915_trace.h
 @@ -469,6 +469,7 @@ TRACE_EVENT(i915_gem_ring_sync_to,
  			     __field(u32, dev)
  			     __field(u32, sync_from)
@@ -199,6 +199,3 @@ index b3ae894..c8f3d35 100644
  		      __entry->seqno, __entry->blocking ?  "yes (NB)" : "no")
  );
  
--- 
-1.7.1
-

@@ -13,11 +13,11 @@ Signed-off-by: John Harrison <john.c.harrison@intel.com>
  drivers/gpu/drm/i915/i915_scheduler.h |    8 ++++
  2 files changed, 33 insertions(+), 33 deletions(-)
 
-diff --git a/drivers/gpu/drm/i915/i915_scheduler.c b/drivers/gpu/drm/i915/i915_scheduler.c
-index ac83b5e..d8eb8c4 100644
---- a/drivers/gpu/drm/i915/i915_scheduler.c
-+++ b/drivers/gpu/drm/i915/i915_scheduler.c
-@@ -210,7 +210,8 @@ int i915_scheduler_init(struct drm_device *dev)
+Index: current/drivers/gpu/drm/i915/i915_scheduler.c
+===================================================================
+--- current.orig/drivers/gpu/drm/i915/i915_scheduler.c
++++ current/drivers/gpu/drm/i915/i915_scheduler.c
+@@ -209,7 +209,8 @@ int i915_scheduler_init(struct drm_devic
   * hung when execfinal() was called and thus the ring submission needs to be
   * retried later.
   */
@@ -27,7 +27,7 @@ index ac83b5e..d8eb8c4 100644
  {
  	WARN_ON(!I915_SQS_IS_FLYING(node));
  
-@@ -219,6 +220,8 @@ static void i915_scheduler_node_requeue(struct i915_scheduler_queue_entry *node)
+@@ -218,6 +219,8 @@ static void i915_scheduler_node_requeue(
  	node->status = I915_SQS_QUEUED;
  	trace_i915_scheduler_unfly(node->params.ring, node);
  	trace_i915_scheduler_node_state_change(node->params.ring, node);
@@ -36,7 +36,7 @@ index ac83b5e..d8eb8c4 100644
  }
  
  /*
-@@ -235,8 +238,11 @@ static void i915_scheduler_node_kill(struct i915_scheduler *scheduler,
+@@ -234,8 +237,11 @@ static void i915_scheduler_node_kill(str
  	if (I915_SQS_IS_FLYING(node)) {
  		trace_i915_scheduler_unfly(node->params.ring, node);
  		scheduler->stats[node->params.ring->id].kill_flying++;
@@ -49,7 +49,7 @@ index ac83b5e..d8eb8c4 100644
  
  	node->status = I915_SQS_DEAD;
  	trace_i915_scheduler_node_state_change(node->params.ring, node);
-@@ -264,6 +270,7 @@ static void i915_scheduler_node_fly(struct i915_scheduler_queue_entry *node)
+@@ -263,6 +269,7 @@ static void i915_scheduler_node_fly(stru
  
  	trace_i915_scheduler_fly(ring, node);
  	trace_i915_scheduler_node_state_change(ring, node);
@@ -57,7 +57,7 @@ index ac83b5e..d8eb8c4 100644
  
  	if (!(scheduler->flags[ring->id] & I915_SF_INTERRUPTS_ENABLED)) {
  		bool success = true;
-@@ -274,19 +281,10 @@ static void i915_scheduler_node_fly(struct i915_scheduler_queue_entry *node)
+@@ -273,19 +280,10 @@ static void i915_scheduler_node_fly(stru
  	}
  }
  
@@ -79,7 +79,7 @@ index ac83b5e..d8eb8c4 100644
  }
  
  static void i915_scheduler_priority_bump_clear(struct i915_scheduler *scheduler)
-@@ -533,6 +531,7 @@ static int i915_scheduler_pop_from_queue_locked(struct intel_engine_cs *ring,
+@@ -431,6 +429,7 @@ static int i915_scheduler_pop_from_queue
  		best->status = I915_SQS_POPPED;
  
  		trace_i915_scheduler_node_state_change(ring, best);
@@ -87,7 +87,7 @@ index ac83b5e..d8eb8c4 100644
  
  		ret = 0;
  	} else {
-@@ -685,7 +684,7 @@ static int i915_scheduler_submit(struct intel_engine_cs *ring)
+@@ -549,7 +548,7 @@ static int i915_scheduler_submit(struct
  			}
  
  			if (requeue) {
@@ -96,7 +96,7 @@ index ac83b5e..d8eb8c4 100644
  				/*
  				 * No point spinning if the ring is currently
  				 * unavailable so just give up and come back
-@@ -864,19 +863,12 @@ static int i915_scheduler_queue_execbuffer_bypass(struct i915_scheduler_queue_en
+@@ -725,19 +724,12 @@ static int i915_scheduler_queue_execbuff
  	return 0;
  }
  
@@ -119,7 +119,7 @@ index ac83b5e..d8eb8c4 100644
  
  	return incomplete;
  }
-@@ -983,6 +975,7 @@ int i915_scheduler_queue_execbuffer(struct i915_scheduler_queue_entry *qe)
+@@ -841,6 +833,7 @@ int i915_scheduler_queue_execbuffer(stru
  
  	trace_i915_scheduler_queue(ring, node);
  	trace_i915_scheduler_node_state_change(ring, node);
@@ -127,7 +127,7 @@ index ac83b5e..d8eb8c4 100644
  
  	spin_unlock_irq(&scheduler->lock);
  
-@@ -1032,6 +1025,7 @@ bool i915_scheduler_notify_request(struct drm_i915_gem_request *req)
+@@ -890,6 +883,7 @@ bool i915_scheduler_notify_request(struc
  	}
  
  	trace_i915_scheduler_node_state_change(req->ring, node);
@@ -135,7 +135,7 @@ index ac83b5e..d8eb8c4 100644
  
  	spin_unlock_irqrestore(&scheduler->lock, flags);
  
-@@ -1168,18 +1162,10 @@ static bool i915_scheduler_remove(struct i915_scheduler *scheduler,
+@@ -1021,18 +1015,10 @@ static bool i915_scheduler_remove(struct
  				  struct list_head *remove)
  {
  	struct i915_scheduler_queue_entry *node, *node_next;
@@ -154,7 +154,7 @@ index ac83b5e..d8eb8c4 100644
  	INIT_LIST_HEAD(remove);
  	list_for_each_entry_safe(node, node_next, &scheduler->node_queue[ring->id], link) {
  		if (!I915_SQS_IS_COMPLETE(node))
-@@ -1212,7 +1198,8 @@ static bool i915_scheduler_remove(struct i915_scheduler *scheduler,
+@@ -1065,7 +1051,8 @@ static bool i915_scheduler_remove(struct
  	}
  
  	/* Launch more packets now? */
@@ -164,7 +164,7 @@ index ac83b5e..d8eb8c4 100644
  
  	trace_i915_scheduler_remove(ring, do_submit);
  
-@@ -1539,6 +1526,11 @@ int i915_scheduler_query_stats(struct intel_engine_cs *ring,
+@@ -1390,6 +1377,11 @@ int i915_scheduler_query_stats(struct in
  		stats->counts[node->status]++;
  	}
  
@@ -176,12 +176,12 @@ index ac83b5e..d8eb8c4 100644
  	spin_unlock_irq(&scheduler->lock);
  
  	return 0;
-diff --git a/drivers/gpu/drm/i915/i915_scheduler.h b/drivers/gpu/drm/i915/i915_scheduler.h
-index 279e2c7..ca5867d 100644
---- a/drivers/gpu/drm/i915/i915_scheduler.h
-+++ b/drivers/gpu/drm/i915/i915_scheduler.h
-@@ -125,11 +125,19 @@ struct i915_scheduler_stats {
- 	uint32_t fence_got;
+Index: current/drivers/gpu/drm/i915/i915_scheduler.h
+===================================================================
+--- current.orig/drivers/gpu/drm/i915/i915_scheduler.h
++++ current/drivers/gpu/drm/i915/i915_scheduler.h
+@@ -112,11 +112,19 @@ struct i915_scheduler_stats {
+ 	uint32_t kill_queued;
  };
  
 +struct i915_scheduler_node_states {
@@ -200,6 +200,3 @@ index 279e2c7..ca5867d 100644
  	/* Tuning parameters: */
  	int32_t priority_level_min;
  	int32_t priority_level_max;
--- 
-1.7.1
-
