@@ -1,0 +1,111 @@
+From 25657fec94f87308da19bb3d5063feef04d5ba20 Mon Sep 17 00:00:00 2001
+From: Golan Ben-Ami <golan.ben.ami@intel.com>
+Date: Wed, 2 Sep 2015 12:34:23 +0300
+Subject: [PATCH] iwlwifi: mvm: add trigger for firmware dump upon TX response status
+Git-commit: 25657fec94f87308da19bb3d5063feef04d5ba20
+Patch-mainline: 4.6-rc1
+References: FATE#321353, FATE#323335
+
+This will allow to collect the data when the firmware
+sends a specific tx response status.
+
+Signed-off-by: Golan Ben-Ami <golan.ben.ami@intel.com>
+Signed-off-by: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/iwlwifi/iwl-fw-error-dump.h |    3 ++
+ drivers/net/wireless/iwlwifi/iwl-fw-file.h       |   13 +++++++++
+ drivers/net/wireless/iwlwifi/mvm/tx.c            |   33 +++++++++++++++++++++++
+ 3 files changed, 49 insertions(+)
+
+--- a/drivers/net/wireless/iwlwifi/iwl-fw-error-dump.h
++++ b/drivers/net/wireless/iwlwifi/iwl-fw-error-dump.h
+@@ -293,6 +293,8 @@ iwl_fw_error_next_data(struct iwl_fw_err
+  * @FW_DBG_TX_LATENCY: trigger log collection when the tx latency goes above a
+  *	threshold.
+  * @FW_DBG_TDLS: trigger log collection upon TDLS related events.
++ * @FW_DBG_TRIGGER_TX_STATUS: trigger log collection upon tx status when
++ *  the firmware sends a tx reply.
+  */
+ enum iwl_fw_dbg_trigger {
+ 	FW_DBG_TRIGGER_INVALID = 0,
+@@ -309,6 +311,7 @@ enum iwl_fw_dbg_trigger {
+ 	FW_DBG_TRIGGER_BA,
+ 	FW_DBG_TRIGGER_TX_LATENCY,
+ 	FW_DBG_TRIGGER_TDLS,
++	FW_DBG_TRIGGER_TX_STATUS,
+ 
+ 	/* must be last */
+ 	FW_DBG_TRIGGER_MAX,
+--- a/drivers/net/wireless/iwlwifi/iwl-fw-file.h
++++ b/drivers/net/wireless/iwlwifi/iwl-fw-file.h
+@@ -750,6 +750,19 @@ struct iwl_fw_dbg_trigger_tdls {
+ } __packed;
+ 
+ /**
++ * struct iwl_fw_dbg_trigger_tx_status - configures trigger for tx response
++ *  status.
++ * @statuses: the list of statuses to trigger the collection on
++ */
++struct iwl_fw_dbg_trigger_tx_status {
++	struct tx_status {
++		u8 status;
++		u8 reserved[3];
++	} __packed statuses[16];
++	__le32 reserved[2];
++} __packed;
++
++/**
+  * struct iwl_fw_dbg_conf_tlv - a TLV that describes a debug configuration.
+  * @id: conf id
+  * @usniffer: should the uSniffer image be used
+--- a/drivers/net/wireless/iwlwifi/mvm/tx.c
++++ b/drivers/net/wireless/iwlwifi/mvm/tx.c
+@@ -745,6 +745,37 @@ static void iwl_mvm_hwrate_to_tx_status(
+ 	iwl_mvm_hwrate_to_tx_rate(rate_n_flags, info->band, r);
+ }
+ 
++static void iwl_mvm_tx_status_check_trigger(struct iwl_mvm *mvm,
++					    u32 status)
++{
++	struct iwl_fw_dbg_trigger_tlv *trig;
++	struct iwl_fw_dbg_trigger_tx_status *status_trig;
++	int i;
++
++	if (!iwl_fw_dbg_trigger_enabled(mvm->fw, FW_DBG_TRIGGER_TX_STATUS))
++		return;
++
++	trig = iwl_fw_dbg_get_trigger(mvm->fw, FW_DBG_TRIGGER_TX_STATUS);
++	status_trig = (void *)trig->data;
++
++	if (!iwl_fw_dbg_trigger_check_stop(mvm, NULL, trig))
++		return;
++
++	for (i = 0; i < ARRAY_SIZE(status_trig->statuses); i++) {
++		/* don't collect on status 0 */
++		if (!status_trig->statuses[i].status)
++			break;
++
++		if (status_trig->statuses[i].status != (status & TX_STATUS_MSK))
++			continue;
++
++		iwl_mvm_fw_dbg_collect_trig(mvm, trig,
++					    "Tx status %d was received",
++					    status & TX_STATUS_MSK);
++		break;
++	}
++}
++
+ static void iwl_mvm_rx_tx_cmd_single(struct iwl_mvm *mvm,
+ 				     struct iwl_rx_packet *pkt)
+ {
+@@ -793,6 +824,8 @@ static void iwl_mvm_rx_tx_cmd_single(str
+ 			break;
+ 		}
+ 
++		iwl_mvm_tx_status_check_trigger(mvm, status);
++
+ 		info->status.rates[0].count = tx_resp->failure_frame + 1;
+ 		iwl_mvm_hwrate_to_tx_status(le32_to_cpu(tx_resp->initial_rate),
+ 					    info);

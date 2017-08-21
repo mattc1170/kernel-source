@@ -1,0 +1,40 @@
+From: Liu Bo <bo.li.liu@oracle.com>
+Date: Mon, 11 Jul 2016 18:52:57 -0700
+Patch-mainline: 4.8
+Git-commit: f49070957ffed84feb7944550f7edd53672b5201
+References: bsc#1012452
+Subject: [PATCH] Btrfs: change BUG_ON()'s to ASSERT()'s in
+ backref_cache_cleanup()
+
+Since it is just an in-memory building of the backrefs of several
+btree blocks, nothing is fatal other than memory leaks, so this
+changes BUG_ON()'s to ASSERT()'s.
+
+Signed-off-by: Liu Bo <bo.li.liu@oracle.com>
+Reviewed-by: David Sterba <dsterba@suse.com>
+Signed-off-by: David Sterba <dsterba@suse.com>
+---
+ fs/btrfs/relocation.c |   12 ++++++------
+ 1 file changed, 6 insertions(+), 6 deletions(-)
+
+--- a/fs/btrfs/relocation.c
++++ b/fs/btrfs/relocation.c
+@@ -235,12 +235,12 @@ static void backref_cache_cleanup(struct
+ 	cache->last_trans = 0;
+ 
+ 	for (i = 0; i < BTRFS_MAX_LEVEL; i++)
+-		BUG_ON(!list_empty(&cache->pending[i]));
+-	BUG_ON(!list_empty(&cache->changed));
+-	BUG_ON(!list_empty(&cache->detached));
+-	BUG_ON(!RB_EMPTY_ROOT(&cache->rb_root));
+-	BUG_ON(cache->nr_nodes);
+-	BUG_ON(cache->nr_edges);
++		ASSERT(list_empty(&cache->pending[i]));
++	ASSERT(list_empty(&cache->changed));
++	ASSERT(list_empty(&cache->detached));
++	ASSERT(RB_EMPTY_ROOT(&cache->rb_root));
++	ASSERT(!cache->nr_nodes);
++	ASSERT(!cache->nr_edges);
+ }
+ 
+ static struct backref_node *alloc_backref_node(struct backref_cache *cache)

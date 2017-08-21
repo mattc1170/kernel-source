@@ -1,0 +1,35 @@
+From b8ea6084415fa0dab3cfa57eb47bedfba1c5d253 Mon Sep 17 00:00:00 2001
+From: Tin Huynh <tnhuynh@apm.com>
+Date: Wed, 14 Dec 2016 14:17:26 +0700
+Subject: [PATCH 18/36] i2c: xgene: Fix missing code of DTB support
+
+Git-commit: 1635c5d04ea9343f0e3c74709c29995a23801ecd
+Patch-mainline: v4.10-rc1
+References: bsc#1019351
+
+In DTB case, i2c-core doesn't create slave device which is installed
+on i2c-xgene bus because of missing code in this driver.
+This patch fixes this issue.
+
+Signed-off-by: Tin Huynh <tnhuynh@apm.com>
+Signed-off-by: Wolfram Sang <wsa@the-dreams.de>
+Signed-off-by: Mian Yousaf Kaukab <yousaf.kaukab@suse.com>
+---
+ drivers/i2c/busses/i2c-xgene-slimpro.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/drivers/i2c/busses/i2c-xgene-slimpro.c b/drivers/i2c/busses/i2c-xgene-slimpro.c
+index 3c38029e3fe9..44a7e237b0fd 100644
+--- a/drivers/i2c/busses/i2c-xgene-slimpro.c
++++ b/drivers/i2c/busses/i2c-xgene-slimpro.c
+@@ -415,6 +415,7 @@ static int xgene_slimpro_i2c_probe(struct platform_device *pdev)
+ 	adapter->algo = &xgene_slimpro_i2c_algorithm;
+ 	adapter->class = I2C_CLASS_HWMON;
+ 	adapter->dev.parent = &pdev->dev;
++	adapter->dev.of_node = pdev->dev.of_node;
+ 	i2c_set_adapdata(adapter, ctx);
+ 	rc = i2c_add_adapter(adapter);
+ 	if (rc) {
+-- 
+2.11.0
+

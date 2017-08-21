@@ -1,0 +1,114 @@
+From b92df1de5d289c0b5d653e72414bf0850b8511e0 Mon Sep 17 00:00:00 2001
+From: Paul Burton <paul.burton@imgtec.com>
+Date: Wed, 22 Feb 2017 15:44:53 -0800
+Subject: [PATCH] mm: page_alloc: skip over regions of invalid pfns where
+ possible
+Git-commit: b92df1de5d289c0b5d653e72414bf0850b8511e0
+Patch-mainline: 4.11-rc1
+References: bnc#1031200
+
+When using a sparse memory model memmap_init_zone() when invoked with
+the MEMMAP_EARLY context will skip over pages which aren't valid - ie.
+which aren't in a populated region of the sparse memory map.  However if
+the memory map is extremely sparse then it can spend a long time
+linearly checking each PFN in a large non-populated region of the memory
+map & skipping it in turn.
+
+When CONFIG_HAVE_MEMBLOCK_NODE_MAP is enabled, we have sufficient
+information to quickly discover the next valid PFN given an invalid one
+by searching through the list of memory regions & skipping forwards to
+the first PFN covered by the memory region to the right of the
+non-populated region.  Implement this in order to speed up
+memmap_init_zone() for systems with extremely sparse memory maps.
+
+James said "I have tested this patch on a virtual model of a Samurai CPU
+with a sparse memory map.  The kernel boot time drops from 109 to
+62 seconds. "
+
+Link: http://lkml.kernel.org/r/20161125185518.29885-1-paul.burton@imgtec.com
+Signed-off-by: Paul Burton <paul.burton@imgtec.com>
+Tested-by: James Hartley <james.hartley@imgtec.com>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+Signed-off-by: Linus Torvalds <torvalds@linux-foundation.org>
+Acked-by: Michal Hocko <mhocko@suse.cz>
+
+---
+ include/linux/memblock.h |  1 +
+ mm/memblock.c            | 25 +++++++++++++++++++++++++
+ mm/page_alloc.c          | 11 ++++++++++-
+ 3 files changed, 36 insertions(+), 1 deletion(-)
+
+diff --git a/include/linux/memblock.h b/include/linux/memblock.h
+index 5b759c9acf97..38bcf00cbed3 100644
+--- a/include/linux/memblock.h
++++ b/include/linux/memblock.h
+@@ -203,6 +203,7 @@ int memblock_search_pfn_nid(unsigned long pfn, unsigned long *start_pfn,
+ 			    unsigned long  *end_pfn);
+ void __next_mem_pfn_range(int *idx, int nid, unsigned long *out_start_pfn,
+ 			  unsigned long *out_end_pfn, int *out_nid);
++unsigned long memblock_next_valid_pfn(unsigned long pfn, unsigned long max_pfn);
+ 
+ /**
+  * for_each_mem_pfn_range - early memory pfn range iterator
+diff --git a/mm/memblock.c b/mm/memblock.c
+index 7608bc305936..a476d28e0733 100644
+--- a/mm/memblock.c
++++ b/mm/memblock.c
+@@ -1105,6 +1105,31 @@ void __init_memblock __next_mem_pfn_range(int *idx, int nid,
+ 		*out_nid = r->nid;
+ }
+ 
++unsigned long __init_memblock memblock_next_valid_pfn(unsigned long pfn,
++						      unsigned long max_pfn)
++{
++	struct memblock_type *type = &memblock.memory;
++	unsigned int right = type->cnt;
++	unsigned int mid, left = 0;
++	phys_addr_t addr = PFN_PHYS(pfn + 1);
++
++	do {
++		mid = (right + left) / 2;
++
++		if (addr < type->regions[mid].base)
++			right = mid;
++		else if (addr >= (type->regions[mid].base +
++				  type->regions[mid].size))
++			left = mid + 1;
++		else {
++			/* addr is within the region, so pfn + 1 is valid */
++			return min(pfn + 1, max_pfn);
++		}
++	} while (left < right);
++
++	return min(PHYS_PFN(type->regions[right].base), max_pfn);
++}
++
+ /**
+  * memblock_set_node - set node ID on memblock regions
+  * @base: base of area to set node ID for
+diff --git a/mm/page_alloc.c b/mm/page_alloc.c
+index 05c0a59323bd..6da3169d3750 100644
+--- a/mm/page_alloc.c
++++ b/mm/page_alloc.c
+@@ -5103,8 +5103,17 @@ void __meminit memmap_init_zone(unsigned long size, int nid, unsigned long zone,
+ 		if (context != MEMMAP_EARLY)
+ 			goto not_early;
+ 
+-		if (!early_pfn_valid(pfn))
++		if (!early_pfn_valid(pfn)) {
++#ifdef CONFIG_HAVE_MEMBLOCK_NODE_MAP
++			/*
++			 * Skip to the pfn preceding the next valid one (or
++			 * end_pfn), such that we hit a valid pfn (or end_pfn)
++			 * on our next iteration of the loop.
++			 */
++			pfn = memblock_next_valid_pfn(pfn, end_pfn) - 1;
++#endif
+ 			continue;
++		}
+ 		if (!early_pfn_in_nid(pfn, nid))
+ 			continue;
+ 		if (!update_defer_init(pgdat, pfn, end_pfn, &nr_initialised))
+-- 
+1.8.5.6
+

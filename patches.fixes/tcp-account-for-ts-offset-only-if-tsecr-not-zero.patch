@@ -1,0 +1,36 @@
+From: Alexey Kodanev <alexey.kodanev@oracle.com>
+Date: Wed, 22 Feb 2017 13:23:56 +0300
+Subject: tcp: account for ts offset only if tsecr not zero
+Patch-mainline: v4.11-rc1
+Git-commit: eee2faabc63d863a129000b698a2bca54dff643d
+References: bsc#1042286
+
+We can get SYN with zero tsecr, don't apply offset in this case.
+
+Fixes: ee684b6f2830 ("tcp: send packets with a socket timestamp")
+Signed-off-by: Alexey Kodanev <alexey.kodanev@oracle.com>
+Acked-by: Eric Dumazet <edumazet@google.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+Acked-by: Michal Kubecek <mkubecek@suse.cz>
+
+---
+ net/ipv4/tcp_minisocks.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/net/ipv4/tcp_minisocks.c b/net/ipv4/tcp_minisocks.c
+index 4c1c94fa8f08..ab90f1e57011 100644
+--- a/net/ipv4/tcp_minisocks.c
++++ b/net/ipv4/tcp_minisocks.c
+@@ -109,7 +109,8 @@ tcp_timewait_state_process(struct inet_timewait_sock *tw, struct sk_buff *skb,
+ 		tcp_parse_options(skb, &tmp_opt, 0, NULL);
+ 
+ 		if (tmp_opt.saw_tstamp) {
+-			tmp_opt.rcv_tsecr	-= tcptw->tw_ts_offset;
++			if (tmp_opt.rcv_tsecr)
++				tmp_opt.rcv_tsecr -= tcptw->tw_ts_offset;
+ 			tmp_opt.ts_recent	= tcptw->tw_ts_recent;
+ 			tmp_opt.ts_recent_stamp	= tcptw->tw_ts_recent_stamp;
+ 			paws_reject = tcp_paws_reject(&tmp_opt, th->rst);
+-- 
+2.13.0
+

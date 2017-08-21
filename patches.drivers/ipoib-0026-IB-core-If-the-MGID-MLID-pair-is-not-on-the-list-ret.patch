@@ -1,0 +1,72 @@
+From: "Michael J. Ruhl" <michael.j.ruhl@intel.com>
+Date: Sun, 9 Apr 2017 10:15:32 -0700
+Subject: IB/core: If the MGID/MLID pair is not on the list return an error
+Patch-mainline: v4.12-rc1
+Git-commit: 20c7840a77ddcb2ed2fbd66e8197db2868495751
+References: bsc#1022595 FATE#322350
+
+A list of MGID/MLID pairs is built when doing a multicast attach.  When
+the multicast detach is called, the list is searched, and regardless of
+the search outcome, the driver detach is called.
+
+If an MGID/MLID pair is not on the list, driver detach should not be
+called, and an error should be returned.  Calling the driver without
+removing an MGID/MLID pair from the list can leave the core and driver
+out of sync.
+
+Fixes: f4e401562c11 ("IB/uverbs: track multicast group membership for userspace QPs")
+Cc: stable@vger.kernel.org
+Reviewed-by: Ira Weiny <ira.weiny@intel.com>
+Reviewed-by: Leon Romanovsky <leonro@mellanox.com>
+Signed-off-by: Michael J. Ruhl <michael.j.ruhl@intel.com>
+Signed-off-by: Dennis Dalessandro <dennis.dalessandro@intel.com>
+Signed-off-by: Doug Ledford <dledford@redhat.com>
+Acked-by: Thomas Bogendoerfer <tbogendoerfer@suse.de>
+---
+ drivers/infiniband/core/uverbs_cmd.c | 13 +++++++++----
+ 1 file changed, 9 insertions(+), 4 deletions(-)
+
+diff --git a/drivers/infiniband/core/uverbs_cmd.c b/drivers/infiniband/core/uverbs_cmd.c
+index 3a37abbb003b..e36f2adb07ab 100644
+--- a/drivers/infiniband/core/uverbs_cmd.c
++++ b/drivers/infiniband/core/uverbs_cmd.c
+@@ -2999,6 +2999,7 @@ ssize_t ib_uverbs_detach_mcast(struct ib_uverbs_file *file,
+ 	struct ib_qp                 *qp;
+ 	struct ib_uverbs_mcast_entry *mcast;
+ 	int                           ret = -EINVAL;
++	bool                          found = false;
+ 
+ 	if (copy_from_user(&cmd, buf, sizeof cmd))
+ 		return -EFAULT;
+@@ -3007,10 +3008,6 @@ ssize_t ib_uverbs_detach_mcast(struct ib_uverbs_file *file,
+ 	if (!qp)
+ 		return -EINVAL;
+ 
+-	ret = ib_detach_mcast(qp, (union ib_gid *) cmd.gid, cmd.mlid);
+-	if (ret)
+-		goto out_put;
+-
+ 	obj = container_of(qp->uobject, struct ib_uqp_object, uevent.uobject);
+ 
+ 	list_for_each_entry(mcast, &obj->mcast_list, list)
+@@ -3018,9 +3015,17 @@ ssize_t ib_uverbs_detach_mcast(struct ib_uverbs_file *file,
+ 		    !memcmp(cmd.gid, mcast->gid.raw, sizeof mcast->gid.raw)) {
+ 			list_del(&mcast->list);
+ 			kfree(mcast);
++			found = true;
+ 			break;
+ 		}
+ 
++	if (!found) {
++		ret = -EINVAL;
++		goto out_put;
++	}
++
++	ret = ib_detach_mcast(qp, (union ib_gid *)cmd.gid, cmd.mlid);
++
+ out_put:
+ 	put_qp_write(qp);
+ 
+-- 
+1.8.5.6
+

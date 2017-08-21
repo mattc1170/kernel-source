@@ -1,0 +1,778 @@
+From 2e5d4a8f61dcae12996bbe2bcc446d3b47625cac Mon Sep 17 00:00:00 2001
+From: Haim Dreyfuss <haim.dreyfuss@intel.com>
+Date: Thu, 17 Dec 2015 12:17:58 +0200
+Subject: [PATCH] iwlwifi: pcie: Add new configuration to enable MSIX
+Git-commit: 2e5d4a8f61dcae12996bbe2bcc446d3b47625cac
+Patch-mainline: 4.6-rc1
+References: FATE#321353, FATE#323335
+
+Working with MSIX requires prior configuration.
+This includes requesting interrupt vectors from the OS,
+registering the vectors and mapping the optional causes to the
+relevant interrupt. In addition add new interrupt handler
+to handle MSIX interrupt.
+
+Signed-off-by: Haim Dreyfuss <haim.dreyfuss@intel.com>
+Signed-off-by: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/iwlwifi/iwl-csr.h       |   49 +++++
+ drivers/net/wireless/iwlwifi/iwl-prph.h      |    2 
+ drivers/net/wireless/iwlwifi/pcie/internal.h |  100 ++++++++++-
+ drivers/net/wireless/iwlwifi/pcie/rx.c       |  177 ++++++++++++++++++++
+ drivers/net/wireless/iwlwifi/pcie/trans.c    |  229 +++++++++++++++++++++++----
+ 5 files changed, 507 insertions(+), 50 deletions(-)
+
+--- a/drivers/net/wireless/iwlwifi/iwl-csr.h
++++ b/drivers/net/wireless/iwlwifi/iwl-csr.h
+@@ -7,6 +7,7 @@
+  *
+  * Copyright(c) 2005 - 2014 Intel Corporation. All rights reserved.
+  * Copyright(c) 2013 - 2014 Intel Mobile Communications GmbH
++ * Copyright(c) 2016        Intel Deutschland GmbH
+  *
+  * This program is free software; you can redistribute it and/or modify
+  * it under the terms of version 2 of the GNU General Public License as
+@@ -549,4 +550,52 @@ enum dtd_diode_reg {
+ 	DTS_DIODE_REG_FLAGS_PASS_ONCE		= 0x00000080, /* bits [7:7] */
+ };
+ 
++/*****************************************************************************
++ *                        MSIX related registers                             *
++ *****************************************************************************/
++
++#define CSR_MSIX_BASE			(0x2000)
++#define CSR_MSIX_FH_INT_CAUSES_AD	(CSR_MSIX_BASE + 0x800)
++#define CSR_MSIX_FH_INT_MASK_AD		(CSR_MSIX_BASE + 0x804)
++#define CSR_MSIX_HW_INT_CAUSES_AD	(CSR_MSIX_BASE + 0x808)
++#define CSR_MSIX_HW_INT_MASK_AD		(CSR_MSIX_BASE + 0x80C)
++#define CSR_MSIX_AUTOMASK_ST_AD		(CSR_MSIX_BASE + 0x810)
++#define CSR_MSIX_RX_IVAR_AD_REG		(CSR_MSIX_BASE + 0x880)
++#define CSR_MSIX_IVAR_AD_REG		(CSR_MSIX_BASE + 0x890)
++#define CSR_MSIX_PENDING_PBA_AD		(CSR_MSIX_BASE + 0x1000)
++#define CSR_MSIX_RX_IVAR(cause)		(CSR_MSIX_RX_IVAR_AD_REG + (cause))
++#define CSR_MSIX_IVAR(cause)		(CSR_MSIX_IVAR_AD_REG + (cause))
++
++#define MSIX_FH_INT_CAUSES_Q(q)		(q)
++
++/*
++ * Causes for the FH register interrupts
++ */
++enum msix_fh_int_causes {
++	MSIX_FH_INT_CAUSES_D2S_CH0_NUM		= BIT(16),
++	MSIX_FH_INT_CAUSES_D2S_CH1_NUM		= BIT(17),
++	MSIX_FH_INT_CAUSES_S2D			= BIT(19),
++	MSIX_FH_INT_CAUSES_FH_ERR		= BIT(21),
++};
++
++/*
++ * Causes for the HW register interrupts
++ */
++enum msix_hw_int_causes {
++	MSIX_HW_INT_CAUSES_REG_ALIVE		= BIT(0),
++	MSIX_HW_INT_CAUSES_REG_WAKEUP		= BIT(1),
++	MSIX_HW_INT_CAUSES_REG_CT_KILL		= BIT(6),
++	MSIX_HW_INT_CAUSES_REG_RF_KILL		= BIT(7),
++	MSIX_HW_INT_CAUSES_REG_PERIODIC		= BIT(8),
++	MSIX_HW_INT_CAUSES_REG_SW_ERR		= BIT(25),
++	MSIX_HW_INT_CAUSES_REG_SCD		= BIT(26),
++	MSIX_HW_INT_CAUSES_REG_FH_TX		= BIT(27),
++	MSIX_HW_INT_CAUSES_REG_HW_ERR		= BIT(29),
++	MSIX_HW_INT_CAUSES_REG_HAP		= BIT(30),
++};
++
++#define MSIX_MIN_INTERRUPT_VECTORS		2
++#define MSIX_AUTO_CLEAR_CAUSE			0
++#define MSIX_NON_AUTO_CLEAR_CAUSE		BIT(7)
++
+ #endif /* !__iwl_csr_h__ */
+--- a/drivers/net/wireless/iwlwifi/iwl-prph.h
++++ b/drivers/net/wireless/iwlwifi/iwl-prph.h
+@@ -404,4 +404,6 @@ enum {
+ 	LMPM_PAGE_PASS_NOTIF_POS = BIT(20),
+ };
+ 
++#define UREG_CHICK		(0xA05C00)
++#define UREG_CHICK_MSIX_ENABLE	BIT(25)
+ #endif				/* __iwl_prph_h__ */
+--- a/drivers/net/wireless/iwlwifi/pcie/internal.h
++++ b/drivers/net/wireless/iwlwifi/pcie/internal.h
+@@ -336,6 +336,14 @@ struct iwl_tso_hdr_page {
+  * @fw_mon_phys: physical address of the buffer for the firmware monitor
+  * @fw_mon_page: points to the first page of the buffer for the firmware monitor
+  * @fw_mon_size: size of the buffer for the firmware monitor
++ * @msix_entries: array of MSI-X entries
++ * @msix_enabled: true if managed to enable MSI-X
++ * @allocated_vector: the number of interrupt vector allocated by the OS
++ * @default_irq_num: default irq for non rx interrupt
++ * @fh_init_mask: initial unmasked fh causes
++ * @hw_init_mask: initial unmasked hw causes
++ * @fh_mask: current unmasked fh causes
++ * @hw_mask: current unmasked hw causes
+  */
+ struct iwl_trans_pcie {
+ 	struct iwl_rxq *rxq;
+@@ -402,6 +410,15 @@ struct iwl_trans_pcie {
+ 	dma_addr_t fw_mon_phys;
+ 	struct page *fw_mon_page;
+ 	u32 fw_mon_size;
++
++	struct msix_entry msix_entries[IWL_MAX_RX_HW_QUEUES];
++	bool msix_enabled;
++	u32 allocated_vector;
++	u32 default_irq_num;
++	u32 fh_init_mask;
++	u32 hw_init_mask;
++	u32 fh_mask;
++	u32 hw_mask;
+ };
+ 
+ static inline struct iwl_trans_pcie *
+@@ -430,7 +447,10 @@ void iwl_trans_pcie_free(struct iwl_tran
+ * RX
+ ******************************************************/
+ int iwl_pcie_rx_init(struct iwl_trans *trans);
++irqreturn_t iwl_pcie_msix_isr(int irq, void *data);
+ irqreturn_t iwl_pcie_irq_handler(int irq, void *dev_id);
++irqreturn_t iwl_pcie_irq_msix_handler(int irq, void *dev_id);
++irqreturn_t iwl_pcie_irq_rx_msix_handler(int irq, void *dev_id);
+ int iwl_pcie_rx_stop(struct iwl_trans *trans);
+ void iwl_pcie_rx_free(struct iwl_trans *trans);
+ 
+@@ -485,15 +505,24 @@ void iwl_pcie_dump_csr(struct iwl_trans
+ ******************************************************/
+ static inline void iwl_disable_interrupts(struct iwl_trans *trans)
+ {
+-	clear_bit(STATUS_INT_ENABLED, &trans->status);
+-
+-	/* disable interrupts from uCode/NIC to host */
+-	iwl_write32(trans, CSR_INT_MASK, 0x00000000);
++	struct iwl_trans_pcie *trans_pcie = IWL_TRANS_GET_PCIE_TRANS(trans);
+ 
+-	/* acknowledge/clear/reset any interrupts still pending
+-	 * from uCode or flow handler (Rx/Tx DMA) */
+-	iwl_write32(trans, CSR_INT, 0xffffffff);
+-	iwl_write32(trans, CSR_FH_INT_STATUS, 0xffffffff);
++	clear_bit(STATUS_INT_ENABLED, &trans->status);
++	if (!trans_pcie->msix_enabled) {
++		/* disable interrupts from uCode/NIC to host */
++		iwl_write32(trans, CSR_INT_MASK, 0x00000000);
++
++		/* acknowledge/clear/reset any interrupts still pending
++		 * from uCode or flow handler (Rx/Tx DMA) */
++		iwl_write32(trans, CSR_INT, 0xffffffff);
++		iwl_write32(trans, CSR_FH_INT_STATUS, 0xffffffff);
++	} else {
++		/* disable all the interrupt we might use */
++		iwl_write32(trans, CSR_MSIX_FH_INT_MASK_AD,
++			    trans_pcie->fh_init_mask);
++		iwl_write32(trans, CSR_MSIX_HW_INT_MASK_AD,
++			    trans_pcie->hw_init_mask);
++	}
+ 	IWL_DEBUG_ISR(trans, "Disabled interrupts\n");
+ }
+ 
+@@ -503,8 +532,37 @@ static inline void iwl_enable_interrupts
+ 
+ 	IWL_DEBUG_ISR(trans, "Enabling interrupts\n");
+ 	set_bit(STATUS_INT_ENABLED, &trans->status);
+-	trans_pcie->inta_mask = CSR_INI_SET_MASK;
+-	iwl_write32(trans, CSR_INT_MASK, trans_pcie->inta_mask);
++	if (!trans_pcie->msix_enabled) {
++		trans_pcie->inta_mask = CSR_INI_SET_MASK;
++		iwl_write32(trans, CSR_INT_MASK, trans_pcie->inta_mask);
++	} else {
++		/*
++		 * fh/hw_mask keeps all the unmasked causes.
++		 * Unlike msi, in msix cause is enabled when it is unset.
++		 */
++		trans_pcie->hw_mask = trans_pcie->hw_init_mask;
++		trans_pcie->fh_mask = trans_pcie->fh_init_mask;
++		iwl_write32(trans, CSR_MSIX_FH_INT_MASK_AD,
++			    ~trans_pcie->fh_mask);
++		iwl_write32(trans, CSR_MSIX_HW_INT_MASK_AD,
++			    ~trans_pcie->hw_mask);
++	}
++}
++
++static inline void iwl_enable_hw_int_msk_msix(struct iwl_trans *trans, u32 msk)
++{
++	struct iwl_trans_pcie *trans_pcie = IWL_TRANS_GET_PCIE_TRANS(trans);
++
++	iwl_write32(trans, CSR_MSIX_HW_INT_MASK_AD, ~msk);
++	trans_pcie->hw_mask = msk;
++}
++
++static inline void iwl_enable_fh_int_msk_msix(struct iwl_trans *trans, u32 msk)
++{
++	struct iwl_trans_pcie *trans_pcie = IWL_TRANS_GET_PCIE_TRANS(trans);
++
++	iwl_write32(trans, CSR_MSIX_FH_INT_MASK_AD, ~msk);
++	trans_pcie->fh_mask = msk;
+ }
+ 
+ static inline void iwl_enable_fw_load_int(struct iwl_trans *trans)
+@@ -512,8 +570,15 @@ static inline void iwl_enable_fw_load_in
+ 	struct iwl_trans_pcie *trans_pcie = IWL_TRANS_GET_PCIE_TRANS(trans);
+ 
+ 	IWL_DEBUG_ISR(trans, "Enabling FW load interrupt\n");
+-	trans_pcie->inta_mask = CSR_INT_BIT_FH_TX;
+-	iwl_write32(trans, CSR_INT_MASK, trans_pcie->inta_mask);
++	if (!trans_pcie->msix_enabled) {
++		trans_pcie->inta_mask = CSR_INT_BIT_FH_TX;
++		iwl_write32(trans, CSR_INT_MASK, trans_pcie->inta_mask);
++	} else {
++		iwl_write32(trans, CSR_MSIX_HW_INT_MASK_AD,
++			    trans_pcie->hw_init_mask);
++		iwl_enable_fh_int_msk_msix(trans,
++					   MSIX_FH_INT_CAUSES_D2S_CH0_NUM);
++	}
+ }
+ 
+ static inline void iwl_enable_rfkill_int(struct iwl_trans *trans)
+@@ -521,8 +586,15 @@ static inline void iwl_enable_rfkill_int
+ 	struct iwl_trans_pcie *trans_pcie = IWL_TRANS_GET_PCIE_TRANS(trans);
+ 
+ 	IWL_DEBUG_ISR(trans, "Enabling rfkill interrupt\n");
+-	trans_pcie->inta_mask = CSR_INT_BIT_RF_KILL;
+-	iwl_write32(trans, CSR_INT_MASK, trans_pcie->inta_mask);
++	if (!trans_pcie->msix_enabled) {
++		trans_pcie->inta_mask = CSR_INT_BIT_RF_KILL;
++		iwl_write32(trans, CSR_INT_MASK, trans_pcie->inta_mask);
++	} else {
++		iwl_write32(trans, CSR_MSIX_FH_INT_MASK_AD,
++			    trans_pcie->fh_init_mask);
++		iwl_enable_hw_int_msk_msix(trans,
++					   MSIX_HW_INT_CAUSES_REG_RF_KILL);
++	}
+ }
+ 
+ static inline void iwl_wake_queue(struct iwl_trans *trans,
+--- a/drivers/net/wireless/iwlwifi/pcie/rx.c
++++ b/drivers/net/wireless/iwlwifi/pcie/rx.c
+@@ -1135,10 +1135,10 @@ static void iwl_pcie_rx_handle_rb(struct
+ /*
+  * iwl_pcie_rx_handle - Main entry function for receiving responses from fw
+  */
+-static void iwl_pcie_rx_handle(struct iwl_trans *trans)
++static void iwl_pcie_rx_handle(struct iwl_trans *trans, int queue)
+ {
+ 	struct iwl_trans_pcie *trans_pcie = IWL_TRANS_GET_PCIE_TRANS(trans);
+-	struct iwl_rxq *rxq = &trans_pcie->rxq[0];
++	struct iwl_rxq *rxq = &trans_pcie->rxq[queue];
+ 	u32 r, i, j, count = 0;
+ 	bool emergency = false;
+ 
+@@ -1259,6 +1259,51 @@ restart:
+ 		napi_gro_flush(&rxq->napi, false);
+ }
+ 
++static struct iwl_trans_pcie *iwl_pcie_get_trans_pcie(struct msix_entry *entry)
++{
++	u8 queue = entry->entry;
++	struct msix_entry *entries = entry - queue;
++
++	return container_of(entries, struct iwl_trans_pcie, msix_entries[0]);
++}
++
++static inline void iwl_pcie_clear_irq(struct iwl_trans *trans,
++				      struct msix_entry *entry)
++{
++	/*
++	 * Before sending the interrupt the HW disables it to prevent
++	 * a nested interrupt. This is done by writing 1 to the corresponding
++	 * bit in the mask register. After handling the interrupt, it should be
++	 * re-enabled by clearing this bit. This register is defined as
++	 * write 1 clear (W1C) register, meaning that it's being clear
++	 * by writing 1 to the bit.
++	 */
++	iwl_write_direct32(trans, CSR_MSIX_AUTOMASK_ST_AD, BIT(entry->entry));
++}
++
++/*
++ * iwl_pcie_rx_msix_handle - Main entry function for receiving responses from fw
++ * This interrupt handler should be used with RSS queue only.
++ */
++irqreturn_t iwl_pcie_irq_rx_msix_handler(int irq, void *dev_id)
++{
++	struct msix_entry *entry = dev_id;
++	struct iwl_trans_pcie *trans_pcie = iwl_pcie_get_trans_pcie(entry);
++	struct iwl_trans *trans = trans_pcie->trans;
++
++	lock_map_acquire(&trans->sync_cmd_lockdep_map);
++
++	local_bh_disable();
++	iwl_pcie_rx_handle(trans, entry->entry);
++	local_bh_enable();
++
++	iwl_pcie_clear_irq(trans, entry);
++
++	lock_map_release(&trans->sync_cmd_lockdep_map);
++
++	return IRQ_HANDLED;
++}
++
+ /*
+  * iwl_pcie_irq_handle_error - called for HW or SW error interrupt from card
+  */
+@@ -1589,7 +1634,7 @@ irqreturn_t iwl_pcie_irq_handler(int irq
+ 		isr_stats->rx++;
+ 
+ 		local_bh_disable();
+-		iwl_pcie_rx_handle(trans);
++		iwl_pcie_rx_handle(trans, 0);
+ 		local_bh_enable();
+ 	}
+ 
+@@ -1732,3 +1777,129 @@ irqreturn_t iwl_pcie_isr(int irq, void *
+ 
+ 	return IRQ_WAKE_THREAD;
+ }
++
++irqreturn_t iwl_pcie_msix_isr(int irq, void *data)
++{
++	return IRQ_WAKE_THREAD;
++}
++
++irqreturn_t iwl_pcie_irq_msix_handler(int irq, void *dev_id)
++{
++	struct msix_entry *entry = dev_id;
++	struct iwl_trans_pcie *trans_pcie = iwl_pcie_get_trans_pcie(entry);
++	struct iwl_trans *trans = trans_pcie->trans;
++	struct isr_statistics *isr_stats = isr_stats = &trans_pcie->isr_stats;
++	u32 inta_fh, inta_hw;
++
++	lock_map_acquire(&trans->sync_cmd_lockdep_map);
++
++	spin_lock(&trans_pcie->irq_lock);
++	inta_fh = iwl_read_direct32(trans, CSR_MSIX_FH_INT_CAUSES_AD);
++	inta_hw = iwl_read_direct32(trans, CSR_MSIX_HW_INT_CAUSES_AD);
++	/*
++	 * Clear causes registers to avoid being handling the same cause.
++	 */
++	iwl_write_direct32(trans, CSR_MSIX_FH_INT_CAUSES_AD, inta_fh);
++	iwl_write_direct32(trans, CSR_MSIX_HW_INT_CAUSES_AD, inta_hw);
++	spin_unlock(&trans_pcie->irq_lock);
++
++	if (unlikely(!(inta_fh | inta_hw))) {
++		IWL_DEBUG_ISR(trans, "Ignore interrupt, inta == 0\n");
++		lock_map_release(&trans->sync_cmd_lockdep_map);
++		return IRQ_NONE;
++	}
++
++	if (iwl_have_debug_level(IWL_DL_ISR))
++		IWL_DEBUG_ISR(trans, "ISR inta_fh 0x%08x, enabled 0x%08x\n",
++			      inta_fh,
++			      iwl_read32(trans, CSR_MSIX_FH_INT_MASK_AD));
++
++	/* This "Tx" DMA channel is used only for loading uCode */
++	if (inta_fh & MSIX_FH_INT_CAUSES_D2S_CH0_NUM) {
++		IWL_DEBUG_ISR(trans, "uCode load interrupt\n");
++		isr_stats->tx++;
++		/*
++		 * Wake up uCode load routine,
++		 * now that load is complete
++		 */
++		trans_pcie->ucode_write_complete = true;
++		wake_up(&trans_pcie->ucode_write_waitq);
++	}
++
++	/* Error detected by uCode */
++	if ((inta_fh & MSIX_FH_INT_CAUSES_FH_ERR) ||
++	    (inta_hw & MSIX_HW_INT_CAUSES_REG_SW_ERR)) {
++		IWL_ERR(trans,
++			"Microcode SW error detected. Restarting 0x%X.\n",
++			inta_fh);
++		isr_stats->sw++;
++		iwl_pcie_irq_handle_error(trans);
++	}
++
++	/* After checking FH register check HW register */
++	if (iwl_have_debug_level(IWL_DL_ISR))
++		IWL_DEBUG_ISR(trans,
++			      "ISR inta_hw 0x%08x, enabled 0x%08x\n",
++			      inta_hw,
++			      iwl_read32(trans, CSR_MSIX_HW_INT_MASK_AD));
++
++	/* Alive notification via Rx interrupt will do the real work */
++	if (inta_hw & MSIX_HW_INT_CAUSES_REG_ALIVE) {
++		IWL_DEBUG_ISR(trans, "Alive interrupt\n");
++		isr_stats->alive++;
++	}
++
++	/* uCode wakes up after power-down sleep */
++	if (inta_hw & MSIX_HW_INT_CAUSES_REG_WAKEUP) {
++		IWL_DEBUG_ISR(trans, "Wakeup interrupt\n");
++		iwl_pcie_rxq_check_wrptr(trans);
++		iwl_pcie_txq_check_wrptrs(trans);
++
++		isr_stats->wakeup++;
++	}
++
++	/* Chip got too hot and stopped itself */
++	if (inta_hw & MSIX_HW_INT_CAUSES_REG_CT_KILL) {
++		IWL_ERR(trans, "Microcode CT kill error detected.\n");
++		isr_stats->ctkill++;
++	}
++
++	/* HW RF KILL switch toggled */
++	if (inta_hw & MSIX_HW_INT_CAUSES_REG_RF_KILL) {
++		bool hw_rfkill;
++
++		hw_rfkill = iwl_is_rfkill_set(trans);
++		IWL_WARN(trans, "RF_KILL bit toggled to %s.\n",
++			 hw_rfkill ? "disable radio" : "enable radio");
++
++		isr_stats->rfkill++;
++
++		mutex_lock(&trans_pcie->mutex);
++		iwl_trans_pcie_rf_kill(trans, hw_rfkill);
++		mutex_unlock(&trans_pcie->mutex);
++		if (hw_rfkill) {
++			set_bit(STATUS_RFKILL, &trans->status);
++			if (test_and_clear_bit(STATUS_SYNC_HCMD_ACTIVE,
++					       &trans->status))
++				IWL_DEBUG_RF_KILL(trans,
++						  "Rfkill while SYNC HCMD in flight\n");
++			wake_up(&trans_pcie->wait_command_queue);
++		} else {
++			clear_bit(STATUS_RFKILL, &trans->status);
++		}
++	}
++
++	if (inta_hw & MSIX_HW_INT_CAUSES_REG_HW_ERR) {
++		IWL_ERR(trans,
++			"Hardware error detected. Restarting.\n");
++
++		isr_stats->hw++;
++		iwl_pcie_irq_handle_error(trans);
++	}
++
++	iwl_pcie_clear_irq(trans, entry);
++
++	lock_map_release(&trans->sync_cmd_lockdep_map);
++
++	return IRQ_HANDLED;
++}
+--- a/drivers/net/wireless/iwlwifi/pcie/trans.c
++++ b/drivers/net/wireless/iwlwifi/pcie/trans.c
+@@ -1123,6 +1123,20 @@ static void _iwl_trans_pcie_stop_device(
+ 	iwl_pcie_prepare_card_hw(trans);
+ }
+ 
++static void iwl_pcie_synchronize_irqs(struct iwl_trans *trans)
++{
++	struct iwl_trans_pcie *trans_pcie = IWL_TRANS_GET_PCIE_TRANS(trans);
++
++	if (trans_pcie->msix_enabled) {
++		int i;
++
++		for (i = 0; i < trans_pcie->allocated_vector; i++)
++			synchronize_irq(trans_pcie->msix_entries[i].vector);
++	} else {
++		synchronize_irq(trans_pcie->pci_dev->irq);
++	}
++}
++
+ static int iwl_trans_pcie_start_fw(struct iwl_trans *trans,
+ 				   const struct fw_img *fw, bool run_in_rfkill)
+ {
+@@ -1149,7 +1163,7 @@ static int iwl_trans_pcie_start_fw(struc
+ 	iwl_disable_interrupts(trans);
+ 
+ 	/* Make sure it finished running */
+-	synchronize_irq(trans_pcie->pci_dev->irq);
++	iwl_pcie_synchronize_irqs(trans);
+ 
+ 	mutex_lock(&trans_pcie->mutex);
+ 
+@@ -1252,8 +1266,6 @@ void iwl_trans_pcie_rf_kill(struct iwl_t
+ static void iwl_trans_pcie_d3_suspend(struct iwl_trans *trans, bool test,
+ 				      bool reset)
+ {
+-	struct iwl_trans_pcie *trans_pcie = IWL_TRANS_GET_PCIE_TRANS(trans);
+-
+ 	if (!reset) {
+ 		/* Enable persistence mode to avoid reset */
+ 		iwl_set_bit(trans, CSR_HW_IF_CONFIG_REG,
+@@ -1271,7 +1283,7 @@ static void iwl_trans_pcie_d3_suspend(st
+ 
+ 	iwl_pcie_disable_ict(trans);
+ 
+-	synchronize_irq(trans_pcie->pci_dev->irq);
++	iwl_pcie_synchronize_irqs(trans);
+ 
+ 	iwl_clear_bit(trans, CSR_GP_CNTRL,
+ 		      CSR_GP_CNTRL_REG_FLAG_MAC_ACCESS_REQ);
+@@ -1350,6 +1362,153 @@ static int iwl_trans_pcie_d3_resume(stru
+ 	return 0;
+ }
+ 
++struct iwl_causes_list {
++	u32 cause_num;
++	u32 mask_reg;
++	u8 addr;
++};
++
++static struct iwl_causes_list causes_list[] = {
++	{MSIX_FH_INT_CAUSES_D2S_CH0_NUM,	CSR_MSIX_FH_INT_MASK_AD, 0},
++	{MSIX_FH_INT_CAUSES_D2S_CH1_NUM,	CSR_MSIX_FH_INT_MASK_AD, 0x1},
++	{MSIX_FH_INT_CAUSES_S2D,		CSR_MSIX_FH_INT_MASK_AD, 0x3},
++	{MSIX_FH_INT_CAUSES_FH_ERR,		CSR_MSIX_FH_INT_MASK_AD, 0x5},
++	{MSIX_HW_INT_CAUSES_REG_ALIVE,		CSR_MSIX_HW_INT_MASK_AD, 0x10},
++	{MSIX_HW_INT_CAUSES_REG_WAKEUP,		CSR_MSIX_HW_INT_MASK_AD, 0x11},
++	{MSIX_HW_INT_CAUSES_REG_CT_KILL,	CSR_MSIX_HW_INT_MASK_AD, 0x16},
++	{MSIX_HW_INT_CAUSES_REG_RF_KILL,	CSR_MSIX_HW_INT_MASK_AD, 0x17},
++	{MSIX_HW_INT_CAUSES_REG_PERIODIC,	CSR_MSIX_HW_INT_MASK_AD, 0x18},
++	{MSIX_HW_INT_CAUSES_REG_SW_ERR,		CSR_MSIX_HW_INT_MASK_AD, 0x29},
++	{MSIX_HW_INT_CAUSES_REG_SCD,		CSR_MSIX_HW_INT_MASK_AD, 0x2A},
++	{MSIX_HW_INT_CAUSES_REG_FH_TX,		CSR_MSIX_HW_INT_MASK_AD, 0x2B},
++	{MSIX_HW_INT_CAUSES_REG_HW_ERR,		CSR_MSIX_HW_INT_MASK_AD, 0x2D},
++	{MSIX_HW_INT_CAUSES_REG_HAP,		CSR_MSIX_HW_INT_MASK_AD, 0x2E},
++};
++
++static void iwl_pcie_init_msix(struct iwl_trans_pcie *trans_pcie)
++{
++	u32 val, max_rx_vector, i;
++	struct iwl_trans *trans = trans_pcie->trans;
++
++	max_rx_vector = trans_pcie->allocated_vector - 1;
++
++	if (!trans_pcie->msix_enabled)
++		return;
++
++	iwl_write_prph(trans, UREG_CHICK, UREG_CHICK_MSIX_ENABLE);
++
++	/*
++	 * Each cause from the list above and the RX causes is represented as
++	 * a byte in the IVAR table. We access the first (N - 1) bytes and map
++	 * them to the (N - 1) vectors so these vectors will be used as rx
++	 * vectors. Then access all non rx causes and map them to the
++	 * default queue (N'th queue).
++	 */
++	for (i = 0; i < max_rx_vector; i++) {
++		iwl_write8(trans, CSR_MSIX_RX_IVAR(i), MSIX_FH_INT_CAUSES_Q(i));
++		iwl_clear_bit(trans, CSR_MSIX_FH_INT_MASK_AD,
++			      BIT(MSIX_FH_INT_CAUSES_Q(i)));
++	}
++
++	for (i = 0; i < ARRAY_SIZE(causes_list); i++) {
++		val = trans_pcie->default_irq_num |
++			MSIX_NON_AUTO_CLEAR_CAUSE;
++		iwl_write8(trans, CSR_MSIX_IVAR(causes_list[i].addr), val);
++		iwl_clear_bit(trans, causes_list[i].mask_reg,
++			      causes_list[i].cause_num);
++	}
++	trans_pcie->fh_init_mask =
++		~iwl_read32(trans, CSR_MSIX_FH_INT_MASK_AD);
++	trans_pcie->fh_mask = trans_pcie->fh_init_mask;
++	trans_pcie->hw_init_mask =
++		~iwl_read32(trans, CSR_MSIX_HW_INT_MASK_AD);
++	trans_pcie->hw_mask = trans_pcie->hw_init_mask;
++}
++
++static void iwl_pcie_set_interrupt_capa(struct pci_dev *pdev,
++					struct iwl_trans *trans)
++{
++	struct iwl_trans_pcie *trans_pcie = IWL_TRANS_GET_PCIE_TRANS(trans);
++	u16 pci_cmd;
++	int max_vector;
++	int ret, i;
++
++	if (trans->cfg->mq_rx_supported) {
++		max_vector = min_t(u32, (num_possible_cpus() + 1),
++				   IWL_MAX_RX_HW_QUEUES);
++		for (i = 0; i < max_vector; i++)
++			trans_pcie->msix_entries[i].entry = i;
++
++		ret = pci_enable_msix_range(pdev, trans_pcie->msix_entries,
++					    MSIX_MIN_INTERRUPT_VECTORS,
++					    max_vector);
++		if (ret > 1) {
++			IWL_DEBUG_INFO(trans,
++				       "Enable MSI-X allocate %d interrupt vector\n",
++				       ret);
++			trans_pcie->allocated_vector = ret;
++			trans_pcie->default_irq_num =
++				trans_pcie->allocated_vector - 1;
++			trans_pcie->trans->num_rx_queues =
++				trans_pcie->allocated_vector - 1;
++			trans_pcie->msix_enabled = true;
++
++			return;
++		}
++		IWL_DEBUG_INFO(trans,
++			       "ret = %d %s move to msi mode\n", ret,
++			       (ret == 1) ?
++			       "can't allocate more than 1 interrupt vector" :
++			       "failed to enable msi-x mode");
++		pci_disable_msix(pdev);
++	}
++
++	ret = pci_enable_msi(pdev);
++	if (ret) {
++		dev_err(&pdev->dev, "pci_enable_msi failed(0X%x)\n", ret);
++		/* enable rfkill interrupt: hw bug w/a */
++		pci_read_config_word(pdev, PCI_COMMAND, &pci_cmd);
++		if (pci_cmd & PCI_COMMAND_INTX_DISABLE) {
++			pci_cmd &= ~PCI_COMMAND_INTX_DISABLE;
++			pci_write_config_word(pdev, PCI_COMMAND, pci_cmd);
++		}
++	}
++}
++
++static int iwl_pcie_init_msix_handler(struct pci_dev *pdev,
++				      struct iwl_trans_pcie *trans_pcie)
++{
++	int i, last_vector;
++
++	last_vector = trans_pcie->trans->num_rx_queues;
++
++	for (i = 0; i < trans_pcie->allocated_vector; i++) {
++		int ret;
++
++		ret = request_threaded_irq(trans_pcie->msix_entries[i].vector,
++					   iwl_pcie_msix_isr,
++					   (i == last_vector) ?
++					   iwl_pcie_irq_msix_handler :
++					   iwl_pcie_irq_rx_msix_handler,
++					   IRQF_SHARED,
++					   DRV_NAME,
++					   &trans_pcie->msix_entries[i]);
++		if (ret) {
++			int j;
++
++			IWL_ERR(trans_pcie->trans,
++				"Error allocating IRQ %d\n", i);
++			for (j = 0; j < i; j++)
++				free_irq(trans_pcie->msix_entries[i].vector,
++					 &trans_pcie->msix_entries[i]);
++			pci_disable_msix(pdev);
++			return ret;
++		}
++	}
++
++	return 0;
++}
++
+ static int _iwl_trans_pcie_start_hw(struct iwl_trans *trans, bool low_power)
+ {
+ 	struct iwl_trans_pcie *trans_pcie = IWL_TRANS_GET_PCIE_TRANS(trans);
+@@ -1371,6 +1530,7 @@ static int _iwl_trans_pcie_start_hw(stru
+ 
+ 	iwl_pcie_apm_init(trans);
+ 
++	iwl_pcie_init_msix(trans_pcie);
+ 	/* From now on, the op_mode will be kept updated about RF kill state */
+ 	iwl_enable_rfkill_int(trans);
+ 
+@@ -1425,7 +1585,7 @@ static void iwl_trans_pcie_op_mode_leave
+ 
+ 	mutex_unlock(&trans_pcie->mutex);
+ 
+-	synchronize_irq(trans_pcie->pci_dev->irq);
++	iwl_pcie_synchronize_irqs(trans);
+ }
+ 
+ static void iwl_trans_pcie_write8(struct iwl_trans *trans, u32 ofs, u8 val)
+@@ -1506,15 +1666,25 @@ void iwl_trans_pcie_free(struct iwl_tran
+ 	/* TODO: check if this is really needed */
+ 	pm_runtime_disable(trans->dev);
+ 
+-	synchronize_irq(trans_pcie->pci_dev->irq);
++	iwl_pcie_synchronize_irqs(trans);
+ 
+ 	iwl_pcie_tx_free(trans);
+ 	iwl_pcie_rx_free(trans);
+ 
+-	free_irq(trans_pcie->pci_dev->irq, trans);
+-	iwl_pcie_free_ict(trans);
++	if (trans_pcie->msix_enabled) {
++		for (i = 0; i < trans_pcie->allocated_vector; i++)
++			free_irq(trans_pcie->msix_entries[i].vector,
++				 &trans_pcie->msix_entries[i]);
++
++		pci_disable_msix(trans_pcie->pci_dev);
++		trans_pcie->msix_enabled = false;
++	} else {
++		free_irq(trans_pcie->pci_dev->irq, trans);
+ 
+-	pci_disable_msi(trans_pcie->pci_dev);
++		iwl_pcie_free_ict(trans);
++
++		pci_disable_msi(trans_pcie->pci_dev);
++	}
+ 	iounmap(trans_pcie->hw_base);
+ 	pci_release_regions(trans_pcie->pci_dev);
+ 	pci_disable_device(trans_pcie->pci_dev);
+@@ -2615,7 +2785,6 @@ struct iwl_trans *iwl_trans_pcie_alloc(s
+ {
+ 	struct iwl_trans_pcie *trans_pcie;
+ 	struct iwl_trans *trans;
+-	u16 pci_cmd;
+ 	int ret, addr_size;
+ 
+ 	trans = iwl_trans_alloc(sizeof(struct iwl_trans_pcie),
+@@ -2698,17 +2867,6 @@ struct iwl_trans *iwl_trans_pcie_alloc(s
+ 	trans_pcie->pci_dev = pdev;
+ 	iwl_disable_interrupts(trans);
+ 
+-	ret = pci_enable_msi(pdev);
+-	if (ret) {
+-		dev_err(&pdev->dev, "pci_enable_msi failed(0X%x)\n", ret);
+-		/* enable rfkill interrupt: hw bug w/a */
+-		pci_read_config_word(pdev, PCI_COMMAND, &pci_cmd);
+-		if (pci_cmd & PCI_COMMAND_INTX_DISABLE) {
+-			pci_cmd &= ~PCI_COMMAND_INTX_DISABLE;
+-			pci_write_config_word(pdev, PCI_COMMAND, pci_cmd);
+-		}
+-	}
+-
+ 	trans->hw_rev = iwl_read32(trans, CSR_HW_REV);
+ 	/*
+ 	 * In the 8000 HW family the format of the 4 bytes of CSR_HW_REV have
+@@ -2760,6 +2918,7 @@ struct iwl_trans *iwl_trans_pcie_alloc(s
+ 		}
+ 	}
+ 
++	iwl_pcie_set_interrupt_capa(pdev, trans);
+ 	trans->hw_id = (pdev->device << 16) + pdev->subsystem_device;
+ 	snprintf(trans->hw_id_str, sizeof(trans->hw_id_str),
+ 		 "PCI ID: 0x%04X:0x%04X", pdev->device, pdev->subsystem_device);
+@@ -2769,19 +2928,23 @@ struct iwl_trans *iwl_trans_pcie_alloc(s
+ 
+ 	init_waitqueue_head(&trans_pcie->d0i3_waitq);
+ 
+-	ret = iwl_pcie_alloc_ict(trans);
+-	if (ret)
+-		goto out_pci_disable_msi;
+-
+-	ret = request_threaded_irq(pdev->irq, iwl_pcie_isr,
+-				   iwl_pcie_irq_handler,
+-				   IRQF_SHARED, DRV_NAME, trans);
+-	if (ret) {
+-		IWL_ERR(trans, "Error allocating IRQ %d\n", pdev->irq);
+-		goto out_free_ict;
+-	}
++	if (trans_pcie->msix_enabled) {
++		if (iwl_pcie_init_msix_handler(pdev, trans_pcie))
++			goto out_pci_release_regions;
++	 } else {
++		ret = iwl_pcie_alloc_ict(trans);
++		if (ret)
++			goto out_pci_disable_msi;
+ 
+-	trans_pcie->inta_mask = CSR_INI_SET_MASK;
++		ret = request_threaded_irq(pdev->irq, iwl_pcie_isr,
++					   iwl_pcie_irq_handler,
++					   IRQF_SHARED, DRV_NAME, trans);
++		if (ret) {
++			IWL_ERR(trans, "Error allocating IRQ %d\n", pdev->irq);
++			goto out_free_ict;
++		}
++		trans_pcie->inta_mask = CSR_INI_SET_MASK;
++	 }
+ 
+ #ifdef CONFIG_IWLWIFI_PCIE_RTPM
+ 	trans->runtime_pm_mode = IWL_PLAT_PM_MODE_D0I3;

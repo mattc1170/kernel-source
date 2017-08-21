@@ -1,0 +1,131 @@
+From: Wang Xiaoguang <wangxg.fnst@cn.fujitsu.com>
+Date: Mon, 11 Jul 2016 11:05:29 +0800
+Patch-mainline: 4.8
+Git-commit: dda3245eca18c73413a854a834c41fc770feb0dd
+References: bsc#1012452
+Subject: [PATCH] btrfs: expand cow_file_range() to support in-band
+ dedup and subpage-blocksize
+
+Extract cow_file_range() new parameters for both in-band dedupe and
+subpage sector size patchset.
+
+This should make conflict of both patchset to minimal, and reduce the
+effort needed to rebase them.
+
+Cc: Chandan Rajendra <chandan@linux.vnet.ibm.com>
+Cc: David Sterba <dsterba@suse.cz>
+Signed-off-by: Wang Xiaoguang <wangxg.fnst@cn.fujitsu.com>
+Signed-off-by: Qu Wenruo <quwenruo@cn.fujitsu.com>
+Signed-off-by: David Sterba <dsterba@suse.com>
+---
+ fs/btrfs/dedupe.h |   24 ++++++++++++++++++++++++
+ fs/btrfs/inode.c  |   28 +++++++++++++++++-----------
+ 2 files changed, 41 insertions(+), 11 deletions(-)
+ create mode 100644 fs/btrfs/dedupe.h
+
+--- /dev/null
++++ b/fs/btrfs/dedupe.h
+@@ -0,0 +1,24 @@
++/*
++ * Copyright (C) 2016 Fujitsu.  All rights reserved.
++ *
++ * This program is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU General Public
++ * License v2 as published by the Free Software Foundation.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ * General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public
++ * License along with this program; if not, write to the
++ * Free Software Foundation, Inc., 59 Temple Place - Suite 330,
++ * Boston, MA 021110-1307, USA.
++ */
++
++#ifndef __BTRFS_DEDUPE__
++#define __BTRFS_DEDUPE__
++
++/* later in-band dedupe will expand this struct */
++struct btrfs_dedupe_hash;
++#endif
+--- a/fs/btrfs/inode.c
++++ b/fs/btrfs/inode.c
+@@ -60,6 +60,7 @@
+ #include "hash.h"
+ #include "props.h"
+ #include "qgroup.h"
++#include "dedupe.h"
+ 
+ struct btrfs_iget_args {
+ 	struct btrfs_key *location;
+@@ -105,8 +106,9 @@ static int btrfs_truncate(struct inode *
+ static int btrfs_finish_ordered_io(struct btrfs_ordered_extent *ordered_extent);
+ static noinline int cow_file_range(struct inode *inode,
+ 				   struct page *locked_page,
+-				   u64 start, u64 end, int *page_started,
+-				   unsigned long *nr_written, int unlock);
++				   u64 start, u64 end, u64 delalloc_end,
++				   int *page_started, unsigned long *nr_written,
++				   int unlock, struct btrfs_dedupe_hash *hash);
+ static struct extent_map *create_pinned_em(struct inode *inode, u64 start,
+ 					   u64 len, u64 orig_start,
+ 					   u64 block_start, u64 block_len,
+@@ -710,7 +712,10 @@ retry:
+ 					     async_extent->start,
+ 					     async_extent->start +
+ 					     async_extent->ram_size - 1,
+-					     &page_started, &nr_written, 0);
++					     async_extent->start +
++					     async_extent->ram_size - 1,
++					     &page_started, &nr_written, 0,
++					     NULL);
+ 
+ 			/* JDM XXX */
+ 
+@@ -923,9 +928,9 @@ static u64 get_extent_allocation_hint(st
+  */
+ static noinline int cow_file_range(struct inode *inode,
+ 				   struct page *locked_page,
+-				   u64 start, u64 end, int *page_started,
+-				   unsigned long *nr_written,
+-				   int unlock)
++				   u64 start, u64 end, u64 delalloc_end,
++				   int *page_started, unsigned long *nr_written,
++				   int unlock, struct btrfs_dedupe_hash *hash)
+ {
+ 	struct btrfs_root *root = BTRFS_I(inode)->root;
+ 	u64 alloc_hint = 0;
+@@ -1416,7 +1421,8 @@ out_check:
+ 		if (cow_start != (u64)-1) {
+ 			ret = cow_file_range(inode, locked_page,
+ 					     cow_start, found_key.offset - 1,
+-					     page_started, nr_written, 1);
++					     end, page_started, nr_written, 1,
++					     NULL);
+ 			if (ret) {
+ 				if (!nolock && nocow)
+ 					btrfs_end_write_no_snapshoting(root);
+@@ -1499,8 +1505,8 @@ out_check:
+ 	}
+ 
+ 	if (cow_start != (u64)-1) {
+-		ret = cow_file_range(inode, locked_page, cow_start, end,
+-				     page_started, nr_written, 1);
++		ret = cow_file_range(inode, locked_page, cow_start, end, end,
++				     page_started, nr_written, 1, NULL);
+ 		if (ret)
+ 			goto error;
+ 	}
+@@ -1559,8 +1565,8 @@ static int run_delalloc_range(struct ino
+ 		ret = run_delalloc_nocow(inode, locked_page, start, end,
+ 					 page_started, 0, nr_written);
+ 	} else if (!inode_need_compress(inode)) {
+-		ret = cow_file_range(inode, locked_page, start, end,
+-				      page_started, nr_written, 1);
++		ret = cow_file_range(inode, locked_page, start, end, end,
++				      page_started, nr_written, 1, NULL);
+ 	} else {
+ 		set_bit(BTRFS_INODE_HAS_ASYNC_EXTENT,
+ 			&BTRFS_I(inode)->runtime_flags);

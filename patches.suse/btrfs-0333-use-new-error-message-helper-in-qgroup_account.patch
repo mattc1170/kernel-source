@@ -1,0 +1,26 @@
+From: David Sterba <dsterba@suse.com>
+Date: Fri, 17 Jun 2016 18:15:25 +0200
+Patch-mainline: 4.7
+Git-commit: f7af3934c2bccba261972261ac8ebcbf92a346b2
+References: bsc#1012452
+Subject: [PATCH] btrfs: use new error message helper in
+ qgroup_account_snapshot
+
+We've renamed btrfs_std_error, this one is left from last merge.
+
+Signed-off-by: David Sterba <dsterba@suse.com>
+---
+ fs/btrfs/transaction.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+--- a/fs/btrfs/transaction.c
++++ b/fs/btrfs/transaction.c
+@@ -1380,7 +1380,7 @@ static int qgroup_account_snapshot(struc
+ 	switch_commit_roots(trans->transaction, fs_info);
+ 	ret = btrfs_write_and_wait_transaction(trans, src);
+ 	if (ret)
+-		btrfs_std_error(fs_info, ret,
++		btrfs_handle_fs_error(fs_info, ret,
+ 			"Error while writing out transaction for qgroup");
+ 
+ out:

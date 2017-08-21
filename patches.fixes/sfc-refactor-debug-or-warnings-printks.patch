@@ -1,0 +1,78 @@
+From: Jon Cooper <jcooper@solarflare.com>
+Date: Fri, 27 Jan 2017 15:02:39 +0000
+Subject: sfc: refactor debug-or-warnings printks
+Patch-mainline: Queued in subsystem maintainer repository
+Git-repo: git://git.kernel.org/pub/scm/linux/kernel/git/davem/net-next.git
+Git-commit: 34e7aefb2a15f3180635e5730f01f5ce4a0734ec
+References: bsc#1019168
+
+Rationalise several debug-or-warnings printks using netif_cond_dbg
+ to make output more consistent.
+
+Signed-off-by: Edward Cree <ecree@solarflare.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+Acked-by: Benjamin Poirier <bpoirier@suse.com>
+---
+ drivers/net/ethernet/sfc/ef10.c |    8 ++++----
+ drivers/net/ethernet/sfc/mcdi.c |   19 ++++++++-----------
+ 2 files changed, 12 insertions(+), 15 deletions(-)
+
+--- a/drivers/net/ethernet/sfc/ef10.c
++++ b/drivers/net/ethernet/sfc/ef10.c
+@@ -4074,10 +4074,10 @@ static int efx_ef10_filter_insert_def(st
+ 
+ 	rc = efx_ef10_filter_insert(efx, &spec, true);
+ 	if (rc < 0) {
+-		netif_printk(efx, drv, rc == -EPERM ? KERN_DEBUG : KERN_WARNING,
+-			     efx->net_dev,
+-			     "%scast mismatch filter insert failed rc=%d\n",
+-			     multicast ? "Multi" : "Uni", rc);
++		netif_cond_dbg(efx, drv, efx->net_dev,
++			       rc == -EPERM, warn,
++			       "%scast mismatch filter insert failed rc=%d\n",
++			       multicast ? "Multi" : "Uni", rc);
+ 	} else if (multicast) {
+ 		table->mcdef_id = efx_ef10_filter_get_unsafe_id(efx, rc);
+ 		if (!nic_data->workaround_26807) {
+--- a/drivers/net/ethernet/sfc/mcdi.c
++++ b/drivers/net/ethernet/sfc/mcdi.c
+@@ -835,11 +835,9 @@ static int _efx_mcdi_rpc(struct efx_nic
+ 						  outbuf, outlen, outlen_actual,
+ 						  quiet, NULL, raw_rc);
+ 		} else {
+-			netif_printk(efx, hw,
+-				     rc == -EPERM ? KERN_DEBUG : KERN_ERR,
+-				     efx->net_dev,
+-				     "MC command 0x%x failed after proxy auth rc=%d\n",
+-				     cmd, rc);
++			netif_cond_dbg(efx, hw, efx->net_dev, rc == -EPERM, err,
++				       "MC command 0x%x failed after proxy auth rc=%d\n",
++				       cmd, rc);
+ 
+ 			if (rc == -EINTR || rc == -EIO)
+ 				efx_schedule_reset(efx, RESET_TYPE_MC_FAILURE);
+@@ -1082,10 +1080,9 @@ void efx_mcdi_display_error(struct efx_n
+ 		code = MCDI_DWORD(outbuf, ERR_CODE);
+ 	if (outlen >= MC_CMD_ERR_ARG_OFST + 4)
+ 		err_arg = MCDI_DWORD(outbuf, ERR_ARG);
+-	netif_printk(efx, hw, rc == -EPERM ? KERN_DEBUG : KERN_ERR,
+-		     efx->net_dev,
+-		     "MC command 0x%x inlen %zu failed rc=%d (raw=%d) arg=%d\n",
+-		     cmd, inlen, rc, code, err_arg);
++	netif_cond_dbg(efx, hw, efx->net_dev, rc == -EPERM, err,
++		       "MC command 0x%x inlen %zu failed rc=%d (raw=%d) arg=%d\n",
++		       cmd, inlen, rc, code, err_arg);
+ }
+ 
+ /* Switch to polled MCDI completions.  This can be called in various
+@@ -2054,8 +2051,8 @@ fail:
+ 	/* Older firmware lacks GET_WORKAROUNDS and this isn't especially
+ 	 * terrifying.  The call site will have to deal with it though.
+ 	 */
+-	netif_printk(efx, hw, rc == -ENOSYS ? KERN_DEBUG : KERN_ERR,
+-		     efx->net_dev, "%s: failed rc=%d\n", __func__, rc);
++	netif_cond_dbg(efx, hw, efx->net_dev, rc == -ENOSYS, err,
++		       "%s: failed rc=%d\n", __func__, rc);
+ 	return rc;
+ }
+ 

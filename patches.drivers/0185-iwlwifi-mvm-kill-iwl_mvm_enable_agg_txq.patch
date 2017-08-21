@@ -1,0 +1,79 @@
+From eea76c364261aa4338f530c09a38afa69af41797 Mon Sep 17 00:00:00 2001
+From: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Date: Sun, 21 Feb 2016 16:29:17 +0200
+Subject: [PATCH] iwlwifi: mvm: kill iwl_mvm_enable_agg_txq
+Git-commit: eea76c364261aa4338f530c09a38afa69af41797
+Patch-mainline: 4.6-rc1
+References: FATE#321353, FATE#323335
+
+iwl_mvm_enable_agg_txq has only one user. Kill it and
+adapt the call site.
+
+Signed-off-by: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/iwlwifi/mvm/mvm.h |   16 ----------------
+ drivers/net/wireless/iwlwifi/mvm/sta.c |   16 +++++++++++-----
+ 2 files changed, 11 insertions(+), 21 deletions(-)
+
+--- a/drivers/net/wireless/iwlwifi/mvm/mvm.h
++++ b/drivers/net/wireless/iwlwifi/mvm/mvm.h
+@@ -1526,22 +1526,6 @@ void iwl_mvm_enable_ac_txq(struct iwl_mv
+ 	iwl_mvm_enable_txq(mvm, queue, mac80211_queue, ssn, &cfg, wdg_timeout);
+ }
+ 
+-static inline void iwl_mvm_enable_agg_txq(struct iwl_mvm *mvm, int queue,
+-					  int mac80211_queue, int fifo,
+-					  int sta_id, int tid, int frame_limit,
+-					  u16 ssn, unsigned int wdg_timeout)
+-{
+-	struct iwl_trans_txq_scd_cfg cfg = {
+-		.fifo = fifo,
+-		.sta_id = sta_id,
+-		.tid = tid,
+-		.frame_limit = frame_limit,
+-		.aggregate = true,
+-	};
+-
+-	iwl_mvm_enable_txq(mvm, queue, mac80211_queue, ssn, &cfg, wdg_timeout);
+-}
+-
+ /* Thermal management and CT-kill */
+ void iwl_mvm_tt_tx_backoff(struct iwl_mvm *mvm, u32 backoff);
+ void iwl_mvm_tt_temp_changed(struct iwl_mvm *mvm, u32 temp);
+--- a/drivers/net/wireless/iwlwifi/mvm/sta.c
++++ b/drivers/net/wireless/iwlwifi/mvm/sta.c
+@@ -1037,9 +1037,16 @@ int iwl_mvm_sta_tx_agg_oper(struct iwl_m
+ 	struct iwl_mvm_tid_data *tid_data = &mvmsta->tid_data[tid];
+ 	unsigned int wdg_timeout =
+ 		iwl_mvm_get_wd_timeout(mvm, vif, sta->tdls, false);
+-	int queue, fifo, ret;
++	int queue, ret;
+ 	u16 ssn;
+ 
++	struct iwl_trans_txq_scd_cfg cfg = {
++		.sta_id = mvmsta->sta_id,
++		.tid = tid,
++		.frame_limit = buf_size,
++		.aggregate = true,
++	};
++
+ 	BUILD_BUG_ON((sizeof(mvmsta->agg_tids) * BITS_PER_BYTE)
+ 		     != IWL_MAX_TID_COUNT);
+ 
+@@ -1053,11 +1060,10 @@ int iwl_mvm_sta_tx_agg_oper(struct iwl_m
+ 	tid_data->ssn = 0xffff;
+ 	spin_unlock_bh(&mvmsta->lock);
+ 
+-	fifo = iwl_mvm_ac_to_tx_fifo[tid_to_mac80211_ac[tid]];
++	cfg.fifo = iwl_mvm_ac_to_tx_fifo[tid_to_mac80211_ac[tid]];
+ 
+-	iwl_mvm_enable_agg_txq(mvm, queue,
+-			       vif->hw_queue[tid_to_mac80211_ac[tid]], fifo,
+-			       mvmsta->sta_id, tid, buf_size, ssn, wdg_timeout);
++	iwl_mvm_enable_txq(mvm, queue, vif->hw_queue[tid_to_mac80211_ac[tid]],
++			   ssn, &cfg, wdg_timeout);
+ 
+ 	ret = iwl_mvm_sta_tx_agg(mvm, sta, tid, queue, true);
+ 	if (ret)

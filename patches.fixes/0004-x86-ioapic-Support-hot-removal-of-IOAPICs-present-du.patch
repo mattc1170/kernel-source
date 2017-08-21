@@ -1,0 +1,79 @@
+From bd12f52322dbb788217d1f7bdc6085e11ac55df9 Mon Sep 17 00:00:00 2001
+From: Rui Wang <rui.y.wang@intel.com>
+Date: Wed, 17 Aug 2016 16:00:34 +0800
+Git-commit: 584c5c422f6c749ced1e0bc3c6837f650f64e1e1
+Patch-mainline: v4.9
+References: bsc#1027153, bsc#1027616
+Subject: [PATCH 4/9] x86/ioapic: Support hot-removal of IOAPICs present during
+ boot
+
+IOAPICs present during system boot aren't added to ioapic_list,
+thus are unable to be hot-removed. Fix it by calling
+acpi_ioapic_add() during root bus enumeration.
+
+Signed-off-by: Rui Wang <rui.y.wang@intel.com>
+Acked-by: Bjorn Helgaas <bhelgaas@google.com>
+Cc: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: Peter Zijlstra <peterz@infradead.org>
+Cc: Thomas Gleixner <tglx@linutronix.de>
+Cc: helgaas@kernel.org
+Cc: linux-acpi@vger.kernel.org
+Cc: linux-pci@vger.kernel.org
+Cc: rjw@rjwysocki.net
+Cc: tony.luck@intel.com
+Link: http://lkml.kernel.org/r/1471420837-31003-3-git-send-email-rui.y.wang@intel.com
+Signed-off-by: Ingo Molnar <mingo@kernel.org>
+Acked-by: Joerg Roedel <jroedel@suse.de>
+---
+ drivers/acpi/pci_root.c | 10 ++++++++++
+ drivers/pci/setup-bus.c |  5 ++++-
+ 2 files changed, 14 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/acpi/pci_root.c b/drivers/acpi/pci_root.c
+index b07eda1e7b05..bf601d4df8cf 100644
+--- a/drivers/acpi/pci_root.c
++++ b/drivers/acpi/pci_root.c
+@@ -614,6 +614,16 @@ static int acpi_pci_root_add(struct acpi_device *device,
+ 	if (hotadd) {
+ 		pcibios_resource_survey_bus(root->bus);
+ 		pci_assign_unassigned_root_bus_resources(root->bus);
++		/*
++		 * This is only called for the hotadd case. For the boot-time
++		 * case, we need to wait until after PCI initialization in
++		 * order to deal with IOAPICs mapped in on a PCI BAR.
++		 *
++		 * This is currently x86-specific, because acpi_ioapic_add()
++		 * is an empty function without CONFIG_ACPI_HOTPLUG_IOAPIC.
++		 * And CONFIG_ACPI_HOTPLUG_IOAPIC depends on CONFIG_X86_IO_APIC
++		 * (see drivers/acpi/Kconfig).
++		 */
+ 		acpi_ioapic_add(root->device->handle);
+ 	}
+ 
+diff --git a/drivers/pci/setup-bus.c b/drivers/pci/setup-bus.c
+index 1723ac1b30e1..16792a2df4b6 100644
+--- a/drivers/pci/setup-bus.c
++++ b/drivers/pci/setup-bus.c
+@@ -26,6 +26,7 @@
+ #include <linux/cache.h>
+ #include <linux/slab.h>
+ #include <asm-generic/pci-bridge.h>
++#include <linux/acpi.h>
+ #include "pci.h"
+ 
+ unsigned int pci_flags;
+@@ -1780,8 +1781,10 @@ void __init pci_assign_unassigned_resources(void)
+ {
+ 	struct pci_bus *root_bus;
+ 
+-	list_for_each_entry(root_bus, &pci_root_buses, node)
++	list_for_each_entry(root_bus, &pci_root_buses, node) {
+ 		pci_assign_unassigned_root_bus_resources(root_bus);
++		acpi_ioapic_add(ACPI_HANDLE(root_bus->bridge));
++	}
+ }
+ 
+ void pci_assign_unassigned_bridge_resources(struct pci_dev *bridge)
+-- 
+2.11.0.258.ge05806d
+

@@ -1,0 +1,47 @@
+From c7bac00b4056ab951c377aff99bb91b81890c727 Mon Sep 17 00:00:00 2001
+From: Nathan Fontenot <nfont@linux.vnet.ibm.com>
+Date: Wed, 3 May 2017 14:04:44 -0400
+Subject: [PATCH] ibmvnic: Delete napi's when releasing driver resources
+
+References: fate#322021, bsc#1038297
+Patch-mainline: v4.12-rc1
+Git-commit: c7bac00b4056ab951c377aff99bb91b81890c727
+
+The napi structs allocated at drivier initializatio need to be
+free'ed when releasing the drivers resources.
+
+Signed-off-by: Nathan Fontenot <nfont@linux.vnet.ibm.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+Acked-by: Michal Suchanek <msuchanek@suse.de>
+---
+ drivers/net/ethernet/ibm/ibmvnic.c | 9 +++++++++
+ 1 file changed, 9 insertions(+)
+
+diff --git a/drivers/net/ethernet/ibm/ibmvnic.c b/drivers/net/ethernet/ibm/ibmvnic.c
+index a7c7a94..d52d98c 100644
+--- a/drivers/net/ethernet/ibm/ibmvnic.c
++++ b/drivers/net/ethernet/ibm/ibmvnic.c
+@@ -552,11 +552,20 @@ static int ibmvnic_login(struct net_device *netdev)
+ 
+ static void release_resources(struct ibmvnic_adapter *adapter)
+ {
++	int i;
++
+ 	release_tx_pools(adapter);
+ 	release_rx_pools(adapter);
+ 
+ 	release_stats_token(adapter);
+ 	release_error_buffers(adapter);
++
++	if (adapter->napi) {
++		for (i = 0; i < adapter->req_rx_queues; i++) {
++			if (&adapter->napi[i])
++				netif_napi_del(&adapter->napi[i]);
++		}
++	}
+ }
+ 
+ static int set_link_state(struct ibmvnic_adapter *adapter, u8 link_state)
+-- 
+2.10.2
+

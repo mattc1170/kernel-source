@@ -1,0 +1,51 @@
+From 5d5e84eb7276d30a21257515a83b34d1ef77f99b Mon Sep 17 00:00:00 2001
+From: Nathan Fontenot <nfont@linux.vnet.ibm.com>
+Date: Fri, 21 Apr 2017 15:38:58 -0400
+Subject: [PATCH] ibmvnic: Move initialization of the stats token to
+ ibmvnic_open
+
+References: fate#322021, bsc#1031512
+Patch-mainline: v4.12-rc1
+Git-commit: 5d5e84eb7276d30a21257515a83b34d1ef77f99b
+
+We should be initializing the stats token in the same place we
+initialize the other resources for the driver.
+
+Signed-off-by: Nathan Fontenot <nfont@linux.vnet.ibm.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+Acked-by: Michal Suchanek <msuchanek@suse.de>
+---
+ drivers/net/ethernet/ibm/ibmvnic.c | 10 ++++------
+ 1 file changed, 4 insertions(+), 6 deletions(-)
+
+diff --git a/drivers/net/ethernet/ibm/ibmvnic.c b/drivers/net/ethernet/ibm/ibmvnic.c
+index cc34bf9..199cccb 100644
+--- a/drivers/net/ethernet/ibm/ibmvnic.c
++++ b/drivers/net/ethernet/ibm/ibmvnic.c
+@@ -607,6 +607,10 @@ static int ibmvnic_open(struct net_device *netdev)
+ 		return -1;
+ 	}
+ 
++	rc = init_stats_token(adapter);
++	if (rc)
++		return rc;
++
+ 	adapter->map_id = 1;
+ 	adapter->napi = kcalloc(adapter->req_rx_queues,
+ 				sizeof(struct napi_struct), GFP_KERNEL);
+@@ -3241,12 +3245,6 @@ static int ibmvnic_init(struct ibmvnic_adapter *adapter)
+ 		return rc;
+ 	}
+ 
+-	rc = init_stats_token(adapter);
+-	if (rc) {
+-		release_crq_queue(adapter);
+-		return rc;
+-	}
+-
+ 	init_completion(&adapter->init_done);
+ 	ibmvnic_send_crq_init(adapter);
+ 	if (!wait_for_completion_timeout(&adapter->init_done, timeout)) {
+-- 
+2.10.2
+

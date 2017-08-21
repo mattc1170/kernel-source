@@ -1,0 +1,126 @@
+From: Andrew Banman <abanman@sgi.com>
+Date: Wed, 21 Sep 2016 11:09:13 -0500
+Subject: x86/platform/uv/BAU: Clean up and update printks
+Git-commit: efa59ab3e7526650265f0fd9696ef8be8d88ec13
+Patch-mainline: v4.9-rc1
+References: bsc#1035024
+
+Replace all uses of printk with the appropriate pr_*() function.
+
+Signed-off-by: Andrew Banman <abanman@sgi.com>
+Acked-by: Thomas Gleixner <tglx@linutronix.de>
+Acked-by: Mike Travis <travis@sgi.com>
+Acked-by: Dimitri Sivanich <sivanich@sgi.com>
+Acked-by: Thomas Gleixner <tglx@linutronix.de>
+Cc: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: Peter Zijlstra <peterz@infradead.org>
+Cc: akpm@linux-foundation.org
+Cc: rja@sgi.com
+Link: http://lkml.kernel.org/r/1474474161-265604-3-git-send-email-abanman@sgi.com
+Signed-off-by: Ingo Molnar <mingo@kernel.org>
+Acked-by: Joerg Roedel <jroedel@suse.de>
+---
+ arch/x86/platform/uv/tlb_uv.c | 26 +++++++++++++-------------
+ 1 file changed, 13 insertions(+), 13 deletions(-)
+
+--- a/arch/x86/platform/uv/tlb_uv.c
++++ b/arch/x86/platform/uv/tlb_uv.c
+@@ -1497,16 +1497,16 @@ static ssize_t ptc_proc_write(struct fil
+ 	}
+ 
+ 	if (kstrtol(optstr, 10, &input_arg) < 0) {
+-		printk(KERN_DEBUG "%s is invalid\n", optstr);
++		pr_debug("%s is invalid\n", optstr);
+ 		return -EINVAL;
+ 	}
+ 
+ 	if (input_arg == 0) {
+ 		elements = ARRAY_SIZE(stat_description);
+-		printk(KERN_DEBUG "# cpu:      cpu number\n");
+-		printk(KERN_DEBUG "Sender statistics:\n");
++		pr_debug("# cpu:      cpu number\n");
++		pr_debug("Sender statistics:\n");
+ 		for (i = 0; i < elements; i++)
+-			printk(KERN_DEBUG "%s\n", stat_description[i]);
++			pr_debug("%s\n", stat_description[i]);
+ 	} else if (input_arg == -1) {
+ 		for_each_present_cpu(cpu) {
+ 			stat = &per_cpu(ptcstats, cpu);
+@@ -1554,7 +1554,7 @@ static int parse_tunables_write(struct b
+ 			break;
+ 	}
+ 	if (cnt != e) {
+-		printk(KERN_INFO "bau tunable error: should be %d values\n", e);
++		pr_info("bau tunable error: should be %d values\n", e);
+ 		return -EINVAL;
+ 	}
+ 
+@@ -1571,7 +1571,7 @@ static int parse_tunables_write(struct b
+ 				continue;
+ 			}
+ 			if (val < 1 || val > bcp->cpus_in_uvhub) {
+-				printk(KERN_DEBUG
++				pr_debug(
+ 				"Error: BAU max concurrent %d is invalid\n",
+ 				val);
+ 				return -EINVAL;
+@@ -1676,21 +1676,21 @@ static int __init uv_ptc_init(void)
+ 	proc_uv_ptc = proc_create(UV_PTC_BASENAME, 0444, NULL,
+ 				  &proc_uv_ptc_operations);
+ 	if (!proc_uv_ptc) {
+-		printk(KERN_ERR "unable to create %s proc entry\n",
++		pr_err("unable to create %s proc entry\n",
+ 		       UV_PTC_BASENAME);
+ 		return -EINVAL;
+ 	}
+ 
+ 	tunables_dir = debugfs_create_dir(UV_BAU_TUNABLES_DIR, NULL);
+ 	if (!tunables_dir) {
+-		printk(KERN_ERR "unable to create debugfs directory %s\n",
++		pr_err("unable to create debugfs directory %s\n",
+ 		       UV_BAU_TUNABLES_DIR);
+ 		return -EINVAL;
+ 	}
+ 	tunables_file = debugfs_create_file(UV_BAU_TUNABLES_FILE, 0600,
+ 					tunables_dir, NULL, &tunables_fops);
+ 	if (!tunables_file) {
+-		printk(KERN_ERR "unable to create debugfs file %s\n",
++		pr_err("unable to create debugfs file %s\n",
+ 		       UV_BAU_TUNABLES_FILE);
+ 		return -EINVAL;
+ 	}
+@@ -1944,7 +1944,7 @@ static int __init get_cpu_topology(int b
+ 
+ 		pnode = uv_cpu_hub_info(cpu)->pnode;
+ 		if ((pnode - base_pnode) >= UV_DISTRIBUTION_SIZE) {
+-			printk(KERN_EMERG
++			pr_emerg(
+ 				"cpu %d pnode %d-%d beyond %d; BAU disabled\n",
+ 				cpu, pnode, base_pnode, UV_DISTRIBUTION_SIZE);
+ 			return 1;
+@@ -1969,7 +1969,7 @@ static int __init get_cpu_topology(int b
+ 		sdp->cpu_number[sdp->num_cpus] = cpu;
+ 		sdp->num_cpus++;
+ 		if (sdp->num_cpus > MAX_CPUS_PER_SOCKET) {
+-			printk(KERN_EMERG "%d cpus per socket invalid\n",
++			pr_emerg("%d cpus per socket invalid\n",
+ 				sdp->num_cpus);
+ 			return 1;
+ 		}
+@@ -2036,14 +2036,14 @@ static int scan_sock(struct socket_desc
+ 		else if (is_uv3_hub())
+ 			bcp->uvhub_version = 3;
+ 		else {
+-			printk(KERN_EMERG "uvhub version not 1, 2 or 3\n");
++			pr_emerg("uvhub version not 1, 2, or 3\n");
+ 			return 1;
+ 		}
+ 		bcp->uvhub_master = *hmasterp;
+ 		bcp->uvhub_cpu = uv_cpu_blade_processor_id(cpu);
+ 
+ 		if (bcp->uvhub_cpu >= MAX_CPUS_PER_UVHUB) {
+-			printk(KERN_EMERG "%d cpus per uvhub invalid\n",
++			pr_emerg("%d cpus per uvhub invalid\n",
+ 				bcp->uvhub_cpu);
+ 			return 1;
+ 		}

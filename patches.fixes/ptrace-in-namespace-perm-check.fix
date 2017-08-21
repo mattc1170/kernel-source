@@ -2,7 +2,7 @@ From: Jann Horn <jann@thejh.net>
 Subject: [PATCH] ptrace: being capable wrt a process requires mapped uids/gids
 Date: Sat, 26 Dec 2015 03:52:31 +0100
 Message-Id: <1451098351-8917-1-git-send-email-jann@thejh.net>
-References: bsc#959709, CVE02015-8709
+References: bsc#959709, CVE-2015-8709
 Patch-mainline: Not yet, maybe never. Disagreement over correct approach.
 
 ptrace_has_cap() checks whether the current process should be

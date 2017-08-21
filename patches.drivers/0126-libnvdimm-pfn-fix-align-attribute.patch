@@ -1,0 +1,38 @@
+From 0c7da5fcc2cbcdbd22efe543295c021c2375e325 Mon Sep 17 00:00:00 2001
+From: Dan Williams <dan.j.williams@intel.com>
+Date: Sat, 10 Dec 2016 08:12:05 -0800
+Subject: libnvdimm, pfn: fix align attribute
+References: bsc#1023175
+Git-commit: af7d9f0c57941b465043681cb5c3410f7f3f1a41
+Patch-mainline: v4.10-rc1
+
+Fix the format specifier so that the attribute can be parsed correctly.
+Currently it returns decimal 1000 for a 4096-byte alignment.
+
+Cc: <stable@vger.kernel.org>
+Reported-by: Dave Jiang <dave.jiang@intel.com>
+Fixes: 315c562536c4 ("libnvdimm, pfn: add 'align' attribute, default to HPAGE_SIZE")
+Signed-off-by: Dan Williams <dan.j.williams@intel.com>
+
+Signed-off-by: Johannes Thumshirn <jthumshirn@suse.de>
+
+---
+ drivers/nvdimm/pfn_devs.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/nvdimm/pfn_devs.c b/drivers/nvdimm/pfn_devs.c
+index 73eab8a..c6cd5da 100644
+--- a/drivers/nvdimm/pfn_devs.c
++++ b/drivers/nvdimm/pfn_devs.c
+@@ -108,7 +108,7 @@ static ssize_t align_show(struct device *dev,
+ {
+ 	struct nd_pfn *nd_pfn = to_nd_pfn_safe(dev);
+ 
+-	return sprintf(buf, "%lx\n", nd_pfn->align);
++	return sprintf(buf, "%ld\n", nd_pfn->align);
+ }
+ 
+ static ssize_t __align_store(struct nd_pfn *nd_pfn, const char *buf)
+-- 
+1.8.5.6
+

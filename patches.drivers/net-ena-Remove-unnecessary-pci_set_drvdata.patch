@@ -1,0 +1,37 @@
+From: Wei Yongjun <weiyj.lk@gmail.com>
+Date: Mon, 15 Aug 2016 22:50:34 +0000
+Subject: net: ena: Remove unnecessary pci_set_drvdata()
+Patch-mainline: v4.9-rc1
+Git-commit: 557bc7d44d52d52374bc72e9cc3b0beb41026886
+References: bsc#1026509
+
+The driver core clears the driver data to NULL after device_release
+or on probe failure. Thus, it is not needed to manually clear the
+device driver data to NULL.
+
+Signed-off-by: Wei Yongjun <weiyj.lk@gmail.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+Acked-by: Benjamin Poirier <bpoirier@suse.com>
+---
+ drivers/net/ethernet/amazon/ena/ena_netdev.c |    3 ---
+ 1 file changed, 3 deletions(-)
+
+--- a/drivers/net/ethernet/amazon/ena/ena_netdev.c
++++ b/drivers/net/ethernet/amazon/ena/ena_netdev.c
+@@ -3060,7 +3060,6 @@ err_device_destroy:
+ err_free_region:
+ 	ena_release_bars(ena_dev, pdev);
+ err_free_ena_dev:
+-	pci_set_drvdata(pdev, NULL);
+ 	vfree(ena_dev);
+ err_disable_device:
+ 	pci_disable_device(pdev);
+@@ -3156,8 +3155,6 @@ static void ena_remove(struct pci_dev *p
+ 
+ 	ena_release_bars(ena_dev, pdev);
+ 
+-	pci_set_drvdata(pdev, NULL);
+-
+ 	pci_disable_device(pdev);
+ 
+ 	ena_com_destroy_interrupt_moderation(ena_dev);

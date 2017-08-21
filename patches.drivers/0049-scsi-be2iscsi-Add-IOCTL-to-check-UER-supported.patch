@@ -1,0 +1,249 @@
+From: Jitendra Bhivare <jitendra.bhivare@broadcom.com>
+Date: Fri, 19 Aug 2016 15:20:14 +0530
+Subject: scsi: be2iscsi: Add IOCTL to check UER supported
+References: bsc#1038458
+Git-commit: 6694095b5a28c54d9fd114997e483cdc47a2e792
+Patch-Mainline: v4.9-rc1
+
+BE3 and SH cards can recover from transient parity errors treated
+earlier as unrecoverable errors.
+
+Add IOCTL to query FW support for this feature.
+
+Signed-off-by: Jitendra Bhivare <jitendra.bhivare@broadcom.com>
+Reviewed-by: Hannes Reinecke <hare@suse.com>
+Signed-off-by: Martin K. Petersen <martin.petersen@oracle.com>
+Signed-off-by: Hannes Reinecke <hare@suse.de>
+---
+ drivers/scsi/be2iscsi/be_cmds.c | 58 +++++++++++++++++++++++++++++++----------
+ drivers/scsi/be2iscsi/be_cmds.h | 34 ++++++++++++++++++++++++
+ drivers/scsi/be2iscsi/be_main.c |  1 +
+ drivers/scsi/be2iscsi/be_main.h | 13 ++++++---
+ drivers/scsi/be2iscsi/be_mgmt.c |  2 +-
+ 5 files changed, 89 insertions(+), 19 deletions(-)
+
+diff --git a/drivers/scsi/be2iscsi/be_cmds.c b/drivers/scsi/be2iscsi/be_cmds.c
+index 7cb009e..a246abe 100644
+--- a/drivers/scsi/be2iscsi/be_cmds.c
++++ b/drivers/scsi/be2iscsi/be_cmds.c
+@@ -277,11 +277,10 @@ int beiscsi_mccq_compl_wait(struct beiscsi_hba *phba,
+ static int beiscsi_process_mbox_compl(struct be_ctrl_info *ctrl,
+ 				      struct be_mcc_compl *compl)
+ {
+-	u16 compl_status, extd_status;
+ 	struct be_mcc_wrb *wrb = wrb_from_mbox(&ctrl->mbox_mem);
+ 	struct beiscsi_hba *phba = pci_get_drvdata(ctrl->pdev);
+ 	struct be_cmd_req_hdr *hdr = embedded_payload(wrb);
+-	struct be_cmd_resp_hdr *resp_hdr;
++	u16 compl_status, extd_status;
+ 
+ 	/**
+ 	 * To check if valid bit is set, check the entire word as we don't know
+@@ -315,14 +314,7 @@ static int beiscsi_process_mbox_compl(struct be_ctrl_info *ctrl,
+ 	beiscsi_log(phba, KERN_ERR, BEISCSI_LOG_CONFIG | BEISCSI_LOG_MBOX,
+ 		    "BC_%d : error in cmd completion: Subsystem : %d Opcode : %d status(compl/extd)=%d/%d\n",
+ 		    hdr->subsystem, hdr->opcode, compl_status, extd_status);
+-
+-	if (compl_status == MCC_STATUS_INSUFFICIENT_BUFFER) {
+-		/* if status is insufficient buffer, check the length */
+-		resp_hdr = (struct be_cmd_resp_hdr *) hdr;
+-		if (resp_hdr->response_length)
+-			return 0;
+-	}
+-	return -EINVAL;
++	return compl_status;
+ }
+ 
+ static void beiscsi_process_async_link(struct beiscsi_hba *phba,
+@@ -507,10 +499,8 @@ int beiscsi_process_mcc_compl(struct be_ctrl_info *ctrl,
+ 		if (ctrl->ptag_state[tag].cbfn)
+ 			ctrl->ptag_state[tag].cbfn(phba, tag);
+ 		else
+-			beiscsi_log(phba, KERN_ERR,
+-				    BEISCSI_LOG_MBOX | BEISCSI_LOG_INIT |
+-				    BEISCSI_LOG_CONFIG,
+-				    "BC_%d : MBX ASYNC command with no callback\n");
++			__beiscsi_log(phba, KERN_ERR,
++				      "BC_%d : MBX ASYNC command with no callback\n");
+ 		free_mcc_wrb(ctrl, tag);
+ 		return 0;
+ 	}
+@@ -1371,3 +1361,43 @@ int be_cmd_set_vlan(struct beiscsi_hba *phba,
+ 
+ 	return tag;
+ }
++
++int beiscsi_set_uer_feature(struct beiscsi_hba *phba)
++{
++	struct be_ctrl_info *ctrl = &phba->ctrl;
++	struct be_cmd_set_features *ioctl;
++	struct be_mcc_wrb *wrb;
++	int ret = 0;
++
++	mutex_lock(&ctrl->mbox_lock);
++	wrb = wrb_from_mbox(&ctrl->mbox_mem);
++	memset(wrb, 0, sizeof(*wrb));
++	ioctl = embedded_payload(wrb);
++
++	be_wrb_hdr_prepare(wrb, sizeof(*ioctl), true, 0);
++	be_cmd_hdr_prepare(&ioctl->h.req_hdr, CMD_SUBSYSTEM_COMMON,
++			   OPCODE_COMMON_SET_FEATURES,
++			   EMBED_MBX_MAX_PAYLOAD_SIZE);
++	ioctl->feature = BE_CMD_SET_FEATURE_UER;
++	ioctl->param_len = sizeof(ioctl->param.req);
++	ioctl->param.req.uer = BE_CMD_UER_SUPP_BIT;
++	ret = be_mbox_notify(ctrl);
++	if (!ret) {
++		phba->ue2rp = ioctl->param.resp.ue2rp;
++		set_bit(BEISCSI_HBA_UER_SUPP, &phba->state);
++		beiscsi_log(phba, KERN_INFO, BEISCSI_LOG_INIT,
++			    "BG_%d : HBA error recovery supported\n");
++	} else {
++		/**
++		 * Check "MCC_STATUS_INVALID_LENGTH" for SKH.
++		 * Older FW versions return this error.
++		 */
++		if (ret == MCC_STATUS_ILLEGAL_REQUEST ||
++		    ret == MCC_STATUS_INVALID_LENGTH)
++			__beiscsi_log(phba, KERN_INFO,
++				      "BG_%d : HBA error recovery not supported\n");
++	}
++
++	mutex_unlock(&ctrl->mbox_lock);
++	return ret;
++}
+diff --git a/drivers/scsi/be2iscsi/be_cmds.h b/drivers/scsi/be2iscsi/be_cmds.h
+index 6fb9673..f1356c9 100644
+--- a/drivers/scsi/be2iscsi/be_cmds.h
++++ b/drivers/scsi/be2iscsi/be_cmds.h
+@@ -57,6 +57,7 @@ struct be_mcc_wrb {
+ #define MCC_STATUS_ILLEGAL_REQUEST 0x2
+ #define MCC_STATUS_ILLEGAL_FIELD 0x3
+ #define MCC_STATUS_INSUFFICIENT_BUFFER 0x4
++#define MCC_STATUS_INVALID_LENGTH 0x74
+ 
+ #define CQE_STATUS_COMPL_MASK	0xFFFF
+ #define CQE_STATUS_COMPL_SHIFT	0		/* bits 0 - 15 */
+@@ -217,6 +218,7 @@ struct be_mcc_mailbox {
+ #define OPCODE_COMMON_QUERY_FIRMWARE_CONFIG		58
+ #define OPCODE_COMMON_FUNCTION_RESET			61
+ #define OPCODE_COMMON_GET_PORT_NAME			77
++#define OPCODE_COMMON_SET_FEATURES			191
+ 
+ /**
+  * LIST of opcodes that are common between Initiator and Target
+@@ -712,6 +714,8 @@ struct be_cmd_get_nic_conf_resp {
+ 	u8 mac_address[ETH_ALEN];
+ } __packed;
+ 
++/******************** Get HBA NAME *******************/
++
+ #define BEISCSI_ALIAS_LEN 32
+ 
+ struct be_cmd_hba_name {
+@@ -722,6 +726,34 @@ struct be_cmd_hba_name {
+ 	u8 initiator_alias[BEISCSI_ALIAS_LEN];
+ } __packed;
+ 
++/******************** COMMON SET Features *******************/
++#define BE_CMD_SET_FEATURE_UER	0x10
++#define BE_CMD_UER_SUPP_BIT	0x1
++struct be_uer_req {
++	u32 uer;
++	u32 rsvd;
++};
++
++struct be_uer_resp {
++	u32 uer;
++	u16 ue2rp;
++	u16 ue2sr;
++};
++
++struct be_cmd_set_features {
++	union {
++		struct be_cmd_req_hdr req_hdr;
++		struct be_cmd_resp_hdr resp_hdr;
++	} h;
++	u32 feature;
++	u32 param_len;
++	union {
++		struct be_uer_req req;
++		struct be_uer_resp resp;
++		u32 rsvd[2];
++	} param;
++} __packed;
++
+ int beiscsi_cmd_eq_create(struct be_ctrl_info *ctrl,
+ 			  struct be_queue_info *eq, int eq_delay);
+ 
+@@ -795,6 +827,8 @@ int be_cmd_wrbq_create(struct be_ctrl_info *ctrl, struct be_dma_mem *q_mem,
+ /* Configuration Functions */
+ int be_cmd_set_vlan(struct beiscsi_hba *phba, uint16_t vlan_tag);
+ 
++int beiscsi_set_uer_feature(struct beiscsi_hba *phba);
++
+ struct be_default_pdu_context {
+ 	u32 dw[4];
+ } __packed;
+diff --git a/drivers/scsi/be2iscsi/be_main.c b/drivers/scsi/be2iscsi/be_main.c
+index 3dd4f9d..55dc643 100644
+--- a/drivers/scsi/be2iscsi/be_main.c
++++ b/drivers/scsi/be2iscsi/be_main.c
+@@ -5660,6 +5660,7 @@ static int beiscsi_dev_probe(struct pci_dev *pcidev,
+ 	}
+ 	mgmt_get_port_name(&phba->ctrl, phba);
+ 	beiscsi_get_params(phba);
++	beiscsi_set_uer_feature(phba);
+ 
+ 	if (enable_msix)
+ 		find_num_cpus(phba);
+diff --git a/drivers/scsi/be2iscsi/be_main.h b/drivers/scsi/be2iscsi/be_main.h
+index 0d34ac6..0a5de01 100644
+--- a/drivers/scsi/be2iscsi/be_main.h
++++ b/drivers/scsi/be2iscsi/be_main.h
+@@ -405,13 +405,17 @@ struct beiscsi_hba {
+ #define BEISCSI_HBA_LINK_UP	1
+ #define BEISCSI_HBA_BOOT_FOUND	2
+ #define BEISCSI_HBA_BOOT_WORK	3
+-#define BEISCSI_HBA_PCI_ERR	4
+-#define BEISCSI_HBA_FW_TIMEOUT	5
+-#define BEISCSI_HBA_IN_UE	6
++#define BEISCSI_HBA_UER_SUPP	4
++#define BEISCSI_HBA_PCI_ERR	5
++#define BEISCSI_HBA_FW_TIMEOUT	6
++#define BEISCSI_HBA_IN_UE	7
++#define BEISCSI_HBA_IN_TPE	8
++
+ /* error bits */
+ #define BEISCSI_HBA_IN_ERR	((1 << BEISCSI_HBA_PCI_ERR) | \
+ 				 (1 << BEISCSI_HBA_FW_TIMEOUT) | \
+-				 (1 << BEISCSI_HBA_IN_UE))
++				 (1 << BEISCSI_HBA_IN_UE) | \
++				 (1 << BEISCSI_HBA_IN_TPE))
+ 
+ 	u8 optic_state;
+ 	struct delayed_work eqd_update;
+@@ -420,6 +424,7 @@ struct beiscsi_hba {
+ 	struct timer_list hw_check;
+ 	/* check for UE every 1000ms */
+ #define BEISCSI_UE_DETECT_INTERVAL	1000
++	u32 ue2rp;
+ 
+ 	bool mac_addr_set;
+ 	u8 mac_address[ETH_ALEN];
+diff --git a/drivers/scsi/be2iscsi/be_mgmt.c b/drivers/scsi/be2iscsi/be_mgmt.c
+index 60a1163..08d94b0 100644
+--- a/drivers/scsi/be2iscsi/be_mgmt.c
++++ b/drivers/scsi/be2iscsi/be_mgmt.c
+@@ -128,7 +128,7 @@ void beiscsi_ue_detect(struct beiscsi_hba *phba)
+ 		set_bit(BEISCSI_HBA_IN_UE, &phba->state);
+ 		beiscsi_log(phba, KERN_ERR,
+ 			    BEISCSI_LOG_CONFIG | BEISCSI_LOG_MBOX,
+-			    "BG_%d : Error detected on the adapter\n");
++			    "BG_%d : HBA error detected\n");
+ 	}
+ 
+ 	if (ue_lo) {
+-- 
+1.8.5.6
+

@@ -1,0 +1,40 @@
+From: Guillaume Nault <g.nault@alphalink.fr>
+Date: Tue, 29 Nov 2016 13:09:48 +0100
+Subject: l2tp: fix address test in __l2tp_ip6_bind_lookup()
+Patch-mainline: v4.9-rc8
+Git-commit: 31e2f21fb35bfaa5bdbe1a4860dc99e6b10d8dcd
+References: bsc#1028415
+
+The '!(addr && ipv6_addr_equal(addr, laddr))' part of the conditional
+matches if addr is NULL or if addr != laddr.
+But the intend of __l2tp_ip6_bind_lookup() is to find a sockets with
+the same address, so the ipv6_addr_equal() condition needs to be
+inverted.
+
+For better clarity and consistency with the rest of the expression, the
+(!X || X == Y) notation is used instead of !(X && X != Y).
+
+Signed-off-by: Guillaume Nault <g.nault@alphalink.fr>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+Acked-by: Michal Kubecek <mkubecek@suse.cz>
+
+---
+ net/l2tp/l2tp_ip6.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/net/l2tp/l2tp_ip6.c b/net/l2tp/l2tp_ip6.c
+index f2c5322c8498..9cf43124821a 100644
+--- a/net/l2tp/l2tp_ip6.c
++++ b/net/l2tp/l2tp_ip6.c
+@@ -71,7 +71,7 @@ static struct sock *__l2tp_ip6_bind_lookup(struct net *net,
+ 
+ 		if ((l2tp->conn_id == tunnel_id) &&
+ 		    net_eq(sock_net(sk), net) &&
+-		    !(addr && ipv6_addr_equal(addr, laddr)) &&
++		    (!addr || ipv6_addr_equal(addr, laddr)) &&
+ 		    (!sk->sk_bound_dev_if || !dif ||
+ 		     sk->sk_bound_dev_if == dif))
+ 			goto found;
+-- 
+2.12.0
+

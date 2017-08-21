@@ -30,10 +30,11 @@ Signed-off-by: Matthias Brugger <mbrugger@suse.com>
  drivers/pci/ecam.h                  |    5 +
  drivers/pci/host/Kconfig            |    1 
  drivers/pci/host/pci-host-common.c  |  114 ++++++++++++++----------------------
+ drivers/pci/host/pci-host-common.h  |   56 -----------------
  drivers/pci/host/pci-host-generic.c |   54 +++--------------
  drivers/pci/host/pci-thunder-ecam.c |   39 ++----------
  drivers/pci/host/pci-thunder-pem.c  |   92 +++++++++++++----------------
- 6 files changed, 115 insertions(+), 190 deletions(-)
+ 7 files changed, 115 insertions(+), 246 deletions(-)
  delete mode 100644 drivers/pci/host/pci-host-common.h
 
 --- a/drivers/pci/ecam.h
@@ -238,6 +239,65 @@ Signed-off-by: Matthias Brugger <mbrugger@suse.com>
  	if (!bus) {
  		dev_err(dev, "Scanning rootbus failed");
  		return -ENODEV;
+--- a/drivers/pci/host/pci-host-common.h
++++ /dev/null
+@@ -1,56 +0,0 @@
+-/*
+- * This program is free software; you can redistribute it and/or modify
+- * it under the terms of the GNU General Public License version 2 as
+- * published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of
+- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+- * GNU General Public License for more details.
+- *
+- * You should have received a copy of the GNU General Public License
+- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+- *
+- * Copyright (C) 2014 ARM Limited
+- *
+- * Author: Will Deacon <will.deacon@arm.com>
+- */
+-
+-#ifndef _PCI_HOST_COMMON_H
+-#define _PCI_HOST_COMMON_H
+-
+-#include <linux/kernel.h>
+-#include <linux/platform_device.h>
+-
+-struct gen_pci_cfg_bus_ops {
+-	u32 bus_shift;
+-	struct pci_ops ops;
+-};
+-
+-struct gen_pci_cfg_windows {
+-	struct resource				res;
+-	struct resource				*bus_range;
+-	void __iomem				**win;
+-
+-	struct gen_pci_cfg_bus_ops		*ops;
+-};
+-
+-/*
+- * ARM pcibios functions expect the ARM struct pci_sys_data as the PCI
+- * sysdata.  Add pci_sys_data as the first element in struct gen_pci so
+- * that when we use a gen_pci pointer as sysdata, it is also a pointer to
+- * a struct pci_sys_data.
+- */
+-struct gen_pci {
+-#ifdef CONFIG_ARM
+-	struct pci_sys_data			sys;
+-#endif
+-	struct pci_host_bridge			host;
+-	struct gen_pci_cfg_windows		cfg;
+-	struct list_head			resources;
+-};
+-
+-int pci_host_common_probe(struct platform_device *pdev,
+-			  struct gen_pci *pci);
+-
+-#endif /* _PCI_HOST_COMMON_H */
 --- a/drivers/pci/host/pci-host-generic.c
 +++ b/drivers/pci/host/pci-host-generic.c
 @@ -25,41 +25,12 @@

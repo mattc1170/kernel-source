@@ -1,0 +1,29 @@
+From: David Sterba <dsterba@suse.com>
+Date: Thu, 16 Jun 2016 17:34:28 +0200
+Patch-mainline: 4.7
+Git-commit: 89c5a5441d703ba068699524ae59f7806e9b173d
+References: bsc#1012452
+Subject: [PATCH] btrfs: remove build fixup for qgroup_account_snapshot
+
+Introduced in 2c1984f244838477aab ("btrfs: build fixup for
+qgroup_account_snapshot") as temporary bisectability build fixup.
+
+Signed-off-by: David Sterba <dsterba@suse.com>
+---
+ fs/btrfs/transaction.c |    5 -----
+ 1 file changed, 5 deletions(-)
+
+--- a/fs/btrfs/transaction.c
++++ b/fs/btrfs/transaction.c
+@@ -1306,11 +1306,6 @@ int btrfs_defrag_root(struct btrfs_root
+ 	return ret;
+ }
+ 
+-/* Bisesctability fixup, remove in 4.8 */
+-#ifndef btrfs_std_error
+-#define btrfs_std_error btrfs_handle_fs_error
+-#endif
+-
+ /*
+  * Do all special snapshot related qgroup dirty hack.
+  *

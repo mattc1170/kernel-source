@@ -1,0 +1,34 @@
+From f5fe15ee92e5d2caf8c9c8df3518c7b6ff00d1e1 Mon Sep 17 00:00:00 2001
+From: Bjorn Helgaas <bhelgaas@google.com>
+Date: Thu, 6 Oct 2016 13:43:42 -0500
+Subject: [PATCH 25/36] PCI: xgene: Remove unused platform data
+
+Git-commit: c6fe9ebaacc46c8e5bdf2134357eaffbb508a16f
+Patch-mainline: v4.9-rc1
+References: bsc#1019351
+
+The xgene driver never uses the platform drvdata pointer, so don't
+bother setting it.  No functional change intended.
+
+Signed-off-by: Bjorn Helgaas <bhelgaas@google.com>
+Signed-off-by: Mian Yousaf Kaukab <yousaf.kaukab@suse.com>
+---
+ drivers/pci/host/pci-xgene.c | 2 --
+ 1 file changed, 2 deletions(-)
+
+diff --git a/drivers/pci/host/pci-xgene.c b/drivers/pci/host/pci-xgene.c
+index 03d24e72ac52..7da3b09e8f26 100644
+--- a/drivers/pci/host/pci-xgene.c
++++ b/drivers/pci/host/pci-xgene.c
+@@ -563,8 +563,6 @@ static int xgene_pcie_probe_bridge(struct platform_device *pdev)
+ 	pci_scan_child_bus(bus);
+ 	pci_assign_unassigned_bus_resources(bus);
+ 	pci_bus_add_devices(bus);
+-
+-	platform_set_drvdata(pdev, port);
+ 	return 0;
+ 
+ error:
+-- 
+2.11.0
+

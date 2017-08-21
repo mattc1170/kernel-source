@@ -1,0 +1,37 @@
+From: Paolo Abeni <pabeni@redhat.com>
+Date: Tue, 2 May 2017 16:03:58 +0200
+Subject: infiniband: avoid dereferencing uninitialized dst on error path
+Git-commit: 24b43c99647bf9be4995e6a6c9c3a923c147770a
+Patch-mainline: v4.12-rc1
+References: git-fixes
+
+With commit eea40b8f624f ("infiniband: call ipv6 route lookup
+via the stub interface"), if the route lookup fails due to
+ipv6 being disabled, the dst variable is left untouched, and
+the following dst_release() may access uninitialized memory.
+
+Since ipv6_dst_lookup() always sets dst to NULL in case of
+lookup failure with ipv6 enabled, fix the above just
+returning the error code if the lookup fails.
+
+Fixes: eea40b8f624 ("infiniband: call ipv6 route lookup via the stub interface")
+Reported-by: Sabrina Dubroca <sd@queasysnail.net>
+Signed-off-by: Paolo Abeni <pabeni@redhat.com>
+Reviewed-by: Sabrina Dubroca <sd@queasysnail.net>
+Signed-off-by: Doug Ledford <dledford@redhat.com>
+Signed-off-by: Jiri Slaby <jslaby@suse.cz>
+---
+ drivers/infiniband/core/addr.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+--- a/drivers/infiniband/core/addr.c
++++ b/drivers/infiniband/core/addr.c
+@@ -276,7 +276,7 @@ static int addr6_resolve(struct sockaddr
+ 
+ 	ret = ipv6_stub->ipv6_dst_lookup(addr->net, NULL, &dst, &fl6);
+ 	if (ret < 0)
+-		goto put;
++		return ret;
+ 
+ 	rt = (struct rt6_info *)dst;
+ 	if (ipv6_addr_any(&fl6.saddr)) {

@@ -1,0 +1,45 @@
+From 685b346c3af35bcdc1316289ce8c76e28a5a7a7e Mon Sep 17 00:00:00 2001
+From: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Date: Tue, 23 Feb 2016 11:34:17 +0200
+Subject: [PATCH] iwlwifi: pcie: prevent skbs shadowing in iwl_trans_pcie_reclaim
+Git-commit: 685b346c3af35bcdc1316289ce8c76e28a5a7a7e
+Patch-mainline: 4.6-rc1
+References: FATE#321353, FATE#323335
+
+The patch below introduced a variable shadowing. Fix that.
+
+Fixes: 3955525d5d17 ("iwlwifi: pcie: buffer packets to avoid overflowing Tx queues")
+Signed-off-by: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/iwlwifi/pcie/tx.c |   10 +++++-----
+ 1 file changed, 5 insertions(+), 5 deletions(-)
+
+--- a/drivers/net/wireless/iwlwifi/pcie/tx.c
++++ b/drivers/net/wireless/iwlwifi/pcie/tx.c
+@@ -1062,10 +1062,10 @@ void iwl_trans_pcie_reclaim(struct iwl_t
+ 
+ 	if (iwl_queue_space(&txq->q) > txq->q.low_mark &&
+ 	    test_bit(txq_id, trans_pcie->queue_stopped)) {
+-		struct sk_buff_head skbs;
++		struct sk_buff_head overflow_skbs;
+ 
+-		__skb_queue_head_init(&skbs);
+-		skb_queue_splice_init(&txq->overflow_q, &skbs);
++		__skb_queue_head_init(&overflow_skbs);
++		skb_queue_splice_init(&txq->overflow_q, &overflow_skbs);
+ 
+ 		/*
+ 		 * This is tricky: we are in reclaim path which is non
+@@ -1076,8 +1076,8 @@ void iwl_trans_pcie_reclaim(struct iwl_t
+ 		 */
+ 		spin_unlock_bh(&txq->lock);
+ 
+-		while (!skb_queue_empty(&skbs)) {
+-			struct sk_buff *skb = __skb_dequeue(&skbs);
++		while (!skb_queue_empty(&overflow_skbs)) {
++			struct sk_buff *skb = __skb_dequeue(&overflow_skbs);
+ 			struct ieee80211_tx_info *info = IEEE80211_SKB_CB(skb);
+ 			u8 dev_cmd_idx = IWL_TRANS_FIRST_DRIVER_DATA + 1;
+ 			struct iwl_device_cmd *dev_cmd =

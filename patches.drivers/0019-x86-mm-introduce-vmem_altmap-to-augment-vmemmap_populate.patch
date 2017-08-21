@@ -229,7 +229,7 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
  #endif /* _LINUX_MEMREMAP_H_ */
 --- a/include/linux/mm.h
 +++ b/include/linux/mm.h
-@@ -2234,7 +2234,14 @@ pud_t *vmemmap_pud_populate(pgd_t *pgd,
+@@ -2238,7 +2238,14 @@ pud_t *vmemmap_pud_populate(pgd_t *pgd,
  pmd_t *vmemmap_pmd_populate(pud_t *pud, unsigned long addr, int node);
  pte_t *vmemmap_pte_populate(pmd_t *pmd, unsigned long addr, int node);
  void *vmemmap_alloc_block(unsigned long size, int node);
@@ -263,16 +263,16 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
  
  	pgmap_radix_release(res);
  
-@@ -192,6 +194,8 @@ static void devm_memremap_pages_release(
- 	align_start = res->start & ~(SECTION_SIZE - 1);
- 	align_size = ALIGN(resource_size(res), SECTION_SIZE);
+@@ -194,6 +196,8 @@ static void devm_memremap_pages_release(
+ 	mem_hotplug_begin();
  	arch_remove_memory(align_start, align_size);
+ 	mem_hotplug_done();
 +	dev_WARN_ONCE(dev, pgmap->altmap && pgmap->altmap->alloc,
 +			"%s: failed to free all reserved pages\n", __func__);
  }
  
  /* assumes rcu_read_lock() held at entry */
-@@ -205,11 +209,23 @@ struct dev_pagemap *find_dev_pagemap(res
+@@ -207,11 +211,23 @@ struct dev_pagemap *find_dev_pagemap(res
  	return page_map ? &page_map->pgmap : NULL;
  }
  
@@ -297,7 +297,7 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
  	struct page_map *page_map;
  	int error, nid;
  
-@@ -222,14 +238,27 @@ void *devm_memremap_pages(struct device
+@@ -224,14 +240,27 @@ void *devm_memremap_pages(struct device
  	if (is_ram == REGION_INTERSECTS)
  		return __va(res->start);
  
@@ -326,7 +326,7 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
  	mutex_lock(&pgmap_lock);
  	error = 0;
  	for (key = res->start; key <= res->end; key += SECTION_SIZE) {
-@@ -275,4 +304,43 @@ void *devm_memremap_pages(struct device
+@@ -279,4 +308,43 @@ void *devm_memremap_pages(struct device
  	return ERR_PTR(error);
  }
  EXPORT_SYMBOL(devm_memremap_pages);
@@ -500,7 +500,7 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
  #include <linux/stop_machine.h>
  #include <linux/sort.h>
  #include <linux/pfn.h>
-@@ -4572,8 +4573,9 @@ static inline unsigned long wait_table_b
+@@ -4895,8 +4896,9 @@ static inline unsigned long wait_table_b
  void __meminit memmap_init_zone(unsigned long size, int nid, unsigned long zone,
  		unsigned long start_pfn, enum memmap_context context)
  {
@@ -511,7 +511,7 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
  	unsigned long pfn;
  	struct zone *z;
  	unsigned long nr_initialised = 0;
-@@ -4581,6 +4583,13 @@ void __meminit memmap_init_zone(unsigned
+@@ -4907,6 +4909,13 @@ void __meminit memmap_init_zone(unsigned
  	if (highest_memmap_pfn < end_pfn - 1)
  		highest_memmap_pfn = end_pfn - 1;
  

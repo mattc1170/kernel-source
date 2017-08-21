@@ -1,0 +1,38 @@
+From: Josef Bacik <jbacik@fb.com>
+Date: Fri, 27 May 2016 13:03:04 -0400
+Patch-mainline: 4.7
+Git-commit: 3b6571c180da85e43550c608e954ab7b2a31d954
+References: bsc#1012452
+Subject: [PATCH] Btrfs: don't BUG_ON() in btrfs_orphan_add
+
+This is just a screwup for developers, so change it to an ASSERT() so developers
+notice when things go wrong and deal with the error appropriately if ASSERT()
+isn't enabled.  Thanks,
+
+Signed-off-by: Josef Bacik <jbacik@fb.com>
+Reviewed-by: Mark Fasheh <mfasheh@suse.de>
+Signed-off-by: David Sterba <dsterba@suse.com>
+---
+ fs/btrfs/inode.c |   11 ++++++++++-
+ 1 file changed, 10 insertions(+), 1 deletion(-)
+
+--- a/fs/btrfs/inode.c
++++ b/fs/btrfs/inode.c
+@@ -3271,7 +3271,16 @@ int btrfs_orphan_add(struct btrfs_trans_
+ 	/* grab metadata reservation from transaction handle */
+ 	if (reserve) {
+ 		ret = btrfs_orphan_reserve_metadata(trans, inode);
+-		BUG_ON(ret); /* -ENOSPC in reservation; Logic error? JDM */
++		ASSERT(!ret);
++		if (ret) {
++			atomic_dec(&root->orphan_inodes);
++			clear_bit(BTRFS_INODE_ORPHAN_META_RESERVED,
++				  &BTRFS_I(inode)->runtime_flags);
++			if (insert)
++				clear_bit(BTRFS_INODE_HAS_ORPHAN_ITEM,
++					  &BTRFS_I(inode)->runtime_flags);
++			return ret;
++		}
+ 	}
+ 
+ 	/* insert an orphan item to track this unlinked/truncated file */

@@ -36,3 +36,8 @@ sound/soc/intel/*		PASS
 amd_core_mcablock_names		PASS
 amd_df_mcablock_names		PASS
 amd_hwids			PASS
+
+uv_cpu_nmi			PASS
+
+# update via FATE#323335, self-contained
+drivers/net/wireless/iwlwifi/*	PASS

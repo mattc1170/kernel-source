@@ -1,0 +1,137 @@
+From: Jiri Slaby <jslaby@suse.cz>
+Subject: kABI: restore ttm_ref_object_add parameters
+Patch-mainline: never, kabi
+References: kabi
+
+In 4.4.61, commit ad4ae2feef4f65b860f139e0d8455e2a16efb93c (drm/ttm,
+drm/vmwgfx: Relax permission checking when opening surfaces), upstream
+commit fe25deb7737ce6c0879ccf79c99fa1221d428bf2 added one parameter to
+ttm_ref_object_add and it indeed changed kABI.
+
+Rename the new version to ttm_ref_object_add5, and define
+ttm_ref_object_add with old parameters. The latter is now a wrapper to
+the former.
+
+Signed-off-by: Jiri Slaby <jslaby@suse.cz>
+---
+ drivers/gpu/drm/ttm/ttm_object.c         |   14 +++++++++++---
+ drivers/gpu/drm/vmwgfx/vmwgfx_fence.c    |    2 +-
+ drivers/gpu/drm/vmwgfx/vmwgfx_resource.c |    4 ++--
+ drivers/gpu/drm/vmwgfx/vmwgfx_surface.c  |    2 +-
+ include/drm/ttm/ttm_object.h             |    8 ++++++--
+ 5 files changed, 21 insertions(+), 9 deletions(-)
+
+--- a/drivers/gpu/drm/ttm/ttm_object.c
++++ b/drivers/gpu/drm/ttm/ttm_object.c
+@@ -179,7 +179,7 @@ int ttm_base_object_init(struct ttm_obje
+ 	if (unlikely(ret != 0))
+ 		goto out_err0;
+ 
+-	ret = ttm_ref_object_add(tfile, base, TTM_REF_USAGE, NULL, false);
++	ret = ttm_ref_object_add5(tfile, base, TTM_REF_USAGE, NULL, false);
+ 	if (unlikely(ret != 0))
+ 		goto out_err1;
+ 
+@@ -316,7 +316,7 @@ bool ttm_ref_object_exists(struct ttm_ob
+ }
+ EXPORT_SYMBOL(ttm_ref_object_exists);
+ 
+-int ttm_ref_object_add(struct ttm_object_file *tfile,
++int ttm_ref_object_add5(struct ttm_object_file *tfile,
+ 		       struct ttm_base_object *base,
+ 		       enum ttm_ref_type ref_type, bool *existed,
+ 		       bool require_existed)
+@@ -386,6 +386,14 @@ int ttm_ref_object_add(struct ttm_object
+ 
+ 	return ret;
+ }
++EXPORT_SYMBOL(ttm_ref_object_add5);
++
++int ttm_ref_object_add(struct ttm_object_file *tfile,
++		       struct ttm_base_object *base,
++		       enum ttm_ref_type ref_type, bool *existed)
++{
++	return ttm_ref_object_add5(tfile, base, ref_type, existed, false);
++}
+ EXPORT_SYMBOL(ttm_ref_object_add);
+ 
+ static void ttm_ref_object_release(struct kref *kref)
+@@ -639,7 +647,7 @@ int ttm_prime_fd_to_handle(struct ttm_ob
+ 	prime = (struct ttm_prime_object *) dma_buf->priv;
+ 	base = &prime->base;
+ 	*handle = base->hash.key;
+-	ret = ttm_ref_object_add(tfile, base, TTM_REF_USAGE, NULL, false);
++	ret = ttm_ref_object_add5(tfile, base, TTM_REF_USAGE, NULL, false);
+ 
+ 	dma_buf_put(dma_buf);
+ 
+--- a/drivers/gpu/drm/vmwgfx/vmwgfx_fence.c
++++ b/drivers/gpu/drm/vmwgfx/vmwgfx_fence.c
+@@ -1144,7 +1144,7 @@ int vmw_fence_event_ioctl(struct drm_dev
+ 		(void) vmw_fence_obj_reference(fence);
+ 
+ 		if (user_fence_rep != NULL) {
+-			ret = ttm_ref_object_add(vmw_fp->tfile, base,
++			ret = ttm_ref_object_add5(vmw_fp->tfile, base,
+ 						 TTM_REF_USAGE, NULL, false);
+ 			if (unlikely(ret != 0)) {
+ 				DRM_ERROR("Failed to reference a fence "
+--- a/drivers/gpu/drm/vmwgfx/vmwgfx_resource.c
++++ b/drivers/gpu/drm/vmwgfx/vmwgfx_resource.c
+@@ -590,7 +590,7 @@ static int vmw_user_dmabuf_synccpu_grab(
+ 	if (unlikely(ret != 0))
+ 		return ret;
+ 
+-	ret = ttm_ref_object_add(tfile, &user_bo->prime.base,
++	ret = ttm_ref_object_add5(tfile, &user_bo->prime.base,
+ 				 TTM_REF_SYNCCPU_WRITE, &existed, false);
+ 	if (ret != 0 || existed)
+ 		ttm_bo_synccpu_write_release(&user_bo->dma.base);
+@@ -774,7 +774,7 @@ int vmw_user_dmabuf_reference(struct ttm
+ 	user_bo = container_of(dma_buf, struct vmw_user_dma_buffer, dma);
+ 
+ 	*handle = user_bo->prime.base.hash.key;
+-	return ttm_ref_object_add(tfile, &user_bo->prime.base,
++	return ttm_ref_object_add5(tfile, &user_bo->prime.base,
+ 				  TTM_REF_USAGE, NULL, false);
+ }
+ 
+--- a/drivers/gpu/drm/vmwgfx/vmwgfx_surface.c
++++ b/drivers/gpu/drm/vmwgfx/vmwgfx_surface.c
+@@ -950,7 +950,7 @@ vmw_surface_handle_reference(struct vmw_
+ 		    user_srf->master != file_priv->master)
+ 			require_exist = true;
+ 
+-		ret = ttm_ref_object_add(tfile, base, TTM_REF_USAGE, NULL,
++		ret = ttm_ref_object_add5(tfile, base, TTM_REF_USAGE, NULL,
+ 					 require_exist);
+ 		if (unlikely(ret != 0)) {
+ 			DRM_ERROR("Could not add a reference to a surface.\n");
+--- a/include/drm/ttm/ttm_object.h
++++ b/include/drm/ttm/ttm_object.h
+@@ -221,7 +221,7 @@ ttm_base_object_lookup_for_ref(struct tt
+ extern void ttm_base_object_unref(struct ttm_base_object **p_base);
+ 
+ /**
+- * ttm_ref_object_add.
++ * ttm_ref_object_add5.
+  *
+  * @tfile: A struct ttm_object_file representing the application owning the
+  * ref_object.
+@@ -243,11 +243,15 @@ extern void ttm_base_object_unref(struct
+  * make sure the lock is released if the application dies. A ref object
+  * will hold a single reference on a base object.
+  */
+-extern int ttm_ref_object_add(struct ttm_object_file *tfile,
++extern int ttm_ref_object_add5(struct ttm_object_file *tfile,
+ 			      struct ttm_base_object *base,
+ 			      enum ttm_ref_type ref_type, bool *existed,
+ 			      bool require_existed);
+ 
++extern int ttm_ref_object_add(struct ttm_object_file *tfile,
++			      struct ttm_base_object *base,
++			      enum ttm_ref_type ref_type, bool *existed);
++
+ extern bool ttm_ref_object_exists(struct ttm_object_file *tfile,
+ 				  struct ttm_base_object *base);
+ 

@@ -1,0 +1,36 @@
+From 65ed0a8d1f24abd79be149253025de8949321900 Mon Sep 17 00:00:00 2001
+From: Dan Carpenter <dan.carpenter@oracle.com>
+Date: Fri, 28 Apr 2017 16:22:10 +0300
+Subject: [PATCH] ASoC: sti: Fix error handling if of_clk_get() fails
+Git-commit: 65ed0a8d1f24abd79be149253025de8949321900
+Patch-mainline: 4.12-rc1
+References: bsc#1031717
+
+We intended to return here.  The current code has a static checker
+warning because we set "ret" but don't use it.
+
+Fixes: 76c2145ded6b ("ASoC: sti: Add CPU DAI driver for playback")
+Signed-off-by: Dan Carpenter <dan.carpenter@oracle.com>
+Acked-by: Arnaud POULIQUEN <arnaud.pouliquen@st.com>
+Signed-off-by: Mark Brown <broonie@kernel.org>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ sound/soc/sti/uniperif_player.c |    6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+--- a/sound/soc/sti/uniperif_player.c
++++ b/sound/soc/sti/uniperif_player.c
+@@ -1060,8 +1060,10 @@ int uni_player_init(struct platform_devi
+ 
+ 	/* Get uniperif resource */
+ 	player->clk = of_clk_get(pdev->dev.of_node, 0);
+-	if (IS_ERR(player->clk))
+-		ret = PTR_ERR(player->clk);
++	if (IS_ERR(player->clk)) {
++		dev_err(player->dev, "Failed to get clock\n");
++		return PTR_ERR(player->clk);
++	}
+ 
+ 	/* Select the frequency synthesizer clock */
+ 	if (player->clk_sel) {

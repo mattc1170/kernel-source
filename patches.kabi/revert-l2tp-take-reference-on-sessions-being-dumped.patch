@@ -1,0 +1,155 @@
+From: Jiri Slaby <jslaby@suse.cz>
+Date: Thu, 4 May 2017 13:46:25 +0200
+Subject: Revert "l2tp: take reference on sessions being dumped"
+Patch-mainline: never, kabi
+References: kabi
+
+This reverts commit f710dbd92b277232079fc662c1dd8433491b7d6c, upstream
+commit e08293a4ccbcc993ded0fdc46f1e57926b833d63. It breaks kABI, because
+it removes symbol l2tp_session_find_nth.
+
+Signed-off-by: Jiri Slaby <jslaby@suse.cz>
+---
+ net/l2tp/l2tp_core.c    |  8 ++------
+ net/l2tp/l2tp_core.h    |  3 +--
+ net/l2tp/l2tp_debugfs.c | 10 +++-------
+ net/l2tp/l2tp_netlink.c |  7 ++-----
+ net/l2tp/l2tp_ppp.c     | 10 +++-------
+ 5 files changed, 11 insertions(+), 27 deletions(-)
+
+diff --git a/net/l2tp/l2tp_core.c b/net/l2tp/l2tp_core.c
+index d3dec414fd44..ec17cbe8a02b 100644
+--- a/net/l2tp/l2tp_core.c
++++ b/net/l2tp/l2tp_core.c
+@@ -278,8 +278,7 @@ struct l2tp_session *l2tp_session_find(struct net *net, struct l2tp_tunnel *tunn
+ }
+ EXPORT_SYMBOL_GPL(l2tp_session_find);
+ 
+-struct l2tp_session *l2tp_session_get_nth(struct l2tp_tunnel *tunnel, int nth,
+-					  bool do_ref)
++struct l2tp_session *l2tp_session_find_nth(struct l2tp_tunnel *tunnel, int nth)
+ {
+ 	int hash;
+ 	struct l2tp_session *session;
+@@ -289,9 +288,6 @@ struct l2tp_session *l2tp_session_get_nth(struct l2tp_tunnel *tunnel, int nth,
+ 	for (hash = 0; hash < L2TP_HASH_SIZE; hash++) {
+ 		hlist_for_each_entry(session, &tunnel->session_hlist[hash], hlist) {
+ 			if (++count > nth) {
+-				l2tp_session_inc_refcount(session);
+-				if (do_ref && session->ref)
+-					session->ref(session);
+ 				read_unlock_bh(&tunnel->hlist_lock);
+ 				return session;
+ 			}
+@@ -302,7 +298,7 @@ struct l2tp_session *l2tp_session_get_nth(struct l2tp_tunnel *tunnel, int nth,
+ 
+ 	return NULL;
+ }
+-EXPORT_SYMBOL_GPL(l2tp_session_get_nth);
++EXPORT_SYMBOL_GPL(l2tp_session_find_nth);
+ 
+ /* Lookup a session by interface name.
+  * This is very inefficient but is only used by management interfaces.
+diff --git a/net/l2tp/l2tp_core.h b/net/l2tp/l2tp_core.h
+index 555d962a62d2..763e8e241ce3 100644
+--- a/net/l2tp/l2tp_core.h
++++ b/net/l2tp/l2tp_core.h
+@@ -243,8 +243,7 @@ out:
+ struct l2tp_session *l2tp_session_find(struct net *net,
+ 				       struct l2tp_tunnel *tunnel,
+ 				       u32 session_id);
+-struct l2tp_session *l2tp_session_get_nth(struct l2tp_tunnel *tunnel, int nth,
+-					  bool do_ref);
++struct l2tp_session *l2tp_session_find_nth(struct l2tp_tunnel *tunnel, int nth);
+ struct l2tp_session *l2tp_session_find_by_ifname(struct net *net, char *ifname);
+ struct l2tp_tunnel *l2tp_tunnel_find(struct net *net, u32 tunnel_id);
+ struct l2tp_tunnel *l2tp_tunnel_find_nth(struct net *net, int nth);
+diff --git a/net/l2tp/l2tp_debugfs.c b/net/l2tp/l2tp_debugfs.c
+index d100aed3d06f..2d6760a2ae34 100644
+--- a/net/l2tp/l2tp_debugfs.c
++++ b/net/l2tp/l2tp_debugfs.c
+@@ -53,7 +53,7 @@ static void l2tp_dfs_next_tunnel(struct l2tp_dfs_seq_data *pd)
+ 
+ static void l2tp_dfs_next_session(struct l2tp_dfs_seq_data *pd)
+ {
+-	pd->session = l2tp_session_get_nth(pd->tunnel, pd->session_idx, true);
++	pd->session = l2tp_session_find_nth(pd->tunnel, pd->session_idx);
+ 	pd->session_idx++;
+ 
+ 	if (pd->session == NULL) {
+@@ -238,14 +238,10 @@ static int l2tp_dfs_seq_show(struct seq_file *m, void *v)
+ 	}
+ 
+ 	/* Show the tunnel or session context */
+-	if (!pd->session) {
++	if (pd->session == NULL)
+ 		l2tp_dfs_seq_tunnel_show(m, pd->tunnel);
+-	} else {
++	else
+ 		l2tp_dfs_seq_session_show(m, pd->session);
+-		if (pd->session->deref)
+-			pd->session->deref(pd->session);
+-		l2tp_session_dec_refcount(pd->session);
+-	}
+ 
+ out:
+ 	return 0;
+diff --git a/net/l2tp/l2tp_netlink.c b/net/l2tp/l2tp_netlink.c
+index 665cc74df5c5..2caaa84ce92d 100644
+--- a/net/l2tp/l2tp_netlink.c
++++ b/net/l2tp/l2tp_netlink.c
+@@ -827,7 +827,7 @@ static int l2tp_nl_cmd_session_dump(struct sk_buff *skb, struct netlink_callback
+ 				goto out;
+ 		}
+ 
+-		session = l2tp_session_get_nth(tunnel, si, false);
++		session = l2tp_session_find_nth(tunnel, si);
+ 		if (session == NULL) {
+ 			ti++;
+ 			tunnel = NULL;
+@@ -837,11 +837,8 @@ static int l2tp_nl_cmd_session_dump(struct sk_buff *skb, struct netlink_callback
+ 
+ 		if (l2tp_nl_session_send(skb, NETLINK_CB(cb->skb).portid,
+ 					 cb->nlh->nlmsg_seq, NLM_F_MULTI,
+-					 session, L2TP_CMD_SESSION_GET) < 0) {
+-			l2tp_session_dec_refcount(session);
++					 session, L2TP_CMD_SESSION_GET) < 0)
+ 			break;
+-		}
+-		l2tp_session_dec_refcount(session);
+ 
+ 		si++;
+ 	}
+diff --git a/net/l2tp/l2tp_ppp.c b/net/l2tp/l2tp_ppp.c
+index 8ab9c5d74416..39f620dd7c71 100644
+--- a/net/l2tp/l2tp_ppp.c
++++ b/net/l2tp/l2tp_ppp.c
+@@ -1575,7 +1575,7 @@ static void pppol2tp_next_tunnel(struct net *net, struct pppol2tp_seq_data *pd)
+ 
+ static void pppol2tp_next_session(struct net *net, struct pppol2tp_seq_data *pd)
+ {
+-	pd->session = l2tp_session_get_nth(pd->tunnel, pd->session_idx, true);
++	pd->session = l2tp_session_find_nth(pd->tunnel, pd->session_idx);
+ 	pd->session_idx++;
+ 
+ 	if (pd->session == NULL) {
+@@ -1702,14 +1702,10 @@ static int pppol2tp_seq_show(struct seq_file *m, void *v)
+ 
+ 	/* Show the tunnel or session context.
+ 	 */
+-	if (!pd->session) {
++	if (pd->session == NULL)
+ 		pppol2tp_seq_tunnel_show(m, pd->tunnel);
+-	} else {
++	else
+ 		pppol2tp_seq_session_show(m, pd->session);
+-		if (pd->session->deref)
+-			pd->session->deref(pd->session);
+-		l2tp_session_dec_refcount(pd->session);
+-	}
+ 
+ out:
+ 	return 0;
+-- 
+2.12.2
+

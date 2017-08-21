@@ -1,0 +1,112 @@
+From: Jiri Slaby <jslaby@suse.cz>
+Subject: kABI: restore can_rx_register parameters
+Patch-mainline: never, kabi
+References: kabi
+
+In 4.4.50, commit e6c654c9c09258dc0f82d1baa9ce69aa68bc735e (can: Fix
+kernel panic at security_sock_rcv_skb), upstream commit
+f1712c73714088a7252d276a57126d56c7d37e64, added one parameter to
+can_rx_register and it indeed changed kABI.
+
+Rename the new version to can_rx_register7, and define can_rx_register
+with old parameters. The latter is now a wrapper to the former.
+
+Signed-off-by: Jiri Slaby <jslaby@suse.cz>
+---
+ include/linux/can/core.h |    4 ++++
+ net/can/af_can.c         |   10 +++++++++-
+ net/can/bcm.c            |    4 ++--
+ net/can/gw.c             |    2 +-
+ net/can/raw.c            |    4 ++--
+ 5 files changed, 18 insertions(+), 6 deletions(-)
+
+--- a/include/linux/can/core.h
++++ b/include/linux/can/core.h
+@@ -47,6 +47,10 @@ extern void can_proto_unregister(const s
+ 
+ int can_rx_register(struct net_device *dev, canid_t can_id, canid_t mask,
+ 		    void (*func)(struct sk_buff *, void *),
++		    void *data, char *ident);
++
++int can_rx_register7(struct net_device *dev, canid_t can_id, canid_t mask,
++		    void (*func)(struct sk_buff *, void *),
+ 		    void *data, char *ident, struct sock *sk);
+ 
+ extern void can_rx_unregister(struct net_device *dev, canid_t can_id,
+--- a/net/can/af_can.c
++++ b/net/can/af_can.c
+@@ -467,7 +467,7 @@ static struct hlist_head *find_rcv_list(
+  *  -ENOMEM on missing cache mem to create subscription entry
+  *  -ENODEV unknown device
+  */
+-int can_rx_register(struct net_device *dev, canid_t can_id, canid_t mask,
++int can_rx_register7(struct net_device *dev, canid_t can_id, canid_t mask,
+ 		    void (*func)(struct sk_buff *, void *), void *data,
+ 		    char *ident, struct sock *sk)
+ {
+@@ -514,6 +514,14 @@ int can_rx_register(struct net_device *d
+ 
+ 	return err;
+ }
++EXPORT_SYMBOL(can_rx_register7);
++
++int can_rx_register(struct net_device *dev, canid_t can_id, canid_t mask,
++		    void (*func)(struct sk_buff *, void *), void *data,
++		    char *ident)
++{
++	return can_rx_register7(dev, can_id, mask, func, data, ident, NULL);
++}
+ EXPORT_SYMBOL(can_rx_register);
+ 
+ /*
+--- a/net/can/bcm.c
++++ b/net/can/bcm.c
+@@ -1176,7 +1176,7 @@ static int bcm_rx_setup(struct bcm_msg_h
+ 
+ 			dev = dev_get_by_index(&init_net, ifindex);
+ 			if (dev) {
+-				err = can_rx_register(dev, op->can_id,
++				err = can_rx_register7(dev, op->can_id,
+ 						      REGMASK(op->can_id),
+ 						      bcm_rx_handler, op,
+ 						      "bcm", sk);
+@@ -1186,7 +1186,7 @@ static int bcm_rx_setup(struct bcm_msg_h
+ 			}
+ 
+ 		} else
+-			err = can_rx_register(NULL, op->can_id,
++			err = can_rx_register7(NULL, op->can_id,
+ 					      REGMASK(op->can_id),
+ 					      bcm_rx_handler, op, "bcm", sk);
+ 		if (err) {
+--- a/net/can/gw.c
++++ b/net/can/gw.c
+@@ -440,7 +440,7 @@ static void can_can_gw_rcv(struct sk_buf
+ 
+ static inline int cgw_register_filter(struct cgw_job *gwj)
+ {
+-	return can_rx_register(gwj->src.dev, gwj->ccgw.filter.can_id,
++	return can_rx_register7(gwj->src.dev, gwj->ccgw.filter.can_id,
+ 			       gwj->ccgw.filter.can_mask, can_can_gw_rcv,
+ 			       gwj, "gw", NULL);
+ }
+--- a/net/can/raw.c
++++ b/net/can/raw.c
+@@ -188,7 +188,7 @@ static int raw_enable_filters(struct net
+ 	int i;
+ 
+ 	for (i = 0; i < count; i++) {
+-		err = can_rx_register(dev, filter[i].can_id,
++		err = can_rx_register7(dev, filter[i].can_id,
+ 				      filter[i].can_mask,
+ 				      raw_rcv, sk, "raw", sk);
+ 		if (err) {
+@@ -210,7 +210,7 @@ static int raw_enable_errfilter(struct n
+ 	int err = 0;
+ 
+ 	if (err_mask)
+-		err = can_rx_register(dev, 0, err_mask | CAN_ERR_FLAG,
++		err = can_rx_register7(dev, 0, err_mask | CAN_ERR_FLAG,
+ 				      raw_rcv, sk, "raw", sk);
+ 
+ 	return err;

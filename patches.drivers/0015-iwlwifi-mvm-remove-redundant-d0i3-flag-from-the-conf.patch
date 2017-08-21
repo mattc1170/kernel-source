@@ -1,0 +1,68 @@
+From 5053e299aedaadcdc2aff7eaca847d1ee6fdeb54 Mon Sep 17 00:00:00 2001
+From: Luca Coelho <luciano.coelho@intel.com>
+Date: Thu, 17 Sep 2015 21:55:24 +0300
+Subject: [PATCH] iwlwifi: mvm: remove redundant d0i3 flag from the config struct
+Git-commit: 5053e299aedaadcdc2aff7eaca847d1ee6fdeb54
+Patch-mainline: 4.5-rc1
+References: FATE#321353, FATE#323335
+
+The d0i3 flag in the device configuration structure is redundant,
+because the same information can be determined by checking the
+firmware capability flag.
+
+Signed-off-by: Luca Coelho <luciano.coelho@intel.com>
+Signed-off-by: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/iwlwifi/iwl-8000.c   |    1 -
+ drivers/net/wireless/iwlwifi/iwl-config.h |    2 --
+ drivers/net/wireless/iwlwifi/mvm/mvm.h    |    9 ++++-----
+ 3 files changed, 4 insertions(+), 8 deletions(-)
+
+--- a/drivers/net/wireless/iwlwifi/iwl-8000.c
++++ b/drivers/net/wireless/iwlwifi/iwl-8000.c
+@@ -154,7 +154,6 @@ static const struct iwl_tt_params iwl800
+ 	.base_params = &iwl8000_base_params,				\
+ 	.led_mode = IWL_LED_RF_STATE,					\
+ 	.nvm_hw_section_num = NVM_HW_SECTION_NUM_FAMILY_8000,		\
+-	.d0i3 = true,							\
+ 	.features = NETIF_F_RXCSUM,					\
+ 	.non_shared_ant = ANT_A,					\
+ 	.dccm_offset = IWL8260_DCCM_OFFSET,				\
+--- a/drivers/net/wireless/iwlwifi/iwl-config.h
++++ b/drivers/net/wireless/iwlwifi/iwl-config.h
+@@ -295,7 +295,6 @@ struct iwl_pwr_tx_backoff {
+  * @high_temp: Is this NIC is designated to be in high temperature.
+  * @host_interrupt_operation_mode: device needs host interrupt operation
+  *	mode set
+- * @d0i3: device uses d0i3 instead of d3
+  * @nvm_hw_section_num: the ID of the HW NVM section
+  * @features: hw features, any combination of feature_whitelist
+  * @pwr_tx_backoffs: translation table between power limits and backoffs
+@@ -342,7 +341,6 @@ struct iwl_cfg {
+ 	const bool internal_wimax_coex;
+ 	const bool host_interrupt_operation_mode;
+ 	bool high_temp;
+-	bool d0i3;
+ 	u8   nvm_hw_section_num;
+ 	bool lp_xtal_workaround;
+ 	const struct iwl_pwr_tx_backoff *pwr_tx_backoffs;
+--- a/drivers/net/wireless/iwlwifi/mvm/mvm.h
++++ b/drivers/net/wireless/iwlwifi/mvm/mvm.h
+@@ -916,11 +916,10 @@ iwl_mvm_sta_from_staid_protected(struct
+ 
+ static inline bool iwl_mvm_is_d0i3_supported(struct iwl_mvm *mvm)
+ {
+-	return mvm->trans->cfg->d0i3 &&
+-	       mvm->trans->d0i3_mode != IWL_D0I3_MODE_OFF &&
+-	       !iwlwifi_mod_params.d0i3_disable &&
+-	       fw_has_capa(&mvm->fw->ucode_capa,
+-			   IWL_UCODE_TLV_CAPA_D0I3_SUPPORT);
++	return mvm->trans->d0i3_mode != IWL_D0I3_MODE_OFF &&
++		!iwlwifi_mod_params.d0i3_disable &&
++		fw_has_capa(&mvm->fw->ucode_capa,
++			    IWL_UCODE_TLV_CAPA_D0I3_SUPPORT);
+ }
+ 
+ static inline bool iwl_mvm_is_dqa_supported(struct iwl_mvm *mvm)

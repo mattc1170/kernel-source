@@ -1,0 +1,32 @@
+From: Jiri Slaby <jslaby@suse.cz>
+Subject: kABI: protect struct user_fpsimd_state
+Patch-mainline: never, kabi
+References: kabi
+
+In 4.4.45, commit 4c87fc7f20591ce8c4b6867b8ce3380c2caaaaac
+(arm64/ptrace: Avoid uninitialised struct padding in fpr_set()),
+upstream commit aeb1f39d814b2e21e5e5706a48834bfd553d0059 added one
+member to struct user_fpsimd_state. But this member is just to name a
+padding in the structure. Despite of that, kABI checker started
+to report breakages, because it thinks the structure is larger. But it
+is not, it is still 528 bytes.
+
+So protect the change by __GENKSYMS__ and be done with it.
+
+Signed-off-by: Jiri Slaby <jslaby@suse.cz>
+---
+ arch/arm64/include/uapi/asm/ptrace.h |    2 ++
+ 1 file changed, 2 insertions(+)
+
+--- a/arch/arm64/include/uapi/asm/ptrace.h
++++ b/arch/arm64/include/uapi/asm/ptrace.h
+@@ -76,7 +76,9 @@ struct user_fpsimd_state {
+ 	__uint128_t	vregs[32];
+ 	__u32		fpsr;
+ 	__u32		fpcr;
++#ifndef __GENKSYMS__
+ 	__u32		__reserved[2];
++#endif
+ };
+ 
+ struct user_hwdebug_state {

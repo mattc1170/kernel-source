@@ -1,0 +1,112 @@
+From: David Ahern <dsa@cumulusnetworks.com>
+Date: Tue, 14 Jun 2016 11:37:21 -0700
+Subject: net: vrf: Switch dst dev to loopback on device delete
+Patch-mainline: v4.8-rc1
+Git-commit: 810e530bfa1116079bf94b8c93b99b0208959261
+References: bsc#1042286
+
+Attempting to delete a VRF device with a socket bound to it can stall:
+
+  unregister_netdevice: waiting for red to become free. Usage count = 1
+
+The unregister is waiting for the dst to be released and with it
+references to the vrf device. Similar to dst_ifdown switch the dst
+dev to loopback on delete for all of the dst's for the vrf device
+and release the references to the vrf device.
+
+Fixes: 193125dbd8eb2 ("net: Introduce VRF device driver")
+Fixes: 35402e3136634 ("net: Add IPv6 support to VRF device")
+Signed-off-by: David Ahern <dsa@cumulusnetworks.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+Acked-by: Benjamin Poirier <bpoirier@suse.com>
+---
+ drivers/net/vrf.c |   40 ++++++++++++++++++++++++++++++----------
+ 1 file changed, 30 insertions(+), 10 deletions(-)
+
+--- a/drivers/net/vrf.c
++++ b/drivers/net/vrf.c
+@@ -361,14 +361,24 @@ static int vrf_output6(struct net *net,
+ }
+ 
+ /* holding rtnl */
+-static void vrf_rt6_release(struct net_vrf *vrf)
++static void vrf_rt6_release(struct net_device *dev, struct net_vrf *vrf)
+ {
+ 	struct rt6_info *rt6 = rtnl_dereference(vrf->rt6);
++	struct net *net = dev_net(dev);
++	struct dst_entry *dst;
+ 
+ 	rcu_assign_pointer(vrf->rt6, NULL);
+ 
+-	if (rt6)
+-		dst_release(&rt6->dst);
++	/* move dev in dst's to loopback so this VRF device can be deleted
++	 * - based on dst_ifdown
++	 */
++	if (rt6) {
++		dst = &rt6->dst;
++		dev_put(dst->dev);
++		dst->dev = net->loopback_dev;
++		dev_hold(dst->dev);
++		dst_release(dst);
++	}
+ }
+ 
+ static int vrf_rt6_create(struct net_device *dev)
+@@ -403,7 +413,7 @@ out:
+ 	return rc;
+ }
+ #else
+-static void vrf_rt6_release(struct net_vrf *vrf)
++static void vrf_rt6_release(struct net_device *dev, struct net_vrf *vrf)
+ {
+ }
+ 
+@@ -474,14 +484,24 @@ static int vrf_output(struct net *net, s
+ }
+ 
+ /* holding rtnl */
+-static void vrf_rtable_release(struct net_vrf *vrf)
++static void vrf_rtable_release(struct net_device *dev, struct net_vrf *vrf)
+ {
+ 	struct rtable *rth = rtnl_dereference(vrf->rth);
++	struct net *net = dev_net(dev);
++	struct dst_entry *dst;
+ 
+ 	rcu_assign_pointer(vrf->rth, NULL);
+ 
+-	if (rth)
+-		dst_release(&rth->dst);
++	/* move dev in dst's to loopback so this VRF device can be deleted
++	 * - based on dst_ifdown
++	 */
++	if (rth) {
++		dst = &rth->dst;
++		dev_put(dst->dev);
++		dst->dev = net->loopback_dev;
++		dev_hold(dst->dev);
++		dst_release(dst);
++	}
+ }
+ 
+ static int vrf_rtable_create(struct net_device *dev)
+@@ -586,8 +606,8 @@ static void vrf_dev_uninit(struct net_de
+ 	struct net_device *port_dev;
+ 	struct list_head *iter;
+ 
+-	vrf_rtable_release(vrf);
+-	vrf_rt6_release(vrf);
++	vrf_rtable_release(dev, vrf);
++	vrf_rt6_release(dev, vrf);
+ 
+ 	netdev_for_each_lower_dev(dev, port_dev, iter)
+ 		vrf_del_slave(dev, port_dev);
+@@ -616,7 +636,7 @@ static int vrf_dev_init(struct net_devic
+ 	return 0;
+ 
+ out_rth:
+-	vrf_rtable_release(vrf);
++	vrf_rtable_release(dev, vrf);
+ out_stats:
+ 	free_percpu(dev->dstats);
+ 	dev->dstats = NULL;

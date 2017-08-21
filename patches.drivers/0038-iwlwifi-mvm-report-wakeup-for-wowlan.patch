@@ -1,0 +1,32 @@
+From 06ae2ad413d20a1212bd7d32a49bd8b868a8629a Mon Sep 17 00:00:00 2001
+From: Derek Basehore <dbasehore@chromium.org>
+Date: Wed, 4 Nov 2015 17:37:52 -0800
+Subject: [PATCH] iwlwifi: mvm: report wakeup for wowlan
+Git-commit: 06ae2ad413d20a1212bd7d32a49bd8b868a8629a
+Patch-mainline: 4.5-rc1
+References: FATE#321353, FATE#323335
+
+When the wifi wakes up the system, we need to report it via calling
+pm_wakeup_event for lucid sleep. This is so userspace knowns that the
+wifi woke up the system via the /sys/power/wakeup_type sysfs interface.
+
+Signed-off-by: Derek Basehore <dbasehore@chromium.org>
+Signed-off-by: Johannes Berg <johannes.berg@intel.com>
+Signed-off-by: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/iwlwifi/mvm/d3.c |    2 ++
+ 1 file changed, 2 insertions(+)
+
+--- a/drivers/net/wireless/iwlwifi/mvm/d3.c
++++ b/drivers/net/wireless/iwlwifi/mvm/d3.c
+@@ -1236,6 +1236,8 @@ static void iwl_mvm_report_wakeup_reason
+ 		goto report;
+ 	}
+ 
++	pm_wakeup_event(mvm->dev, 0);
++
+ 	if (reasons & IWL_WOWLAN_WAKEUP_BY_MAGIC_PACKET)
+ 		wakeup.magic_pkt = true;
+ 

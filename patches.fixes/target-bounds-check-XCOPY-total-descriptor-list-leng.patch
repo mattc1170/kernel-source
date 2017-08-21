@@ -1,0 +1,46 @@
+From 38dea47b7d45d8a806eed96f4d80540ff8d9a129 Mon Sep 17 00:00:00 2001
+From: David Disseldorp <ddiss@suse.de>
+Date: Fri, 23 Dec 2016 11:37:56 +0100
+Subject: [PATCH 04/10] target: bounds check XCOPY total descriptor list length
+Git-commit: 7d38706669ce00603b187f667a4eb67c94eac098
+Patch-mainline: v4.10-rc4
+References: bsc#991273
+
+spc4r37 6.4.3.5 states:
+  If the combined length of the CSCD descriptors and segment descriptors
+  exceeds the allowed value, then the copy manager shall terminate the
+  command with CHECK CONDITION status, with the sense key set to ILLEGAL
+  REQUEST, and the additional sense code set to PARAMETER LIST LENGTH
+  ERROR.
+
+This functionality can be tested using the libiscsi
+ExtendedCopy.DescrLimits test.
+
+Signed-off-by: David Disseldorp <ddiss@suse.de>
+Reviewed-by: Christoph Hellwig <hch@lst.de>
+Signed-off-by: Bart Van Assche <bart.vanassche@sandisk.com>
+
+---
+ drivers/target/target_core_xcopy.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/drivers/target/target_core_xcopy.c b/drivers/target/target_core_xcopy.c
+index f8d89c6..fa50935 100644
+--- a/drivers/target/target_core_xcopy.c
++++ b/drivers/target/target_core_xcopy.c
+@@ -893,6 +893,12 @@ sense_reason_t target_do_xcopy(struct se_cmd *se_cmd)
+ 	 */
+ 	tdll = get_unaligned_be16(&p[2]);
+ 	sdll = get_unaligned_be32(&p[8]);
++	if (tdll + sdll > RCR_OP_MAX_DESC_LIST_LEN) {
++		pr_err("XCOPY descriptor list length %u exceeds maximum %u\n",
++		       tdll + sdll, RCR_OP_MAX_DESC_LIST_LEN);
++		ret = TCM_PARAMETER_LIST_LENGTH_ERROR;
++		goto out;
++	}
+ 
+ 	inline_dl = get_unaligned_be32(&p[12]);
+ 	if (inline_dl != 0) {
+-- 
+2.10.2
+

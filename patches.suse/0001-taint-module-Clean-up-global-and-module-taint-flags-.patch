@@ -1,0 +1,81 @@
+From b538736ecf41fbc1d95b466ea902074e48a47b2c Mon Sep 17 00:00:00 2001
+From: Petr Mladek <pmladek@suse.com>
+Date: Thu, 9 Feb 2017 13:14:39 +0100
+Subject: [PATCH 1/3] taint/module: Clean up global and module taint flags
+ handling
+Git-commit: 7fd8329ba502ef76dd91db561c7aed696b2c7720
+Patch-mainline: v4.10-rc1
+References: fate#313296
+
+[ mbenes: only a small subset of the upstream patch backported. New
+changelog which takes this into account much better. ]
+
+When one adds a new taint flag, buffers' size has to changed
+accordingly. This did not always happen in the past.
+
+Define TAINT_FLAGS_COUNT that can be used to create arrays and buffers
+of the right size. Note that we could not use enum because the taint
+flag indexes are used also in assembly code.
+
+It is not optimal because only few taint flags can be printed by
+module_taint_flags(). But better be on the safe side. IMHO, it is
+not worth the optimization and this is a good compromise.
+
+Signed-off-by: Petr Mladek <pmladek@suse.com>
+Signed-off-by: Miroslav Benes <mbenes@suse.cz>
+---
+ include/linux/kernel.h |    4 ++++
+ kernel/module.c        |    8 ++++++--
+ 2 files changed, 10 insertions(+), 2 deletions(-)
+
+--- a/include/linux/kernel.h
++++ b/include/linux/kernel.h
+@@ -496,6 +496,7 @@ extern enum system_states {
+ #define TAINT_UNSIGNED_MODULE		13
+ #define TAINT_SOFTLOCKUP		14
+ #define TAINT_LIVEPATCH			15
++/* !!! Keep TAINT_FLAGS_COUNT in sync !!! */
+ 
+ #ifdef CONFIG_SUSE_KERNEL_SUPPORTED
+ /*
+@@ -504,6 +505,9 @@ extern enum system_states {
+  */
+ #define TAINT_NO_SUPPORT		30
+ #define TAINT_EXTERNAL_SUPPORT		31
++#define TAINT_FLAGS_COUNT		32
++#else
++#define TAINT_FLAGS_COUNT		16
+ #endif
+ 
+ extern const char hex_asc[];
+--- a/kernel/module.c
++++ b/kernel/module.c
+@@ -3987,6 +3987,10 @@ int module_kallsyms_on_each_symbol(int (
+ }
+ #endif /* CONFIG_KALLSYMS */
+ 
++/* Maximum number of characters written by module_flags() */
++#define MODULE_FLAGS_BUF_SIZE (TAINT_FLAGS_COUNT + 4)
++
++/* Keep in sync with MODULE_FLAGS_BUF_SIZE !!! */
+ static char *module_flags(struct module *mod, char *buf)
+ {
+ 	int bx = 0;
+@@ -4031,7 +4035,7 @@ static void m_stop(struct seq_file *m, v
+ static int m_show(struct seq_file *m, void *p)
+ {
+ 	struct module *mod = list_entry(p, struct module, list);
+-	char buf[8];
++	char buf[MODULE_FLAGS_BUF_SIZE];
+ 
+ 	/* We always ignore unformed modules. */
+ 	if (mod->state == MODULE_STATE_UNFORMED)
+@@ -4202,7 +4206,7 @@ EXPORT_SYMBOL_GPL(__module_text_address)
+ void print_modules(void)
+ {
+ 	struct module *mod;
+-	char buf[8];
++	char buf[MODULE_FLAGS_BUF_SIZE];
+ 
+ 	printk(KERN_DEFAULT "Modules linked in:");
+ 	/* Most callers should already have preempt disabled, but make sure */

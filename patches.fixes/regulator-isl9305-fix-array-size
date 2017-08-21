@@ -1,0 +1,40 @@
+From 0c08aaf873174c95e674cf21ffcd041c589d2e5b Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Vincent=20Stehl=C3=A9?= <vincent.stehle@laposte.net>
+Date: Sun, 9 Apr 2017 22:05:05 +0200
+Subject: [PATCH] regulator: isl9305: fix array size
+Mime-version: 1.0
+Content-type: text/plain; charset=UTF-8
+Content-transfer-encoding: 8bit
+Git-commit: 0c08aaf873174c95e674cf21ffcd041c589d2e5b
+Patch-mainline: 4.12-rc1
+References: bsc#1031717
+
+ISL9305_MAX_REGULATOR is the last index used to access the init_data[]
+array, so we need to add one to this last index to obtain the necessary
+array size.
+
+This fixes the following smatch error:
+
+  drivers/regulator/isl9305.c:160 isl9305_i2c_probe() error: buffer overflow 'pdata->init_data' 3 <= 3
+
+Fixes: dec38b5ce6a9edb4 ("regulator: isl9305: Add Intersil ISL9305/H driver")
+Signed-off-by: Vincent Stehlé <vincent.stehle@laposte.net>
+Cc: Mark Brown <broonie@kernel.org>
+Signed-off-by: Mark Brown <broonie@kernel.org>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ include/linux/platform_data/isl9305.h |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+--- a/include/linux/platform_data/isl9305.h
++++ b/include/linux/platform_data/isl9305.h
+@@ -24,7 +24,7 @@
+ struct regulator_init_data;
+ 
+ struct isl9305_pdata {
+-	struct regulator_init_data *init_data[ISL9305_MAX_REGULATOR];
++	struct regulator_init_data *init_data[ISL9305_MAX_REGULATOR + 1];
+ };
+ 
+ #endif

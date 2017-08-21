@@ -1,0 +1,114 @@
+From fcb6b92a682fe5032fdc31af7f8ed86f1dabb1e2 Mon Sep 17 00:00:00 2001
+From: Chaya Rachel Ivgi <chaya.rachel.ivgi@intel.com>
+Date: Mon, 22 Feb 2016 10:21:41 +0200
+Subject: [PATCH] iwlwifi: mvm: update ucode status before stopping device
+Git-commit: fcb6b92a682fe5032fdc31af7f8ed86f1dabb1e2
+Patch-mainline: 4.6-rc1
+References: FATE#321353, FATE#323335
+
+Leaving ucode_loaded to true after stop_device() has been called
+is a recipe for problems. Flows that are not sync'ed with the
+driver life cycle (like debugfs hooks and thermal hooks) must
+check that the firmware is loaded before they interact with it.
+Therefore we need to keep this variable updated with the real
+status of the firmware.
+
+Signed-off-by: Chaya Rachel Ivgi <chaya.rachel.ivgi@intel.com>
+Signed-off-by: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/iwlwifi/mvm/d3.c       |    3 +--
+ drivers/net/wireless/iwlwifi/mvm/fw.c       |    4 ++--
+ drivers/net/wireless/iwlwifi/mvm/mac80211.c |    6 ++----
+ drivers/net/wireless/iwlwifi/mvm/mvm.h      |    6 ++++++
+ drivers/net/wireless/iwlwifi/mvm/ops.c      |    2 +-
+ 5 files changed, 12 insertions(+), 9 deletions(-)
+
+--- a/drivers/net/wireless/iwlwifi/mvm/d3.c
++++ b/drivers/net/wireless/iwlwifi/mvm/d3.c
+@@ -767,8 +767,7 @@ static int iwl_mvm_switch_to_d3(struct i
+ {
+ 	iwl_mvm_scan_stop(mvm, IWL_MVM_SCAN_REGULAR, true);
+ 
+-	iwl_trans_stop_device(mvm->trans);
+-
++	iwl_mvm_stop_device(mvm);
+ 	/*
+ 	 * Set the HW restart bit -- this is mostly true as we're
+ 	 * going to load new firmware and reprogram that, though
+--- a/drivers/net/wireless/iwlwifi/mvm/fw.c
++++ b/drivers/net/wireless/iwlwifi/mvm/fw.c
+@@ -1011,7 +1011,7 @@ int iwl_mvm_up(struct iwl_mvm *mvm)
+ 	IWL_DEBUG_INFO(mvm, "RT uCode started.\n");
+ 	return 0;
+  error:
+-	iwl_trans_stop_device(mvm->trans);
++	iwl_mvm_stop_device(mvm);
+ 	return ret;
+ }
+ 
+@@ -1055,7 +1055,7 @@ int iwl_mvm_load_d3_fw(struct iwl_mvm *m
+ 
+ 	return 0;
+  error:
+-	iwl_trans_stop_device(mvm->trans);
++	iwl_mvm_stop_device(mvm);
+ 	return ret;
+ }
+ 
+--- a/drivers/net/wireless/iwlwifi/mvm/mac80211.c
++++ b/drivers/net/wireless/iwlwifi/mvm/mac80211.c
+@@ -966,7 +966,7 @@ static void iwl_mvm_restart_cleanup(stru
+ 	 */
+ 	iwl_mvm_unref_all_except(mvm, IWL_MVM_REF_UCODE_DOWN);
+ 
+-	iwl_trans_stop_device(mvm->trans);
++	iwl_mvm_stop_device(mvm);
+ 
+ 	mvm->scan_status = 0;
+ 	mvm->ps_disabled = false;
+@@ -1135,7 +1135,7 @@ void __iwl_mvm_mac_stop(struct iwl_mvm *
+ 	 */
+ 	flush_work(&mvm->roc_done_wk);
+ 
+-	iwl_trans_stop_device(mvm->trans);
++	iwl_mvm_stop_device(mvm);
+ 
+ 	iwl_mvm_async_handlers_purge(mvm);
+ 	/* async_handlers_list is empty and will stay empty: HW is stopped */
+@@ -1168,8 +1168,6 @@ void __iwl_mvm_mac_stop(struct iwl_mvm *
+ 				mvm->scan_uid_status[i] = 0;
+ 		}
+ 	}
+-
+-	mvm->ucode_loaded = false;
+ }
+ 
+ static void iwl_mvm_mac_stop(struct ieee80211_hw *hw)
+--- a/drivers/net/wireless/iwlwifi/mvm/mvm.h
++++ b/drivers/net/wireless/iwlwifi/mvm/mvm.h
+@@ -1526,6 +1526,12 @@ void iwl_mvm_enable_ac_txq(struct iwl_mv
+ 	iwl_mvm_enable_txq(mvm, queue, mac80211_queue, ssn, &cfg, wdg_timeout);
+ }
+ 
++static inline void iwl_mvm_stop_device(struct iwl_mvm *mvm)
++{
++	mvm->ucode_loaded = false;
++	iwl_trans_stop_device(mvm->trans);
++}
++
+ /* Thermal management and CT-kill */
+ void iwl_mvm_tt_tx_backoff(struct iwl_mvm *mvm, u32 backoff);
+ void iwl_mvm_tt_temp_changed(struct iwl_mvm *mvm, u32 temp);
+--- a/drivers/net/wireless/iwlwifi/mvm/ops.c
++++ b/drivers/net/wireless/iwlwifi/mvm/ops.c
+@@ -626,7 +626,7 @@ iwl_op_mode_mvm_start(struct iwl_trans *
+ 		iwl_mvm_ref(mvm, IWL_MVM_REF_INIT_UCODE);
+ 		err = iwl_run_init_mvm_ucode(mvm, true);
+ 		if (!err || !iwlmvm_mod_params.init_dbg)
+-			iwl_trans_stop_device(trans);
++			iwl_mvm_stop_device(mvm);
+ 		iwl_mvm_unref(mvm, IWL_MVM_REF_INIT_UCODE);
+ 		mutex_unlock(&mvm->mutex);
+ 		/* returns 0 if successful, 1 if success but in rfkill */

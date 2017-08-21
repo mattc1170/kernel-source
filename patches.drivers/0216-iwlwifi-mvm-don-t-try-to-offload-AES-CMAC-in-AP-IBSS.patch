@@ -1,0 +1,42 @@
+From 81279c49ce472bf5900ef8b19bf91e2ad6bd1c34 Mon Sep 17 00:00:00 2001
+From: Johannes Berg <johannes.berg@intel.com>
+Date: Wed, 9 Mar 2016 14:58:47 +0100
+Subject: [PATCH] iwlwifi: mvm: don't try to offload AES-CMAC in AP/IBSS modes
+Git-commit: 81279c49ce472bf5900ef8b19bf91e2ad6bd1c34
+Patch-mainline: 4.6-rc1
+References: FATE#321353, FATE#323335
+
+The firmware/hardware only supports checking AES-CMAC on RX, not
+using it on TX. For station mode this is fine, since it's the only
+thing it will ever do. For AP mode, it never receives such frames,
+but must be able to transmit them. This is currently broken since
+we try to enable them for hardware crypto (for RX only) and then
+treat them as TX_CMD_SEC_EXT, leading to FIFO underruns during TX
+so the frames never go out to the air.
+
+To fix this, simply use software on TX in AP (and IBSS) mode.
+
+Signed-off-by: Johannes Berg <johannes.berg@intel.com>
+Signed-off-by: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/iwlwifi/mvm/mac80211.c |    6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
+
+--- a/drivers/net/wireless/iwlwifi/mvm/mac80211.c
++++ b/drivers/net/wireless/iwlwifi/mvm/mac80211.c
+@@ -2625,8 +2625,12 @@ static int iwl_mvm_mac_set_key(struct ie
+ 			 * GTK on AP interface is a TX-only key, return 0;
+ 			 * on IBSS they're per-station and because we're lazy
+ 			 * we don't support them for RX, so do the same.
++			 * CMAC in AP/IBSS modes must be done in software.
+ 			 */
+-			ret = 0;
++			if (key->cipher == WLAN_CIPHER_SUITE_AES_CMAC)
++				ret = -EOPNOTSUPP;
++			else
++				ret = 0;
+ 			key->hw_key_idx = STA_KEY_IDX_INVALID;
+ 			break;
+ 		}

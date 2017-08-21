@@ -1,0 +1,28 @@
+From: Chandan Rajendra <chandan@linux.vnet.ibm.com>
+Date: Thu, 21 Jan 2016 15:56:02 +0530
+Patch-mainline: 4.6
+Git-commit: 5a2834f808fd71d056f810b832a5f8869420e3ea
+References: bsc#1012452
+Subject: [PATCH] Btrfs: Fix block size returned to user space
+
+btrfs_getattr() returns PAGE_CACHE_SIZE as the block size. Since
+generic_fillattr() already does the right thing (by obtaining block size
+from inode->i_blkbits), just remove the statement from btrfs_getattr.
+
+Reviewed-by: Josef Bacik <jbacik@fb.com>
+Signed-off-by: Chandan Rajendra <chandan@linux.vnet.ibm.com>
+Signed-off-by: David Sterba <dsterba@suse.com>
+---
+ fs/btrfs/inode.c |    1 -
+ 1 file changed, 1 deletion(-)
+
+--- a/fs/btrfs/inode.c
++++ b/fs/btrfs/inode.c
+@@ -9396,7 +9396,6 @@ static int btrfs_getattr(struct vfsmount
+ 
+ 	generic_fillattr(inode, stat);
+ 	stat->dev = BTRFS_I(inode)->root->anon_dev;
+-	stat->blksize = PAGE_CACHE_SIZE;
+ 
+ 	spin_lock(&BTRFS_I(inode)->lock);
+ 	delalloc_bytes = BTRFS_I(inode)->delalloc_bytes;

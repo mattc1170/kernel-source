@@ -1,0 +1,159 @@
+From: David Sterba <dsterba@suse.com>
+Date: Tue, 26 Apr 2016 23:54:39 +0200
+Patch-mainline: 4.7
+Git-commit: 91166212e0ffbb4db50aa8a238548e967008b33d
+References: bsc#1012452
+Subject: [PATCH] btrfs: sink gfp parameter to clear_extent_bits
+
+Callers pass GFP_NOFS and GFP_KERNEL. No need to pass the flags around.
+
+Signed-off-by: David Sterba <dsterba@suse.com>
+---
+ fs/btrfs/disk-io.c               |    2 +-
+ fs/btrfs/extent-tree.c           |    8 ++++----
+ fs/btrfs/extent_io.c             |    4 ++--
+ fs/btrfs/extent_io.h             |    5 +++--
+ fs/btrfs/inode.c                 |    3 +--
+ fs/btrfs/relocation.c            |    3 +--
+ fs/btrfs/scrub.c                 |    2 +-
+ fs/btrfs/tests/extent-io-tests.c |    2 +-
+ fs/btrfs/tree-log.c              |    2 +-
+ 9 files changed, 15 insertions(+), 16 deletions(-)
+
+--- a/fs/btrfs/disk-io.c
++++ b/fs/btrfs/disk-io.c
+@@ -4326,7 +4326,7 @@ static int btrfs_destroy_marked_extents(
+ 		if (ret)
+ 			break;
+ 
+-		clear_extent_bits(dirty_pages, start, end, mark, GFP_NOFS);
++		clear_extent_bits(dirty_pages, start, end, mark);
+ 		while (start <= end) {
+ 			eb = btrfs_find_tree_block(root->fs_info, start);
+ 			start += root->nodesize;
+--- a/fs/btrfs/extent-tree.c
++++ b/fs/btrfs/extent-tree.c
+@@ -245,9 +245,9 @@ static void free_excluded_extents(struct
+ 	end = start + cache->key.offset - 1;
+ 
+ 	clear_extent_bits(&root->fs_info->freed_extents[0],
+-			  start, end, EXTENT_UPTODATE, GFP_NOFS);
++			  start, end, EXTENT_UPTODATE);
+ 	clear_extent_bits(&root->fs_info->freed_extents[1],
+-			  start, end, EXTENT_UPTODATE, GFP_NOFS);
++			  start, end, EXTENT_UPTODATE);
+ }
+ 
+ static int exclude_super_stripes(struct btrfs_root *root,
+@@ -10626,14 +10626,14 @@ void btrfs_delete_unused_bgs(struct btrf
+ 		 */
+ 		mutex_lock(&fs_info->unused_bg_unpin_mutex);
+ 		ret = clear_extent_bits(&fs_info->freed_extents[0], start, end,
+-				  EXTENT_DIRTY, GFP_NOFS);
++				  EXTENT_DIRTY);
+ 		if (ret) {
+ 			mutex_unlock(&fs_info->unused_bg_unpin_mutex);
+ 			btrfs_dec_block_group_ro(root, block_group);
+ 			goto end_trans;
+ 		}
+ 		ret = clear_extent_bits(&fs_info->freed_extents[1], start, end,
+-				  EXTENT_DIRTY, GFP_NOFS);
++				  EXTENT_DIRTY);
+ 		if (ret) {
+ 			mutex_unlock(&fs_info->unused_bg_unpin_mutex);
+ 			btrfs_dec_block_group_ro(root, block_group);
+--- a/fs/btrfs/extent_io.c
++++ b/fs/btrfs/extent_io.c
+@@ -1977,13 +1977,13 @@ int free_io_failure(struct inode *inode,
+ 	set_state_failrec(failure_tree, rec->start, NULL);
+ 	ret = clear_extent_bits(failure_tree, rec->start,
+ 				rec->start + rec->len - 1,
+-				EXTENT_LOCKED | EXTENT_DIRTY, GFP_NOFS);
++				EXTENT_LOCKED | EXTENT_DIRTY);
+ 	if (ret)
+ 		err = ret;
+ 
+ 	ret = clear_extent_bits(&BTRFS_I(inode)->io_tree, rec->start,
+ 				rec->start + rec->len - 1,
+-				EXTENT_DAMAGED, GFP_NOFS);
++				EXTENT_DAMAGED);
+ 	if (ret && !err)
+ 		err = ret;
+ 
+--- a/fs/btrfs/extent_io.h
++++ b/fs/btrfs/extent_io.h
+@@ -240,14 +240,15 @@ static inline int unlock_extent_cached(s
+ }
+ 
+ static inline int clear_extent_bits(struct extent_io_tree *tree, u64 start,
+-		u64 end, unsigned bits, gfp_t mask)
++		u64 end, unsigned bits)
+ {
+ 	int wake = 0;
+ 
+ 	if (bits & EXTENT_LOCKED)
+ 		wake = 1;
+ 
+-	return clear_extent_bit(tree, start, end, bits, wake, 0, NULL, mask);
++	return clear_extent_bit(tree, start, end, bits, wake, 0, NULL,
++			GFP_NOFS);
+ }
+ 
+ int set_record_extent_bits(struct extent_io_tree *tree, u64 start, u64 end,
+--- a/fs/btrfs/inode.c
++++ b/fs/btrfs/inode.c
+@@ -3119,8 +3119,7 @@ static int btrfs_readpage_end_io_hook(st
+ 
+ 	if (root->root_key.objectid == BTRFS_DATA_RELOC_TREE_OBJECTID &&
+ 	    test_range_bit(io_tree, start, end, EXTENT_NODATASUM, 1, NULL)) {
+-		clear_extent_bits(io_tree, start, end, EXTENT_NODATASUM,
+-				  GFP_NOFS);
++		clear_extent_bits(io_tree, start, end, EXTENT_NODATASUM);
+ 		return 0;
+ 	}
+ 
+--- a/fs/btrfs/relocation.c
++++ b/fs/btrfs/relocation.c
+@@ -4073,8 +4073,7 @@ restart:
+ 	}
+ 
+ 	btrfs_release_path(path);
+-	clear_extent_bits(&rc->processed_blocks, 0, (u64)-1, EXTENT_DIRTY,
+-			  GFP_NOFS);
++	clear_extent_bits(&rc->processed_blocks, 0, (u64)-1, EXTENT_DIRTY);
+ 
+ 	if (trans) {
+ 		btrfs_end_transaction_throttle(trans, rc->extent_root);
+--- a/fs/btrfs/scrub.c
++++ b/fs/btrfs/scrub.c
+@@ -763,7 +763,7 @@ static int scrub_fixup_readpage(u64 inum
+ 						end, EXTENT_DAMAGED, 0, NULL);
+ 		if (!corrected)
+ 			clear_extent_bits(&BTRFS_I(inode)->io_tree, offset, end,
+-						EXTENT_DAMAGED, GFP_NOFS);
++						EXTENT_DAMAGED);
+ 	}
+ 
+ out:
+--- a/fs/btrfs/tests/extent-io-tests.c
++++ b/fs/btrfs/tests/extent-io-tests.c
+@@ -258,7 +258,7 @@ static int test_find_delalloc(void)
+ 	}
+ 	ret = 0;
+ out_bits:
+-	clear_extent_bits(&tmp, 0, total_dirty - 1, (unsigned)-1, GFP_NOFS);
++	clear_extent_bits(&tmp, 0, total_dirty - 1, (unsigned)-1);
+ out:
+ 	if (locked_page)
+ 		page_cache_release(locked_page);
+--- a/fs/btrfs/tree-log.c
++++ b/fs/btrfs/tree-log.c
+@@ -2992,7 +2992,7 @@ static void free_log_tree(struct btrfs_t
+ 			break;
+ 
+ 		clear_extent_bits(&log->dirty_log_pages, start, end,
+-				  EXTENT_DIRTY | EXTENT_NEW, GFP_NOFS);
++				  EXTENT_DIRTY | EXTENT_NEW);
+ 	}
+ 
+ 	/*

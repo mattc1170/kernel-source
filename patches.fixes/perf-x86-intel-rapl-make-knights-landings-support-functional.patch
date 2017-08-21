@@ -1,0 +1,52 @@
+From: Thomas Gleixner <tglx@linutronix.de>
+Date: Mon, 22 Feb 2016 22:19:20 +0000
+Subject: perf/x86/intel/rapl: Make Knights Landings support functional
+Git-commit: 4d120c535d638a952e644817ba3cbef30deedb2b
+Patch-mainline: v4.6-rc1
+References: bsc#1042517
+Signed-off-by: Tony Jones <tonyj@suse.de>
+
+[SUSE: adjust for:
+  no 609d809f
+  perf/x86: Move perf_event_intel_rapl.c ....... => x86/events/intel/rapl.c
+]
+
+The Knights Landings support added the events and the detection case, but then
+returns 0 without actually initializing the driver.
+
+Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
+Signed-off-by: Peter Zijlstra (Intel) <peterz@infradead.org>
+Cc: Andi Kleen <andi.kleen@intel.com>
+Cc: Arnaldo Carvalho de Melo <acme@redhat.com>
+Cc: Borislav Petkov <bp@alien8.de>
+Cc: Dasaratharaman Chandramouli <dasaratharaman.chandramouli@intel.com>
+Cc: Harish Chegondi <harish.chegondi@intel.com>
+Cc: Jacob Pan <jacob.jun.pan@linux.intel.com>
+Cc: Jiri Olsa <jolsa@redhat.com>
+Cc: Kan Liang <kan.liang@intel.com>
+Cc: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: Peter Zijlstra <peterz@infradead.org>
+Cc: Stephane Eranian <eranian@google.com>
+Cc: Vince Weaver <vincent.weaver@maine.edu>
+Cc: linux-kernel@vger.kernel.org
+Fixes: 3a2a7797326a4 "perf/x86/intel/rapl: Add support for Knights Landing (KNL)"
+Link: http://lkml.kernel.org/r/20160222221012.149331888@linutronix.de
+Signed-off-by: Ingo Molnar <mingo@kernel.org>
+---
+ arch/x86/kernel/cpu/perf_event_intel_rapl.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/arch/x86/kernel/cpu/perf_event_intel_rapl.c b/arch/x86/kernel/cpu/perf_event_intel_rapl.c
+index 580f504ec27c..536f0cebba8f 100644
+--- a/arch/x86/kernel/cpu/perf_event_intel_rapl.c
++++ b/arch/x86/kernel/cpu/perf_event_intel_rapl.c
+@@ -744,7 +744,7 @@ static int __init rapl_pmu_init(void)
+ 		rapl_add_quirk(rapl_hsw_server_quirk);
+ 		rapl_cntr_mask = RAPL_IDX_KNL;
+ 		rapl_pmu_events_group.attrs = rapl_events_knl_attr;
+-
++		break;
+ 	default:
+ 		/* unsupported */
+ 		return 0;
+

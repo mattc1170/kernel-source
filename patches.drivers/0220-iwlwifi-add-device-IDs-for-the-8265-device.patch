@@ -1,0 +1,39 @@
+From d34475b964b01067ed25187c4f52d8bdf2c0e113 Mon Sep 17 00:00:00 2001
+From: Oren Givon <oren.givon@intel.com>
+Date: Thu, 24 Mar 2016 10:20:28 +0200
+Subject: [PATCH] iwlwifi: add device IDs for the 8265 device
+Git-commit: d34475b964b01067ed25187c4f52d8bdf2c0e113
+Patch-mainline: 4.6-rc7
+References: FATE#321353, FATE#323335
+
+Add new 8265 series PCI IDs.
+
+Signed-off-by: Oren Givon <oren.givon@intel.com>
+Signed-off-by: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/iwlwifi/pcie/drv.c |   10 ++++++++++
+ 1 file changed, 10 insertions(+)
+
+--- a/drivers/net/wireless/iwlwifi/pcie/drv.c
++++ b/drivers/net/wireless/iwlwifi/pcie/drv.c
+@@ -479,8 +479,18 @@ static const struct pci_device_id iwl_hw
+ 	{IWL_PCI_DEVICE(0x24F3, 0x0930, iwl8260_2ac_cfg)},
+ 	{IWL_PCI_DEVICE(0x24F3, 0x0000, iwl8265_2ac_cfg)},
+ 	{IWL_PCI_DEVICE(0x24FD, 0x0010, iwl8265_2ac_cfg)},
++	{IWL_PCI_DEVICE(0x24FD, 0x0110, iwl8265_2ac_cfg)},
++	{IWL_PCI_DEVICE(0x24FD, 0x1110, iwl8265_2ac_cfg)},
++	{IWL_PCI_DEVICE(0x24FD, 0x1010, iwl8265_2ac_cfg)},
++	{IWL_PCI_DEVICE(0x24FD, 0x0050, iwl8265_2ac_cfg)},
++	{IWL_PCI_DEVICE(0x24FD, 0x0150, iwl8265_2ac_cfg)},
++	{IWL_PCI_DEVICE(0x24FD, 0x9010, iwl8265_2ac_cfg)},
++	{IWL_PCI_DEVICE(0x24FD, 0x8110, iwl8265_2ac_cfg)},
++	{IWL_PCI_DEVICE(0x24FD, 0x8050, iwl8265_2ac_cfg)},
+ 	{IWL_PCI_DEVICE(0x24FD, 0x8010, iwl8265_2ac_cfg)},
+ 	{IWL_PCI_DEVICE(0x24FD, 0x0810, iwl8265_2ac_cfg)},
++	{IWL_PCI_DEVICE(0x24FD, 0x9110, iwl8265_2ac_cfg)},
++	{IWL_PCI_DEVICE(0x24FD, 0x8130, iwl8265_2ac_cfg)},
+ 
+ /* 9000 Series */
+ 	{IWL_PCI_DEVICE(0x9DF0, 0x2A10, iwl5165_2ac_cfg)},

@@ -1,0 +1,58 @@
+From: David Sterba <dsterba@suse.com>
+Date: Mon, 9 May 2016 14:11:38 +0200
+Patch-mainline: 4.7
+Git-commit: e1860a7724828a341037b010b3f4ff58bad53f95
+References: bsc#1012452
+Subject: [PATCH] btrfs: GFP_NOFS does not GFP_HIGHMEM
+
+Masking HIGHMEM out of NOFS does not make sense.
+
+Signed-off-by: David Sterba <dsterba@suse.com>
+---
+ fs/btrfs/delayed-inode.c |    2 +-
+ fs/btrfs/disk-io.c       |    2 +-
+ fs/btrfs/extent_io.c     |    4 ++--
+ 3 files changed, 4 insertions(+), 4 deletions(-)
+
+--- a/fs/btrfs/delayed-inode.c
++++ b/fs/btrfs/delayed-inode.c
+@@ -140,7 +140,7 @@ again:
+ 	/* cached in the btrfs inode and can be accessed */
+ 	atomic_add(2, &node->refs);
+ 
+-	ret = radix_tree_preload(GFP_NOFS & ~__GFP_HIGHMEM);
++	ret = radix_tree_preload(GFP_NOFS);
+ 	if (ret) {
+ 		kmem_cache_free(delayed_node_cache, node);
+ 		return ERR_PTR(ret);
+--- a/fs/btrfs/disk-io.c
++++ b/fs/btrfs/disk-io.c
+@@ -1639,7 +1639,7 @@ int btrfs_insert_fs_root(struct btrfs_fs
+ {
+ 	int ret;
+ 
+-	ret = radix_tree_preload(GFP_NOFS & ~__GFP_HIGHMEM);
++	ret = radix_tree_preload(GFP_NOFS);
+ 	if (ret)
+ 		return ret;
+ 
+--- a/fs/btrfs/extent_io.c
++++ b/fs/btrfs/extent_io.c
+@@ -4822,7 +4822,7 @@ struct extent_buffer *alloc_test_extent_
+ 		return NULL;
+ 	eb->fs_info = fs_info;
+ again:
+-	ret = radix_tree_preload(GFP_NOFS & ~__GFP_HIGHMEM);
++	ret = radix_tree_preload(GFP_NOFS);
+ 	if (ret)
+ 		goto free_eb;
+ 	spin_lock(&fs_info->buffer_lock);
+@@ -4923,7 +4923,7 @@ struct extent_buffer *alloc_extent_buffe
+ 	if (uptodate)
+ 		set_bit(EXTENT_BUFFER_UPTODATE, &eb->bflags);
+ again:
+-	ret = radix_tree_preload(GFP_NOFS & ~__GFP_HIGHMEM);
++	ret = radix_tree_preload(GFP_NOFS);
+ 	if (ret)
+ 		goto free_eb;
+ 

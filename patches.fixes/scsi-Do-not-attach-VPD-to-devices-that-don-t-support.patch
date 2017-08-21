@@ -1,7 +1,8 @@
 From: Hannes Reinecke <hare@suse.de>
 Date: Thu, 21 Jan 2016 08:18:49 +0100
 Subject: scsi: Do not attach VPD to devices that don't support it
-Patch-Mainline: submitted to linux-scsi 2016/01/24
+Patch-Mainline: v4.6-rc3
+Git-commit: 5ddfe0858ea7848c5d4efe3f4319e7543522e0ee
 
 The patch "scsi: rescan VPD attributes" introduced a regression in which
 devices that don't support VPD were being scanned for VPD attributes

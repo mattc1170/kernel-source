@@ -1,0 +1,91 @@
+From: David Sterba <dsterba@suse.com>
+Date: Tue, 26 Apr 2016 23:54:39 +0200
+Patch-mainline: 4.7
+Git-commit: 210aa27768bec4297a9d6ad0e5cab45935c775e9
+References: bsc#1012452
+Subject: [PATCH] btrfs: sink gfp parameter to convert_extent_bit
+
+Single caller passes GFP_NOFS. We can get rid of the
+gfpflags_allow_blocking checks as NOFS can block but does not recurse to
+filesystem through reclaim.
+
+Signed-off-by: David Sterba <dsterba@suse.com>
+---
+ fs/btrfs/extent_io.c   |   12 ++++++------
+ fs/btrfs/extent_io.h   |    2 +-
+ fs/btrfs/transaction.c |    2 +-
+ 3 files changed, 8 insertions(+), 8 deletions(-)
+
+--- a/fs/btrfs/extent_io.c
++++ b/fs/btrfs/extent_io.c
+@@ -1080,17 +1080,18 @@ int set_extent_bit(struct extent_io_tree
+  * @bits:	the bits to set in this range
+  * @clear_bits:	the bits to clear in this range
+  * @cached_state:	state that we're going to cache
+- * @mask:	the allocation mask
+  *
+  * This will go through and set bits for the given range.  If any states exist
+  * already in this range they are set with the given bit and cleared of the
+  * clear_bits.  This is only meant to be used by things that are mergeable, ie
+  * converting from say DELALLOC to DIRTY.  This is not meant to be used with
+  * boundary bits like LOCK.
++ *
++ * All allocations are done with GFP_NOFS.
+  */
+ int convert_extent_bit(struct extent_io_tree *tree, u64 start, u64 end,
+ 		       unsigned bits, unsigned clear_bits,
+-		       struct extent_state **cached_state, gfp_t mask)
++		       struct extent_state **cached_state)
+ {
+ 	struct extent_state *state;
+ 	struct extent_state *prealloc = NULL;
+@@ -1105,7 +1106,7 @@ int convert_extent_bit(struct extent_io_
+ 	btrfs_debug_check_extent_io_range(tree, start, end);
+ 
+ again:
+-	if (!prealloc && gfpflags_allow_blocking(mask)) {
++	if (!prealloc) {
+ 		/*
+ 		 * Best effort, don't worry if extent state allocation fails
+ 		 * here for the first iteration. We might have a cached state
+@@ -1113,7 +1114,7 @@ again:
+ 		 * extent state allocations are needed. We'll only know this
+ 		 * after locking the tree.
+ 		 */
+-		prealloc = alloc_extent_state(mask);
++		prealloc = alloc_extent_state(GFP_NOFS);
+ 		if (!prealloc && !first_iteration)
+ 			return -ENOMEM;
+ 	}
+@@ -1274,8 +1275,7 @@ search_again:
+ 	if (start > end)
+ 		goto out;
+ 	spin_unlock(&tree->lock);
+-	if (gfpflags_allow_blocking(mask))
+-		cond_resched();
++	cond_resched();
+ 	first_iteration = false;
+ 	goto again;
+ 
+--- a/fs/btrfs/extent_io.h
++++ b/fs/btrfs/extent_io.h
+@@ -286,7 +286,7 @@ static inline int clear_extent_dirty(str
+ 
+ int convert_extent_bit(struct extent_io_tree *tree, u64 start, u64 end,
+ 		       unsigned bits, unsigned clear_bits,
+-		       struct extent_state **cached_state, gfp_t mask);
++		       struct extent_state **cached_state);
+ 
+ static inline int set_extent_delalloc(struct extent_io_tree *tree, u64 start,
+ 		u64 end, struct extent_state **cached_state)
+--- a/fs/btrfs/transaction.c
++++ b/fs/btrfs/transaction.c
+@@ -939,7 +939,7 @@ int btrfs_write_marked_extents(struct bt
+ 
+ 		err = convert_extent_bit(dirty_pages, start, end,
+ 					 EXTENT_NEED_WAIT,
+-					 mark, &cached_state, GFP_NOFS);
++					 mark, &cached_state);
+ 		/*
+ 		 * convert_extent_bit can return -ENOMEM, which is most of the
+ 		 * time a temporary error. So when it happens, ignore the error

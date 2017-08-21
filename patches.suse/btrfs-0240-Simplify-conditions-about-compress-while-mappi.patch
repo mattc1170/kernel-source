@@ -1,0 +1,30 @@
+From: Satoru Takeuchi <takeuchi_satoru@jp.fujitsu.com>
+Date: Tue, 15 Mar 2016 09:09:59 +0900
+Patch-mainline: 4.7
+Git-commit: 13f48dc9094b56c5bffd8d57349a0a01a1926b2d
+References: bsc#1012452
+Subject: [PATCH] btrfs: Simplify conditions about compress while
+ mapping btrfs flags to inode flags
+
+Signed-off-by: Satoru Takeuchi <takeuchi_satoru@jp.fujitsu.com>
+Signed-off-by: David Sterba <dsterba@suse.com>
+---
+ fs/btrfs/ioctl.c |    6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+--- a/fs/btrfs/ioctl.c
++++ b/fs/btrfs/ioctl.c
+@@ -124,10 +124,10 @@ static unsigned int btrfs_flags_to_ioctl
+ 	if (flags & BTRFS_INODE_NODATACOW)
+ 		iflags |= FS_NOCOW_FL;
+ 
+-	if ((flags & BTRFS_INODE_COMPRESS) && !(flags & BTRFS_INODE_NOCOMPRESS))
+-		iflags |= FS_COMPR_FL;
+-	else if (flags & BTRFS_INODE_NOCOMPRESS)
++	if (flags & BTRFS_INODE_NOCOMPRESS)
+ 		iflags |= FS_NOCOMP_FL;
++	else if (flags & BTRFS_INODE_COMPRESS)
++		iflags |= FS_COMPR_FL;
+ 
+ 	return iflags;
+ }

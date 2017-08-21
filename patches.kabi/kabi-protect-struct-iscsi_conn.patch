@@ -1,0 +1,41 @@
+From: Jiri Slaby <jslaby@suse.cz>
+Subject: kABI: protect struct iscsi_conn
+Patch-mainline: never, kabi
+References: kabi
+
+In 4.4.57, commit 246760c61d9c4c0114ba5bd324df4ae17468e238 (scsi:
+libiscsi: add lock around task lists to fix list corruption regression),
+upstream commit 6f8830f5bbab16e54f261de187f3df4644a5b977 added a spin
+lock to struct iscsi_conn. It indeed changed the layout of that
+structure.
+
+But struct iscsi_conn is allocated internally in iscsi_conn_setup, so
+nobody should care about its size. So move the member to the end of the
+structure and protect the change by __GENKSYMS__.
+
+Signed-off-by: Jiri Slaby <jslaby@suse.cz>
+---
+ include/scsi/libiscsi.h |    5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+--- a/include/scsi/libiscsi.h
++++ b/include/scsi/libiscsi.h
+@@ -196,7 +196,6 @@ struct iscsi_conn {
+ 	struct iscsi_task	*task;		/* xmit task in progress */
+ 
+ 	/* xmit */
+-	spinlock_t		taskqueuelock;  /* protects the next three lists */
+ 	struct list_head	mgmtqueue;	/* mgmt (control) xmit queue */
+ 	struct list_head	cmdqueue;	/* data-path cmd queue */
+ 	struct list_head	requeue;	/* tasks needing another run */
+@@ -252,6 +251,10 @@ struct iscsi_conn {
+ 	/* custom statistics */
+ 	uint32_t		eh_abort_cnt;
+ 	uint32_t		fmr_unalign_cnt;
++
++#ifndef __GENKSYMS__
++	spinlock_t		taskqueuelock;  /* protects the next three lists */
++#endif
+ };
+ 
+ struct iscsi_pool {

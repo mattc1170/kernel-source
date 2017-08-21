@@ -1,0 +1,29 @@
+From a0b5da7a36e25a1f596a8198076757f17785d407 Mon Sep 17 00:00:00 2001
+From: Ales Novak <alnovak@suse.cz>
+Date: Mon, 20 Mar 2017 08:01:54 +0100
+Patch-mainline: never, kABI fix
+References: bsc#1027153, bsc#1027616
+Subject: [PATCH 5/9] x86/ioapic: fix kABI (hide added include)
+
+Signed-off-by: Ales Novak <alnovak@suse.cz>
+---
+ drivers/pci/setup-bus.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/drivers/pci/setup-bus.c b/drivers/pci/setup-bus.c
+index 16792a2..51c6ce26 100644
+--- a/drivers/pci/setup-bus.c
++++ b/drivers/pci/setup-bus.c
+@@ -26,7 +26,9 @@
+ #include <linux/cache.h>
+ #include <linux/slab.h>
+ #include <asm-generic/pci-bridge.h>
++#ifndef __GENKSYMS__
+ #include <linux/acpi.h>
++#endif
+ #include "pci.h"
+ 
+ unsigned int pci_flags;
+-- 
+2.10.1
+

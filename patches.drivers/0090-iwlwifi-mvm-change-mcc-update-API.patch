@@ -1,0 +1,289 @@
+From 6fa52430f0b3a45a31fb706084288884532e857c Mon Sep 17 00:00:00 2001
+From: Matti Gottlieb <matti.gottlieb@intel.com>
+Date: Mon, 4 Jan 2016 13:38:41 +0200
+Subject: [PATCH] iwlwifi: mvm: change mcc update API
+Git-commit: 6fa52430f0b3a45a31fb706084288884532e857c
+Patch-mainline: 4.5-rc1
+References: FATE#321353, FATE#323335
+
+New functionality for testing that is not relevant for
+this driver has been added. This required an API change.
+
+Add new cmd & response versions for the MCC update cmd & response.
+Add new TLV indicating that the FW is using the new API.
+
+Signed-off-by: Matti Gottlieb <matti.gottlieb@intel.com>
+Signed-off-by: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/iwlwifi/iwl-fw-file.h |    4 +
+ drivers/net/wireless/iwlwifi/mvm/fw-api.h  |   60 +++++++++++++++++++++++++++--
+ drivers/net/wireless/iwlwifi/mvm/nvm.c     |   52 ++++++++++++++++++-------
+ 3 files changed, 100 insertions(+), 16 deletions(-)
+
+--- a/drivers/net/wireless/iwlwifi/iwl-fw-file.h
++++ b/drivers/net/wireless/iwlwifi/iwl-fw-file.h
+@@ -7,6 +7,7 @@
+  *
+  * Copyright(c) 2008 - 2014 Intel Corporation. All rights reserved.
+  * Copyright(c) 2013 - 2015 Intel Mobile Communications GmbH
++ * Copyright(c) 2016        Intel Deutschland GmbH
+  *
+  * This program is free software; you can redistribute it and/or modify
+  * it under the terms of version 2 of the GNU General Public License as
+@@ -33,6 +34,7 @@
+  *
+  * Copyright(c) 2005 - 2014 Intel Corporation. All rights reserved.
+  * Copyright(c) 2013 - 2015 Intel Mobile Communications GmbH
++ * Copyright(c) 2016        Intel Deutschland GmbH
+  * All rights reserved.
+  *
+  * Redistribution and use in source and binary forms, with or without
+@@ -311,6 +313,7 @@ typedef unsigned int __bitwise__ iwl_uco
+  * @IWL_UCODE_TLV_CAPA_BT_MPLUT_SUPPORT: supports bt-coex Multi-priority LUT
+  * @IWL_UCODE_TLV_CAPA_BEACON_ANT_SELECTION: firmware will decide on what
+  *	antenna the beacon should be transmitted
++ * @IWL_UCODE_TLV_CAPA_LAR_SUPPORT_V2: support LAR API V2
+  *
+  * @NUM_IWL_UCODE_TLV_CAPA: number of bits used
+  */
+@@ -339,6 +342,7 @@ enum iwl_ucode_tlv_capa {
+ 	IWL_UCODE_TLV_CAPA_SHORT_PM_TIMEOUTS		= (__force iwl_ucode_tlv_capa_t)65,
+ 	IWL_UCODE_TLV_CAPA_BT_MPLUT_SUPPORT		= (__force iwl_ucode_tlv_capa_t)67,
+ 	IWL_UCODE_TLV_CAPA_BEACON_ANT_SELECTION		= (__force iwl_ucode_tlv_capa_t)71,
++	IWL_UCODE_TLV_CAPA_LAR_SUPPORT_V2		= (__force iwl_ucode_tlv_capa_t)73,
+ 
+ 	NUM_IWL_UCODE_TLV_CAPA
+ #ifdef __CHECKER__
+--- a/drivers/net/wireless/iwlwifi/mvm/fw-api.h
++++ b/drivers/net/wireless/iwlwifi/mvm/fw-api.h
+@@ -7,6 +7,7 @@
+  *
+  * Copyright(c) 2012 - 2014 Intel Corporation. All rights reserved.
+  * Copyright(c) 2013 - 2015 Intel Mobile Communications GmbH
++ * Copyright(c) 2016        Intel Deutschland GmbH
+  *
+  * This program is free software; you can redistribute it and/or modify
+  * it under the terms of version 2 of the GNU General Public License as
+@@ -33,6 +34,7 @@
+  *
+  * Copyright(c) 2012 - 2014 Intel Corporation. All rights reserved.
+  * Copyright(c) 2013 - 2015 Intel Mobile Communications GmbH
++ * Copyright(c) 2016        Intel Deutschland GmbH
+  * All rights reserved.
+  *
+  * Redistribution and use in source and binary forms, with or without
+@@ -1452,6 +1454,22 @@ struct iwl_sf_cfg_cmd {
+  ***********************************/
+ 
+ /**
++ * struct iwl_mcc_update_cmd_v1 - Request the device to update geographic
++ * regulatory profile according to the given MCC (Mobile Country Code).
++ * The MCC is two letter-code, ascii upper case[A-Z] or '00' for world domain.
++ * 'ZZ' MCC will be used to switch to NVM default profile; in this case, the
++ * MCC in the cmd response will be the relevant MCC in the NVM.
++ * @mcc: given mobile country code
++ * @source_id: the source from where we got the MCC, see iwl_mcc_source
++ * @reserved: reserved for alignment
++ */
++struct iwl_mcc_update_cmd_v1 {
++	__le16 mcc;
++	u8 source_id;
++	u8 reserved;
++} __packed; /* LAR_UPDATE_MCC_CMD_API_S_VER_1 */
++
++/**
+  * struct iwl_mcc_update_cmd - Request the device to update geographic
+  * regulatory profile according to the given MCC (Mobile Country Code).
+  * The MCC is two letter-code, ascii upper case[A-Z] or '00' for world domain.
+@@ -1460,12 +1478,39 @@ struct iwl_sf_cfg_cmd {
+  * @mcc: given mobile country code
+  * @source_id: the source from where we got the MCC, see iwl_mcc_source
+  * @reserved: reserved for alignment
++ * @key: integrity key for MCC API OEM testing
++ * @reserved2: reserved
+  */
+ struct iwl_mcc_update_cmd {
+ 	__le16 mcc;
+ 	u8 source_id;
+ 	u8 reserved;
+-} __packed; /* LAR_UPDATE_MCC_CMD_API_S */
++	__le32 key;
++	__le32 reserved2[5];
++} __packed; /* LAR_UPDATE_MCC_CMD_API_S_VER_2 */
++
++/**
++ * iwl_mcc_update_resp_v1  - response to MCC_UPDATE_CMD.
++ * Contains the new channel control profile map, if changed, and the new MCC
++ * (mobile country code).
++ * The new MCC may be different than what was requested in MCC_UPDATE_CMD.
++ * @status: see &enum iwl_mcc_update_status
++ * @mcc: the new applied MCC
++ * @cap: capabilities for all channels which matches the MCC
++ * @source_id: the MCC source, see iwl_mcc_source
++ * @n_channels: number of channels in @channels_data (may be 14, 39, 50 or 51
++ *		channels, depending on platform)
++ * @channels: channel control data map, DWORD for each channel. Only the first
++ *	16bits are used.
++ */
++struct iwl_mcc_update_resp_v1  {
++	__le32 status;
++	__le16 mcc;
++	u8 cap;
++	u8 source_id;
++	__le32 n_channels;
++	__le32 channels[0];
++} __packed; /* LAR_UPDATE_MCC_CMD_RESP_S_VER_1 */
+ 
+ /**
+  * iwl_mcc_update_resp - response to MCC_UPDATE_CMD.
+@@ -1476,6 +1521,8 @@ struct iwl_mcc_update_cmd {
+  * @mcc: the new applied MCC
+  * @cap: capabilities for all channels which matches the MCC
+  * @source_id: the MCC source, see iwl_mcc_source
++ * @time: time elapsed from the MCC test start (in 30 seconds TU)
++ * @reserved: reserved.
+  * @n_channels: number of channels in @channels_data (may be 14, 39, 50 or 51
+  *		channels, depending on platform)
+  * @channels: channel control data map, DWORD for each channel. Only the first
+@@ -1486,9 +1533,11 @@ struct iwl_mcc_update_resp {
+ 	__le16 mcc;
+ 	u8 cap;
+ 	u8 source_id;
++	__le16 time;
++	__le16 reserved;
+ 	__le32 n_channels;
+ 	__le32 channels[0];
+-} __packed; /* LAR_UPDATE_MCC_CMD_RESP_S */
++} __packed; /* LAR_UPDATE_MCC_CMD_RESP_S_VER_2 */
+ 
+ /**
+  * struct iwl_mcc_chub_notif - chub notifies of mcc change
+@@ -1518,6 +1567,9 @@ enum iwl_mcc_update_status {
+ 	MCC_RESP_NVM_DISABLED,
+ 	MCC_RESP_ILLEGAL,
+ 	MCC_RESP_LOW_PRIORITY,
++	MCC_RESP_TEST_MODE_ACTIVE,
++	MCC_RESP_TEST_MODE_NOT_ACTIVE,
++	MCC_RESP_TEST_MODE_DENIAL_OF_SERVICE,
+ };
+ 
+ enum iwl_mcc_source {
+@@ -1530,7 +1582,9 @@ enum iwl_mcc_source {
+ 	MCC_SOURCE_RESERVED = 6,
+ 	MCC_SOURCE_DEFAULT = 7,
+ 	MCC_SOURCE_UNINITIALIZED = 8,
+-	MCC_SOURCE_GET_CURRENT = 0x10
++	MCC_SOURCE_MCC_API = 9,
++	MCC_SOURCE_GET_CURRENT = 0x10,
++	MCC_SOURCE_GETTING_MCC_TEST_MODE = 0x11,
+ };
+ 
+ /* DTS measurements */
+--- a/drivers/net/wireless/iwlwifi/mvm/nvm.c
++++ b/drivers/net/wireless/iwlwifi/mvm/nvm.c
+@@ -7,6 +7,7 @@
+  *
+  * Copyright(c) 2012 - 2014 Intel Corporation. All rights reserved.
+  * Copyright(c) 2013 - 2015 Intel Mobile Communications GmbH
++ * Copyright(c) 2016        Intel Deutschland GmbH
+  *
+  * This program is free software; you can redistribute it and/or modify
+  * it under the terms of version 2 of the GNU General Public License as
+@@ -33,6 +34,7 @@
+  *
+  * Copyright(c) 2012 - 2014 Intel Corporation. All rights reserved.
+  * Copyright(c) 2013 - 2015 Intel Mobile Communications GmbH
++ * Copyright(c) 2016        Intel Deutschland GmbH
+  * All rights reserved.
+  *
+  * Redistribution and use in source and binary forms, with or without
+@@ -670,6 +672,7 @@ iwl_mvm_update_mcc(struct iwl_mvm *mvm,
+ 		.source_id = (u8)src_id,
+ 	};
+ 	struct iwl_mcc_update_resp *mcc_resp, *resp_cp = NULL;
++	struct iwl_mcc_update_resp_v1 *mcc_resp_v1 = NULL;
+ 	struct iwl_rx_packet *pkt;
+ 	struct iwl_host_cmd cmd = {
+ 		.id = MCC_UPDATE_CMD,
+@@ -681,11 +684,15 @@ iwl_mvm_update_mcc(struct iwl_mvm *mvm,
+ 	u32 status;
+ 	int resp_len, n_channels;
+ 	u16 mcc;
++	bool resp_v2 = fw_has_capa(&mvm->fw->ucode_capa,
++				   IWL_UCODE_TLV_CAPA_LAR_SUPPORT_V2);
+ 
+ 	if (WARN_ON_ONCE(!iwl_mvm_is_lar_supported(mvm)))
+ 		return ERR_PTR(-EOPNOTSUPP);
+ 
+ 	cmd.len[0] = sizeof(struct iwl_mcc_update_cmd);
++	if (!resp_v2)
++		cmd.len[0] = sizeof(struct iwl_mcc_update_cmd_v1);
+ 
+ 	IWL_DEBUG_LAR(mvm, "send MCC update to FW with '%c%c' src = %d\n",
+ 		      alpha2[0], alpha2[1], src_id);
+@@ -697,31 +704,50 @@ iwl_mvm_update_mcc(struct iwl_mvm *mvm,
+ 	pkt = cmd.resp_pkt;
+ 
+ 	/* Extract MCC response */
+-	mcc_resp = (void *)pkt->data;
+-	status = le32_to_cpu(mcc_resp->status);
++	if (resp_v2) {
++		mcc_resp = (void *)pkt->data;
++		n_channels =  __le32_to_cpu(mcc_resp->n_channels);
++	} else {
++		mcc_resp_v1 = (void *)pkt->data;
++		n_channels =  __le32_to_cpu(mcc_resp_v1->n_channels);
++	}
+ 
+-	mcc = le16_to_cpu(mcc_resp->mcc);
++	resp_len = sizeof(struct iwl_mcc_update_resp) + n_channels *
++		sizeof(__le32);
++
++	resp_cp = kzalloc(resp_len, GFP_KERNEL);
++	if (!resp_cp) {
++		ret = -ENOMEM;
++		goto exit;
++	}
++
++	if (resp_v2) {
++		memcpy(resp_cp, mcc_resp, resp_len);
++	} else {
++		resp_cp->status = mcc_resp_v1->status;
++		resp_cp->mcc = mcc_resp_v1->mcc;
++		resp_cp->cap = mcc_resp_v1->cap;
++		resp_cp->source_id = mcc_resp_v1->source_id;
++		resp_cp->n_channels = mcc_resp_v1->n_channels;
++		memcpy(resp_cp->channels, mcc_resp_v1->channels,
++		       n_channels * sizeof(__le32));
++	}
++
++	status = le32_to_cpu(resp_cp->status);
++
++	mcc = le16_to_cpu(resp_cp->mcc);
+ 
+ 	/* W/A for a FW/NVM issue - returns 0x00 for the world domain */
+ 	if (mcc == 0) {
+ 		mcc = 0x3030;  /* "00" - world */
+-		mcc_resp->mcc = cpu_to_le16(mcc);
++		resp_cp->mcc = cpu_to_le16(mcc);
+ 	}
+ 
+-	n_channels =  __le32_to_cpu(mcc_resp->n_channels);
+ 	IWL_DEBUG_LAR(mvm,
+ 		      "MCC response status: 0x%x. new MCC: 0x%x ('%c%c') change: %d n_chans: %d\n",
+ 		      status, mcc, mcc >> 8, mcc & 0xff,
+ 		      !!(status == MCC_RESP_NEW_CHAN_PROFILE), n_channels);
+ 
+-	resp_len = sizeof(*mcc_resp) + n_channels * sizeof(__le32);
+-	resp_cp = kmemdup(mcc_resp, resp_len, GFP_KERNEL);
+-	if (!resp_cp) {
+-		ret = -ENOMEM;
+-		goto exit;
+-	}
+-
+-	ret = 0;
+ exit:
+ 	iwl_free_resp(&cmd);
+ 	if (ret)

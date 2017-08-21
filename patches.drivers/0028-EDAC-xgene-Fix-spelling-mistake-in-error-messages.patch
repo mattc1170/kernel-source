@@ -1,0 +1,49 @@
+From af40d27ffe5b1e9932f03209a926ee7dce274ecd Mon Sep 17 00:00:00 2001
+From: Colin Ian King <colin.king@canonical.com>
+Date: Mon, 14 Nov 2016 23:11:04 +0000
+Subject: [PATCH 28/36] EDAC, xgene: Fix spelling mistake in error messages
+
+Git-commit: 8176170e03db7289ca14673718f1a7f6aae51706
+Patch-mainline: v4.10-rc1
+References: bsc#1019351
+
+Trivial fix to spelling mistake "Mutilple" to "Multiple" in error
+messages.
+
+Signed-off-by: Colin Ian King <colin.king@canonical.com>
+Reviewed-by: Loc Ho <lho@apm.com>
+Cc: linux-edac <linux-edac@vger.kernel.org>
+Link: http://lkml.kernel.org/r/20161114231104.5585-1-colin.king@canonical.com
+Signed-off-by: Borislav Petkov <bp@suse.de>
+Signed-off-by: Mian Yousaf Kaukab <yousaf.kaukab@suse.com>
+---
+ drivers/edac/xgene_edac.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/edac/xgene_edac.c b/drivers/edac/xgene_edac.c
+index bf19b6e3bd12..5569391ea800 100644
+--- a/drivers/edac/xgene_edac.c
++++ b/drivers/edac/xgene_edac.c
+@@ -1602,16 +1602,16 @@ static void xgene_edac_pa_report(struct edac_device_ctl_info *edac_dev)
+ 		dev_err(edac_dev->dev, "IOB PA read data RAM error\n");
+ 	if (reg & IOBPA_M_RDATA_CORRUPT_MASK)
+ 		dev_err(edac_dev->dev,
+-			"Mutilple IOB PA read data RAM error\n");
++			"Multiple IOB PA read data RAM error\n");
+ 	if (reg & IOBPA_WDATA_CORRUPT_MASK)
+ 		dev_err(edac_dev->dev, "IOB PA write data RAM error\n");
+ 	if (reg & IOBPA_M_WDATA_CORRUPT_MASK)
+ 		dev_err(edac_dev->dev,
+-			"Mutilple IOB PA write data RAM error\n");
++			"Multiple IOB PA write data RAM error\n");
+ 	if (reg & IOBPA_TRANS_CORRUPT_MASK)
+ 		dev_err(edac_dev->dev, "IOB PA transaction error\n");
+ 	if (reg & IOBPA_M_TRANS_CORRUPT_MASK)
+-		dev_err(edac_dev->dev, "Mutilple IOB PA transaction error\n");
++		dev_err(edac_dev->dev, "Multiple IOB PA transaction error\n");
+ 	if (reg & IOBPA_REQIDRAM_CORRUPT_MASK)
+ 		dev_err(edac_dev->dev, "IOB PA transaction ID RAM error\n");
+ 	if (reg & IOBPA_M_REQIDRAM_CORRUPT_MASK)
+-- 
+2.11.0
+

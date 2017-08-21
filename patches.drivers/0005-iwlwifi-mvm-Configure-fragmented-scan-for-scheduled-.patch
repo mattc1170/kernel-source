@@ -1,0 +1,54 @@
+From f9d716443f44238b43559cdd6ba2473560efa44c Mon Sep 17 00:00:00 2001
+From: Avraham Stern <avraham.stern@intel.com>
+Date: Tue, 10 Nov 2015 14:56:24 +0200
+Subject: [PATCH] iwlwifi: mvm: Configure fragmented scan for scheduled scan
+Git-commit: f9d716443f44238b43559cdd6ba2473560efa44c
+Patch-mainline: 4.5-rc1
+References: FATE#321353, FATE#323335
+
+Configure the FW to use fragmented scan when the traffic load is high
+or low latency traffic is on. This is useful for scans that are
+managed by the FW (e.g. scheduled scan).
+
+Signed-off-by: Avraham Stern <avraham.stern@intel.com>
+Signed-off-by: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/iwlwifi/mvm/mvm.h  |    1 +
+ drivers/net/wireless/iwlwifi/mvm/scan.c |    7 ++++++-
+ 2 files changed, 7 insertions(+), 1 deletion(-)
+
+--- a/drivers/net/wireless/iwlwifi/mvm/mvm.h
++++ b/drivers/net/wireless/iwlwifi/mvm/mvm.h
+@@ -643,6 +643,7 @@ struct iwl_mvm {
+ 	unsigned int scan_status;
+ 	void *scan_cmd;
+ 	struct iwl_mcast_filter_cmd *mcast_filter_cmd;
++	bool scan_fragmented;
+ 
+ 	/* max number of simultaneous scans the FW supports */
+ 	unsigned int max_scans;
+--- a/drivers/net/wireless/iwlwifi/mvm/scan.c
++++ b/drivers/net/wireless/iwlwifi/mvm/scan.c
+@@ -920,6 +920,8 @@ int iwl_mvm_config_scan(struct iwl_mvm *
+ 	if (!scan_config)
+ 		return -ENOMEM;
+ 
++	mvm->scan_fragmented = iwl_mvm_low_latency(mvm);
++
+ 	scan_config->flags = cpu_to_le32(SCAN_CONFIG_FLAG_ACTIVATE |
+ 					 SCAN_CONFIG_FLAG_ALLOW_CHUB_REQS |
+ 					 SCAN_CONFIG_FLAG_SET_TX_CHAINS |
+@@ -928,7 +930,10 @@ int iwl_mvm_config_scan(struct iwl_mvm *
+ 					 SCAN_CONFIG_FLAG_SET_LEGACY_RATES |
+ 					 SCAN_CONFIG_FLAG_SET_MAC_ADDR |
+ 					 SCAN_CONFIG_FLAG_SET_CHANNEL_FLAGS|
+-					 SCAN_CONFIG_N_CHANNELS(num_channels));
++					 SCAN_CONFIG_N_CHANNELS(num_channels) |
++					 (mvm->scan_fragmented ?
++					  SCAN_CONFIG_FLAG_SET_FRAGMENTED :
++					  SCAN_CONFIG_FLAG_CLEAR_FRAGMENTED));
+ 	scan_config->tx_chains = cpu_to_le32(iwl_mvm_get_valid_tx_ant(mvm));
+ 	scan_config->rx_chains = cpu_to_le32(iwl_mvm_scan_rx_ant(mvm));
+ 	scan_config->legacy_rates = iwl_mvm_scan_config_rates(mvm);

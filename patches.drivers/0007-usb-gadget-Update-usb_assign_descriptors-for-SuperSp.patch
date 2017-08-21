@@ -21,28 +21,26 @@ Signed-off-by: Oliver Neukum <oneukum@suse.com>
 Conflicts:
 	drivers/usb/gadget/function/f_tcm.c
 ---
- drivers/usb/gadget/config.c                  | 3 ++-
- drivers/usb/gadget/function/f_acm.c          | 2 +-
- drivers/usb/gadget/function/f_ecm.c          | 2 +-
- drivers/usb/gadget/function/f_eem.c          | 2 +-
- drivers/usb/gadget/function/f_hid.c          | 2 +-
- drivers/usb/gadget/function/f_loopback.c     | 2 +-
- drivers/usb/gadget/function/f_mass_storage.c | 2 +-
- drivers/usb/gadget/function/f_ncm.c          | 2 +-
- drivers/usb/gadget/function/f_obex.c         | 3 ++-
- drivers/usb/gadget/function/f_phonet.c       | 2 +-
- drivers/usb/gadget/function/f_printer.c      | 2 +-
- drivers/usb/gadget/function/f_rndis.c        | 2 +-
- drivers/usb/gadget/function/f_serial.c       | 2 +-
- drivers/usb/gadget/function/f_sourcesink.c   | 2 +-
- drivers/usb/gadget/function/f_subset.c       | 2 +-
- drivers/usb/gadget/function/f_uac1.c         | 3 ++-
- drivers/usb/gadget/function/f_uac2.c         | 3 ++-
- include/linux/usb/gadget.h                   | 3 ++-
+ drivers/usb/gadget/config.c                  |    3 ++-
+ drivers/usb/gadget/function/f_acm.c          |    2 +-
+ drivers/usb/gadget/function/f_ecm.c          |    2 +-
+ drivers/usb/gadget/function/f_eem.c          |    2 +-
+ drivers/usb/gadget/function/f_hid.c          |    2 +-
+ drivers/usb/gadget/function/f_loopback.c     |    2 +-
+ drivers/usb/gadget/function/f_mass_storage.c |    2 +-
+ drivers/usb/gadget/function/f_ncm.c          |    2 +-
+ drivers/usb/gadget/function/f_obex.c         |    3 ++-
+ drivers/usb/gadget/function/f_phonet.c       |    2 +-
+ drivers/usb/gadget/function/f_printer.c      |    2 +-
+ drivers/usb/gadget/function/f_rndis.c        |    2 +-
+ drivers/usb/gadget/function/f_serial.c       |    2 +-
+ drivers/usb/gadget/function/f_sourcesink.c   |    2 +-
+ drivers/usb/gadget/function/f_subset.c       |    2 +-
+ drivers/usb/gadget/function/f_uac1.c         |    3 ++-
+ drivers/usb/gadget/function/f_uac2.c         |    3 ++-
+ include/linux/usb/gadget.h                   |    3 ++-
  18 files changed, 23 insertions(+), 18 deletions(-)
 
-diff --git a/drivers/usb/gadget/config.c b/drivers/usb/gadget/config.c
-index 0fafa7a..62ba4c1 100644
 --- a/drivers/usb/gadget/config.c
 +++ b/drivers/usb/gadget/config.c
 @@ -163,7 +163,8 @@ EXPORT_SYMBOL_GPL(usb_copy_descriptors);
@@ -55,11 +53,9 @@ index 0fafa7a..62ba4c1 100644
  {
  	struct usb_gadget *g = f->config->cdev->gadget;
  
-diff --git a/drivers/usb/gadget/function/f_acm.c b/drivers/usb/gadget/function/f_acm.c
-index 2fa1e80..dc13b28 100644
 --- a/drivers/usb/gadget/function/f_acm.c
 +++ b/drivers/usb/gadget/function/f_acm.c
-@@ -685,7 +685,7 @@ acm_bind(struct usb_configuration *c, struct usb_function *f)
+@@ -685,7 +685,7 @@ acm_bind(struct usb_configuration *c, st
  	acm_ss_out_desc.bEndpointAddress = acm_fs_out_desc.bEndpointAddress;
  
  	status = usb_assign_descriptors(f, acm_fs_function, acm_hs_function,
@@ -68,11 +64,9 @@ index 2fa1e80..dc13b28 100644
  	if (status)
  		goto fail;
  
-diff --git a/drivers/usb/gadget/function/f_ecm.c b/drivers/usb/gadget/function/f_ecm.c
-index 7ad60ee..4c488d1 100644
 --- a/drivers/usb/gadget/function/f_ecm.c
 +++ b/drivers/usb/gadget/function/f_ecm.c
-@@ -786,7 +786,7 @@ ecm_bind(struct usb_configuration *c, struct usb_function *f)
+@@ -786,7 +786,7 @@ ecm_bind(struct usb_configuration *c, st
  		fs_ecm_notify_desc.bEndpointAddress;
  
  	status = usb_assign_descriptors(f, ecm_fs_function, ecm_hs_function,
@@ -81,11 +75,9 @@ index 7ad60ee..4c488d1 100644
  	if (status)
  		goto fail;
  
-diff --git a/drivers/usb/gadget/function/f_eem.c b/drivers/usb/gadget/function/f_eem.c
-index cad35a5..d58bfc3 100644
 --- a/drivers/usb/gadget/function/f_eem.c
 +++ b/drivers/usb/gadget/function/f_eem.c
-@@ -309,7 +309,7 @@ static int eem_bind(struct usb_configuration *c, struct usb_function *f)
+@@ -309,7 +309,7 @@ static int eem_bind(struct usb_configura
  	eem_ss_out_desc.bEndpointAddress = eem_fs_out_desc.bEndpointAddress;
  
  	status = usb_assign_descriptors(f, eem_fs_function, eem_hs_function,
@@ -94,11 +86,9 @@ index cad35a5..d58bfc3 100644
  	if (status)
  		goto fail;
  
-diff --git a/drivers/usb/gadget/function/f_hid.c b/drivers/usb/gadget/function/f_hid.c
-index 99285b4..51980c5 100644
 --- a/drivers/usb/gadget/function/f_hid.c
 +++ b/drivers/usb/gadget/function/f_hid.c
-@@ -646,7 +646,7 @@ static int hidg_bind(struct usb_configuration *c, struct usb_function *f)
+@@ -646,7 +646,7 @@ static int hidg_bind(struct usb_configur
  		hidg_fs_out_ep_desc.bEndpointAddress;
  
  	status = usb_assign_descriptors(f, hidg_fs_descriptors,
@@ -107,8 +97,6 @@ index 99285b4..51980c5 100644
  	if (status)
  		goto fail;
  
-diff --git a/drivers/usb/gadget/function/f_loopback.c b/drivers/usb/gadget/function/f_loopback.c
-index ddc3aad..3a9f8f9 100644
 --- a/drivers/usb/gadget/function/f_loopback.c
 +++ b/drivers/usb/gadget/function/f_loopback.c
 @@ -211,7 +211,7 @@ autoconf_fail:
@@ -120,11 +108,9 @@ index ddc3aad..3a9f8f9 100644
  	if (ret)
  		return ret;
  
-diff --git a/drivers/usb/gadget/function/f_mass_storage.c b/drivers/usb/gadget/function/f_mass_storage.c
-index 223ccf8..321a631 100644
 --- a/drivers/usb/gadget/function/f_mass_storage.c
 +++ b/drivers/usb/gadget/function/f_mass_storage.c
-@@ -3093,7 +3093,7 @@ static int fsg_bind(struct usb_configuration *c, struct usb_function *f)
+@@ -3087,7 +3087,7 @@ static int fsg_bind(struct usb_configura
  	fsg_ss_bulk_out_comp_desc.bMaxBurst = max_burst;
  
  	ret = usb_assign_descriptors(f, fsg_fs_function, fsg_hs_function,
@@ -133,11 +119,9 @@ index 223ccf8..321a631 100644
  	if (ret)
  		goto autoconf_fail;
  
-diff --git a/drivers/usb/gadget/function/f_ncm.c b/drivers/usb/gadget/function/f_ncm.c
-index 7ad798a..97f0a9b 100644
 --- a/drivers/usb/gadget/function/f_ncm.c
 +++ b/drivers/usb/gadget/function/f_ncm.c
-@@ -1432,7 +1432,7 @@ static int ncm_bind(struct usb_configuration *c, struct usb_function *f)
+@@ -1432,7 +1432,7 @@ static int ncm_bind(struct usb_configura
  		fs_ncm_notify_desc.bEndpointAddress;
  
  	status = usb_assign_descriptors(f, ncm_fs_function, ncm_hs_function,
@@ -146,11 +130,9 @@ index 7ad798a..97f0a9b 100644
  	if (status)
  		goto fail;
  
-diff --git a/drivers/usb/gadget/function/f_obex.c b/drivers/usb/gadget/function/f_obex.c
-index d6396e0..d43e86c 100644
 --- a/drivers/usb/gadget/function/f_obex.c
 +++ b/drivers/usb/gadget/function/f_obex.c
-@@ -364,7 +364,8 @@ static int obex_bind(struct usb_configuration *c, struct usb_function *f)
+@@ -364,7 +364,8 @@ static int obex_bind(struct usb_configur
  	obex_hs_ep_out_desc.bEndpointAddress =
  		obex_fs_ep_out_desc.bEndpointAddress;
  
@@ -160,11 +142,9 @@ index d6396e0..d43e86c 100644
  	if (status)
  		goto fail;
  
-diff --git a/drivers/usb/gadget/function/f_phonet.c b/drivers/usb/gadget/function/f_phonet.c
-index 157441d..0473d61 100644
 --- a/drivers/usb/gadget/function/f_phonet.c
 +++ b/drivers/usb/gadget/function/f_phonet.c
-@@ -541,7 +541,7 @@ static int pn_bind(struct usb_configuration *c, struct usb_function *f)
+@@ -541,7 +541,7 @@ static int pn_bind(struct usb_configurat
  
  	/* Do not try to bind Phonet twice... */
  	status = usb_assign_descriptors(f, fs_pn_function, hs_pn_function,
@@ -173,8 +153,6 @@ index 157441d..0473d61 100644
  	if (status)
  		goto err;
  
-diff --git a/drivers/usb/gadget/function/f_printer.c b/drivers/usb/gadget/function/f_printer.c
-index 0fbfb2b..58f2ea1 100644
 --- a/drivers/usb/gadget/function/f_printer.c
 +++ b/drivers/usb/gadget/function/f_printer.c
 @@ -1051,7 +1051,7 @@ autoconf_fail:
@@ -186,11 +164,9 @@ index 0fbfb2b..58f2ea1 100644
  	if (ret)
  		return ret;
  
-diff --git a/drivers/usb/gadget/function/f_rndis.c b/drivers/usb/gadget/function/f_rndis.c
-index e587767..d99dd95 100644
 --- a/drivers/usb/gadget/function/f_rndis.c
 +++ b/drivers/usb/gadget/function/f_rndis.c
-@@ -783,7 +783,7 @@ rndis_bind(struct usb_configuration *c, struct usb_function *f)
+@@ -783,7 +783,7 @@ rndis_bind(struct usb_configuration *c,
  	ss_notify_desc.bEndpointAddress = fs_notify_desc.bEndpointAddress;
  
  	status = usb_assign_descriptors(f, eth_fs_function, eth_hs_function,
@@ -199,11 +175,9 @@ index e587767..d99dd95 100644
  	if (status)
  		goto fail;
  
-diff --git a/drivers/usb/gadget/function/f_serial.c b/drivers/usb/gadget/function/f_serial.c
-index 6bb44d61..cb00ada 100644
 --- a/drivers/usb/gadget/function/f_serial.c
 +++ b/drivers/usb/gadget/function/f_serial.c
-@@ -236,7 +236,7 @@ static int gser_bind(struct usb_configuration *c, struct usb_function *f)
+@@ -236,7 +236,7 @@ static int gser_bind(struct usb_configur
  	gser_ss_out_desc.bEndpointAddress = gser_fs_out_desc.bEndpointAddress;
  
  	status = usb_assign_descriptors(f, gser_fs_function, gser_hs_function,
@@ -212,8 +186,6 @@ index 6bb44d61..cb00ada 100644
  	if (status)
  		goto fail;
  	dev_dbg(&cdev->gadget->dev, "generic ttyGS%d: %s speed IN/%s OUT/%s\n",
-diff --git a/drivers/usb/gadget/function/f_sourcesink.c b/drivers/usb/gadget/function/f_sourcesink.c
-index 9f3ced6..e860e4d 100644
 --- a/drivers/usb/gadget/function/f_sourcesink.c
 +++ b/drivers/usb/gadget/function/f_sourcesink.c
 @@ -448,7 +448,7 @@ no_iso:
@@ -225,11 +197,9 @@ index 9f3ced6..e860e4d 100644
  	if (ret)
  		return ret;
  
-diff --git a/drivers/usb/gadget/function/f_subset.c b/drivers/usb/gadget/function/f_subset.c
-index 829c78d..434b983 100644
 --- a/drivers/usb/gadget/function/f_subset.c
 +++ b/drivers/usb/gadget/function/f_subset.c
-@@ -362,7 +362,7 @@ geth_bind(struct usb_configuration *c, struct usb_function *f)
+@@ -362,7 +362,7 @@ geth_bind(struct usb_configuration *c, s
  		fs_subset_out_desc.bEndpointAddress;
  
  	status = usb_assign_descriptors(f, fs_eth_function, hs_eth_function,
@@ -238,11 +208,9 @@ index 829c78d..434b983 100644
  	if (status)
  		goto fail;
  
-diff --git a/drivers/usb/gadget/function/f_uac1.c b/drivers/usb/gadget/function/f_uac1.c
-index 6a2346b..f2ac0cb 100644
 --- a/drivers/usb/gadget/function/f_uac1.c
 +++ b/drivers/usb/gadget/function/f_uac1.c
-@@ -721,7 +721,8 @@ f_audio_bind(struct usb_configuration *c, struct usb_function *f)
+@@ -721,7 +721,8 @@ f_audio_bind(struct usb_configuration *c
  	status = -ENOMEM;
  
  	/* copy descriptors, and track endpoint copies */
@@ -252,11 +220,9 @@ index 6a2346b..f2ac0cb 100644
  	if (status)
  		goto fail;
  	return 0;
-diff --git a/drivers/usb/gadget/function/f_uac2.c b/drivers/usb/gadget/function/f_uac2.c
-index 044ca79..186d4b1 100644
 --- a/drivers/usb/gadget/function/f_uac2.c
 +++ b/drivers/usb/gadget/function/f_uac2.c
-@@ -1100,7 +1100,8 @@ afunc_bind(struct usb_configuration *cfg, struct usb_function *fn)
+@@ -1100,7 +1100,8 @@ afunc_bind(struct usb_configuration *cfg
  	hs_epout_desc.bEndpointAddress = fs_epout_desc.bEndpointAddress;
  	hs_epin_desc.bEndpointAddress = fs_epin_desc.bEndpointAddress;
  
@@ -264,10 +230,8 @@ index 044ca79..186d4b1 100644
 +	ret = usb_assign_descriptors(fn, fs_audio_desc, hs_audio_desc, NULL,
 +				     NULL);
  	if (ret)
- 		goto err;
+ 		return ret;
  
-diff --git a/include/linux/usb/gadget.h b/include/linux/usb/gadget.h
-index 3d583a1..fba30d3 100644
 --- a/include/linux/usb/gadget.h
 +++ b/include/linux/usb/gadget.h
 @@ -1187,7 +1187,8 @@ struct usb_function;
@@ -280,6 +244,3 @@ index 3d583a1..fba30d3 100644
  void usb_free_all_descriptors(struct usb_function *f);
  
  struct usb_descriptor_header *usb_otg_descriptor_alloc(
--- 
-2.1.4
-

@@ -24,14 +24,12 @@ Tested-by: Alex Ng <alexng@microsoft.com>
 Signed-off-by: Martin K. Petersen <martin.petersen@oracle.com>
 Acked-by: <ohering@suse.de>
 ---
- drivers/scsi/storvsc_drv.c | 23 ++++++++---------------
+ drivers/scsi/storvsc_drv.c |   23 ++++++++---------------
  1 file changed, 8 insertions(+), 15 deletions(-)
 
-diff --git a/drivers/scsi/storvsc_drv.c b/drivers/scsi/storvsc_drv.c
-index 811f276..41c115c 100644
 --- a/drivers/scsi/storvsc_drv.c
 +++ b/drivers/scsi/storvsc_drv.c
-@@ -945,19 +945,16 @@ static void storvsc_handle_error(struct vmscsi_request *vm_srb,
+@@ -956,20 +956,17 @@ static void storvsc_handle_error(struct
  }
  
  
@@ -43,6 +41,7 @@ index 811f276..41c115c 100644
 -	struct hv_host_device *host_dev = shost_priv(scmnd->device->host);
  	struct scsi_sense_hdr sense_hdr;
  	struct vmscsi_request *vm_srb;
+ 	u32 data_transfer_length;
  	struct Scsi_Host *host;
 -	struct storvsc_device *stor_dev;
 -	struct hv_device *dev = host_dev->dev;
@@ -53,7 +52,7 @@ index 811f276..41c115c 100644
  	host = stor_dev->host;
  
  	vm_srb = &cmd_request->vstor_packet.vm_srb;
-@@ -987,14 +984,13 @@ static void storvsc_command_completion(struct storvsc_cmd_request *cmd_request)
+@@ -1007,14 +1004,13 @@ static void storvsc_command_completion(s
  		kfree(payload);
  }
  
@@ -70,7 +69,7 @@ index 811f276..41c115c 100644
  	stor_pkt = &request->vstor_packet;
  
  	/*
-@@ -1049,7 +1045,7 @@ static void storvsc_on_io_completion(struct hv_device *device,
+@@ -1069,7 +1065,7 @@ static void storvsc_on_io_completion(str
  	stor_pkt->vm_srb.data_transfer_length =
  	vstor_packet->vm_srb.data_transfer_length;
  
@@ -79,7 +78,7 @@ index 811f276..41c115c 100644
  
  	if (atomic_dec_and_test(&stor_device->num_outstanding_req) &&
  		stor_device->drain_notify)
-@@ -1058,21 +1054,19 @@ static void storvsc_on_io_completion(struct hv_device *device,
+@@ -1078,21 +1074,19 @@ static void storvsc_on_io_completion(str
  
  }
  
@@ -103,7 +102,7 @@ index 811f276..41c115c 100644
  		work = kmalloc(sizeof(struct storvsc_scan_work), GFP_ATOMIC);
  		if (!work)
  			return;
-@@ -1083,7 +1077,6 @@ static void storvsc_on_receive(struct hv_device *device,
+@@ -1103,7 +1097,6 @@ static void storvsc_on_receive(struct hv
  		break;
  
  	case VSTOR_OPERATION_FCHBA_DATA:
@@ -111,7 +110,7 @@ index 811f276..41c115c 100644
  		cache_wwn(stor_device, vstor_packet);
  #if IS_ENABLED(CONFIG_SCSI_FC_ATTRS)
  		fc_host_node_name(stor_device->host) = stor_device->node_name;
-@@ -1133,7 +1126,7 @@ static void storvsc_on_channel_callback(void *context)
+@@ -1153,7 +1146,7 @@ static void storvsc_on_channel_callback(
  					vmscsi_size_delta));
  				complete(&request->wait_event);
  			} else {

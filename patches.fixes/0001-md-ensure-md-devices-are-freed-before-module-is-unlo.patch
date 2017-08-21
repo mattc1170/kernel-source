@@ -1,0 +1,54 @@
+From 4996a991cda2f00bd1fe019b4dcfc9a2a9ccf4fc Mon Sep 17 00:00:00 2001
+From: NeilBrown <neilb@suse.com>
+Date: Mon, 6 Feb 2017 13:41:39 +1100
+Subject: [PATCH] md: ensure md devices are freed before module is unloaded.
+Git-commit: 9356863c9409efc79029c01a85d015efae977e69
+Patch-mainline: v4.11-rc1
+References: bsc#1022304
+
+Commit: cbd199837750 ("md: Fix unfortunate interaction with evms")
+change mddev_put() so that it would not destroy an md device while
+->ctime was non-zero.
+
+Unfortunately, we didn't make sure to clear ->ctime when unloading
+the module, so it is possible for an md device to remain after
+module unload.  An attempt to open such a device will trigger
+an invalid memory reference in:
+  get_gendisk -> kobj_lookup -> exact_lock -> get_disk
+
+when tring to access disk->fops, which was in the module that has
+been removed.
+
+So ensure we clear ->ctime in md_exit(), and explain how that is useful,
+as it isn't immediately obvious when looking at the code.
+
+Fixes: cbd199837750 ("md: Fix unfortunate interaction with evms")
+Tested-by: Guoqing Jiang <gqjiang@suse.com>
+Signed-off-by: NeilBrown <neilb@suse.com>
+Signed-off-by: Shaohua Li <shli@fb.com>
+---
+ drivers/md/md.c | 7 +++++++
+ 1 file changed, 7 insertions(+)
+
+diff --git a/drivers/md/md.c b/drivers/md/md.c
+index 0abb147..53fe799 100644
+--- a/drivers/md/md.c
++++ b/drivers/md/md.c
+@@ -9017,7 +9017,14 @@ static __exit void md_exit(void)
+ 
+ 	for_each_mddev(mddev, tmp) {
+ 		export_array(mddev);
++		mddev->ctime = 0;
+ 		mddev->hold_active = 0;
++		/* for_each_mddev() will call mddev_put() at the
++		 * end of each iteration.  As the mddev is now
++		 * fully clear, this will schedule the mddev for destruction
++		 * by a workqueue, and the destroy_workqueue() below
++		 * will wait for that to complete.
++		 */
+ 	}
+ 	destroy_workqueue(md_misc_wq);
+ 	destroy_workqueue(md_wq);
+-- 
+2.6.6
+

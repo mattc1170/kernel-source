@@ -1,0 +1,30 @@
+From: Salah Triki <salah.triki@gmail.com>
+Date: Sun, 3 Jul 2016 05:40:10 +0100
+Patch-mainline: 4.8
+Git-commit: a60617d0ae51c22f652b6fcf4ca56558c76e5aad
+References: bsc#1012452
+Subject: [PATCH] btrfs: Replace -ENOENT by -ERANGE in btrfs_get_acl()
+
+size contains the value returned by posix_acl_from_xattr(), which
+returns -ERANGE, -ENODATA, zero, or an integer greater than zero. So
+replace -ENOENT by -ERANGE.
+
+Signed-off-by: Salah Triki <salah.triki@gmail.com>
+Reviewed-by: David Sterba <dsterba@suse.com>
+Signed-off-by: David Sterba <dsterba@suse.com>
+---
+ fs/btrfs/acl.c |    3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
+
+--- a/fs/btrfs/acl.c
++++ b/fs/btrfs/acl.c
+@@ -55,8 +55,7 @@ struct posix_acl *btrfs_get_acl(struct i
+ 	}
+ 	if (size > 0) {
+ 		acl = posix_acl_from_xattr(&init_user_ns, value, size);
+-	} else if (size == -ENOENT || size == -ENODATA || size == 0) {
+-		/* FIXME, who returns -ENOENT?  I think nobody */
++	} else if (size == -ERANGE || size == -ENODATA || size == 0) {
+ 		acl = NULL;
+ 	} else {
+ 		acl = ERR_PTR(-EIO);

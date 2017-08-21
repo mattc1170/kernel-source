@@ -1,0 +1,77 @@
+From b7a08b284dcf7fb3d7b99473a87fabad04b2c548 Mon Sep 17 00:00:00 2001
+From: Johannes Berg <johannes.berg@intel.com>
+Date: Wed, 13 Apr 2016 10:24:59 +0200
+Subject: [PATCH] iwlwifi: pcie: extend device reset delay
+Git-commit: b7a08b284dcf7fb3d7b99473a87fabad04b2c548
+Patch-mainline: 4.7-rc1
+References: FATE#321353, FATE#323335
+
+Newer hardware generations will take longer to be accessible again
+after reset, so we need to wait longer before continuing any flow
+that did a reset.
+
+Rather than make the wait time configurable, simply extend it for
+all.
+
+Since all of these code paths can sleep, use usleep_range() rather
+than mdelay().
+
+Signed-off-by: Johannes Berg <johannes.berg@intel.com>
+Signed-off-by: Luca Coelho <luciano.coelho@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/iwlwifi/pcie/trans.c |   14 +++++---------
+ 1 file changed, 5 insertions(+), 9 deletions(-)
+
+--- a/drivers/net/wireless/iwlwifi/pcie/trans.c
++++ b/drivers/net/wireless/iwlwifi/pcie/trans.c
+@@ -361,8 +361,7 @@ static void iwl_pcie_apm_lp_xtal_enable(
+ 
+ 	/* Reset entire device - do controller reset (results in SHRD_HW_RST) */
+ 	iwl_set_bit(trans, CSR_RESET, CSR_RESET_REG_FLAG_SW_RESET);
+-
+-	udelay(10);
++	usleep_range(1000, 2000);
+ 
+ 	/*
+ 	 * Set "initialization complete" bit to move adapter from
+@@ -408,8 +407,7 @@ static void iwl_pcie_apm_lp_xtal_enable(
+ 	 * SHRD_HW_RST). Turn MAC off before proceeding.
+ 	 */
+ 	iwl_set_bit(trans, CSR_RESET, CSR_RESET_REG_FLAG_SW_RESET);
+-
+-	udelay(10);
++	usleep_range(1000, 2000);
+ 
+ 	/* Enable LP XTAL by indirect access through CSR */
+ 	apmg_gp1_reg = iwl_trans_pcie_read_shr(trans, SHR_APMG_GP1_REG);
+@@ -506,8 +504,7 @@ static void iwl_pcie_apm_stop(struct iwl
+ 
+ 	/* Reset the entire device */
+ 	iwl_set_bit(trans, CSR_RESET, CSR_RESET_REG_FLAG_SW_RESET);
+-
+-	udelay(10);
++	usleep_range(1000, 2000);
+ 
+ 	/*
+ 	 * Clear "initialization complete" bit to move adapter from
+@@ -1074,7 +1071,7 @@ static void _iwl_trans_pcie_stop_device(
+ 
+ 	/* stop and reset the on-board processor */
+ 	iwl_write32(trans, CSR_RESET, CSR_RESET_REG_FLAG_SW_RESET);
+-	udelay(20);
++	usleep_range(1000, 2000);
+ 
+ 	/*
+ 	 * Upon stop, the APM issues an interrupt if HW RF kill is set.
+@@ -1525,8 +1522,7 @@ static int _iwl_trans_pcie_start_hw(stru
+ 
+ 	/* Reset the entire device */
+ 	iwl_write32(trans, CSR_RESET, CSR_RESET_REG_FLAG_SW_RESET);
+-
+-	usleep_range(10, 15);
++	usleep_range(1000, 2000);
+ 
+ 	iwl_pcie_apm_init(trans);
+ 

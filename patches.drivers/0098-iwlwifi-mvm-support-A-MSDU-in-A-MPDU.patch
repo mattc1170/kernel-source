@@ -1,0 +1,30 @@
+From 909ddf0b812ecd5ff3a9d5a164134a3714101fdb Mon Sep 17 00:00:00 2001
+From: Johannes Berg <johannes.berg@intel.com>
+Date: Mon, 21 Sep 2015 14:09:17 +0200
+Subject: [PATCH] iwlwifi: mvm: support A-MSDU in A-MPDU
+Git-commit: 909ddf0b812ecd5ff3a9d5a164134a3714101fdb
+Patch-mainline: 4.5-rc1
+References: FATE#321353, FATE#323335
+
+Since A-MPDU deaggregation is done in hardware, and A-MSDU deaggregation
+is done in software, there's no reason not to support A-MSDU in A-MPDU;
+set the flag to support it.
+
+Signed-off-by: Johannes Berg <johannes.berg@intel.com>
+Signed-off-by: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/iwlwifi/mvm/mac80211.c |    1 +
+ 1 file changed, 1 insertion(+)
+
+--- a/drivers/net/wireless/iwlwifi/mvm/mac80211.c
++++ b/drivers/net/wireless/iwlwifi/mvm/mac80211.c
+@@ -438,6 +438,7 @@ int iwl_mvm_mac_setup_register(struct iw
+ 	ieee80211_hw_set(hw, CHANCTX_STA_CSA);
+ 	ieee80211_hw_set(hw, SUPPORT_FAST_XMIT);
+ 	ieee80211_hw_set(hw, SUPPORTS_CLONED_SKBS);
++	ieee80211_hw_set(hw, SUPPORTS_AMSDU_IN_AMPDU);
+ 
+ 	if (mvm->trans->max_skb_frags)
+ 		hw->netdev_features = NETIF_F_HIGHDMA | NETIF_F_SG;

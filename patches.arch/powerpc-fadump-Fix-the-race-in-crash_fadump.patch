@@ -1,0 +1,77 @@
+From f2a5e8f0023eba847ad2adb145b2f631934bb12b Mon Sep 17 00:00:00 2001
+From: Mahesh Salgaonkar <mahesh@linux.vnet.ibm.com>
+Date: Mon, 24 Oct 2016 23:51:51 +0530
+Subject: [PATCH] powerpc/fadump: Fix the race in crash_fadump().
+
+References: bsc#1022971
+Patch-mainline: queued
+Git-repo: https://git.kernel.org/pub/scm/linux/kernel/git/powerpc/linux.git
+Git-commit: f2a5e8f0023eba847ad2adb145b2f631934bb12b
+
+There are chances that multiple CPUs can call crash_fadump() simultaneously
+and would start duplicating same info to vmcoreinfo ELF note section. This
+causes makedumpfile to fail during kdump capture. One example is,
+triggering dumprestart from HMC which sends system reset to all the CPUs at
+once.
+
+makedumpfile --dump-dmesg /proc/vmcore
+read_vmcoreinfo_basic_info: Invalid data in /tmp/vmcoreinfoyjgxlL: CRASHTIME=1475605971CRASHTIME=1475605971CRASHTIME=1475605971CRASHTIME=1475605971CRASHTIME=1475605971CRASHTIME=1475605971CRASHTIME=1475605971CRASHTIME=1475605971
+makedumpfile Failed.
+Running makedumpfile --dump-dmesg /proc/vmcore failed (1).
+
+makedumpfile  -d 31 -l /proc/vmcore
+read_vmcoreinfo_basic_info: Invalid data in /tmp/vmcoreinfo1mmVdO: CRASHTIME=1475605971CRASHTIME=1475605971CRASHTIME=1475605971CRASHTIME=1475605971CRASHTIME=1475605971CRASHTIME=1475605971CRASHTIME=1475605971CRASHTIME=1475605971
+makedumpfile Failed.
+Running makedumpfile  -d 31 -l /proc/vmcore failed (1).
+
+Signed-off-by: Mahesh Salgaonkar <mahesh@linux.vnet.ibm.com>
+Signed-off-by: Michael Ellerman <mpe@ellerman.id.au>
+Acked-by: Michal Suchanek <msuchanek@suse.de>
+---
+ arch/powerpc/kernel/fadump.c | 25 ++++++++++++++++++++++++-
+ 1 file changed, 24 insertions(+), 1 deletion(-)
+
+diff --git a/arch/powerpc/kernel/fadump.c b/arch/powerpc/kernel/fadump.c
+index 8f0c7c5..8ff0dd4 100644
+--- a/arch/powerpc/kernel/fadump.c
++++ b/arch/powerpc/kernel/fadump.c
+@@ -406,12 +406,35 @@ static void register_fw_dump(struct fadump_mem_struct *fdm)
+ void crash_fadump(struct pt_regs *regs, const char *str)
+ {
+ 	struct fadump_crash_info_header *fdh = NULL;
++	int old_cpu, this_cpu;
+ 
+ 	if (!fw_dump.dump_registered || !fw_dump.fadumphdr_addr)
+ 		return;
+ 
++	/*
++	 * old_cpu == -1 means this is the first CPU which has come here,
++	 * go ahead and trigger fadump.
++	 *
++	 * old_cpu != -1 means some other CPU has already on it's way
++	 * to trigger fadump, just keep looping here.
++	 */
++	this_cpu = smp_processor_id();
++	old_cpu = cmpxchg(&crashing_cpu, -1, this_cpu);
++
++	if (old_cpu != -1) {
++		/*
++		 * We can't loop here indefinitely. Wait as long as fadump
++		 * is in force. If we race with fadump un-registration this
++		 * loop will break and then we go down to normal panic path
++		 * and reboot. If fadump is in force the first crashing
++		 * cpu will definitely trigger fadump.
++		 */
++		while (fw_dump.dump_registered)
++			cpu_relax();
++		return;
++	}
++
+ 	fdh = __va(fw_dump.fadumphdr_addr);
+-	crashing_cpu = smp_processor_id();
+ 	fdh->crashing_cpu = crashing_cpu;
+ 	crash_save_vmcoreinfo();
+ 
+-- 
+2.10.2
+

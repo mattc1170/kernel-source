@@ -1,0 +1,50 @@
+From: Stephan Mueller <smueller@chronox.de>
+Subject: crypto: rsa - allow keys >= 2048 bits in FIPS mode
+Git-commit: e09287dfef280dbe9f9aa1faa7a125957e9b7fbb
+Patch-mainline: v4.9
+References: bsc#1018913
+
+ crypto: rsa - allow keys >= 2048 bits in FIPS mode
+
+With a public notification, NIST now allows the use of RSA keys with a
+modulus >= 2048 bits. The new rule allows any modulus size >= 2048 bits
+provided that either 2048 or 3072 bits are supported at least so that
+the entire RSA implementation can be CAVS tested.
+
+This patch fixes the inability to boot the kernel in FIPS mode, because
+certs/x509.genkey defines a 4096 bit RSA key per default. This key causes
+the RSA signature verification to fail in FIPS mode without the patch
+below.
+
+Signed-off-by: Stephan Mueller <smueller@chronox.de>
+Signed-off-by: Herbert Xu <herbert@gondor.apana.org.au>
+Signed-off-by: Torsten Duwe <duwe@suse.de>
+
+[backport note: we don't have 5a7de97309f5af4458b1a25a2]
+
+--- a/crypto/rsa_helper.c
++++ b/crypto/rsa_helper.c
+@@ -28,9 +28,8 @@ int rsa_get_n(void *context, size_t hdrl
+ 	if (!key->n)
+ 		return -ENOMEM;
+ 
+-	/* In FIPS mode only allow key size 2K & 3K */
+-	if (fips_enabled && (mpi_get_size(key->n) != 256 &&
+-			     mpi_get_size(key->n) != 384)) {
++	/* In FIPS mode only allow key size 2K and higher */
++	if (fips_enabled && (mpi_get_size(key->n) < 256)) {
+ 		pr_err("RSA: key size not allowed in FIPS mode\n");
+ 		mpi_free(key->n);
+ 		key->n = NULL;
+@@ -62,9 +61,8 @@ int rsa_get_d(void *context, size_t hdrl
+ 	if (!key->d)
+ 		return -ENOMEM;
+ 
+-	/* In FIPS mode only allow key size 2K & 3K */
+-	if (fips_enabled && (mpi_get_size(key->d) != 256 &&
+-			     mpi_get_size(key->d) != 384)) {
++	/* In FIPS mode only allow key size 2K and higher */
++	if (fips_enabled && (mpi_get_size(key->d) < 256)) {
+ 		pr_err("RSA: key size not allowed in FIPS mode\n");
+ 		mpi_free(key->d);
+ 		key->d = NULL;

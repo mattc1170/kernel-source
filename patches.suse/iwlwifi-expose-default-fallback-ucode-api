@@ -1,0 +1,41 @@
+From: Takashi Iwai <tiwai@suse.de>
+Subject: iwlwifi: Expose the default fallback ucode API to module info
+Patch-mainline: No, a tentative fix until firmware files are prepared
+References: boo#1021082, boo#1023884
+
+The upstream iwlwifi driver sets the max ucode API versions to some
+non-exist firmware files, and this results in the broken WiFi in initrd
+or in installation image because they are built with the information
+given by modinfo.
+
+So far, the upstream doesn't take any action to it, so we need to paper
+over it temporarily by manually adding the MODULE_FIRMWARE() entries.
+
+Signed-off-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/iwlwifi/iwl-7000.c |    6 ++++++
+ drivers/net/wireless/iwlwifi/iwl-8000.c |    3 +++
+ 2 files changed, 9 insertions(+)
+
+--- a/drivers/net/wireless/iwlwifi/iwl-7000.c
++++ b/drivers/net/wireless/iwlwifi/iwl-7000.c
+@@ -393,3 +393,9 @@ MODULE_FIRMWARE(IWL3160_MODULE_FIRMWARE(
+ MODULE_FIRMWARE(IWL3168_MODULE_FIRMWARE(IWL3168_UCODE_API_OK));
+ MODULE_FIRMWARE(IWL7265_MODULE_FIRMWARE(IWL7265_UCODE_API_OK));
+ MODULE_FIRMWARE(IWL7265D_MODULE_FIRMWARE(IWL7265D_UCODE_API_OK));
++/* SP3 kernel-firmware */
++MODULE_FIRMWARE(IWL7260_MODULE_FIRMWARE(17));
++MODULE_FIRMWARE(IWL3160_MODULE_FIRMWARE(17));
++MODULE_FIRMWARE(IWL3168_MODULE_FIRMWARE(21));
++MODULE_FIRMWARE(IWL7265_MODULE_FIRMWARE(17));
++MODULE_FIRMWARE(IWL7265D_MODULE_FIRMWARE(21));
+--- a/drivers/net/wireless/iwlwifi/iwl-8000.c
++++ b/drivers/net/wireless/iwlwifi/iwl-8000.c
+@@ -261,3 +261,6 @@ const struct iwl_cfg iwl4165_2ac_sdio_cf
+ 
+ MODULE_FIRMWARE(IWL8000_MODULE_FIRMWARE(IWL8000_UCODE_API_OK));
+ MODULE_FIRMWARE(IWL8265_MODULE_FIRMWARE(IWL8265_UCODE_API_OK));
++/* SP3 kernel-firmware */
++MODULE_FIRMWARE(IWL8000_MODULE_FIRMWARE(21));
++MODULE_FIRMWARE(IWL8265_MODULE_FIRMWARE(21));

@@ -1,0 +1,58 @@
+From 2aabdbdc17b7c53490337bfc58de3409c84d85d2 Mon Sep 17 00:00:00 2001
+From: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Date: Wed, 8 Jun 2016 23:07:31 +0300
+Subject: [PATCH] iwlwifi: pcie: enable interrupts before releasing the NIC's CPU
+Git-commit: 2aabdbdc17b7c53490337bfc58de3409c84d85d2
+Patch-mainline: 4.8-rc1
+References: FATE#321353, FATE#323335
+
+The NIC's CPU gets started after the firmware has been
+written to its memory. The first thing it does is to
+send an interrupt to let the driver know that it is
+running. In order to get that interrupt, the driver needs
+to make sure it is not masked. Of course, the interrupt
+needs to be enabled in the driver before the CPU starts to
+run.
+I mistakenly inversed those two steps leading to races
+which prevented the driver from getting the alive interrupt
+from the firmware.
+Fix that.
+
+Cc: <stable@vger.kernel.org> [4.5+]
+Fixes: a6bd005fe92 ("iwlwifi: pcie: fix RF-Kill vs. firmware load race")
+Signed-off-by: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Signed-off-by: Luca Coelho <luciano.coelho@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/iwlwifi/pcie/trans.c |    5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+--- a/drivers/net/wireless/iwlwifi/pcie/trans.c
++++ b/drivers/net/wireless/iwlwifi/pcie/trans.c
+@@ -802,6 +802,8 @@ static int iwl_pcie_load_cpu_sections_80
+ 
+ 	*first_ucode_section = last_read_idx;
+ 
++	iwl_enable_interrupts(trans);
++
+ 	if (cpu == 1)
+ 		iwl_write_direct32(trans, FH_UCODE_LOAD_STATUS, 0xFFFF);
+ 	else
+@@ -981,6 +983,8 @@ static int iwl_pcie_load_given_ucode(str
+ 		iwl_pcie_apply_destination(trans);
+ 	}
+ 
++	iwl_enable_interrupts(trans);
++
+ 	/* release CPU reset */
+ 	iwl_write32(trans, CSR_RESET, 0);
+ 
+@@ -1216,7 +1220,6 @@ static int iwl_trans_pcie_start_fw(struc
+ 		ret = iwl_pcie_load_given_ucode_8000(trans, fw);
+ 	else
+ 		ret = iwl_pcie_load_given_ucode(trans, fw);
+-	iwl_enable_interrupts(trans);
+ 
+ 	/* re-check RF-Kill state since we may have missed the interrupt */
+ 	hw_rfkill = iwl_is_rfkill_set(trans);

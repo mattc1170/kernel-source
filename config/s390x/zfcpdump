@@ -1,6 +1,6 @@
 #
 # Automatically generated file; DO NOT EDIT.
-# Linux/s390 4.4.38 Kernel Configuration
+# Linux/s390 4.4.62 Kernel Configuration
 #
 CONFIG_MMU=y
 CONFIG_ZONE_DMA=y
@@ -454,7 +454,6 @@ CONFIG_AFIUCV=y
 # CONFIG_DCB is not set
 # CONFIG_BATMAN_ADV is not set
 # CONFIG_VSOCKETS is not set
-# CONFIG_NETLINK_MMAP is not set
 # CONFIG_NETLINK_DIAG is not set
 CONFIG_MPLS=y
 # CONFIG_NET_MPLS_GSO is not set

@@ -1,0 +1,80 @@
+From: Alexey Kodanev <alexey.kodanev@oracle.com>
+Date: Thu, 9 Mar 2017 13:56:46 +0300
+Subject: udp: avoid ufo handling on IP payload compression packets
+Patch-mainline: v4.11-rc3
+Git-commit: 4b3b45edba9222e518a1ec72df841eba3609fe34
+References: bsc#1042286
+
+commit c146066ab802 ("ipv4: Don't use ufo handling on later transformed
+packets") and commit f89c56ce710a ("ipv6: Don't use ufo handling on
+later transformed packets") added a check that 'rt->dst.header_len' isn't
+zero in order to skip UFO, but it doesn't include IPcomp in transport mode
+where it equals zero.
+
+Packets, after payload compression, may not require further fragmentation,
+and if original length exceeds MTU, later compressed packets will be
+transmitted incorrectly. This can be reproduced with LTP udp_ipsec.sh test
+on veth device with enabled UFO, MTU is 1500 and UDP payload is 2000:
+
+* IPv4 case, offset is wrong + unnecessary fragmentation
+    udp_ipsec.sh -p comp -m transport -s 2000 &
+    tcpdump -ni ltp_ns_veth2
+    ...
+    IP (tos 0x0, ttl 64, id 45203, offset 0, flags [+],
+      proto Compressed IP (108), length 49)
+      10.0.0.2 > 10.0.0.1: IPComp(cpi=0x1000)
+    IP (tos 0x0, ttl 64, id 45203, offset 1480, flags [none],
+      proto UDP (17), length 21) 10.0.0.2 > 10.0.0.1: ip-proto-17
+
+* IPv6 case, sending small fragments
+    udp_ipsec.sh -6 -p comp -m transport -s 2000 &
+    tcpdump -ni ltp_ns_veth2
+    ...
+    IP6 (flowlabel 0x6b9ba, hlim 64, next-header Compressed IP (108)
+      payload length: 37) fd00::2 > fd00::1: IPComp(cpi=0x1000)
+    IP6 (flowlabel 0x6b9ba, hlim 64, next-header Compressed IP (108)
+      payload length: 21) fd00::2 > fd00::1: IPComp(cpi=0x1000)
+
+Fix it by checking 'rt->dst.xfrm' pointer to 'xfrm_state' struct, skip UFO
+if xfrm is set. So the new check will include both cases: IPcomp and IPsec.
+
+Fixes: c146066ab802 ("ipv4: Don't use ufo handling on later transformed packets")
+Fixes: f89c56ce710a ("ipv6: Don't use ufo handling on later transformed packets")
+Signed-off-by: Alexey Kodanev <alexey.kodanev@oracle.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+Acked-by: Michal Kubecek <mkubecek@suse.cz>
+
+---
+ net/ipv4/ip_output.c  | 2 +-
+ net/ipv6/ip6_output.c | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/net/ipv4/ip_output.c b/net/ipv4/ip_output.c
+index 2b7283303650..cd0b17f35513 100644
+--- a/net/ipv4/ip_output.c
++++ b/net/ipv4/ip_output.c
+@@ -924,7 +924,7 @@ static int __ip_append_data(struct sock *sk,
+ 	cork->length += length;
+ 	if (((length > mtu) || (skb && skb_is_gso(skb))) &&
+ 	    (sk->sk_protocol == IPPROTO_UDP) &&
+-	    (rt->dst.dev->features & NETIF_F_UFO) && !rt->dst.header_len &&
++	    (rt->dst.dev->features & NETIF_F_UFO) && !dst_xfrm(&rt->dst) &&
+ 	    (sk->sk_type == SOCK_DGRAM) && !sk->sk_no_check_tx) {
+ 		err = ip_ufo_append_data(sk, queue, getfrag, from, length,
+ 					 hh_len, fragheaderlen, transhdrlen,
+diff --git a/net/ipv6/ip6_output.c b/net/ipv6/ip6_output.c
+index dc5859472991..ab09f731b458 100644
+--- a/net/ipv6/ip6_output.c
++++ b/net/ipv6/ip6_output.c
+@@ -1359,7 +1359,7 @@ emsgsize:
+ 	if (((length > mtu) ||
+ 	     (skb && skb_is_gso(skb))) &&
+ 	    (sk->sk_protocol == IPPROTO_UDP) &&
+-	    (rt->dst.dev->features & NETIF_F_UFO) && !rt->dst.header_len &&
++	    (rt->dst.dev->features & NETIF_F_UFO) && !dst_xfrm(&rt->dst) &&
+ 	    (sk->sk_type == SOCK_DGRAM) && !udp_get_no_check6_tx(sk)) {
+ 		err = ip6_ufo_append_data(sk, queue, getfrag, from, length,
+ 					  hh_len, fragheaderlen, exthdrlen,
+-- 
+2.13.0
+

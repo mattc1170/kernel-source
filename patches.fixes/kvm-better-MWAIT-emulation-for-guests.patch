@@ -1,0 +1,160 @@
+From 668fffa3f838edfcb1679f842f7ef1afa61c3e9a Mon Sep 17 00:00:00 2001
+From: "Michael S. Tsirkin" <mst@redhat.com>
+Date: Fri, 21 Apr 2017 12:27:17 +0200
+Subject: [PATCH] kvm: better MWAIT emulation for guests
+Git-commit: 668fffa3f838edfcb1679f842f7ef1afa61c3e9a
+Patch-mainline: Queued in subsystem maintainer repository
+Git-repo: git://git.kernel.org/pub/scm/virt/kvm/kvm.git
+References: bsc#1031142
+
+Guests that are heavy on futexes end up IPI'ing each other a lot. That
+can lead to significant slowdowns and latency increase for those guests
+when running within KVM.
+
+If only a single guest is needed on a host, we have a lot of spare host
+CPU time we can throw at the problem. Modern CPUs implement a feature
+called "MWAIT" which allows guests to wake up sleeping remote CPUs without
+an IPI - thus without an exit - at the expense of never going out of guest
+context.
+
+The decision whether this is something sensible to use should be up to the
+VM admin, so to user space. We can however allow MWAIT execution on systems
+that support it properly hardware wise.
+
+This patch adds a CAP to user space and a KVM cpuid leaf to indicate
+availability of native MWAIT execution. With that enabled, the worst a
+guest can do is waste as many cycles as a "jmp ." would do, so it's not
+a privilege problem.
+
+We consciously do *not* expose the feature in our CPUID bitmap, as most
+people will want to benefit from sleeping vCPUs to allow for over commit.
+
+Reported-by: "Gabriel L. Somlo" <gsomlo@gmail.com>
+Signed-off-by: Michael S. Tsirkin <mst@redhat.com>
+[agraf: fix amd, change commit message]
+Signed-off-by: Alexander Graf <agraf@suse.de>
+Signed-off-by: Paolo Bonzini <pbonzini@redhat.com>
+
+--- a/Documentation/virtual/kvm/api.txt
++++ b/Documentation/virtual/kvm/api.txt
+@@ -3710,3 +3710,11 @@
+ H_RANDOM hypercall backed by a hardware random-number generator.
+ If present, the kernel H_RANDOM handler can be enabled for guest use
+ with the KVM_CAP_PPC_ENABLE_HCALL capability.
+++8.8 KVM_CAP_X86_GUEST_MWAIT
++
++Architectures: x86
++
++This capability indicates that guest using memory monotoring instructions
++(MWAIT/MWAITX) to stop the virtual CPU will not cause a VM exit.  As such time
++spent while virtual CPU is halted in this way will then be accounted for as
++guest running time on the host (as opposed to e.g. HLT).
+--- a/arch/x86/kvm/svm.c
++++ b/arch/x86/kvm/svm.c
+@@ -1046,10 +1046,13 @@
+ 	set_intercept(svm, INTERCEPT_CLGI);
+ 	set_intercept(svm, INTERCEPT_SKINIT);
+ 	set_intercept(svm, INTERCEPT_WBINVD);
+-	set_intercept(svm, INTERCEPT_MONITOR);
+-	set_intercept(svm, INTERCEPT_MWAIT);
+ 	set_intercept(svm, INTERCEPT_XSETBV);
+ 
++	if (!kvm_mwait_in_guest()) {
++		set_intercept(svm, INTERCEPT_MONITOR);
++		set_intercept(svm, INTERCEPT_MWAIT);
++	}
++
+ 	control->iopm_base_pa = iopm_base;
+ 	control->msrpm_base_pa = __pa(svm->msrpm);
+ 	control->int_ctl = V_INTR_MASKING_MASK;
+--- a/arch/x86/kvm/vmx.c
++++ b/arch/x86/kvm/vmx.c
+@@ -3145,11 +3145,13 @@
+ 	      CPU_BASED_USE_IO_BITMAPS |
+ 	      CPU_BASED_MOV_DR_EXITING |
+ 	      CPU_BASED_USE_TSC_OFFSETING |
+-	      CPU_BASED_MWAIT_EXITING |
+-	      CPU_BASED_MONITOR_EXITING |
+ 	      CPU_BASED_INVLPG_EXITING |
+ 	      CPU_BASED_RDPMC_EXITING;
+ 
++	if (!kvm_mwait_in_guest())
++		min |= CPU_BASED_MWAIT_EXITING |
++			CPU_BASED_MONITOR_EXITING;
++
+ 	opt = CPU_BASED_TPR_SHADOW |
+ 	      CPU_BASED_USE_MSR_BITMAPS |
+ 	      CPU_BASED_ACTIVATE_SECONDARY_CONTROLS;
+--- a/arch/x86/kvm/x86.c
++++ b/arch/x86/kvm/x86.c
+@@ -2570,6 +2570,9 @@
+ #endif
+ 		r = 1;
+ 		break;
++	case KVM_CAP_X86_GUEST_MWAIT:
++		r = kvm_mwait_in_guest();
++		break;
+ 	case KVM_CAP_X86_SMM:
+ 		/* SMBASE is usually relocated above 1M on modern chipsets,
+ 		 * and SMM handlers might indeed rely on 4G segment limits,
+--- a/arch/x86/kvm/x86.h
++++ b/arch/x86/kvm/x86.h
+@@ -1,6 +1,8 @@
+ #ifndef ARCH_X86_KVM_X86_H
+ #define ARCH_X86_KVM_X86_H
+ 
++#include <asm/processor.h>
++#include <asm/mwait.h>
+ #include <linux/kvm_host.h>
+ #include "kvm_cache_regs.h"
+ 
+@@ -192,4 +194,39 @@
+ extern unsigned int lapic_timer_advance_ns;
+ 
+ extern struct static_key kvm_no_apic_vcpu;
++
++static inline bool kvm_mwait_in_guest(void)
++{
++	unsigned int eax, ebx, ecx, edx;
++
++	if (!cpu_has(&boot_cpu_data, X86_FEATURE_MWAIT))
++		return false;
++
++	switch (boot_cpu_data.x86_vendor) {
++	case X86_VENDOR_AMD:
++		/* All AMD CPUs have a working MWAIT implementation */
++		return true;
++	case X86_VENDOR_INTEL:
++		/* Handle Intel below */
++		break;
++	default:
++		return false;
++	}
++
++	/*
++	 * Intel CPUs without CPUID5_ECX_INTERRUPT_BREAK are problematic as
++	 * they would allow guest to stop the CPU completely by disabling
++	 * interrupts then invoking MWAIT.
++	 */
++	if (boot_cpu_data.cpuid_level < CPUID_MWAIT_LEAF)
++		return false;
++
++	cpuid(CPUID_MWAIT_LEAF, &eax, &ebx, &ecx, &edx);
++
++	if (!(ecx & CPUID5_ECX_INTERRUPT_BREAK))
++		return false;
++
++	return true;
++}
++
+ #endif
+--- a/include/uapi/linux/kvm.h
++++ b/include/uapi/linux/kvm.h
+@@ -839,6 +839,7 @@
+ #define KVM_CAP_SPLIT_IRQCHIP 121
+ #define KVM_CAP_IOEVENTFD_ANY_LENGTH 122
+ #define KVM_CAP_ARM_TIMER 133
++#define KVM_CAP_X86_GUEST_MWAIT 143
+ 
+ #ifdef KVM_CAP_IRQ_ROUTING
+ 

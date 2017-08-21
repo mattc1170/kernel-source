@@ -1,0 +1,45 @@
+From 2c2bcabf02e1453c1c8aceb6ee4c0ac62066a3a7 Mon Sep 17 00:00:00 2001
+From: Kirtika Ruchandani <kirtika.ruchandani@gmail.com>
+Date: Wed, 23 Nov 2016 17:25:29 -0800
+Subject: [PATCH] mwifiex: Remove unused 'sta_ptr' variable
+Mime-version: 1.0
+Content-type: text/plain; charset=UTF-8
+Content-transfer-encoding: 8bit
+Git-commit: 2c2bcabf02e1453c1c8aceb6ee4c0ac62066a3a7
+Patch-mainline: 4.10-rc1
+References: bsc#1031717
+
+Commit 429d90d2212b introduced mwifiex_cmd_tdls_oper() which initializes
+struct mwifiex_sta_node* sta_ptr, but does not use it. Compiling with W=1 gives
+the following warning, fix it.
+Mwifiex/sta_cmd.c: In function ‘mwifiex_cmd_tdls_oper’:
+mwifiex/sta_cmd.c:1732:27: warning: variable ‘sta_ptr’ set but not used [-Wunused-but-set-variable]
+
+Fixes: 429d90d2212b ("mwifiex: add cfg80211 tdls_oper handler support")
+Cc: Avinash Patil <patila@marvell.com>
+Signed-off-by: Kirtika Ruchandani <kirtika@google.com>
+Signed-off-by: Kalle Valo <kvalo@codeaurora.org>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/mwifiex/sta_cmd.c |    2 --
+ 1 file changed, 2 deletions(-)
+
+--- a/drivers/net/wireless/mwifiex/sta_cmd.c
++++ b/drivers/net/wireless/mwifiex/sta_cmd.c
+@@ -1673,7 +1673,6 @@ mwifiex_cmd_tdls_oper(struct mwifiex_pri
+ {
+ 	struct host_cmd_ds_tdls_oper *tdls_oper = &cmd->params.tdls_oper;
+ 	struct mwifiex_ds_tdls_oper *oper = data_buf;
+-	struct mwifiex_sta_node *sta_ptr;
+ 	struct host_cmd_tlv_rates *tlv_rates;
+ 	struct mwifiex_ie_types_htcap *ht_capab;
+ 	struct mwifiex_ie_types_qos_info *wmm_qos_info;
+@@ -1691,7 +1690,6 @@ mwifiex_cmd_tdls_oper(struct mwifiex_pri
+ 
+ 	tdls_oper->reason = 0;
+ 	memcpy(tdls_oper->peer_mac, oper->peer_mac, ETH_ALEN);
+-	sta_ptr = mwifiex_get_sta_entry(priv, oper->peer_mac);
+ 
+ 	pos = (u8 *)tdls_oper + sizeof(struct host_cmd_ds_tdls_oper);
+ 

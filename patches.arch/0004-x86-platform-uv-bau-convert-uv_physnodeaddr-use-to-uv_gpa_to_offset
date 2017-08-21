@@ -1,0 +1,53 @@
+From: Andrew Banman <abanman@sgi.com>
+Date: Wed, 21 Sep 2016 11:09:15 -0500
+Subject: x86/platform/uv/BAU: Convert uv_physnodeaddr() use to
+ uv_gpa_to_offset()
+Git-commit: 60e1c842c7ea3dd6a65660864554565cc737dd86
+Patch-mainline: v4.9-rc1
+References: bsc#1035024
+
+The BAU driver should use the functions provided by uv_hub.h rather than
+its own implementations. uv_physnodeaddr converts vaddrs to paddrs for
+BAU MMR fields, but this is done better by uv_gpa_to_offset.
+
+Signed-off-by: Andrew Banman <abanman@sgi.com>
+Acked-by: Thomas Gleixner <tglx@linutronix.de>
+Acked-by: Mike Travis <travis@sgi.com>
+Acked-by: Dimitri Sivanich <sivanich@sgi.com>
+Acked-by: Thomas Gleixner <tglx@linutronix.de>
+Cc: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: Peter Zijlstra <peterz@infradead.org>
+Cc: akpm@linux-foundation.org
+Cc: rja@sgi.com
+Link: http://lkml.kernel.org/r/1474474161-265604-5-git-send-email-abanman@sgi.com
+Signed-off-by: Ingo Molnar <mingo@kernel.org>
+Acked-by: Joerg Roedel <jroedel@suse.de>
+---
+ arch/x86/include/asm/uv/uv_bau.h | 2 --
+ arch/x86/platform/uv/tlb_uv.c    | 4 ++--
+ 2 files changed, 2 insertions(+), 4 deletions(-)
+
+--- a/arch/x86/include/asm/uv/uv_bau.h
++++ b/arch/x86/include/asm/uv/uv_bau.h
+@@ -55,8 +55,6 @@
+ #define UV_BAU_TUNABLES_DIR		"sgi_uv"
+ #define UV_BAU_TUNABLES_FILE		"bau_tunables"
+ #define WHITESPACE			" \t\n"
+-#define uv_mmask			((1UL << uv_hub_info->m_val) - 1)
+-#define uv_physnodeaddr(x)		((__pa((unsigned long)(x)) & uv_mmask))
+ #define cpubit_isset(cpu, bau_local_cpumask) \
+ 	test_bit((cpu), (bau_local_cpumask).bits)
+ 
+--- a/arch/x86/platform/uv/tlb_uv.c
++++ b/arch/x86/platform/uv/tlb_uv.c
+@@ -1812,8 +1812,8 @@ static void pq_init(int node, int pnode)
+ 		bcp->queue_last		= pqp + (DEST_Q_SIZE - 1);
+ 	}
+ 
+-	first = uv_physnodeaddr(pqp);
+-	last = uv_physnodeaddr(pqp + (DEST_Q_SIZE - 1));
++	first = uv_gpa_to_offset(uv_gpa(pqp));
++	last = uv_gpa_to_offset(uv_gpa(pqp + (DEST_Q_SIZE - 1)));
+ 	tail = first;
+ 	gnode = uv_gpa_to_gnode(uv_gpa(pqp));
+ 	first = (gnode << UV_PAYLOADQ_GNODE_SHIFT) | tail;

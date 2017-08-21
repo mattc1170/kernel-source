@@ -1,0 +1,40 @@
+From: "travis@sgi.com" <travis@sgi.com>
+Date: Wed, 25 Jan 2017 10:35:23 -0600
+Subject: x86/platform/UV: Ensure uv_system_init is called when necessary
+Git-commit: 9ec808a0225aabab59fb2932b70784b087ac0f58
+Patch-mainline: v3.20-rc1
+References: bsc#1023866
+
+Move the check to whether this is a UV system that needs initialization
+from is_uv_system() to the internal uv_system_init() function.  This is
+because on a UV system without a HUB the is_uv_system() returns false.
+But we still need some specific UV system initialization.  See the
+uv_system_init() for change to a quick check if UV is applicable. This
+change should not increase overhead since is_uv_system() also called
+into this same area.
+
+Signed-off-by: Mike Travis <travis@sgi.com>
+Reviewed-by: Russ Anderson <rja@hpe.com>
+Acked-by: Thomas Gleixner <tglx@linutronix.de>
+Acked-by: Dimitri Sivanich <sivanich@hpe.com>
+Cc: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: Peter Zijlstra <peterz@infradead.org>
+Link: http://lkml.kernel.org/r/20170125163518.256403963@asylum.americas.sgi.com
+Signed-off-by: Ingo Molnar <mingo@kernel.org>
+Acked-by: Joerg Roedel <jroedel@suse.de>
+---
+ arch/x86/kernel/smpboot.c | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
+
+--- a/arch/x86/kernel/smpboot.c
++++ b/arch/x86/kernel/smpboot.c
+@@ -1223,8 +1223,7 @@ void __init native_smp_prepare_cpus(unsi
+ 	pr_info("CPU%d: ", 0);
+ 	print_cpu_info(&cpu_data(0));
+ 
+-	if (is_uv_system())
+-		uv_system_init();
++	uv_system_init();
+ 
+ 	set_mtrr_aps_delayed_init();
+ 

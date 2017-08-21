@@ -15,17 +15,15 @@ Signed-off-by: Jan Kara <jack@suse.cz>
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 
 ---
- fs/ext4/ext4.h  |   2 +-
- fs/ext4/super.c |   7 ++-
- fs/ext4/xattr.c | 136 ++++++++++++++++++++++++++++----------------------------
- fs/ext4/xattr.h |   5 +--
+ fs/ext4/ext4.h  |    2 
+ fs/ext4/super.c |    7 ++
+ fs/ext4/xattr.c |  136 +++++++++++++++++++++++++++-----------------------------
+ fs/ext4/xattr.h |    5 --
  4 files changed, 75 insertions(+), 75 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 157b458a69d4..9ac9e62569ef 100644
 --- a/fs/ext4/ext4.h
 +++ b/fs/ext4/ext4.h
-@@ -1468,7 +1468,7 @@ struct ext4_sb_info {
+@@ -1443,7 +1443,7 @@ struct ext4_sb_info {
  	struct list_head s_es_list;	/* List of inodes with reclaimable extents */
  	long s_es_nr_inode;
  	struct ext4_es_stats s_es_stats;
@@ -34,19 +32,17 @@ index 157b458a69d4..9ac9e62569ef 100644
  	spinlock_t s_es_lock ____cacheline_aligned_in_smp;
  
  	/* Ratelimit ext4 messages. */
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 3ed01ec011d7..ecc37e103435 100644
 --- a/fs/ext4/super.c
 +++ b/fs/ext4/super.c
-@@ -844,7 +844,6 @@ static void ext4_put_super(struct super_block *sb)
+@@ -818,7 +818,6 @@ static void ext4_put_super(struct super_
  	ext4_release_system_zone(sb);
  	ext4_mb_release(sb);
  	ext4_ext_release(sb);
 -	ext4_xattr_put_super(sb);
  
- 	if (!(sb->s_flags & MS_RDONLY)) {
+ 	if (!(sb->s_flags & MS_RDONLY) && !aborted) {
  		ext4_clear_feature_journal_needs_recovery(sb);
-@@ -3797,7 +3796,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+@@ -3867,7 +3866,7 @@ static int ext4_fill_super(struct super_
  
  no_journal:
  	if (ext4_mballoc_ready) {
@@ -55,7 +51,7 @@ index 3ed01ec011d7..ecc37e103435 100644
  		if (!sbi->s_mb_cache) {
  			ext4_msg(sb, KERN_ERR, "Failed to create an mb_cache");
  			goto failed_mount_wq;
-@@ -4027,6 +4026,10 @@ failed_mount4:
+@@ -4099,6 +4098,10 @@ failed_mount4:
  	if (EXT4_SB(sb)->rsv_conversion_wq)
  		destroy_workqueue(EXT4_SB(sb)->rsv_conversion_wq);
  failed_mount_wq:
@@ -66,8 +62,6 @@ index 3ed01ec011d7..ecc37e103435 100644
  	if (sbi->s_journal) {
  		jbd2_journal_destroy(sbi->s_journal);
  		sbi->s_journal = NULL;
-diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-index a95151e875bd..fe9f8d6ab6c9 100644
 --- a/fs/ext4/xattr.c
 +++ b/fs/ext4/xattr.c
 @@ -53,7 +53,7 @@
@@ -79,7 +73,7 @@ index a95151e875bd..fe9f8d6ab6c9 100644
  #include <linux/quotaops.h>
  #include "ext4_jbd2.h"
  #include "ext4.h"
-@@ -78,10 +78,10 @@
+@@ -80,10 +80,10 @@
  # define ea_bdebug(bh, fmt, ...)	no_printk(fmt, ##__VA_ARGS__)
  #endif
  
@@ -92,7 +86,7 @@ index a95151e875bd..fe9f8d6ab6c9 100644
  static void ext4_xattr_rehash(struct ext4_xattr_header *,
  			      struct ext4_xattr_entry *);
  static int ext4_xattr_list(struct dentry *dentry, char *buffer,
-@@ -276,7 +276,7 @@ ext4_xattr_block_get(struct inode *inode, int name_index, const char *name,
+@@ -279,7 +279,7 @@ ext4_xattr_block_get(struct inode *inode
  	struct ext4_xattr_entry *entry;
  	size_t size;
  	int error;
@@ -101,7 +95,7 @@ index a95151e875bd..fe9f8d6ab6c9 100644
  
  	ea_idebug(inode, "name=%d.%s, buffer=%p, buffer_size=%ld",
  		  name_index, name, buffer, (long)buffer_size);
-@@ -428,7 +428,7 @@ ext4_xattr_block_list(struct dentry *dentry, char *buffer, size_t buffer_size)
+@@ -426,7 +426,7 @@ ext4_xattr_block_list(struct dentry *den
  	struct inode *inode = d_inode(dentry);
  	struct buffer_head *bh = NULL;
  	int error;
@@ -110,7 +104,7 @@ index a95151e875bd..fe9f8d6ab6c9 100644
  
  	ea_idebug(inode, "buffer=%p, buffer_size=%ld",
  		  buffer, (long)buffer_size);
-@@ -545,11 +545,8 @@ static void
+@@ -543,11 +543,8 @@ static void
  ext4_xattr_release_block(handle_t *handle, struct inode *inode,
  			 struct buffer_head *bh)
  {
@@ -122,7 +116,7 @@ index a95151e875bd..fe9f8d6ab6c9 100644
  	BUFFER_TRACE(bh, "get_write_access");
  	error = ext4_journal_get_write_access(handle, bh);
  	if (error)
-@@ -557,9 +554,15 @@ ext4_xattr_release_block(handle_t *handle, struct inode *inode,
+@@ -555,9 +552,15 @@ ext4_xattr_release_block(handle_t *handl
  
  	lock_buffer(bh);
  	if (BHDR(bh)->h_refcount == cpu_to_le32(1)) {
@@ -140,7 +134,7 @@ index a95151e875bd..fe9f8d6ab6c9 100644
  		get_bh(bh);
  		unlock_buffer(bh);
  		ext4_free_blocks(handle, inode, bh, 0, 1,
-@@ -567,8 +570,6 @@ ext4_xattr_release_block(handle_t *handle, struct inode *inode,
+@@ -565,8 +568,6 @@ ext4_xattr_release_block(handle_t *handl
  				 EXT4_FREE_BLOCKS_FORGET);
  	} else {
  		le32_add_cpu(&BHDR(bh)->h_refcount, -1);
@@ -149,7 +143,7 @@ index a95151e875bd..fe9f8d6ab6c9 100644
  		/*
  		 * Beware of this ugliness: Releasing of xattr block references
  		 * from different inodes can race and so we have to protect
-@@ -781,17 +782,15 @@ ext4_xattr_block_set(handle_t *handle, struct inode *inode,
+@@ -779,17 +780,15 @@ ext4_xattr_block_set(handle_t *handle, s
  	struct super_block *sb = inode->i_sb;
  	struct buffer_head *new_bh = NULL;
  	struct ext4_xattr_search *s = &bs->s;
@@ -169,7 +163,7 @@ index a95151e875bd..fe9f8d6ab6c9 100644
  		BUFFER_TRACE(bs->bh, "get_write_access");
  		error = ext4_journal_get_write_access(handle, bs->bh);
  		if (error)
-@@ -799,10 +798,15 @@ ext4_xattr_block_set(handle_t *handle, struct inode *inode,
+@@ -797,10 +796,15 @@ ext4_xattr_block_set(handle_t *handle, s
  		lock_buffer(bs->bh);
  
  		if (header(s->base)->h_refcount == cpu_to_le32(1)) {
@@ -189,7 +183,7 @@ index a95151e875bd..fe9f8d6ab6c9 100644
  			ea_bdebug(bs->bh, "modifying in-place");
  			error = ext4_xattr_set_entry(i, s);
  			if (!error) {
-@@ -826,10 +830,6 @@ ext4_xattr_block_set(handle_t *handle, struct inode *inode,
+@@ -824,10 +828,6 @@ ext4_xattr_block_set(handle_t *handle, s
  			int offset = (char *)s->here - bs->bh->b_data;
  
  			unlock_buffer(bs->bh);
@@ -200,7 +194,7 @@ index a95151e875bd..fe9f8d6ab6c9 100644
  			ea_bdebug(bs->bh, "cloning");
  			s->base = kmalloc(bs->bh->b_size, GFP_NOFS);
  			error = -ENOMEM;
-@@ -884,6 +884,31 @@ inserted:
+@@ -882,6 +882,31 @@ inserted:
  				if (error)
  					goto cleanup_dquot;
  				lock_buffer(new_bh);
@@ -232,7 +226,7 @@ index a95151e875bd..fe9f8d6ab6c9 100644
  				le32_add_cpu(&BHDR(new_bh)->h_refcount, 1);
  				ea_bdebug(new_bh, "reusing; refcount now=%d",
  					le32_to_cpu(BHDR(new_bh)->h_refcount));
-@@ -894,7 +919,8 @@ inserted:
+@@ -892,7 +917,8 @@ inserted:
  				if (error)
  					goto cleanup_dquot;
  			}
@@ -242,7 +236,7 @@ index a95151e875bd..fe9f8d6ab6c9 100644
  			ce = NULL;
  		} else if (bs->bh && s->base == bs->bh->b_data) {
  			/* We were modifying this block in-place. */
-@@ -959,7 +985,7 @@ getblk_failed:
+@@ -957,7 +983,7 @@ getblk_failed:
  
  cleanup:
  	if (ce)
@@ -251,7 +245,7 @@ index a95151e875bd..fe9f8d6ab6c9 100644
  	brelse(new_bh);
  	if (!(bs->bh && s->base == bs->bh->b_data))
  		kfree(s->base);
-@@ -1512,17 +1538,6 @@ cleanup:
+@@ -1519,17 +1545,6 @@ cleanup:
  }
  
  /*
@@ -269,7 +263,7 @@ index a95151e875bd..fe9f8d6ab6c9 100644
   * ext4_xattr_cache_insert()
   *
   * Create a new entry in the extended attribute cache, and insert
-@@ -1531,28 +1546,18 @@ ext4_xattr_put_super(struct super_block *sb)
+@@ -1538,28 +1553,18 @@ ext4_xattr_put_super(struct super_block
   * Returns 0, or a negative error number on failure.
   */
  static void
@@ -303,7 +297,7 @@ index a95151e875bd..fe9f8d6ab6c9 100644
  }
  
  /*
-@@ -1605,26 +1610,19 @@ ext4_xattr_cmp(struct ext4_xattr_header *header1,
+@@ -1612,26 +1617,19 @@ ext4_xattr_cmp(struct ext4_xattr_header
   */
  static struct buffer_head *
  ext4_xattr_cache_find(struct inode *inode, struct ext4_xattr_header *header,
@@ -334,7 +328,7 @@ index a95151e875bd..fe9f8d6ab6c9 100644
  		bh = sb_bread(inode->i_sb, ce->e_block);
  		if (!bh) {
  			EXT4_ERROR_INODE(inode, "block %lu read error",
-@@ -1640,7 +1638,7 @@ again:
+@@ -1647,7 +1645,7 @@ again:
  			return bh;
  		}
  		brelse(bh);
@@ -343,7 +337,7 @@ index a95151e875bd..fe9f8d6ab6c9 100644
  	}
  	return NULL;
  }
-@@ -1715,15 +1713,15 @@ static void ext4_xattr_rehash(struct ext4_xattr_header *header,
+@@ -1722,15 +1720,15 @@ static void ext4_xattr_rehash(struct ext
  
  #define	HASH_BUCKET_BITS	10
  
@@ -364,11 +358,9 @@ index a95151e875bd..fe9f8d6ab6c9 100644
 +		mb2_cache_destroy(cache);
  }
  
-diff --git a/fs/ext4/xattr.h b/fs/ext4/xattr.h
-index ddc0957760ba..10b0f7323ed6 100644
 --- a/fs/ext4/xattr.h
 +++ b/fs/ext4/xattr.h
-@@ -108,7 +108,6 @@ extern int ext4_xattr_set(struct inode *, int, const char *, const void *, size_
+@@ -108,7 +108,6 @@ extern int ext4_xattr_set(struct inode *
  extern int ext4_xattr_set_handle(handle_t *, struct inode *, int, const char *, const void *, size_t, int);
  
  extern void ext4_xattr_delete_inode(handle_t *, struct inode *);
@@ -376,7 +368,7 @@ index ddc0957760ba..10b0f7323ed6 100644
  
  extern int ext4_expand_extra_isize_ea(struct inode *inode, int new_extra_isize,
  			    struct ext4_inode *raw_inode, handle_t *handle);
-@@ -124,8 +123,8 @@ extern int ext4_xattr_ibody_inline_set(handle_t *handle, struct inode *inode,
+@@ -124,8 +123,8 @@ extern int ext4_xattr_ibody_inline_set(h
  				       struct ext4_xattr_info *i,
  				       struct ext4_xattr_ibody_find *is);
  
@@ -387,6 +379,3 @@ index ddc0957760ba..10b0f7323ed6 100644
  
  #ifdef CONFIG_EXT4_FS_SECURITY
  extern int ext4_init_security(handle_t *handle, struct inode *inode,
--- 
-2.6.2
-

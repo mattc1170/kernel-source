@@ -1,0 +1,30 @@
+From 1032471b3ec823bce7687034ac5af78a8ac99a9c Mon Sep 17 00:00:00 2001
+From: Jean Delvare <jdelvare@suse.de>
+Date: Thu, 15 Dec 2016 11:43:30 +0100
+Subject: [PATCH] dmaengine: dw: fix typo in Kconfig
+Git-commit: 1032471b3ec823bce7687034ac5af78a8ac99a9c
+Patch-mainline: 4.10-rc4
+References: bsc#1031717
+
+platfroms -> platforms
+
+Signed-off-by: Jean Delvare <jdelvare@suse.de>
+Fixes: fed42c198b45 ("dma: dw: add PCI part of the driver")
+Cc: Viresh Kumar <vireshk@kernel.org>
+Acked-by: Andy Shevchenko <andriy.shevchenko@linux.intel.com>
+Signed-off-by: Vinod Koul <vinod.koul@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/dma/dw/Kconfig |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+--- a/drivers/dma/dw/Kconfig
++++ b/drivers/dma/dw/Kconfig
+@@ -24,5 +24,5 @@ config DW_DMAC_PCI
+ 	select DW_DMAC_CORE
+ 	help
+ 	  Support the Synopsys DesignWare AHB DMA controller on the
+-	  platfroms that enumerate it as a PCI device. For example,
++	  platforms that enumerate it as a PCI device. For example,
+ 	  Intel Medfield has integrated this GPDMA controller.

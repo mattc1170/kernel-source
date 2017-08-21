@@ -1,0 +1,34 @@
+From f71dfe010bd06fd6f071bc11cc8d3085cf7e2c6b Mon Sep 17 00:00:00 2001
+From: Stephen Boyd <sboyd@codeaurora.org>
+Date: Tue, 1 Mar 2016 11:00:26 -0800
+Subject: [PATCH 31/36] clk: xgene: Remove CLK_IS_ROOT
+
+Git-commit: d31d56ec17431d3883d5f4b60d407fa5e75add06
+Patch-mainline: v4.7-rc1
+References: bsc#1019351
+
+This flag is a no-op now. Remove usage of the flag.
+
+Cc: Loc Ho <lho@apm.com>
+Signed-off-by: Stephen Boyd <sboyd@codeaurora.org>
+Signed-off-by: Mian Yousaf Kaukab <yousaf.kaukab@suse.com>
+---
+ drivers/clk/clk-xgene.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/clk/clk-xgene.c b/drivers/clk/clk-xgene.c
+index d73450b60b28..343313250c58 100644
+--- a/drivers/clk/clk-xgene.c
++++ b/drivers/clk/clk-xgene.c
+@@ -198,7 +198,7 @@ static void xgene_pllclk_init(struct device_node *np, enum xgene_pll_type pll_ty
+ 	of_property_read_string(np, "clock-output-names", &clk_name);
+ 	clk = xgene_register_clk_pll(NULL,
+ 			clk_name, of_clk_get_parent_name(np, 0),
+-			CLK_IS_ROOT, reg, 0, pll_type, &clk_lock,
++			0, reg, 0, pll_type, &clk_lock,
+ 			version);
+ 	if (!IS_ERR(clk)) {
+ 		of_clk_add_provider(np, of_clk_src_simple_get, clk);
+-- 
+2.11.0
+

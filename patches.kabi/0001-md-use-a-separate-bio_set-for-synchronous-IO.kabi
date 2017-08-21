@@ -1,0 +1,49 @@
+From: NeilBrown <neilb@suse.com>
+Subject: Fix kabi after adding new field to struct mddev
+Patch-mainline: never, kabi
+References: bsc#1040351
+
+mddev devices should never be allocated by external modules,
+so it is safe to move this new field to the end of the
+structure, and hide it from the kabi.
+
+full disclosure: dm-raid allocated an mddev, embedded in
+a separate structure.  So that structure grows here too.
+It is completely local to dm-raid.c and is not exported,
+that that change doesn't affect the kabi.
+A third party module could conceivably do the same thing,
+but we had to change so much to accommodate dm-raid, so
+it is unlikely something else would embed an mddev and actually
+work.
+
+Signed-off-by: NeilBrown <neilb@suse.com>
+Acked-by: NeilBrown <neilb@suse.com>
+
+---
+ drivers/md/md.h |    8 +++++---
+ 1 file changed, 5 insertions(+), 3 deletions(-)
+
+--- a/drivers/md/md.h
++++ b/drivers/md/md.h
+@@ -442,9 +442,6 @@ struct mddev {
+ 	struct attribute_group		*to_remove;
+ 
+ 	struct bio_set			*bio_set;
+-	struct bio_set			*sync_set; /* for sync operations like
+-						   * metadata and bitmap writes
+-						   */
+ 
+ 	/* Generic flush handling.
+ 	 * The last to finish preflush schedules a worker to submit
+@@ -457,6 +454,11 @@ struct mddev {
+ 	void (*sync_super)(struct mddev *mddev, struct md_rdev *rdev);
+ 	struct md_cluster_info		*cluster_info;
+ 	unsigned int			good_device_nr;	/* good device num within cluster raid */
++#ifndef __GENKSYMS__
++	struct bio_set			*sync_set; /* for sync operations like
++						   * metadata and bitmap writes
++						   */
++#endif
+ };
+ 
+ static inline int __must_check mddev_lock(struct mddev *mddev)

@@ -1,0 +1,32 @@
+From e0ebe942f42952fb23bb0596f8775e50bed0b341 Mon Sep 17 00:00:00 2001
+From: Nathan Fontenot <nfont@linux.vnet.ibm.com>
+Date: Wed, 3 May 2017 14:04:50 -0400
+Subject: [PATCH] ibmvnic: Whitespace correction in release_rx_pools
+
+References: fate#322021, bsc#1038297
+Patch-mainline: v4.12-rc1
+Git-commit: e0ebe942f42952fb23bb0596f8775e50bed0b341
+
+Signed-off-by: Nathan Fontenot <nfont@linux.vnet.ibm.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+Acked-by: Michal Suchanek <msuchanek@suse.de>
+---
+ drivers/net/ethernet/ibm/ibmvnic.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/net/ethernet/ibm/ibmvnic.c b/drivers/net/ethernet/ibm/ibmvnic.c
+index d52d98c..bbbd57e 100644
+--- a/drivers/net/ethernet/ibm/ibmvnic.c
++++ b/drivers/net/ethernet/ibm/ibmvnic.c
+@@ -348,7 +348,7 @@ static void release_rx_pools(struct ibmvnic_adapter *adapter)
+ 		free_long_term_buff(adapter, &rx_pool->long_term_buff);
+ 
+ 		if (!rx_pool->rx_buff)
+-		continue;
++			continue;
+ 
+ 		for (j = 0; j < rx_pool->size; j++) {
+ 			if (rx_pool->rx_buff[j].skb) {
+-- 
+2.10.2
+

@@ -1,0 +1,66 @@
+From c9e13c5fdd4da8711bfd8f3fd376a63f759a386e Mon Sep 17 00:00:00 2001
+From: Aidan Thornton <makosoft@gmail.com>
+Date: Sat, 22 Oct 2016 22:02:25 +0100
+Subject: [PATCH 4/7] USB: serial: ch341: add support for parity, frame length,
+ stop bits
+References: bnc#1038043
+Git-commit: ba781bdf86621b71aa79a1ac0ad584f1e8aac307
+Patch-mainline: v4.10
+
+With the new reinitialization method, configuring parity, different
+frame lengths and different stop bit settings should work as expected
+on both CH340G and CH341A. Tested on a loopback-connected CH340G
+with a logic analyzer in a number of different configurations.
+
+Based on a patch by Grigori Goronzy
+
+Signed-off-by: Aidan Thornton <makosoft@gmail.com>
+Reviewed-by: Grigori Goronzy <greg@chown.ath.cx>
+Signed-off-by: Johan Hovold <johan@kernel.org>
+Signed-off-by: Oliver Neukum <oneukum@suse.com>
+---
+ drivers/usb/serial/ch341.c | 27 ++++++++++++++++++++++++++-
+ 1 file changed, 26 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/usb/serial/ch341.c b/drivers/usb/serial/ch341.c
+index f2fac0bbbfcb..6911413e353a 100644
+--- a/drivers/usb/serial/ch341.c
++++ b/drivers/usb/serial/ch341.c
+@@ -372,8 +372,33 @@ static void ch341_set_termios(struct tty_struct *tty,
+ 	baud_rate = tty_get_baud_rate(tty);
+ 
+ 	priv->baud_rate = baud_rate;
++	ctrl = CH341_LCR_ENABLE_RX | CH341_LCR_ENABLE_TX;
+ 
+-	ctrl = CH341_LCR_ENABLE_RX | CH341_LCR_ENABLE_TX | CH341_LCR_CS8;
++	switch (C_CSIZE(tty)) {
++	case CS5:
++		ctrl |= CH341_LCR_CS5;
++		break;
++	case CS6:
++		ctrl |= CH341_LCR_CS6;
++		break;
++	case CS7:
++		ctrl |= CH341_LCR_CS7;
++		break;
++	case CS8:
++		ctrl |= CH341_LCR_CS8;
++		break;
++	}
++
++	if (C_PARENB(tty)) {
++		ctrl |= CH341_LCR_ENABLE_PAR;
++		if (C_PARODD(tty) == 0)
++			ctrl |= CH341_LCR_PAR_EVEN;
++		if (C_CMSPAR(tty))
++			ctrl |= CH341_LCR_MARK_SPACE;
++	}
++
++	if (C_CSTOPB(tty))
++		ctrl |= CH341_LCR_STOP_BITS_2;
+ 
+ 	if (baud_rate) {
+ 		spin_lock_irqsave(&priv->lock, flags);
+-- 
+2.12.0
+

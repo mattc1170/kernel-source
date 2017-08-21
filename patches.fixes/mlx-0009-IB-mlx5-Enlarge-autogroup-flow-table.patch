@@ -1,0 +1,41 @@
+From: Maor Gottlieb <maorg@mellanox.com>
+Date: Wed, 29 Mar 2017 06:09:01 +0300
+Subject: IB/mlx5: Enlarge autogroup flow table
+Patch-mainline: v4.12-rc1
+Git-commit: 00b7c2abb6a25437be472b9402feb90ab32798ae
+References: bsc#966170 bsc#966172 bsc#966191
+
+In order to enlarge the flow group size to 8k, we decrease
+the number of flow group types to 6 and increase the flow
+table size to 64k.
+
+Flow group size is calculated as follow:
+  group_size = table_size / (#group_types + 1)
+
+Fixes: 038d2ef87572 ('IB/mlx5: Add flow steering support')
+Signed-off-by: Maor Gottlieb <maorg@mellanox.com>
+Signed-off-by: Leon Romanovsky <leon@kernel.org>
+Signed-off-by: Doug Ledford <dledford@redhat.com>
+Acked-by: Thomas Bogendoerfer <tbogendoerfer@suse.de>
+---
+ drivers/infiniband/hw/mlx5/main.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/infiniband/hw/mlx5/main.c b/drivers/infiniband/hw/mlx5/main.c
+index 82ddc95024f9..a491f805b20d 100644
+--- a/drivers/infiniband/hw/mlx5/main.c
++++ b/drivers/infiniband/hw/mlx5/main.c
+@@ -1432,8 +1432,8 @@ static int ib_prio_to_core_prio(unsigned int priority, bool dont_trap)
+ 	return priority;
+ }
+ 
+-#define MLX5_FS_MAX_TYPES	 10
+-#define MLX5_FS_MAX_ENTRIES	 32000UL
++#define MLX5_FS_MAX_TYPES	 6
++#define MLX5_FS_MAX_ENTRIES	 BIT(16)
+ static struct mlx5_ib_flow_prio *get_flow_table(struct mlx5_ib_dev *dev,
+ 						struct ib_flow_attr *flow_attr)
+ {
+-- 
+2.12.3
+

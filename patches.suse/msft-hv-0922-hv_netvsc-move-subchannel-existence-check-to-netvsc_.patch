@@ -10,13 +10,11 @@ Signed-off-by: K. Y. Srinivasan <kys@microsoft.com>
 Signed-off-by: David S. Miller <davem@davemloft.net>
 Acked-by: <ohering@suse.de>
 ---
- drivers/net/hyperv/hyperv_net.h | 15 ---------------
- drivers/net/hyperv/netvsc.c     |  5 ++---
- drivers/net/hyperv/netvsc_drv.c |  3 +++
+ drivers/net/hyperv/hyperv_net.h |   15 ---------------
+ drivers/net/hyperv/netvsc.c     |    5 ++---
+ drivers/net/hyperv/netvsc_drv.c |    3 +++
  3 files changed, 5 insertions(+), 18 deletions(-)
 
-diff --git a/drivers/net/hyperv/hyperv_net.h b/drivers/net/hyperv/hyperv_net.h
-index 731054e..8d534a3 100644
 --- a/drivers/net/hyperv/hyperv_net.h
 +++ b/drivers/net/hyperv/hyperv_net.h
 @@ -1272,19 +1272,4 @@ struct rndis_message {
@@ -39,8 +37,6 @@ index 731054e..8d534a3 100644
 -
 -
  #endif /* _HYPERV_NET_H */
-diff --git a/drivers/net/hyperv/netvsc.c b/drivers/net/hyperv/netvsc.c
-index 0e0b723..419b055 100644
 --- a/drivers/net/hyperv/netvsc.c
 +++ b/drivers/net/hyperv/netvsc.c
 @@ -749,8 +749,8 @@ static inline int netvsc_send_pkt(
@@ -53,7 +49,7 @@ index 0e0b723..419b055 100644
  	struct net_device *ndev = net_device->ndev;
  	u64 req_id;
  	int ret;
-@@ -859,8 +859,7 @@ int netvsc_send(struct hv_device *device,
+@@ -859,8 +859,7 @@ int netvsc_send(struct hv_device *device
  	if (!net_device)
  		return -ENODEV;
  
@@ -63,13 +59,11 @@ index 0e0b723..419b055 100644
  
  	packet->send_buf_index = NETVSC_INVALID_INDEX;
  	packet->cp_partial = false;
-diff --git a/drivers/net/hyperv/netvsc_drv.c b/drivers/net/hyperv/netvsc_drv.c
-index b820888..38b53fa 100644
 --- a/drivers/net/hyperv/netvsc_drv.c
 +++ b/drivers/net/hyperv/netvsc_drv.c
-@@ -273,6 +273,9 @@ static u16 netvsc_select_queue(struct net_device *ndev, struct sk_buff *skb,
- 		skb_set_hash(skb, hash, PKT_HASH_TYPE_L3);
- 	}
+@@ -214,6 +214,9 @@ static u16 netvsc_select_queue(struct ne
+ 	q_idx = nvsc_dev->send_table[hash % VRSS_SEND_TAB_SIZE] %
+ 		ndev->real_num_tx_queues;
  
 +	if (!nvsc_dev->chn_table[q_idx])
 +		q_idx = 0;

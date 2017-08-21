@@ -1,0 +1,56 @@
+From: Shaohua Li <shli@fb.com>
+Date: Thu, 6 Oct 2016 14:09:16 -0700
+Subject: [PATCH] RAID1: ignore discard error
+Git-commit: e3f948cd3283e4fbe5907f1f3967c839912f480e
+Patch-mainline: v4.9
+References: bsc#1017164
+
+If a write error occurs, raid1 will try to rewrite the bio in small
+chunk size. If the rewrite fails, raid1 will record the error in bad
+block. narrow_write_error will always use WRITE for the bio, but
+actually it could be a discard. Since discard bio hasn't payload, write
+the bio will cause different issues. But discard error isn't fatal, we
+can safely ignore it. This is what this patch does.
+
+This issue should exist since discard is added, but only exposed with
+recent arbitrary bio size feature.
+
+Reported-and-tested-by: Sitsofe Wheeler <sitsofe@gmail.com>
+Cc: stable@vger.kernel.org (v3.6)
+Signed-off-by: Shaohua Li <shli@fb.com>
+Acked-by: NeilBrown <neilb@suse.com>
+
+---
+ drivers/md/raid1.c |    7 +++++--
+ 1 file changed, 5 insertions(+), 2 deletions(-)
+
+--- a/drivers/md/raid1.c
++++ b/drivers/md/raid1.c
+@@ -414,14 +414,17 @@ static void raid1_end_write_request(stru
+ 	struct r1conf *conf = r1_bio->mddev->private;
+ 	struct bio *to_put = NULL;
+ 	struct md_rdev *rdev;
++	bool discard_error;
+ 
+ 	mirror = find_bio_disk(r1_bio, bio);
+ 	rdev = conf->mirrors[mirror].rdev;
+ 
++	discard_error = bio->bi_error && (bio->bi_rw & REQ_DISCARD);
++
+ 	/*
+ 	 * 'one mirror IO has finished' event handler:
+ 	 */
+-	if (bio->bi_error) {
++	if (bio->bi_error && !discard_error) {
+ 		set_bit(WriteErrorSeen,
+ 			&conf->mirrors[mirror].rdev->flags);
+ 		if (!test_and_set_bit(WantReplacement,
+@@ -477,7 +480,7 @@ static void raid1_end_write_request(stru
+ 		/* Maybe we can clear some bad blocks. */
+ 		if (is_badblock(conf->mirrors[mirror].rdev,
+ 				r1_bio->sector, r1_bio->sectors,
+-				&first_bad, &bad_sectors)) {
++				&first_bad, &bad_sectors) && !discard_error) {
+ 			r1_bio->bios[mirror] = IO_MADE_GOOD;
+ 			set_bit(R1BIO_MadeGood, &r1_bio->state);
+ 		}

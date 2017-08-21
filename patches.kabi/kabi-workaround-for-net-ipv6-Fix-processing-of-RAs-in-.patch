@@ -1,0 +1,72 @@
+From: Benjamin Poirier <bpoirier@suse.com>
+Date: Mon, 24 Oct 2016 10:52:35 -0700
+Subject: kabi workaround for net: ipv6: Fix processing of RAs in presence of VRF
+Patch-mainline: Never, SLE12-SP2 kabi fix
+References: bsc#1042286
+
+kabi workaround for 830218c1add1 ("net: ipv6: Fix processing of RAs in
+presence of VRF", v4.9-rc4)
+
+Signed-off-by: Benjamin Poirier <bpoirier@suse.com>
+---
+ include/net/ip6_fib.h |    8 ++++++--
+ net/ipv6/route.c      |   10 +++++++---
+ 2 files changed, 13 insertions(+), 5 deletions(-)
+
+--- a/include/net/ip6_fib.h
++++ b/include/net/ip6_fib.h
+@@ -218,6 +218,12 @@ struct rt6_statistics {
+ #define RTN_ROOT	0x0002		/* tree root node		*/
+ #define RTN_RTINFO	0x0004		/* node with valid routing info	*/
+ 
++/* kabi workaround:
++ * This flag is put into fib6_table.tb6_root.fn_flags (like the above RTN_*)
++ * to avoid adding a "flags" field to fib6_table.
++ */
++#define RT6_TABLE_HAS_DFLT_ROUTER	0x8000
++
+ /*
+  *	priority levels (or metrics)
+  *
+@@ -230,8 +236,6 @@ struct fib6_table {
+ 	rwlock_t		tb6_lock;
+ 	struct fib6_node	tb6_root;
+ 	struct inet_peer_base	tb6_peers;
+-	unsigned int		flags;
+-#define RT6_TABLE_HAS_DFLT_ROUTER	BIT(0)
+ };
+ 
+ #define RT6_TABLE_UNSPEC	RT_TABLE_UNSPEC
+--- a/net/ipv6/route.c
++++ b/net/ipv6/route.c
+@@ -2368,7 +2368,8 @@ struct rt6_info *rt6_add_dflt_router(con
+ 
+ 		table = fib6_get_table(dev_net(dev), cfg.fc_table);
+ 		if (table)
+-			table->flags |= RT6_TABLE_HAS_DFLT_ROUTER;
++			/* kabi workaround */
++			table->tb6_root.fn_flags |= RT6_TABLE_HAS_DFLT_ROUTER;
+ 	}
+ 
+ 	return rt6_get_dflt_router(gwaddr, dev);
+@@ -2391,7 +2392,8 @@ restart:
+ 	}
+ 	read_unlock_bh(&table->tb6_lock);
+ 
+-	table->flags &= ~RT6_TABLE_HAS_DFLT_ROUTER;
++	/* kabi workaround */
++	table->tb6_root.fn_flags &= ~RT6_TABLE_HAS_DFLT_ROUTER;
+ }
+ 
+ void rt6_purge_dflt_routers(struct net *net)
+@@ -2405,7 +2407,9 @@ void rt6_purge_dflt_routers(struct net *
+ 	for (h = 0; h < FIB6_TABLE_HASHSZ; h++) {
+ 		head = &net->ipv6.fib_table_hash[h];
+ 		hlist_for_each_entry_rcu(table, head, tb6_hlist) {
+-			if (table->flags & RT6_TABLE_HAS_DFLT_ROUTER)
++			/* kabi workaround */
++			if (table->tb6_root.fn_flags &
++			    RT6_TABLE_HAS_DFLT_ROUTER)
+ 				__rt6_purge_dflt_routers(table);
+ 		}
+ 	}

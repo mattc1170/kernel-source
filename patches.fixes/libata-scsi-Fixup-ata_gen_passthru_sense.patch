@@ -1,0 +1,36 @@
+From: Hannes Reinecke <hare@suse.de>
+Date: Mon, 31 Oct 2016 21:06:58 +0100
+Subject: libata-scsi: Fixup ata_gen_passthru_sense()
+Git-commit: e0029dcb5b6e1c23e68f578ce7a3d6c5caba0501
+Patch-Mainline: v4.9
+References: bsc#1040125
+
+There's a typo in ata_gen_passthru_sense(), where the first byte
+would be overwritten incorrectly later on.
+
+Reported-by: Charles Machalow <csm10495@gmail.com>
+Signed-off-by: Hannes Reinecke <hare@suse.com>
+Fixes: 11093cb1ef56 ("libata-scsi: generate correct ATA pass-through sense")
+Cc: stable@vger.kernel.org # v4.7+
+Signed-off-by: Tejun Heo <tj@kernel.org>
+Signed-off-by: Hannes Reinecke <hare@suse.de>
+---
+ drivers/ata/libata-scsi.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/ata/libata-scsi.c b/drivers/ata/libata-scsi.c
+index b86af14..c1ff122 100644
+--- a/drivers/ata/libata-scsi.c
++++ b/drivers/ata/libata-scsi.c
+@@ -1088,7 +1088,7 @@ static void ata_gen_passthru_sense(struct ata_queued_cmd *qc)
+ 		desc[1] = tf->command; /* status */
+ 		desc[2] = tf->device;
+ 		desc[3] = tf->nsect;
+-		desc[0] = 0;
++		desc[7] = 0;
+ 		if (tf->flags & ATA_TFLAG_LBA48)  {
+ 			desc[8] |= 0x80;
+ 			if (tf->hob_nsect)
+-- 
+1.8.5.6
+

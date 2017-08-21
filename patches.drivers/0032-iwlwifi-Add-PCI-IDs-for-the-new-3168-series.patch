@@ -1,0 +1,80 @@
+From c4836b056d8316faf40ae94ac01557e6ee12c643 Mon Sep 17 00:00:00 2001
+From: Oren Givon <oren.givon@intel.com>
+Date: Sun, 1 Nov 2015 15:07:48 +0200
+Subject: [PATCH] iwlwifi: Add PCI IDs for the new 3168 series
+Git-commit: c4836b056d8316faf40ae94ac01557e6ee12c643
+Patch-mainline: 4.5-rc1
+References: FATE#321353, FATE#323335
+
+Add a new struct for the 3168 series and a few new
+PCI ID entries.
+
+Signed-off-by: Oren Givon <oren.givon@intel.com>
+Signed-off-by: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/iwlwifi/iwl-7000.c   |   13 +++++++++++++
+ drivers/net/wireless/iwlwifi/iwl-config.h |    1 +
+ drivers/net/wireless/iwlwifi/pcie/drv.c   |    4 ++++
+ 3 files changed, 18 insertions(+)
+
+--- a/drivers/net/wireless/iwlwifi/iwl-7000.c
++++ b/drivers/net/wireless/iwlwifi/iwl-7000.c
+@@ -7,6 +7,7 @@
+  *
+  * Copyright(c) 2012 - 2014 Intel Corporation. All rights reserved.
+  * Copyright(c) 2013 - 2014 Intel Mobile Communications GmbH
++ * Copyright(c) 2015 Intel Deutschland GmbH
+  *
+  * This program is free software; you can redistribute it and/or modify
+  * it under the terms of version 2 of the GNU General Public License as
+@@ -33,6 +34,7 @@
+  *
+  * Copyright(c) 2012 - 2014 Intel Corporation. All rights reserved.
+  * Copyright(c) 2013 - 2014 Intel Mobile Communications GmbH
++ * Copyright(c) 2015 Intel Deutschland GmbH
+  * All rights reserved.
+  *
+  * Redistribution and use in source and binary forms, with or without
+@@ -291,6 +293,17 @@ const struct iwl_cfg iwl3165_2ac_cfg = {
+ 	.ht_params = &iwl7000_ht_params,
+ 	.nvm_ver = IWL3165_NVM_VERSION,
+ 	.nvm_calib_ver = IWL3165_TX_POWER_VERSION,
++	.pwr_tx_backoffs = iwl7265_pwr_tx_backoffs,
++	.dccm_len = IWL7265_DCCM_LEN,
++};
++
++const struct iwl_cfg iwl3168_2ac_cfg = {
++	.name = "Intel(R) Dual Band Wireless AC 3168",
++	.fw_name_pre = IWL7265D_FW_PRE,
++	IWL_DEVICE_7000,
++	.ht_params = &iwl7000_ht_params,
++	.nvm_ver = IWL3165_NVM_VERSION,
++	.nvm_calib_ver = IWL3165_TX_POWER_VERSION,
+ 	.pwr_tx_backoffs = iwl7265_pwr_tx_backoffs,
+ 	.dccm_len = IWL7265_DCCM_LEN,
+ };
+--- a/drivers/net/wireless/iwlwifi/iwl-config.h
++++ b/drivers/net/wireless/iwlwifi/iwl-config.h
+@@ -420,6 +420,7 @@ extern const struct iwl_cfg iwl3160_2ac_
+ extern const struct iwl_cfg iwl3160_2n_cfg;
+ extern const struct iwl_cfg iwl3160_n_cfg;
+ extern const struct iwl_cfg iwl3165_2ac_cfg;
++extern const struct iwl_cfg iwl3168_2ac_cfg;
+ extern const struct iwl_cfg iwl7265_2ac_cfg;
+ extern const struct iwl_cfg iwl7265_2n_cfg;
+ extern const struct iwl_cfg iwl7265_n_cfg;
+--- a/drivers/net/wireless/iwlwifi/pcie/drv.c
++++ b/drivers/net/wireless/iwlwifi/pcie/drv.c
+@@ -377,6 +377,10 @@ static const struct pci_device_id iwl_hw
+ 	{IWL_PCI_DEVICE(0x3165, 0x8010, iwl3165_2ac_cfg)},
+ 	{IWL_PCI_DEVICE(0x3165, 0x8110, iwl3165_2ac_cfg)},
+ 
++/* 3168 Series */
++	{IWL_PCI_DEVICE(0x24FB, 0x2110, iwl3168_2ac_cfg)},
++	{IWL_PCI_DEVICE(0x24FB, 0x0000, iwl3168_2ac_cfg)},
++
+ /* 7265 Series */
+ 	{IWL_PCI_DEVICE(0x095A, 0x5010, iwl7265_2ac_cfg)},
+ 	{IWL_PCI_DEVICE(0x095A, 0x5110, iwl7265_2ac_cfg)},

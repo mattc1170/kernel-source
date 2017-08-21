@@ -1,0 +1,61 @@
+From: Arjun V <arjun@chelsio.com>
+Date: Thu, 8 Dec 2016 18:09:23 +0530
+Subject: cxgb4/cxgb4vf: Assign netdev->dev_port with port ID
+Patch-mainline: v4.9
+Git-commit: d2a007ab191646d41553ffb6624cef1957e899ae
+References: bsc#1021424
+
+Added missing dev_port assignment in cxgb4vf driver.
+Also made dev_port assignment of cxgb4 in sync with cxgb4vf driver.
+
+Signed-off-by: Casey Leedom <leedom@chelsio.com>
+Signed-off-by: Arjun V <arjun@chelsio.com>
+Signed-off-by: Hariprasad Shenai <hariprasad@chelsio.com>
+Signed-off-by: Ganesh Goudar <ganeshgr@chelsio.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+Acked-by: Thomas Bogendoerfer <tbogendoerfer@suse.de>
+---
+ drivers/net/ethernet/chelsio/cxgb4/cxgb4_main.c     | 1 +
+ drivers/net/ethernet/chelsio/cxgb4/t4_hw.c          | 1 -
+ drivers/net/ethernet/chelsio/cxgb4vf/cxgb4vf_main.c | 1 +
+ 3 files changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/net/ethernet/chelsio/cxgb4/cxgb4_main.c b/drivers/net/ethernet/chelsio/cxgb4/cxgb4_main.c
+index c63b62cd008a..bac1415f51c9 100644
+--- a/drivers/net/ethernet/chelsio/cxgb4/cxgb4_main.c
++++ b/drivers/net/ethernet/chelsio/cxgb4/cxgb4_main.c
+@@ -5194,6 +5194,7 @@ static int init_one(struct pci_dev *pdev, const struct pci_device_id *ent)
+ 	 */
+ 	for_each_port(adapter, i) {
+ 		pi = adap2pinfo(adapter, i);
++		adapter->port[i]->dev_port = pi->lport;
+ 		netif_set_real_num_tx_queues(adapter->port[i], pi->nqsets);
+ 		netif_set_real_num_rx_queues(adapter->port[i], pi->nqsets);
+ 
+diff --git a/drivers/net/ethernet/chelsio/cxgb4/t4_hw.c b/drivers/net/ethernet/chelsio/cxgb4/t4_hw.c
+index 1bc52c3019a8..74ce1436cc31 100644
+--- a/drivers/net/ethernet/chelsio/cxgb4/t4_hw.c
++++ b/drivers/net/ethernet/chelsio/cxgb4/t4_hw.c
+@@ -7849,7 +7849,6 @@ int t4_port_init(struct adapter *adap, int mbox, int pf, int vf)
+ 			return ret;
+ 
+ 		memcpy(adap->port[i]->dev_addr, addr, ETH_ALEN);
+-		adap->port[i]->dev_port = j;
+ 		j++;
+ 	}
+ 	return 0;
+diff --git a/drivers/net/ethernet/chelsio/cxgb4vf/cxgb4vf_main.c b/drivers/net/ethernet/chelsio/cxgb4vf/cxgb4vf_main.c
+index 342e9a10d6c5..99557673f088 100644
+--- a/drivers/net/ethernet/chelsio/cxgb4vf/cxgb4vf_main.c
++++ b/drivers/net/ethernet/chelsio/cxgb4vf/cxgb4vf_main.c
+@@ -2876,6 +2876,7 @@ static int cxgb4vf_pci_probe(struct pci_dev *pdev,
+ 
+ 		netdev->netdev_ops = &cxgb4vf_netdev_ops;
+ 		netdev->ethtool_ops = &cxgb4vf_ethtool_ops;
++		netdev->dev_port = pi->port_id;
+ 
+ 		/*
+ 		 * Initialize the hardware/software state for the port.
+-- 
+1.8.5.6
+

@@ -1,0 +1,54 @@
+From: David Sterba <dsterba@suse.com>
+Date: Tue, 26 Apr 2016 23:54:39 +0200
+Patch-mainline: 4.7
+Git-commit: af6f8f604d44e05f98ed45a69830547ed133adf8
+References: bsc#1012452
+Subject: [PATCH] btrfs: sink gfp parameter to clear_extent_dirty
+
+Callers pass GFP_NOFS. No need to pass the flags around.
+
+Signed-off-by: David Sterba <dsterba@suse.com>
+---
+ fs/btrfs/disk-io.c     |    2 +-
+ fs/btrfs/extent-tree.c |    2 +-
+ fs/btrfs/extent_io.h   |    4 ++--
+ 3 files changed, 4 insertions(+), 4 deletions(-)
+
+--- a/fs/btrfs/disk-io.c
++++ b/fs/btrfs/disk-io.c
+@@ -4361,7 +4361,7 @@ again:
+ 		if (ret)
+ 			break;
+ 
+-		clear_extent_dirty(unpin, start, end, GFP_NOFS);
++		clear_extent_dirty(unpin, start, end);
+ 		btrfs_error_unpin_extent_range(root, start, end);
+ 		cond_resched();
+ 	}
+--- a/fs/btrfs/extent-tree.c
++++ b/fs/btrfs/extent-tree.c
+@@ -6502,7 +6502,7 @@ int btrfs_finish_extent_commit(struct bt
+ 			ret = btrfs_discard_extent(root, start,
+ 						   end + 1 - start, NULL);
+ 
+-		clear_extent_dirty(unpin, start, end, GFP_NOFS);
++		clear_extent_dirty(unpin, start, end);
+ 		unpin_extent_range(root, start, end, true);
+ 		mutex_unlock(&fs_info->unused_bg_unpin_mutex);
+ 		cond_resched();
+--- a/fs/btrfs/extent_io.h
++++ b/fs/btrfs/extent_io.h
+@@ -278,11 +278,11 @@ static inline int set_extent_dirty(struc
+ }
+ 
+ static inline int clear_extent_dirty(struct extent_io_tree *tree, u64 start,
+-		u64 end, gfp_t mask)
++		u64 end)
+ {
+ 	return clear_extent_bit(tree, start, end,
+ 				EXTENT_DIRTY | EXTENT_DELALLOC |
+-				EXTENT_DO_ACCOUNTING, 0, 0, NULL, mask);
++				EXTENT_DO_ACCOUNTING, 0, 0, NULL, GFP_NOFS);
+ }
+ 
+ int convert_extent_bit(struct extent_io_tree *tree, u64 start, u64 end,

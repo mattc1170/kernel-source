@@ -12,16 +12,14 @@ Signed-off-by: Stephen Hemminger <sthemmin@microsoft.com>
 Signed-off-by: David S. Miller <davem@davemloft.net>
 Acked-by: <ohering@suse.de>
 ---
- drivers/net/hyperv/netvsc.c       | 18 ++----------------
- drivers/net/hyperv/netvsc_drv.c   |  7 -------
- drivers/net/hyperv/rndis_filter.c |  8 +-------
- 3 files changed, 3 insertions(+), 30 deletions(-)
+ drivers/net/hyperv/netvsc.c       |   18 ++----------------
+ drivers/net/hyperv/netvsc_drv.c   |    6 ------
+ drivers/net/hyperv/rndis_filter.c |    8 +-------
+ 3 files changed, 3 insertions(+), 29 deletions(-)
 
-diff --git a/drivers/net/hyperv/netvsc.c b/drivers/net/hyperv/netvsc.c
-index f64c978..fe83de3 100644
 --- a/drivers/net/hyperv/netvsc.c
 +++ b/drivers/net/hyperv/netvsc.c
-@@ -59,7 +59,6 @@ void netvsc_switch_datapath(struct net_device *ndev, bool vf)
+@@ -59,7 +59,6 @@ void netvsc_switch_datapath(struct net_d
  			       VM_PKT_DATA_INBAND, 0);
  }
  
@@ -37,7 +35,7 @@ index f64c978..fe83de3 100644
  static int netvsc_destroy_buf(struct hv_device *device)
  {
  	struct nvsp_message *revoke_packet;
-@@ -285,7 +283,6 @@ static int netvsc_init_buf(struct hv_device *device)
+@@ -285,7 +283,6 @@ static int netvsc_init_buf(struct hv_dev
  		goto cleanup;
  	}
  
@@ -45,7 +43,7 @@ index f64c978..fe83de3 100644
  	/* Notify the NetVsp of the gpadl handle */
  	init_packet = &net_device->channel_init_pkt;
  
-@@ -412,7 +409,7 @@ static int netvsc_init_buf(struct hv_device *device)
+@@ -412,7 +409,7 @@ static int netvsc_init_buf(struct hv_dev
  	/* Section count is simply the size divided by the section size.
  	 */
  	net_device->send_section_cnt =
@@ -62,7 +60,7 @@ index f64c978..fe83de3 100644
  /* Negotiate NVSP protocol version */
  static int negotiate_nvsp_ver(struct hv_device *device,
  			      struct netvsc_device *net_device,
-@@ -593,7 +589,6 @@ int netvsc_device_remove(struct hv_device *device)
+@@ -593,7 +589,6 @@ int netvsc_device_remove(struct hv_devic
  	return 0;
  }
  
@@ -70,7 +68,7 @@ index f64c978..fe83de3 100644
  #define RING_AVAIL_PERCENT_HIWATER 20
  #define RING_AVAIL_PERCENT_LOWATER 10
  
-@@ -676,13 +671,11 @@ static void netvsc_send_completion(struct netvsc_device *net_device,
+@@ -676,13 +671,11 @@ static void netvsc_send_completion(struc
  		    !net_device_ctx->start_remove &&
  		    (hv_ringbuf_avail_percent(&channel->outbound) >
  		     RING_AVAIL_PERCENT_HIWATER || queue_sends < 1))
@@ -85,7 +83,7 @@ index f64c978..fe83de3 100644
  }
  
  static u32 netvsc_get_next_send_section(struct netvsc_device *net_device)
-@@ -1157,7 +1150,6 @@ static void netvsc_receive(struct netvsc_device *net_device,
+@@ -1157,7 +1150,6 @@ static void netvsc_receive(struct netvsc
  		/* Pass it to the upper layer */
  		status = rndis_filter_receive(device, netvsc_packet, &data,
  					      channel);
@@ -93,7 +91,7 @@ index f64c978..fe83de3 100644
  	}
  
  	if (!net_device->mrc[q_idx].buf) {
-@@ -1182,7 +1174,6 @@ static void netvsc_receive(struct netvsc_device *net_device,
+@@ -1182,7 +1174,6 @@ static void netvsc_receive(struct netvsc
  	rcd->status = status;
  }
  
@@ -101,7 +99,7 @@ index f64c978..fe83de3 100644
  static void netvsc_send_table(struct hv_device *hdev,
  			      struct nvsp_message *nvmsg)
  {
-@@ -1263,7 +1254,6 @@ static void netvsc_process_raw_pkt(struct hv_device *device,
+@@ -1263,7 +1254,6 @@ static void netvsc_process_raw_pkt(struc
  	}
  }
  
@@ -127,19 +125,9 @@ index f64c978..fe83de3 100644
  }
  
  /*
-diff --git a/drivers/net/hyperv/netvsc_drv.c b/drivers/net/hyperv/netvsc_drv.c
-index 6924d01a..3bbf073 100644
 --- a/drivers/net/hyperv/netvsc_drv.c
 +++ b/drivers/net/hyperv/netvsc_drv.c
-@@ -40,7 +40,6 @@
- 
- #include "hyperv_net.h"
- 
--
- #define RING_SIZE_MIN 64
- #define LINKCHANGE_INT (2 * HZ)
- #define NETVSC_HW_FEATURES	(NETIF_F_RXCSUM | \
-@@ -411,7 +410,6 @@ check_size:
+@@ -413,7 +413,6 @@ check_size:
  			FIELD_SIZEOF(struct sk_buff, cb));
  	packet = (struct hv_netvsc_packet *)skb->cb;
  
@@ -147,7 +135,7 @@ index 6924d01a..3bbf073 100644
  	packet->q_idx = skb_get_queue_mapping(skb);
  
  	packet->total_data_buflen = skb->len;
-@@ -617,7 +615,6 @@ void netvsc_linkstatus_callback(struct hv_device *device_obj,
+@@ -619,7 +618,6 @@ void netvsc_linkstatus_callback(struct h
  	schedule_delayed_work(&ndev_ctx->dwork, 0);
  }
  
@@ -155,7 +143,7 @@ index 6924d01a..3bbf073 100644
  static struct sk_buff *netvsc_alloc_recv_skb(struct net_device *net,
  				struct hv_netvsc_packet *packet,
  				struct ndis_tcp_ip_checksum_info *csum_info,
-@@ -1271,7 +1268,6 @@ static int netvsc_vf_up(struct net_device *vf_netdev)
+@@ -1274,7 +1272,6 @@ static int netvsc_vf_up(struct net_devic
  	return NOTIFY_OK;
  }
  
@@ -163,7 +151,7 @@ index 6924d01a..3bbf073 100644
  static int netvsc_vf_down(struct net_device *vf_netdev)
  {
  	struct net_device *ndev;
-@@ -1305,7 +1301,6 @@ static int netvsc_vf_down(struct net_device *vf_netdev)
+@@ -1308,7 +1305,6 @@ static int netvsc_vf_down(struct net_dev
  	return NOTIFY_OK;
  }
  
@@ -171,7 +159,7 @@ index 6924d01a..3bbf073 100644
  static int netvsc_unregister_vf(struct net_device *vf_netdev)
  {
  	struct net_device *ndev;
-@@ -1433,7 +1428,6 @@ static int netvsc_remove(struct hv_device *dev)
+@@ -1436,7 +1432,6 @@ static int netvsc_remove(struct hv_devic
  		return 0;
  	}
  
@@ -179,7 +167,7 @@ index 6924d01a..3bbf073 100644
  	ndev_ctx = netdev_priv(net);
  	net_device = ndev_ctx->nvdev;
  
-@@ -1480,7 +1474,6 @@ static struct  hv_driver netvsc_drv = {
+@@ -1483,7 +1478,6 @@ static struct  hv_driver netvsc_drv = {
  	.remove = netvsc_remove,
  };
  
@@ -187,11 +175,9 @@ index 6924d01a..3bbf073 100644
  /*
   * On Hyper-V, every VF interface is matched with a corresponding
   * synthetic interface. The synthetic interface is presented first
-diff --git a/drivers/net/hyperv/rndis_filter.c b/drivers/net/hyperv/rndis_filter.c
-index a100380..9195d5d 100644
 --- a/drivers/net/hyperv/rndis_filter.c
 +++ b/drivers/net/hyperv/rndis_filter.c
-@@ -721,7 +721,6 @@ static int rndis_filter_set_rss_param(struct rndis_device *rdev, int num_queue)
+@@ -721,7 +721,6 @@ static int rndis_filter_set_rss_param(st
  	for (i = 0; i < HASH_KEYLEN; i++)
  		keyp[i] = netvsc_hash_key[i];
  
@@ -223,7 +209,7 @@ index a100380..9195d5d 100644
  }
  
  static int rndis_filter_open_device(struct rndis_device *dev)
-@@ -973,7 +969,7 @@ static void netvsc_sc_open(struct vmbus_channel *new_sc)
+@@ -973,7 +969,7 @@ static void netvsc_sc_open(struct vmbus_
  }
  
  int rndis_filter_device_add(struct hv_device *dev,
@@ -232,7 +218,7 @@ index a100380..9195d5d 100644
  {
  	int ret;
  	struct net_device *net = hv_get_drvdata(dev);
-@@ -1055,7 +1051,6 @@ int rndis_filter_device_add(struct hv_device *dev,
+@@ -1055,7 +1051,6 @@ int rndis_filter_device_add(struct hv_de
  	offloads.udp_ip_v6_csum = NDIS_OFFLOAD_PARAMETERS_TX_RX_ENABLED;
  	offloads.lso_v2_ipv4 = NDIS_OFFLOAD_PARAMETERS_LSOV2_ENABLED;
  
@@ -240,7 +226,7 @@ index a100380..9195d5d 100644
  	ret = rndis_filter_set_offload_params(net, &offloads);
  	if (ret)
  		goto err_dev_remv;
-@@ -1181,7 +1176,6 @@ void rndis_filter_device_remove(struct hv_device *dev)
+@@ -1181,7 +1176,6 @@ void rndis_filter_device_remove(struct h
  	netvsc_device_remove(dev);
  }
  

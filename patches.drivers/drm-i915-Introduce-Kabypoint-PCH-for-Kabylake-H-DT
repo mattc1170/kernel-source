@@ -1,0 +1,106 @@
+From 22dea0be50b2eb0bafd3c82e1fb080113e0c889e Mon Sep 17 00:00:00 2001
+From: Rodrigo Vivi <rodrigo.vivi@intel.com>
+Date: Fri, 1 Jul 2016 17:07:12 -0700
+Subject: [PATCH] drm/i915: Introduce Kabypoint PCH for Kabylake H/DT.
+Git-commit: 22dea0be50b2eb0bafd3c82e1fb080113e0c889e
+Patch-mainline: 4.8-rc1
+References: bsc#1032581
+# this patch already contains the fix below
+No-fix: 853277481178fdf14d1a4e9e6ac7174d6046176f
+No-fix: 3aac4acb89710fe782c9e78e7b1febf76e112c6c
+
+Some Kabylake SKUs are going to use Kabypoint PCH.
+It is mainly for Halo and DT ones.
+
+>From our specs it doesn't seem that KBP brings
+any change on the display south engine. So let's consider
+this as a continuation of SunrisePoint, i.e., SPT+.
+
+Since it is easy to get confused by a letter change:
+KBL = Kabylake - CPU/GPU codename.
+KBP = Kabypoint - PCH codename.
+
+[since we don't support KBL in SLE12-SP2/oS-42.2, it checks only for SKL,
+ as the other upstream fix commits added later (one is cherry-pick) -- tiwai]
+ 
+Signed-off-by: Rodrigo Vivi <rodrigo.vivi@intel.com>
+Reviewed-by: Ander Conselvan de Oliveira <conselvan2@gmail.com>
+Bugzilla: https://bugs.freedesktop.org/show_bug.cgi?id=96826
+Link: http://patchwork.freedesktop.org/patch/msgid/1467418032-15167-1-git-send-email-rodrigo.vivi@intel.com
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/gpu/drm/i915/i915_drv.c    |    4 ++++
+ drivers/gpu/drm/i915/i915_drv.h    |    3 +++
+ drivers/gpu/drm/i915/i915_irq.c    |    4 ++--
+ drivers/gpu/drm/i915/intel_panel.c |    3 ++-
+ 4 files changed, 11 insertions(+), 3 deletions(-)
+
+--- a/drivers/gpu/drm/i915/i915_drv.c
++++ b/drivers/gpu/drm/i915/i915_drv.c
+@@ -534,6 +534,10 @@ void intel_detect_pch(struct drm_device
+ 				dev_priv->pch_type = PCH_SPT;
+ 				DRM_DEBUG_KMS("Found SunrisePoint LP PCH\n");
+ 				WARN_ON(!IS_SKYLAKE(dev));
++			} else if (id == INTEL_PCH_KBP_DEVICE_ID_TYPE) {
++				dev_priv->pch_type = PCH_KBP;
++				DRM_DEBUG_KMS("Found KabyPoint PCH\n");
++				WARN_ON(!IS_SKYLAKE(dev));
+ 			} else if ((id == INTEL_PCH_P2X_DEVICE_ID_TYPE) ||
+ 				   ((id == INTEL_PCH_QEMU_DEVICE_ID_TYPE) &&
+ 				    pch->subsystem_vendor == 0x1af4 &&
+--- a/drivers/gpu/drm/i915/i915_drv.h
++++ b/drivers/gpu/drm/i915/i915_drv.h
+@@ -1002,6 +1002,7 @@ enum intel_pch {
+ 	PCH_CPT,	/* Cougarpoint PCH */
+ 	PCH_LPT,	/* Lynxpoint PCH */
+ 	PCH_SPT,        /* Sunrisepoint PCH */
++	PCH_KBP,        /* Kabypoint PCH */
+ 	PCH_NOP,
+ };
+ 
+@@ -2637,10 +2638,12 @@ struct drm_i915_cmd_table {
+ #define INTEL_PCH_LPT_LP_DEVICE_ID_TYPE		0x9c00
+ #define INTEL_PCH_SPT_DEVICE_ID_TYPE		0xA100
+ #define INTEL_PCH_SPT_LP_DEVICE_ID_TYPE		0x9D00
++#define INTEL_PCH_KBP_DEVICE_ID_TYPE		0xA200
+ #define INTEL_PCH_P2X_DEVICE_ID_TYPE		0x7100
+ #define INTEL_PCH_QEMU_DEVICE_ID_TYPE		0x2900 /* qemu q35 has 2918 */
+ 
+ #define INTEL_PCH_TYPE(dev) (__I915__(dev)->pch_type)
++#define HAS_PCH_KBP(dev) (INTEL_PCH_TYPE(dev) == PCH_KBP)
+ #define HAS_PCH_SPT(dev) (INTEL_PCH_TYPE(dev) == PCH_SPT)
+ #define HAS_PCH_LPT(dev) (INTEL_PCH_TYPE(dev) == PCH_LPT)
+ #define HAS_PCH_LPT_LP(dev) (__I915__(dev)->pch_id == INTEL_PCH_LPT_LP_DEVICE_ID_TYPE)
+--- a/drivers/gpu/drm/i915/i915_irq.c
++++ b/drivers/gpu/drm/i915/i915_irq.c
+@@ -2364,7 +2364,7 @@ static irqreturn_t gen8_irq_handler(int
+ 			I915_WRITE(SDEIIR, pch_iir);
+ 			ret = IRQ_HANDLED;
+ 
+-			if (HAS_PCH_SPT(dev_priv))
++			if (HAS_PCH_SPT(dev_priv) || HAS_PCH_KBP(dev_priv))
+ 				spt_irq_handler(dev, pch_iir);
+ 			else
+ 				cpt_irq_handler(dev, pch_iir);
+@@ -4470,7 +4470,7 @@ void intel_irq_init(struct drm_i915_priv
+ 		dev->driver->disable_vblank = gen8_disable_vblank;
+ 		if (IS_BROXTON(dev))
+ 			dev_priv->display.hpd_irq_setup = bxt_hpd_irq_setup;
+-		else if (HAS_PCH_SPT(dev))
++		else if (HAS_PCH_SPT(dev) || HAS_PCH_KBP(dev))
+ 			dev_priv->display.hpd_irq_setup = spt_hpd_irq_setup;
+ 		else
+ 			dev_priv->display.hpd_irq_setup = ilk_hpd_irq_setup;
+--- a/drivers/gpu/drm/i915/intel_panel.c
++++ b/drivers/gpu/drm/i915/intel_panel.c
+@@ -1756,7 +1756,8 @@ intel_panel_init_backlight_funcs(struct
+ 		panel->backlight.disable = bxt_disable_backlight;
+ 		panel->backlight.set = bxt_set_backlight;
+ 		panel->backlight.get = bxt_get_backlight;
+-	} else if (HAS_PCH_LPT(dev) || HAS_PCH_SPT(dev)) {
++	} else if (HAS_PCH_LPT(dev) || HAS_PCH_SPT(dev) ||
++		   HAS_PCH_KBP(dev)) {
+ 		panel->backlight.setup = lpt_setup_backlight;
+ 		panel->backlight.enable = lpt_enable_backlight;
+ 		panel->backlight.disable = lpt_disable_backlight;

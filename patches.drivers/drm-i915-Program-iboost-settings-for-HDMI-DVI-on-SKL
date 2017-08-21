@@ -1,0 +1,143 @@
+From 8d8bb85eb7d859aa9bbe36e588690a1d22af7608 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Ville=20Syrj=C3=A4l=C3=A4?= <ville.syrjala@linux.intel.com>
+Date: Tue, 12 Jul 2016 15:59:30 +0300
+Subject: [PATCH] drm/i915: Program iboost settings for HDMI/DVI on SKL
+Mime-version: 1.0
+Content-type: text/plain; charset=UTF-8
+Content-transfer-encoding: 8bit
+Patch-mainline: 4.9-rc1
+Git-commit: 8d8bb85eb7d859aa9bbe36e588690a1d22af7608
+References: bsc#1031717
+
+Currently we fail to program the iboost stuff for HDMI/DVI. Let's remedy
+that.
+
+Cc: stable@vger.kernel.org
+Fixes: f8896f5d58e6 ("drm/i915/skl: Buffer translation improvements")
+Cc: David Weinehall <david.weinehall@linux.intel.com>
+Signed-off-by: Ville Syrjälä <ville.syrjala@linux.intel.com>
+Link: http://patchwork.freedesktop.org/patch/msgid/1468328376-6380-4-git-send-email-ville.syrjala@linux.intel.com
+Reviewed-by: David Weinehall <david.weinehall@linux.intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/gpu/drm/i915/intel_ddi.c |   52 +++++++++++++++++++++++++++++++--------
+ 1 file changed, 42 insertions(+), 10 deletions(-)
+
+--- a/drivers/gpu/drm/i915/intel_ddi.c
++++ b/drivers/gpu/drm/i915/intel_ddi.c
+@@ -419,6 +419,41 @@ skl_get_buf_trans_hdmi(struct drm_device
+ 	return ddi_translations;
+ }
+ 
++static int intel_ddi_hdmi_level(struct drm_device *dev, enum port port)
++{
++	struct drm_i915_private *dev_priv = dev->dev_private;
++	int n_hdmi_entries;
++	int hdmi_level;
++	int hdmi_default_entry;
++
++	hdmi_level = dev_priv->vbt.ddi_port_info[port].hdmi_level_shift;
++
++	if (IS_BROXTON(dev_priv))
++		return hdmi_level;
++
++	if (IS_SKYLAKE(dev) /*|| IS_KABYLAKE(dev)*/) {
++		skl_get_buf_trans_hdmi(dev, &n_hdmi_entries);
++		hdmi_default_entry = 8;
++	} else if (IS_BROADWELL(dev)) {
++		n_hdmi_entries = ARRAY_SIZE(bdw_ddi_translations_hdmi);
++		hdmi_default_entry = 7;
++	} else if (IS_HASWELL(dev)) {
++		n_hdmi_entries = ARRAY_SIZE(hsw_ddi_translations_hdmi);
++		hdmi_default_entry = 6;
++	} else {
++		WARN(1, "ddi translation table missing\n");
++		n_hdmi_entries = ARRAY_SIZE(bdw_ddi_translations_hdmi);
++		hdmi_default_entry = 7;
++	}
++
++	/* Choose a good default if VBT is badly populated */
++	if (hdmi_level == HDMI_LEVEL_SHIFT_UNKNOWN ||
++	    hdmi_level >= n_hdmi_entries)
++		hdmi_level = hdmi_default_entry;
++
++	return hdmi_level;
++}
++
+ /*
+  * Starting with Haswell, DDI port buffers must be programmed with correct
+  * values in advance. The buffer values are different for FDI and DP modes,
+@@ -431,7 +466,7 @@ static void intel_prepare_ddi_buffers(st
+ {
+ 	struct drm_i915_private *dev_priv = dev->dev_private;
+ 	u32 iboost_bit = 0;
+-	int i, n_hdmi_entries, n_dp_entries, n_edp_entries, hdmi_default_entry,
++	int i, n_hdmi_entries, n_dp_entries, n_edp_entries,
+ 	    size;
+ 	int hdmi_level = dev_priv->vbt.ddi_port_info[port].hdmi_level_shift;
+ 	const struct ddi_buf_trans *ddi_translations_fdi;
+@@ -440,6 +475,8 @@ static void intel_prepare_ddi_buffers(st
+ 	const struct ddi_buf_trans *ddi_translations_hdmi;
+ 	const struct ddi_buf_trans *ddi_translations;
+ 
++	hdmi_level = intel_ddi_hdmi_level(dev, port);
++
+ 	if (IS_BROXTON(dev)) {
+ 		if (!supports_hdmi)
+ 			return;
+@@ -456,7 +493,6 @@ static void intel_prepare_ddi_buffers(st
+ 				skl_get_buf_trans_edp(dev, &n_edp_entries);
+ 		ddi_translations_hdmi =
+ 				skl_get_buf_trans_hdmi(dev, &n_hdmi_entries);
+-		hdmi_default_entry = 8;
+ 		/* If we're boosting the current, set bit 31 of trans1 */
+ 		if (dev_priv->vbt.ddi_port_info[port].hdmi_boost_level ||
+ 		    dev_priv->vbt.ddi_port_info[port].dp_boost_level)
+@@ -477,7 +513,6 @@ static void intel_prepare_ddi_buffers(st
+ 
+ 		n_dp_entries = ARRAY_SIZE(bdw_ddi_translations_dp);
+ 		n_hdmi_entries = ARRAY_SIZE(bdw_ddi_translations_hdmi);
+-		hdmi_default_entry = 7;
+ 	} else if (IS_HASWELL(dev)) {
+ 		ddi_translations_fdi = hsw_ddi_translations_fdi;
+ 		ddi_translations_dp = hsw_ddi_translations_dp;
+@@ -485,7 +520,6 @@ static void intel_prepare_ddi_buffers(st
+ 		ddi_translations_hdmi = hsw_ddi_translations_hdmi;
+ 		n_dp_entries = n_edp_entries = ARRAY_SIZE(hsw_ddi_translations_dp);
+ 		n_hdmi_entries = ARRAY_SIZE(hsw_ddi_translations_hdmi);
+-		hdmi_default_entry = 6;
+ 	} else {
+ 		WARN(1, "ddi translation table missing\n");
+ 		ddi_translations_edp = bdw_ddi_translations_dp;
+@@ -495,7 +529,6 @@ static void intel_prepare_ddi_buffers(st
+ 		n_edp_entries = ARRAY_SIZE(bdw_ddi_translations_edp);
+ 		n_dp_entries = ARRAY_SIZE(bdw_ddi_translations_dp);
+ 		n_hdmi_entries = ARRAY_SIZE(bdw_ddi_translations_hdmi);
+-		hdmi_default_entry = 7;
+ 	}
+ 
+ 	switch (port) {
+@@ -538,11 +571,6 @@ static void intel_prepare_ddi_buffers(st
+ 	if (!supports_hdmi)
+ 		return;
+ 
+-	/* Choose a good default if VBT is badly populated */
+-	if (hdmi_level == HDMI_LEVEL_SHIFT_UNKNOWN ||
+-	    hdmi_level >= n_hdmi_entries)
+-		hdmi_level = hdmi_default_entry;
+-
+ 	/* Entry 9 is for HDMI: */
+ 	I915_WRITE(DDI_BUF_TRANS_LO(port, i),
+ 		   ddi_translations_hdmi[hdmi_level].trans1 | iboost_bit);
+@@ -2355,6 +2383,10 @@ static void intel_ddi_pre_enable(struct
+ 			intel_dp_stop_link_train(intel_dp);
+ 	} else if (type == INTEL_OUTPUT_HDMI) {
+ 		struct intel_hdmi *intel_hdmi = enc_to_intel_hdmi(encoder);
++		int level = intel_ddi_hdmi_level(dev, port);
++
++		if (IS_SKYLAKE(dev) /*|| IS_KABYLAKE(dev)*/)
++			skl_ddi_set_iboost(dev, level, port, type);
+ 
+ 		if (IS_BROXTON(dev)) {
+ 			hdmi_level = dev_priv->vbt.

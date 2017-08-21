@@ -1,0 +1,36 @@
+From 317c4149719feb3fe82246c9160821ad93f26ce1 Mon Sep 17 00:00:00 2001
+From: Dan Carpenter <dan.carpenter@oracle.com>
+Date: Wed, 7 Dec 2016 14:14:24 +0300
+Subject: [PATCH 12/36] drivers: net: xgene: uninitialized variable in
+ xgene_enet_free_pagepool()
+
+Git-commit: 0b801290ea9468a3ed9577281afdb458001ce0d1
+Patch-mainline: v4.10-rc1
+References: bsc#1019351
+
+We never set "slots" in this function.
+
+Fixes: a9380b0f7be8 ("drivers: net: xgene: Add support for Jumbo frame")
+Signed-off-by: Dan Carpenter <dan.carpenter@oracle.com>
+Acked-by: Iyappan Subramanian <isubramanian@apm.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+Signed-off-by: Mian Yousaf Kaukab <yousaf.kaukab@suse.com>
+---
+ drivers/net/ethernet/apm/xgene/xgene_enet_main.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/drivers/net/ethernet/apm/xgene/xgene_enet_main.c b/drivers/net/ethernet/apm/xgene/xgene_enet_main.c
+index 013200dca4f3..70f6b07eedd1 100644
+--- a/drivers/net/ethernet/apm/xgene/xgene_enet_main.c
++++ b/drivers/net/ethernet/apm/xgene/xgene_enet_main.c
+@@ -635,6 +635,7 @@ static void xgene_enet_free_pagepool(struct xgene_enet_desc_ring *buf_pool,
+ 		return;
+ 
+ 	dev = ndev_to_dev(buf_pool->ndev);
++	slots = buf_pool->slots - 1;
+ 	head = buf_pool->head;
+ 
+ 	for (i = 0; i < 4; i++) {
+-- 
+2.11.0
+

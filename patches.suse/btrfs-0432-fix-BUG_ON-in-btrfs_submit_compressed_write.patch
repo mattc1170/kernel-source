@@ -1,0 +1,45 @@
+From: Liu Bo <bo.li.liu@oracle.com>
+Date: Wed, 22 Jun 2016 18:32:06 -0700
+Patch-mainline: 4.8
+Git-commit: f5daf2c780f2ddfddbf98f2eb668f026c4dd2e5d
+References: bsc#1012452
+Subject: [PATCH] Btrfs: fix BUG_ON in btrfs_submit_compressed_write
+
+This is similar to btrfs_submit_compressed_read(), if we fail after
+bio is allocated, then we can use bio_endio() and errors are saved
+ in bio->bi_error.  But please note that we don't return errors to
+its caller because the caller assumes it won't call endio to cleanup
+on error.
+
+Signed-off-by: Liu Bo <bo.li.liu@oracle.com>
+Signed-off-by: David Sterba <dsterba@suse.com>
+---
+ fs/btrfs/compression.c |   10 ++++++++--
+ 1 file changed, 8 insertions(+), 2 deletions(-)
+
+--- a/fs/btrfs/compression.c
++++ b/fs/btrfs/compression.c
+@@ -402,7 +402,10 @@ int btrfs_submit_compressed_write(struct
+ 			}
+ 
+ 			ret = btrfs_map_bio(root, WRITE, bio, 0, 1);
+-			BUG_ON(ret); /* -ENOMEM */
++			if (ret) {
++				bio->bi_error = ret;
++				bio_endio(bio);
++			}
+ 
+ 			bio_put(bio);
+ 
+@@ -432,7 +435,10 @@ int btrfs_submit_compressed_write(struct
+ 	}
+ 
+ 	ret = btrfs_map_bio(root, WRITE, bio, 0, 1);
+-	BUG_ON(ret); /* -ENOMEM */
++	if (ret) {
++		bio->bi_error = ret;
++		bio_endio(bio);
++	}
+ 
+ 	bio_put(bio);
+ 	return 0;

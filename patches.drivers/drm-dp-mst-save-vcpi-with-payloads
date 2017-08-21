@@ -21,7 +21,7 @@ Acked-by: Takashi Iwai <tiwai@suse.de>
 
 --- a/drivers/gpu/drm/drm_dp_mst_topology.c
 +++ b/drivers/gpu/drm/drm_dp_mst_topology.c
-@@ -1792,6 +1792,7 @@ int drm_dp_update_payload_part1(struct d
+@@ -1795,6 +1795,7 @@ int drm_dp_update_payload_part1(struct d
  				return -EINVAL;
  			}
  			req_payload.num_slots = mgr->proposed_vcpis[i]->num_slots;
@@ -29,11 +29,11 @@ Acked-by: Takashi Iwai <tiwai@suse.de>
  		} else {
  			port = NULL;
  			req_payload.num_slots = 0;
-@@ -1807,6 +1808,7 @@ int drm_dp_update_payload_part1(struct d
+@@ -1810,6 +1811,7 @@ int drm_dp_update_payload_part1(struct d
  			if (req_payload.num_slots) {
  				drm_dp_create_payload_step1(mgr, mgr->proposed_vcpis[i]->vcpi, &req_payload);
  				mgr->payloads[i].num_slots = req_payload.num_slots;
 +				mgr->payloads[i].vcpi = req_payload.vcpi;
  			} else if (mgr->payloads[i].num_slots) {
  				mgr->payloads[i].num_slots = 0;
- 				drm_dp_destroy_payload_step1(mgr, port, port->vcpi.vcpi, &mgr->payloads[i]);
+ 				drm_dp_destroy_payload_step1(mgr, port, mgr->payloads[i].vcpi, &mgr->payloads[i]);

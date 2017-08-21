@@ -1,0 +1,42 @@
+From: Mikulas Patocka <mpatocka@redhat.com>
+Date: Sat, 9 Apr 2016 12:48:18 -0400
+Subject: dm: fix dm_target_io leak if clone_bio() returns an error
+Git-commit: 072623de1f964c7ff01c46a9101af1c822fd2873
+Patch-Mainline: v4.6
+References: bsc#1040125
+
+Commit c80914e81ec5b08 ("dm: return error if bio_integrity_clone() fails
+in clone_bio()") changed clone_bio() such that if it does return error
+then the alloc_tio() created resources (both the bio that was allocated
+to be a clone and the containing dm_target_io struct) will leak.
+
+Fix this by calling free_tio() in __clone_and_map_data_bio()'s
+clone_bio() error path.
+
+Fixes: c80914e81ec5b08 ("dm: return error if bio_integrity_clone() fails in clone_bio()")
+Signed-off-by: Mikulas Patocka <mpatocka@redhat.com>
+Signed-off-by: Mike Snitzer <snitzer@redhat.com>
+Signed-off-by: Hannes Reinecke <hare@suse.de>
+---
+ drivers/md/dm.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/md/dm.c b/drivers/md/dm.c
+index 9c73597..1c29149 100644
+--- a/drivers/md/dm.c
++++ b/drivers/md/dm.c
+@@ -1741,8 +1741,10 @@ static int __clone_and_map_data_bio(struct clone_info *ci, struct dm_target *ti,
+ 		tio = alloc_tio(ci, ti, target_bio_nr);
+ 		tio->len_ptr = len;
+ 		r = clone_bio(tio, bio, sector, *len);
+-		if (r < 0)
++		if (r < 0) {
++			free_tio(ci->md, tio);
+ 			break;
++		}
+ 		__map_bio(tio);
+ 	}
+ 
+-- 
+1.8.5.6
+

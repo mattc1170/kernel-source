@@ -1,0 +1,681 @@
+From: Josef Bacik <jbacik@fb.com>
+Date: Fri, 2 Sep 2016 15:40:02 -0400
+Patch-mainline: 4.9
+Git-commit: afcdd129e05a9210a5d19d4aa6e0afa475fc49e2
+References: bsc#1012452
+Subject: [PATCH] Btrfs: add a flags field to btrfs_fs_info
+
+We have a lot of random ints in btrfs_fs_info that can be put into flags.  This
+is mostly equivalent with the exception of how we deal with quota going on or
+off, now instead we set a flag when we are turning it on or off and deal with
+that appropriately, rather than just having a pending state that the current
+quota_enabled gets set to.  Thanks,
+
+Signed-off-by: Josef Bacik <jbacik@fb.com>
+Signed-off-by: David Sterba <dsterba@suse.com>
+---
+ fs/btrfs/btrfs_inode.h        |   11 --------
+ fs/btrfs/ctree.h              |   42 +++++++++++++++++---------------
+ fs/btrfs/delayed-inode.c      |    3 +-
+ fs/btrfs/delayed-ref.c        |    9 ++++--
+ fs/btrfs/disk-io.c            |   23 ++++++-----------
+ fs/btrfs/extent-tree.c        |   12 ++++-----
+ fs/btrfs/extent_io.c          |    7 ++---
+ fs/btrfs/inode.c              |    4 +--
+ fs/btrfs/qgroup.c             |   55 ++++++++++++++++++++++--------------------
+ fs/btrfs/relocation.c         |    2 -
+ fs/btrfs/super.c              |    2 -
+ fs/btrfs/tests/qgroup-tests.c |    2 -
+ fs/btrfs/transaction.c        |   24 ++++++++----------
+ fs/btrfs/tree-log.c           |    4 +--
+ fs/btrfs/volumes.c            |    2 -
+ 15 files changed, 97 insertions(+), 105 deletions(-)
+
+--- a/fs/btrfs/btrfs_inode.h
++++ b/fs/btrfs/btrfs_inode.h
+@@ -44,17 +44,6 @@
+ #define BTRFS_INODE_IN_DELALLOC_LIST		9
+ #define BTRFS_INODE_READDIO_NEED_LOCK		10
+ #define BTRFS_INODE_HAS_PROPS		        11
+-/*
+- * The following 3 bits are meant only for the btree inode.
+- * When any of them is set, it means an error happened while writing an
+- * extent buffer belonging to:
+- * 1) a non-log btree
+- * 2) a log btree and first log sub-transaction
+- * 3) a log btree and second log sub-transaction
+- */
+-#define BTRFS_INODE_BTREE_ERR		        12
+-#define BTRFS_INODE_BTREE_LOG1_ERR		13
+-#define BTRFS_INODE_BTREE_LOG2_ERR		14
+ 
+ /* in memory btrfs inode */
+ struct btrfs_inode {
+--- a/fs/btrfs/ctree.h
++++ b/fs/btrfs/ctree.h
+@@ -657,9 +657,25 @@ struct btrfs_device;
+ struct btrfs_fs_devices;
+ struct btrfs_balance_control;
+ struct btrfs_delayed_root;
++
++#define BTRFS_FS_BARRIER			1
++#define BTRFS_FS_CLOSING_START			2
++#define BTRFS_FS_CLOSING_DONE			3
++#define BTRFS_FS_LOG_RECOVERING			4
++#define BTRFS_FS_OPEN				5
++#define BTRFS_FS_QUOTA_ENABLED			6
++#define BTRFS_FS_QUOTA_ENABLING			7
++#define BTRFS_FS_QUOTA_DISABLING		8
++#define BTRFS_FS_UPDATE_UUID_TREE_GEN		9
++#define BTRFS_FS_CREATING_FREE_SPACE_TREE	10
++#define BTRFS_FS_BTREE_ERR			11
++#define BTRFS_FS_LOG1_ERR			12
++#define BTRFS_FS_LOG2_ERR			13
++
+ struct btrfs_fs_info {
+ 	u8 fsid[BTRFS_FSID_SIZE];
+ 	u8 chunk_tree_uuid[BTRFS_UUID_SIZE];
++	unsigned long flags;
+ 	struct btrfs_root *extent_root;
+ 	struct btrfs_root *tree_root;
+ 	struct btrfs_root *chunk_root;
+@@ -887,10 +903,6 @@ struct btrfs_fs_info {
+ 	int thread_pool_size;
+ 
+ 	struct kobject *space_info_kobj;
+-	int do_barriers;
+-	int closing;
+-	int log_root_recovering;
+-	int open;
+ 
+ 	u64 total_pinned;
+ 
+@@ -967,17 +979,6 @@ struct btrfs_fs_info {
+ #ifdef CONFIG_BTRFS_FS_CHECK_INTEGRITY
+ 	u32 check_integrity_print_mask;
+ #endif
+-	/*
+-	 * quota information
+-	 */
+-	unsigned int quota_enabled:1;
+-
+-	/*
+-	 * quota_enabled only changes state after a commit. This holds the
+-	 * next state.
+-	 */
+-	unsigned int pending_quota_state:1;
+-
+ 	/* is qgroup tracking in a consistent state? */
+ 	u64 qgroup_flags;
+ 
+@@ -1041,7 +1042,6 @@ struct btrfs_fs_info {
+ 	wait_queue_head_t replace_wait;
+ 
+ 	struct semaphore uuid_tree_rescan_sem;
+-	unsigned int update_uuid_tree_gen:1;
+ 
+ 	/* Used to reclaim the metadata space in the background. */
+ 	struct work_struct async_reclaim_work;
+@@ -2840,10 +2840,14 @@ int btrfs_drop_subtree(struct btrfs_tran
+ static inline int btrfs_fs_closing(struct btrfs_fs_info *fs_info)
+ {
+ 	/*
+-	 * Get synced with close_ctree()
++	 * Do it this way so we only ever do one test_bit in the normal case.
+ 	 */
+-	smp_mb();
+-	return fs_info->closing;
++	if (test_bit(BTRFS_FS_CLOSING_START, &fs_info->flags)) {
++		if (test_bit(BTRFS_FS_CLOSING_DONE, &fs_info->flags))
++			return 2;
++		return 1;
++	}
++	return 0;
+ }
+ 
+ /*
+--- a/fs/btrfs/delayed-inode.c
++++ b/fs/btrfs/delayed-inode.c
+@@ -1865,7 +1865,8 @@ int btrfs_delayed_delete_inode_ref(struc
+ 	 * leads to enospc problems.  This means we also can't do
+ 	 * delayed inode refs
+ 	 */
+-	if (BTRFS_I(inode)->root->fs_info->log_root_recovering)
++	if (test_bit(BTRFS_FS_LOG_RECOVERING,
++		     &BTRFS_I(inode)->root->fs_info->flags))
+ 		return -EAGAIN;
+ 
+ 	delayed_node = btrfs_get_or_create_delayed_node(inode);
+--- a/fs/btrfs/delayed-ref.c
++++ b/fs/btrfs/delayed-ref.c
+@@ -770,7 +770,8 @@ int btrfs_add_delayed_tree_ref(struct bt
+ 	if (!head_ref)
+ 		goto free_ref;
+ 
+-	if (fs_info->quota_enabled && is_fstree(ref_root)) {
++	if (test_bit(BTRFS_FS_QUOTA_ENABLED, &fs_info->flags) &&
++	    is_fstree(ref_root)) {
+ 		record = kmalloc(sizeof(*record), GFP_NOFS);
+ 		if (!record)
+ 			goto free_head_ref;
+@@ -828,7 +829,8 @@ int btrfs_add_delayed_data_ref(struct bt
+ 		return -ENOMEM;
+ 	}
+ 
+-	if (fs_info->quota_enabled && is_fstree(ref_root)) {
++	if (test_bit(BTRFS_FS_QUOTA_ENABLED, &fs_info->flags) &&
++	    is_fstree(ref_root)) {
+ 		record = kmalloc(sizeof(*record), GFP_NOFS);
+ 		if (!record) {
+ 			kmem_cache_free(btrfs_delayed_data_ref_cachep, ref);
+@@ -867,7 +869,8 @@ int btrfs_add_delayed_qgroup_reserve(str
+ 	struct btrfs_delayed_ref_head *ref_head;
+ 	int ret = 0;
+ 
+-	if (!fs_info->quota_enabled || !is_fstree(ref_root))
++	if (!test_bit(BTRFS_FS_QUOTA_ENABLED, &fs_info->flags)
++	    || !is_fstree(ref_root))
+ 		return 0;
+ 
+ 	delayed_refs = &trans->transaction->delayed_refs;
+--- a/fs/btrfs/disk-io.c
++++ b/fs/btrfs/disk-io.c
+@@ -1834,7 +1834,7 @@ static int cleaner_kthread(void *arg)
+ 		 * Do not do anything if we might cause open_ctree() to block
+ 		 * before we have finished mounting the filesystem.
+ 		 */
+-		if (!root->fs_info->open)
++		if (!test_bit(BTRFS_FS_OPEN, &root->fs_info->flags))
+ 			goto sleep;
+ 
+ 		if (!mutex_trylock(&root->fs_info->cleaner_mutex))
+@@ -2328,8 +2328,6 @@ static void btrfs_init_qgroup(struct btr
+ 	fs_info->qgroup_op_tree = RB_ROOT;
+ 	INIT_LIST_HEAD(&fs_info->dirty_qgroups);
+ 	fs_info->qgroup_seq = 1;
+-	fs_info->quota_enabled = 0;
+-	fs_info->pending_quota_state = 0;
+ 	fs_info->qgroup_ulist = NULL;
+ 	fs_info->qgroup_rescan_running = false;
+ 	mutex_init(&fs_info->qgroup_rescan_lock);
+@@ -2514,8 +2512,7 @@ static int btrfs_read_roots(struct btrfs
+ 	root = btrfs_read_tree_root(tree_root, &location);
+ 	if (!IS_ERR(root)) {
+ 		set_bit(BTRFS_ROOT_TRACK_DIRTY, &root->state);
+-		fs_info->quota_enabled = 1;
+-		fs_info->pending_quota_state = 1;
++		set_bit(BTRFS_FS_QUOTA_ENABLED, &fs_info->flags);
+ 		fs_info->quota_root = root;
+ 	}
+ 
+@@ -2697,8 +2694,7 @@ int open_ctree(struct super_block *sb,
+ 	extent_io_tree_init(&fs_info->freed_extents[1],
+ 			     fs_info->btree_inode->i_mapping);
+ 	fs_info->pinned_extents = &fs_info->freed_extents[0];
+-	fs_info->do_barriers = 1;
+-
++	set_bit(BTRFS_FS_BARRIER, &fs_info->flags);
+ 
+ 	mutex_init(&fs_info->ordered_operations_mutex);
+ 	mutex_init(&fs_info->tree_log_mutex);
+@@ -3161,10 +3157,9 @@ retry_root_backup:
+ 			return ret;
+ 		}
+ 	} else {
+-		fs_info->update_uuid_tree_gen = 1;
++		set_bit(BTRFS_FS_UPDATE_UUID_TREE_GEN, &fs_info->flags);
+ 	}
+-
+-	fs_info->open = 1;
++	set_bit(BTRFS_FS_OPEN, &fs_info->flags);
+ 
+ 	return 0;
+ 
+@@ -3848,8 +3843,7 @@ void close_ctree(struct btrfs_root *root
+ 	struct btrfs_fs_info *fs_info = root->fs_info;
+ 	int ret;
+ 
+-	fs_info->closing = 1;
+-	smp_mb();
++	set_bit(BTRFS_FS_CLOSING_START, &fs_info->flags);
+ 
+ 	/* wait for the qgroup rescan worker to stop */
+ 	btrfs_qgroup_wait_for_completion(fs_info, false);
+@@ -3894,8 +3888,7 @@ void close_ctree(struct btrfs_root *root
+ 	kthread_stop(fs_info->transaction_kthread);
+ 	kthread_stop(fs_info->cleaner_kthread);
+ 
+-	fs_info->closing = 2;
+-	smp_mb();
++	set_bit(BTRFS_FS_CLOSING_DONE, &fs_info->flags);
+ 
+ 	btrfs_free_qgroup_config(fs_info);
+ 
+@@ -3920,7 +3913,7 @@ void close_ctree(struct btrfs_root *root
+ 	invalidate_inode_pages2(fs_info->btree_inode->i_mapping);
+ 	btrfs_stop_all_workers(fs_info);
+ 
+-	fs_info->open = 0;
++	clear_bit(BTRFS_FS_OPEN, &fs_info->flags);
+ 	free_root_pointers(fs_info, 1);
+ 
+ 	iput(fs_info->btree_inode);
+--- a/fs/btrfs/extent-tree.c
++++ b/fs/btrfs/extent-tree.c
+@@ -5175,7 +5175,7 @@ static int __reserve_metadata_bytes(stru
+ 		 * which means we won't have fs_info->fs_root set, so don't do
+ 		 * the async reclaim as we will panic.
+ 		 */
+-		if (!root->fs_info->log_root_recovering &&
++		if (!test_bit(BTRFS_FS_LOG_RECOVERING, &root->fs_info->flags) &&
+ 		    need_do_async_reclaim(space_info, root, used) &&
+ 		    !work_busy(&root->fs_info->async_reclaim_work)) {
+ 			trace_btrfs_trigger_flush(root->fs_info,
+@@ -5781,7 +5781,7 @@ int btrfs_subvolume_reserve_metadata(str
+ 	int ret;
+ 	struct btrfs_block_rsv *global_rsv = &root->fs_info->global_block_rsv;
+ 
+-	if (root->fs_info->quota_enabled) {
++	if (test_bit(BTRFS_FS_QUOTA_ENABLED, &root->fs_info->flags)) {
+ 		/* One for parent inode, two for dir entries */
+ 		num_bytes = 3 * root->nodesize;
+ 		ret = btrfs_qgroup_reserve_meta(root, num_bytes);
+@@ -5959,7 +5959,7 @@ int btrfs_delalloc_reserve_metadata(stru
+ 	csum_bytes = BTRFS_I(inode)->csum_bytes;
+ 	spin_unlock(&BTRFS_I(inode)->lock);
+ 
+-	if (root->fs_info->quota_enabled) {
++	if (test_bit(BTRFS_FS_QUOTA_ENABLED, &root->fs_info->flags)) {
+ 		ret = btrfs_qgroup_reserve_meta(root,
+ 				nr_extents * root->nodesize);
+ 		if (ret)
+@@ -8516,7 +8516,7 @@ static int account_leaf_items(struct btr
+ 	u64 bytenr, num_bytes;
+ 
+ 	/* We can be called directly from walk_up_proc() */
+-	if (!root->fs_info->quota_enabled)
++	if (!test_bit(BTRFS_FS_QUOTA_ENABLED, &root->fs_info->flags))
+ 		return 0;
+ 
+ 	for (i = 0; i < nr; i++) {
+@@ -8625,7 +8625,7 @@ static int account_shared_subtree(struct
+ 	BUG_ON(root_level < 0 || root_level > BTRFS_MAX_LEVEL);
+ 	BUG_ON(root_eb == NULL);
+ 
+-	if (!root->fs_info->quota_enabled)
++	if (!test_bit(BTRFS_FS_QUOTA_ENABLED, &root->fs_info->flags))
+ 		return 0;
+ 
+ 	if (!extent_buffer_uptodate(root_eb)) {
+@@ -10782,7 +10782,7 @@ void btrfs_delete_unused_bgs(struct btrf
+ 	struct btrfs_trans_handle *trans;
+ 	int ret = 0;
+ 
+-	if (!fs_info->open)
++	if (!test_bit(BTRFS_FS_OPEN, &fs_info->flags))
+ 		return;
+ 
+ 	spin_lock(&fs_info->unused_bgs_lock);
+--- a/fs/btrfs/extent_io.c
++++ b/fs/btrfs/extent_io.c
+@@ -3630,7 +3630,6 @@ static void end_extent_buffer_writeback(
+ static void set_btree_ioerr(struct page *page)
+ {
+ 	struct extent_buffer *eb = (struct extent_buffer *)page->private;
+-	struct btrfs_inode *btree_ino = BTRFS_I(eb->fs_info->btree_inode);
+ 
+ 	SetPageError(page);
+ 	if (test_and_set_bit(EXTENT_BUFFER_WRITE_ERR, &eb->bflags))
+@@ -3676,13 +3675,13 @@ static void set_btree_ioerr(struct page
+ 	 */
+ 	switch (eb->log_index) {
+ 	case -1:
+-		set_bit(BTRFS_INODE_BTREE_ERR, &btree_ino->runtime_flags);
++		set_bit(BTRFS_FS_BTREE_ERR, &eb->fs_info->flags);
+ 		break;
+ 	case 0:
+-		set_bit(BTRFS_INODE_BTREE_LOG1_ERR, &btree_ino->runtime_flags);
++		set_bit(BTRFS_FS_LOG1_ERR, &eb->fs_info->flags);
+ 		break;
+ 	case 1:
+-		set_bit(BTRFS_INODE_BTREE_LOG2_ERR, &btree_ino->runtime_flags);
++		set_bit(BTRFS_FS_LOG2_ERR, &eb->fs_info->flags);
+ 		break;
+ 	default:
+ 		BUG(); /* unexpected, logic error */
+--- a/fs/btrfs/inode.c
++++ b/fs/btrfs/inode.c
+@@ -3949,7 +3949,7 @@ noinline int btrfs_update_inode(struct b
+ 	 */
+ 	if (!btrfs_is_free_space_inode(inode)
+ 	    && root->root_key.objectid != BTRFS_DATA_RELOC_TREE_OBJECTID
+-	    && !root->fs_info->log_root_recovering) {
++	    && !test_bit(BTRFS_FS_LOG_RECOVERING, &root->fs_info->flags)) {
+ 		btrfs_update_root_times(trans, root);
+ 
+ 		ret = btrfs_delayed_update_inode(trans, root, inode);
+@@ -5255,7 +5255,7 @@ void btrfs_evict_inode(struct inode *ino
+ 
+ 	btrfs_free_io_failure_record(inode, 0, (u64)-1);
+ 
+-	if (root->fs_info->log_root_recovering) {
++	if (test_bit(BTRFS_FS_LOG_RECOVERING, &root->fs_info->flags)) {
+ 		BUG_ON(test_bit(BTRFS_INODE_HAS_ORPHAN_ITEM,
+ 				 &BTRFS_I(inode)->runtime_flags));
+ 		goto no_delete;
+--- a/fs/btrfs/qgroup.c
++++ b/fs/btrfs/qgroup.c
+@@ -309,7 +309,7 @@ int btrfs_read_qgroup_config(struct btrf
+ 	u64 flags = 0;
+ 	u64 rescan_progress = 0;
+ 
+-	if (!fs_info->quota_enabled)
++	if (!test_bit(BTRFS_FS_QUOTA_ENABLED, &fs_info->flags))
+ 		return 0;
+ 
+ 	fs_info->qgroup_ulist = ulist_alloc(GFP_NOFS);
+@@ -463,13 +463,11 @@ next2:
+ 	}
+ out:
+ 	fs_info->qgroup_flags |= flags;
+-	if (!(fs_info->qgroup_flags & BTRFS_QGROUP_STATUS_FLAG_ON)) {
+-		fs_info->quota_enabled = 0;
+-		fs_info->pending_quota_state = 0;
+-	} else if (fs_info->qgroup_flags & BTRFS_QGROUP_STATUS_FLAG_RESCAN &&
+-		   ret >= 0) {
++	if (!(fs_info->qgroup_flags & BTRFS_QGROUP_STATUS_FLAG_ON))
++		clear_bit(BTRFS_FS_QUOTA_ENABLED, &fs_info->flags);
++	else if (fs_info->qgroup_flags & BTRFS_QGROUP_STATUS_FLAG_RESCAN &&
++		 ret >= 0)
+ 		ret = qgroup_rescan_init(fs_info, rescan_progress, 0);
+-	}
+ 	btrfs_free_path(path);
+ 
+ 	if (ret < 0) {
+@@ -847,7 +845,7 @@ static int btrfs_clean_quota_tree(struct
+ 	}
+ 	ret = 0;
+ out:
+-	root->fs_info->pending_quota_state = 0;
++	set_bit(BTRFS_FS_QUOTA_DISABLING, &root->fs_info->flags);
+ 	btrfs_free_path(path);
+ 	return ret;
+ }
+@@ -868,7 +866,7 @@ int btrfs_quota_enable(struct btrfs_tran
+ 
+ 	mutex_lock(&fs_info->qgroup_ioctl_lock);
+ 	if (fs_info->quota_root) {
+-		fs_info->pending_quota_state = 1;
++		set_bit(BTRFS_FS_QUOTA_ENABLING, &fs_info->flags);
+ 		goto out;
+ 	}
+ 
+@@ -964,7 +962,7 @@ out_add_root:
+ 	}
+ 	spin_lock(&fs_info->qgroup_lock);
+ 	fs_info->quota_root = quota_root;
+-	fs_info->pending_quota_state = 1;
++	set_bit(BTRFS_FS_QUOTA_ENABLING, &fs_info->flags);
+ 	spin_unlock(&fs_info->qgroup_lock);
+ out_free_path:
+ 	btrfs_free_path(path);
+@@ -993,8 +991,8 @@ int btrfs_quota_disable(struct btrfs_tra
+ 	mutex_lock(&fs_info->qgroup_ioctl_lock);
+ 	if (!fs_info->quota_root)
+ 		goto out;
+-	fs_info->quota_enabled = 0;
+-	fs_info->pending_quota_state = 0;
++	clear_bit(BTRFS_FS_QUOTA_ENABLED, &fs_info->flags);
++	set_bit(BTRFS_FS_QUOTA_DISABLING, &fs_info->flags);
+ 	btrfs_qgroup_wait_for_completion(fs_info, false);
+ 	spin_lock(&fs_info->qgroup_lock);
+ 	quota_root = fs_info->quota_root;
+@@ -1490,7 +1488,8 @@ int btrfs_qgroup_insert_dirty_extent(str
+ 	struct btrfs_delayed_ref_root *delayed_refs;
+ 	int ret;
+ 
+-	if (!fs_info->quota_enabled || bytenr == 0 || num_bytes == 0)
++	if (!test_bit(BTRFS_FS_QUOTA_ENABLED, &fs_info->flags)
++	    || bytenr == 0 || num_bytes == 0)
+ 		return 0;
+ 	if (WARN_ON(trans == NULL))
+ 		return -EINVAL;
+@@ -1713,7 +1712,7 @@ btrfs_qgroup_account_extent(struct btrfs
+ 	if (old_roots)
+ 		nr_old_roots = old_roots->nnodes;
+ 
+-	if (!fs_info->quota_enabled)
++	if (!test_bit(BTRFS_FS_QUOTA_ENABLED, &fs_info->flags))
+ 		goto out_free;
+ 	BUG_ON(!fs_info->quota_root);
+ 
+@@ -1833,10 +1832,14 @@ int btrfs_run_qgroups(struct btrfs_trans
+ 	if (!quota_root)
+ 		goto out;
+ 
+-	if (!fs_info->quota_enabled && fs_info->pending_quota_state)
++	if (!test_bit(BTRFS_FS_QUOTA_ENABLED, &fs_info->flags) &&
++	    test_bit(BTRFS_FS_QUOTA_ENABLING, &fs_info->flags))
+ 		start_rescan_worker = 1;
+ 
+-	fs_info->quota_enabled = fs_info->pending_quota_state;
++	if (test_and_clear_bit(BTRFS_FS_QUOTA_ENABLING, &fs_info->flags))
++		set_bit(BTRFS_FS_QUOTA_ENABLED, &fs_info->flags);
++	if (test_and_clear_bit(BTRFS_FS_QUOTA_DISABLING, &fs_info->flags))
++		clear_bit(BTRFS_FS_QUOTA_ENABLED, &fs_info->flags);
+ 
+ 	spin_lock(&fs_info->qgroup_lock);
+ 	while (!list_empty(&fs_info->dirty_qgroups)) {
+@@ -1855,7 +1858,7 @@ int btrfs_run_qgroups(struct btrfs_trans
+ 					BTRFS_QGROUP_STATUS_FLAG_INCONSISTENT;
+ 		spin_lock(&fs_info->qgroup_lock);
+ 	}
+-	if (fs_info->quota_enabled)
++	if (test_bit(BTRFS_FS_QUOTA_ENABLED, &fs_info->flags))
+ 		fs_info->qgroup_flags |= BTRFS_QGROUP_STATUS_FLAG_ON;
+ 	else
+ 		fs_info->qgroup_flags &= ~BTRFS_QGROUP_STATUS_FLAG_ON;
+@@ -1900,7 +1903,7 @@ int btrfs_qgroup_inherit(struct btrfs_tr
+ 	u64 nums;
+ 
+ 	mutex_lock(&fs_info->qgroup_ioctl_lock);
+-	if (!fs_info->quota_enabled)
++	if (!test_bit(BTRFS_FS_QUOTA_ENABLED, &fs_info->flags))
+ 		goto out;
+ 
+ 	if (!quota_root) {
+@@ -2343,7 +2346,7 @@ static void btrfs_qgroup_rescan_worker(s
+ 			err = PTR_ERR(trans);
+ 			break;
+ 		}
+-		if (!fs_info->quota_enabled) {
++		if (!test_bit(BTRFS_FS_QUOTA_ENABLED, &fs_info->flags)) {
+ 			err = -EINTR;
+ 		} else {
+ 			err = qgroup_rescan_leaf(fs_info, path, trans);
+@@ -2575,8 +2578,8 @@ int btrfs_qgroup_reserve_data(struct ino
+ 	struct ulist_iterator uiter;
+ 	int ret;
+ 
+-	if (!root->fs_info->quota_enabled || !is_fstree(root->objectid) ||
+-	    len == 0)
++	if (!test_bit(BTRFS_FS_QUOTA_ENABLED, &root->fs_info->flags) ||
++	    !is_fstree(root->objectid) || len == 0)
+ 		return 0;
+ 
+ 	changeset.bytes_changed = 0;
+@@ -2673,8 +2676,8 @@ int btrfs_qgroup_reserve_meta(struct btr
+ {
+ 	int ret;
+ 
+-	if (!root->fs_info->quota_enabled || !is_fstree(root->objectid) ||
+-	    num_bytes == 0)
++	if (!test_bit(BTRFS_FS_QUOTA_ENABLED, &root->fs_info->flags) ||
++	    !is_fstree(root->objectid) || num_bytes == 0)
+ 		return 0;
+ 
+ 	BUG_ON(num_bytes != round_down(num_bytes, root->nodesize));
+@@ -2689,7 +2692,8 @@ void btrfs_qgroup_free_meta_all(struct b
+ {
+ 	int reserved;
+ 
+-	if (!root->fs_info->quota_enabled || !is_fstree(root->objectid))
++	if (!test_bit(BTRFS_FS_QUOTA_ENABLED, &root->fs_info->flags) ||
++	    !is_fstree(root->objectid))
+ 		return;
+ 
+ 	reserved = atomic_xchg(&root->qgroup_meta_rsv, 0);
+@@ -2700,7 +2704,8 @@ void btrfs_qgroup_free_meta_all(struct b
+ 
+ void btrfs_qgroup_free_meta(struct btrfs_root *root, int num_bytes)
+ {
+-	if (!root->fs_info->quota_enabled || !is_fstree(root->objectid))
++	if (!test_bit(BTRFS_FS_QUOTA_ENABLED, &root->fs_info->flags) ||
++	    !is_fstree(root->objectid))
+ 		return;
+ 
+ 	BUG_ON(num_bytes != round_down(num_bytes, root->nodesize));
+--- a/fs/btrfs/relocation.c
++++ b/fs/btrfs/relocation.c
+@@ -3966,7 +3966,7 @@ static int qgroup_fix_relocated_data_ext
+ 	struct btrfs_key key;
+ 	int ret = 0;
+ 
+-	if (!fs_info->quota_enabled)
++	if (!test_bit(BTRFS_FS_QUOTA_ENABLED, &fs_info->flags))
+ 		return 0;
+ 
+ 	/*
+--- a/fs/btrfs/super.c
++++ b/fs/btrfs/super.c
+@@ -1772,7 +1772,7 @@ static int btrfs_remount(struct super_bl
+ 		}
+ 		sb->s_flags &= ~MS_RDONLY;
+ 
+-		fs_info->open = 1;
++		set_bit(BTRFS_FS_OPEN, &fs_info->flags);
+ 	}
+ out:
+ 	wake_up_process(fs_info->transaction_kthread);
+--- a/fs/btrfs/tests/qgroup-tests.c
++++ b/fs/btrfs/tests/qgroup-tests.c
+@@ -470,7 +470,7 @@ int btrfs_test_qgroups(void)
+ 	 */
+ 	root->fs_info->tree_root = root;
+ 	root->fs_info->quota_root = root;
+-	root->fs_info->quota_enabled = 1;
++	set_bit(BTRFS_FS_QUOTA_ENABLED, &fs_info->flags);
+ 
+ 	/*
+ 	 * Can't use bytenr 0, some things freak out
+--- a/fs/btrfs/transaction.c
++++ b/fs/btrfs/transaction.c
+@@ -441,7 +441,7 @@ static void wait_current_trans(struct bt
+ 
+ static int may_wait_transaction(struct btrfs_root *root, int type)
+ {
+-	if (root->fs_info->log_root_recovering)
++	if (test_bit(BTRFS_FS_LOG_RECOVERING, &root->fs_info->flags))
+ 		return 0;
+ 
+ 	if (type == TRANS_USERSPACE)
+@@ -988,7 +988,6 @@ int btrfs_wait_marked_extents(struct btr
+ 	struct extent_state *cached_state = NULL;
+ 	u64 start = 0;
+ 	u64 end;
+-	struct btrfs_inode *btree_ino = BTRFS_I(root->fs_info->btree_inode);
+ 	bool errors = false;
+ 
+ 	while (!find_first_extent_bit(dirty_pages, start, &start, &end,
+@@ -1020,17 +1019,17 @@ int btrfs_wait_marked_extents(struct btr
+ 
+ 	if (root->root_key.objectid == BTRFS_TREE_LOG_OBJECTID) {
+ 		if ((mark & EXTENT_DIRTY) &&
+-		    test_and_clear_bit(BTRFS_INODE_BTREE_LOG1_ERR,
+-				       &btree_ino->runtime_flags))
++		    test_and_clear_bit(BTRFS_FS_LOG1_ERR,
++				       &root->fs_info->flags))
+ 			errors = true;
+ 
+ 		if ((mark & EXTENT_NEW) &&
+-		    test_and_clear_bit(BTRFS_INODE_BTREE_LOG2_ERR,
+-				       &btree_ino->runtime_flags))
++		    test_and_clear_bit(BTRFS_FS_LOG2_ERR,
++				       &root->fs_info->flags))
+ 			errors = true;
+ 	} else {
+-		if (test_and_clear_bit(BTRFS_INODE_BTREE_ERR,
+-				       &btree_ino->runtime_flags))
++		if (test_and_clear_bit(BTRFS_FS_BTREE_ERR,
++				       &root->fs_info->flags))
+ 			errors = true;
+ 	}
+ 
+@@ -1330,7 +1329,7 @@ static int qgroup_account_snapshot(struc
+ 	 * kick in anyway.
+ 	 */
+ 	mutex_lock(&fs_info->qgroup_ioctl_lock);
+-	if (!fs_info->quota_enabled) {
++	if (!test_bit(BTRFS_FS_QUOTA_ENABLED, &fs_info->flags)) {
+ 		mutex_unlock(&fs_info->qgroup_ioctl_lock);
+ 		return 0;
+ 	}
+@@ -1704,7 +1703,7 @@ static void update_super_roots(struct bt
+ 	super->root_level = root_item->level;
+ 	if (btrfs_test_opt(root, SPACE_CACHE))
+ 		super->cache_generation = root_item->generation;
+-	if (root->fs_info->update_uuid_tree_gen)
++	if (test_bit(BTRFS_FS_UPDATE_UUID_TREE_GEN, &root->fs_info->flags))
+ 		super->uuid_tree_generation = root_item->generation;
+ }
+ 
+@@ -1911,7 +1910,6 @@ int btrfs_commit_transaction(struct btrf
+ {
+ 	struct btrfs_transaction *cur_trans = trans->transaction;
+ 	struct btrfs_transaction *prev_trans = NULL;
+-	struct btrfs_inode *btree_ino = BTRFS_I(root->fs_info->btree_inode);
+ 	int ret;
+ 
+ 	/* Stop the commit early if ->aborted is set */
+@@ -2205,8 +2203,8 @@ int btrfs_commit_transaction(struct btrf
+ 	btrfs_update_commit_device_size(root->fs_info);
+ 	btrfs_update_commit_device_bytes_used(root, cur_trans);
+ 
+-	clear_bit(BTRFS_INODE_BTREE_LOG1_ERR, &btree_ino->runtime_flags);
+-	clear_bit(BTRFS_INODE_BTREE_LOG2_ERR, &btree_ino->runtime_flags);
++	clear_bit(BTRFS_FS_LOG1_ERR, &root->fs_info->flags);
++	clear_bit(BTRFS_FS_LOG2_ERR, &root->fs_info->flags);
+ 
+ 	btrfs_trans_release_chunk_metadata(trans);
+ 
+--- a/fs/btrfs/tree-log.c
++++ b/fs/btrfs/tree-log.c
+@@ -5569,7 +5569,7 @@ int btrfs_recover_log_trees(struct btrfs
+ 	if (!path)
+ 		return -ENOMEM;
+ 
+-	fs_info->log_root_recovering = 1;
++	set_bit(BTRFS_FS_LOG_RECOVERING, &fs_info->flags);
+ 
+ 	trans = btrfs_start_transaction(fs_info->tree_root, 0);
+ 	if (IS_ERR(trans)) {
+@@ -5679,7 +5679,7 @@ again:
+ 
+ 	free_extent_buffer(log_root_tree->node);
+ 	log_root_tree->log_root = NULL;
+-	fs_info->log_root_recovering = 0;
++	clear_bit(BTRFS_FS_LOG_RECOVERING, &fs_info->flags);
+ 	kfree(log_root_tree);
+ 
+ 	return 0;
+--- a/fs/btrfs/volumes.c
++++ b/fs/btrfs/volumes.c
+@@ -4222,7 +4222,7 @@ out:
+ 	if (ret)
+ 		btrfs_warn(fs_info, "btrfs_uuid_scan_kthread failed %d", ret);
+ 	else
+-		fs_info->update_uuid_tree_gen = 1;
++		set_bit(BTRFS_FS_UPDATE_UUID_TREE_GEN, &fs_info->flags);
+ 	up(&fs_info->uuid_tree_rescan_sem);
+ 	return 0;
+ }

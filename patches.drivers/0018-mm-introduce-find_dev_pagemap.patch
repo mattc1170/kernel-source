@@ -129,7 +129,7 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
  #include <linux/device.h>
  #include <linux/types.h>
  #include <linux/pfn_t.h>
-@@ -148,22 +150,57 @@ void devm_memunmap(struct device *dev, v
+@@ -157,24 +159,59 @@ pfn_t phys_to_pfn_t(dma_addr_t addr, uns
  EXPORT_SYMBOL(phys_to_pfn_t);
  
  #ifdef CONFIG_ZONE_DEVICE
@@ -165,12 +165,14 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
 +	pgmap_radix_release(res);
  
  	/* pages are dead and unused, undo the arch mapping */
--	arch_remove_memory(page_map->res.start, resource_size(&page_map->res));
 +	align_start = res->start & ~(SECTION_SIZE - 1);
 +	align_size = ALIGN(resource_size(res), SECTION_SIZE);
+ 	mem_hotplug_begin();
+-	arch_remove_memory(page_map->res.start, resource_size(&page_map->res));
 +	arch_remove_memory(align_start, align_size);
-+}
-+
+ 	mem_hotplug_done();
+ }
+ 
 +/* assumes rcu_read_lock() held at entry */
 +struct dev_pagemap *find_dev_pagemap(resource_size_t phys)
 +{
@@ -180,8 +182,8 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
 +
 +	page_map = radix_tree_lookup(&pgmap_radix, phys >> PA_SECTION_SHIFT);
 +	return page_map ? &page_map->pgmap : NULL;
- }
- 
++}
++
  void *devm_memremap_pages(struct device *dev, struct resource *res)
  {
  	int is_ram = region_intersects(res->start, resource_size(res),
@@ -190,7 +192,7 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
  	struct page_map *page_map;
  	int error, nid;
  
-@@ -183,18 +220,50 @@ void *devm_memremap_pages(struct device
+@@ -194,20 +231,52 @@ void *devm_memremap_pages(struct device
  
  	memcpy(&page_map->res, res, sizeof(*res));
  
@@ -224,14 +226,16 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
  	if (nid < 0)
  		nid = numa_mem_id();
  
++	align_start = res->start & ~(SECTION_SIZE - 1);
++	align_size = ALIGN(resource_size(res), SECTION_SIZE);
+ 	mem_hotplug_begin();
 -	error = arch_add_memory(nid, res->start, resource_size(res), true);
++	error = arch_add_memory(nid, align_start, align_size, true);
+ 	mem_hotplug_done();
 -	if (error) {
 -		devres_free(page_map);
 -		return ERR_PTR(error);
 -	}
-+	align_start = res->start & ~(SECTION_SIZE - 1);
-+	align_size = ALIGN(resource_size(res), SECTION_SIZE);
-+	error = arch_add_memory(nid, align_start, align_size, true);
 +	if (error)
 +		goto err_add_memory;
  

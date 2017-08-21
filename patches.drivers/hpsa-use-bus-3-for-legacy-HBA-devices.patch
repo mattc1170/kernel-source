@@ -1,9 +1,8 @@
 From: Hannes Reinecke <hare@suse.de>
 Date: Thu, 17 Nov 2016 12:08:02 +0100
 Subject: hpsa: use bus '3' for legacy HBA devices
-Patch-Mainline: queued in subsystem maintainer repository
-Git-repo: git://git.kernel.org/jejb/h/scsi
-Git-commit: 4eb307f7b18deb29c82b96f34116e30fc5646e97
+Patch-Mainline: v4.9-rc8
+Git-commit: 7630b3a599e2c6d1c042945d32ff2debc855ad29
 References: bsc#1010665
 
 Older controllers use SCSI target id '0' for the first internal

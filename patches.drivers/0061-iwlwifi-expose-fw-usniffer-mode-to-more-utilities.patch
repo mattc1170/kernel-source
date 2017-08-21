@@ -1,0 +1,81 @@
+From e6eb8ca9e486a8f73ae237630e89406683b2be75 Mon Sep 17 00:00:00 2001
+From: Golan Ben-Ami <golan.ben.ami@intel.com>
+Date: Sun, 30 Aug 2015 17:41:36 +0300
+Subject: [PATCH] iwlwifi: expose fw usniffer mode to more utilities
+Git-commit: e6eb8ca9e486a8f73ae237630e89406683b2be75
+Patch-mainline: 4.5-rc1
+References: FATE#321353, FATE#323335
+
+Today, in order to configure fw in usniffer mode, the ucode
+must have the corresponding tlv, which is revealed to the driver
+while parsing the ucode.
+
+Expose the mode of the usniffer to other utilities in the driver
+(other than the ucode parser) by passing back a pointer to the value.
+This can be very useful for allowing configuring the fw dbg data
+using an external configuration file, because this configuration
+depends on the fw usniffer mode.
+
+Signed-off-by: Golan Ben-Ami <golan.ben.ami@intel.com>
+Signed-off-by: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/iwlwifi/iwl-drv.c |   11 ++++++-----
+ 1 file changed, 6 insertions(+), 5 deletions(-)
+
+--- a/drivers/net/wireless/iwlwifi/iwl-drv.c
++++ b/drivers/net/wireless/iwlwifi/iwl-drv.c
+@@ -594,7 +594,8 @@ static int iwl_parse_v1_v2_firmware(stru
+ static int iwl_parse_tlv_firmware(struct iwl_drv *drv,
+ 				const struct firmware *ucode_raw,
+ 				struct iwl_firmware_pieces *pieces,
+-				struct iwl_ucode_capabilities *capa)
++				struct iwl_ucode_capabilities *capa,
++				bool *usniffer_images)
+ {
+ 	struct iwl_tlv_ucode_header *ucode = (void *)ucode_raw->data;
+ 	struct iwl_ucode_tlv *tlv;
+@@ -607,7 +608,6 @@ static int iwl_parse_tlv_firmware(struct
+ 	char buildstr[25];
+ 	u32 build, paging_mem_size;
+ 	int num_of_cpus;
+-	bool usniffer_images = false;
+ 	bool usniffer_req = false;
+ 	bool gscan_capa = false;
+ 
+@@ -980,7 +980,7 @@ static int iwl_parse_tlv_firmware(struct
+ 			break;
+ 			}
+ 		case IWL_UCODE_TLV_SEC_RT_USNIFFER:
+-			usniffer_images = true;
++			*usniffer_images = true;
+ 			iwl_store_ucode_sec(pieces, tlv_data,
+ 					    IWL_UCODE_REGULAR_USNIFFER,
+ 					    tlv_len);
+@@ -1031,7 +1031,7 @@ static int iwl_parse_tlv_firmware(struct
+ 		}
+ 	}
+ 
+-	if (usniffer_req && !usniffer_images) {
++	if (usniffer_req && !*usniffer_images) {
+ 		IWL_ERR(drv,
+ 			"user selected to work with usniffer but usniffer image isn't available in ucode package\n");
+ 		return -EINVAL;
+@@ -1192,6 +1192,7 @@ static void iwl_req_fw_callback(const st
+ 	u32 api_ver;
+ 	int i;
+ 	bool load_module = false;
++	bool usniffer_images = false;
+ 
+ 	fw->ucode_capa.max_probe_length = IWL_DEFAULT_MAX_PROBE_LENGTH;
+ 	fw->ucode_capa.standard_phy_calibration_size =
+@@ -1229,7 +1230,7 @@ static void iwl_req_fw_callback(const st
+ 		err = iwl_parse_v1_v2_firmware(drv, ucode_raw, pieces);
+ 	else
+ 		err = iwl_parse_tlv_firmware(drv, ucode_raw, pieces,
+-					     &fw->ucode_capa);
++					     &fw->ucode_capa, &usniffer_images);
+ 
+ 	if (err)
+ 		goto try_again;

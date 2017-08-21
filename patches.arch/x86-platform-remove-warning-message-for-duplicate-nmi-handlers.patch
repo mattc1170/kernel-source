@@ -1,0 +1,47 @@
+From: Mike Travis <mike.travis@hpe.com>
+Date: Tue, 7 Mar 2017 15:08:42 -0600
+Subject: x86/platform: Remove warning message for duplicate NMI handlers
+Patch-mainline: v4.11-rc3
+Git-commit: 0d443b70cc92d741cbc1dcbf1079897b3d8bc3cc
+References: bsc#1029220
+
+Remove the WARNING message associated with multiple NMI handlers as
+there are at least two that are legitimate.  These are the KGDB and the
+UV handlers and both want to be called if the NMI has not been claimed
+by any other NMI handler.
+
+Use of the UNKNOWN NMI call chain dramatically lowers the NMI call rate
+when high frequency NMI tools are in use, notably the perf tools.  It is
+required on systems that cannot sustain a high NMI call rate without
+adversely affecting the system operation.
+
+Signed-off-by: Mike Travis <mike.travis@hpe.com>
+Reviewed-by: Dimitri Sivanich <dimitri.sivanich@hpe.com>
+Cc: Don Zickus <dzickus@redhat.com>
+Cc: Peter Zijlstra <a.p.zijlstra@chello.nl>
+Cc: Russ Anderson <russ.anderson@hpe.com>
+Cc: Frank Ramsay <frank.ramsay@hpe.com>
+Cc: Tony Ernst <tony.ernst@hpe.com>
+Link: http://lkml.kernel.org/r/20170307210841.730959611@asylum.americas.sgi.com
+Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
+Acked-by: Borislav Petkov <bp@suse.de>
+---
+ arch/x86/kernel/nmi.c |    6 ++----
+ 1 file changed, 2 insertions(+), 4 deletions(-)
+
+--- a/arch/x86/kernel/nmi.c
++++ b/arch/x86/kernel/nmi.c
+@@ -162,11 +162,9 @@ int __register_nmi_handler(unsigned int
+ 	spin_lock_irqsave(&desc->lock, flags);
+ 
+ 	/*
+-	 * most handlers of type NMI_UNKNOWN never return because
+-	 * they just assume the NMI is theirs.  Just a sanity check
+-	 * to manage expectations
++	 * Indicate if there are multiple registrations on the
++	 * internal NMI handler call chains (SERR and IO_CHECK).
+ 	 */
+-	WARN_ON_ONCE(type == NMI_UNKNOWN && !list_empty(&desc->head));
+ 	WARN_ON_ONCE(type == NMI_SERR && !list_empty(&desc->head));
+ 	WARN_ON_ONCE(type == NMI_IO_CHECK && !list_empty(&desc->head));
+ 

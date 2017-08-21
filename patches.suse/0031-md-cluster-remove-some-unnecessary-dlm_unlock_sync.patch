@@ -1,8 +1,9 @@
-From d5fb5c45b493edf6b8384f2f15d5056f79813592 Mon Sep 17 00:00:00 2001
+From e3f924d3dfc672dd1292bc7eb6f2a305c13981ec Mon Sep 17 00:00:00 2001
 From: Guoqing Jiang <gqjiang@suse.com>
-Date: Wed, 15 Jun 2016 09:58:31 +0800
-Subject: [PATCH 3/8] md-cluster: remove some unnecessary dlm_unlock_sync
-Patch-mainline: Submitted to linux-raid http://www.spinics.net/lists/raid/msg53089.html
+Date: Fri, 12 Aug 2016 13:42:36 +0800
+Subject: [PATCH] md-cluster: remove some unnecessary dlm_unlock_sync
+Git-commit: e3f924d3dfc672dd1292bc7eb6f2a305c13981ec
+Patch-mainline: v4.9-rc1
 References: fate#316335
 
 Since DLM_LKF_FORCEUNLOCK is used in lockres_free,
@@ -11,16 +12,16 @@ lock resource.
 
 Reviewed-by: NeilBrown <neilb@suse.com>
 Signed-off-by: Guoqing Jiang <gqjiang@suse.com>
-Acked-by: Guoqing Jiang <gqjiang@suse.com>
+Signed-off-by: Shaohua Li <shli@fb.com>
 ---
  drivers/md/md-cluster.c | 6 +-----
  1 file changed, 1 insertion(+), 5 deletions(-)
 
 diff --git a/drivers/md/md-cluster.c b/drivers/md/md-cluster.c
-index e7d1b71..fdacbab 100644
+index ccd756f..67a7358 100644
 --- a/drivers/md/md-cluster.c
 +++ b/drivers/md/md-cluster.c
-@@ -281,7 +281,7 @@ static void recover_bitmaps(struct md_thread *thread)
+@@ -284,7 +284,7 @@ static void recover_bitmaps(struct md_thread *thread)
  		ret = bitmap_copy_from_slot(mddev, slot, &lo, &hi, true);
  		if (ret) {
  			pr_err("md-cluster: Could not copy data from bitmap %d\n", slot);
@@ -29,7 +30,7 @@ index e7d1b71..fdacbab 100644
  		}
  		if (hi > 0) {
  			if (lo < mddev->recovery_cp)
-@@ -293,8 +293,6 @@ static void recover_bitmaps(struct md_thread *thread)
+@@ -296,8 +296,6 @@ static void recover_bitmaps(struct md_thread *thread)
  			    md_wakeup_thread(mddev->thread);
  			}
  		}
@@ -38,7 +39,7 @@ index e7d1b71..fdacbab 100644
  clear_bit:
  		lockres_free(bm_lockres);
  		clear_bit(slot, &cinfo->recovery_map);
-@@ -763,7 +761,6 @@ static int gather_all_resync_info(struct mddev *mddev, int total_slots)
+@@ -766,7 +764,6 @@ static int gather_all_resync_info(struct mddev *mddev, int total_slots)
  			md_check_recovery(mddev);
  		}
  
@@ -46,7 +47,7 @@ index e7d1b71..fdacbab 100644
  		lockres_free(bm_lockres);
  	}
  out:
-@@ -1173,7 +1170,6 @@ static void unlock_all_bitmaps(struct mddev *mddev)
+@@ -1182,7 +1179,6 @@ static void unlock_all_bitmaps(struct mddev *mddev)
  	if (cinfo->other_bitmap_lockres) {
  		for (i = 0; i < mddev->bitmap_info.nodes - 1; i++) {
  			if (cinfo->other_bitmap_lockres[i]) {
@@ -55,5 +56,5 @@ index e7d1b71..fdacbab 100644
  			}
  		}
 -- 
-2.6.2
+2.6.6
 

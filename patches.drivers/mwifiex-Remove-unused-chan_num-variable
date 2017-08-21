@@ -1,0 +1,54 @@
+From 8ac9134161d9d09ac5cc9df844e35156c54285cb Mon Sep 17 00:00:00 2001
+From: Kirtika Ruchandani <kirtika.ruchandani@gmail.com>
+Date: Wed, 23 Nov 2016 17:24:54 -0800
+Subject: [PATCH] mwifiex: Remove unused 'chan_num' variable
+Mime-version: 1.0
+Content-type: text/plain; charset=UTF-8
+Content-transfer-encoding: 8bit
+Git-commit: 8ac9134161d9d09ac5cc9df844e35156c54285cb
+Patch-mainline: 4.10-rc1
+References: bsc#1031717
+
+Commit b5413e6b2228 removed all uses of chan_num in mwifiex_config_scan().
+Compiling mwifiex with W=1 gives the following warning, fix it.
+
+Mwifiex/scan.c: In function ‘mwifiex_config_scan’:
+mwifiex/scan.c:830:6: warning: variable ‘chan_num’ set but not used [-Wunused-but-set-variable]
+
+Fixes: b5413e6b2228 ("mwifiex: increase the number of nodes in command pool")
+Cc: Amitkumar Karwar <akarwar@marvell.com>
+Signed-off-by: Kirtika Ruchandani <kirtika@google.com>
+Signed-off-by: Kalle Valo <kvalo@codeaurora.org>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/mwifiex/scan.c |    8 +++-----
+ 1 file changed, 3 insertions(+), 5 deletions(-)
+
+--- a/drivers/net/wireless/mwifiex/scan.c
++++ b/drivers/net/wireless/mwifiex/scan.c
+@@ -816,7 +816,6 @@ mwifiex_config_scan(struct mwifiex_priva
+ 	u32 num_probes;
+ 	u32 ssid_len;
+ 	u32 chan_idx;
+-	u32 chan_num;
+ 	u32 scan_type;
+ 	u16 scan_dur;
+ 	u8 channel;
+@@ -1088,13 +1087,12 @@ mwifiex_config_scan(struct mwifiex_priva
+ 			mwifiex_dbg(adapter, INFO,
+ 				    "info: Scan: Scanning current channel only\n");
+ 		}
+-		chan_num = chan_idx;
+ 	} else {
+ 		mwifiex_dbg(adapter, INFO,
+ 			    "info: Scan: Creating full region channel list\n");
+-		chan_num = mwifiex_scan_create_channel_list(priv, user_scan_in,
+-							    scan_chan_list,
+-							    *filtered_scan);
++		mwifiex_scan_create_channel_list(priv, user_scan_in,
++						 scan_chan_list,
++						 *filtered_scan);
+ 	}
+ 
+ }

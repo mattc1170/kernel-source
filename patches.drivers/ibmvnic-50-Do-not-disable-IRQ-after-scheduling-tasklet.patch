@@ -1,0 +1,80 @@
+From ed7ecbf700616d83ac5eea060638a2471c37e465 Mon Sep 17 00:00:00 2001
+From: Brian King <brking@linux.vnet.ibm.com>
+Date: Wed, 19 Apr 2017 13:44:53 -0400
+Subject: [PATCH] ibmvnic: Do not disable IRQ after scheduling tasklet
+
+References: fate#322021, bsc#1031512
+Patch-mainline: v4.12-rc1
+Git-commit: ed7ecbf700616d83ac5eea060638a2471c37e465
+
+Since the primary CRQ is only used for service functions and
+not in the performance path, simplify the code a bit and avoid
+disabling the IRQ.
+
+Signed-off-by: Brian King <brking@linux.vnet.ibm.com>
+Signed-off-by: Nathan Fontenot <nfont@linux.vnet.ibm.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+Acked-by: Michal Suchanek <msuchanek@suse.de>
+---
+ drivers/net/ethernet/ibm/ibmvnic.c | 25 ++++++-------------------
+ 1 file changed, 6 insertions(+), 19 deletions(-)
+
+diff --git a/drivers/net/ethernet/ibm/ibmvnic.c b/drivers/net/ethernet/ibm/ibmvnic.c
+index b5871df..27d7d27 100644
+--- a/drivers/net/ethernet/ibm/ibmvnic.c
++++ b/drivers/net/ethernet/ibm/ibmvnic.c
+@@ -3027,12 +3027,8 @@ static void ibmvnic_handle_crq(union ibmvnic_crq *crq,
+ static irqreturn_t ibmvnic_interrupt(int irq, void *instance)
+ {
+ 	struct ibmvnic_adapter *adapter = instance;
+-	unsigned long flags;
+ 
+-	spin_lock_irqsave(&adapter->crq.lock, flags);
+-	vio_disable_interrupts(adapter->vdev);
+ 	tasklet_schedule(&adapter->tasklet);
+-	spin_unlock_irqrestore(&adapter->crq.lock, flags);
+ 	return IRQ_HANDLED;
+ }
+ 
+@@ -3040,32 +3036,23 @@ static void ibmvnic_tasklet(void *data)
+ {
+ 	struct ibmvnic_adapter *adapter = data;
+ 	struct ibmvnic_crq_queue *queue = &adapter->crq;
+-	struct vio_dev *vdev = adapter->vdev;
+ 	union ibmvnic_crq *crq;
+ 	unsigned long flags;
+ 	bool done = false;
+ 
+ 	spin_lock_irqsave(&queue->lock, flags);
+-	vio_disable_interrupts(vdev);
+ 	while (!done) {
+ 		/* Pull all the valid messages off the CRQ */
+ 		while ((crq = ibmvnic_next_crq(adapter)) != NULL) {
+ 			ibmvnic_handle_crq(crq, adapter);
+ 			crq->generic.first = 0;
+ 		}
+-		vio_enable_interrupts(vdev);
+-		crq = ibmvnic_next_crq(adapter);
+-		if (crq) {
+-			vio_disable_interrupts(vdev);
+-			ibmvnic_handle_crq(crq, adapter);
+-			crq->generic.first = 0;
+-		} else {
+-			/* remain in tasklet until all
+-			 * capabilities responses are received
+-			 */
+-			if (!adapter->wait_capability)
+-				done = true;
+-		}
++
++		/* remain in tasklet until all
++		 * capabilities responses are received
++		 */
++		if (!adapter->wait_capability)
++			done = true;
+ 	}
+ 	/* if capabilities CRQ's were sent in this tasklet, the following
+ 	 * tasklet must wait until all responses are received
+-- 
+2.10.2
+

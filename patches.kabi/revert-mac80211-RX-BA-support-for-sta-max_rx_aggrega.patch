@@ -1,0 +1,79 @@
+From: Jiri Slaby <jslaby@suse.cz>
+Date: Mon, 22 May 2017 10:30:34 +0200
+Subject: Revert "mac80211: RX BA support for sta max_rx_aggregation_subframes"
+Patch-mainline: never, kabi
+References: kabi
+
+This reverts commit 8ef67e0078b30ed1b4c36671723d585f80ab903c, upstream
+commit 480dd46b9d6812e5fb7172c305ee0f1154c26eed. It breaks kABI. And we
+cannot move the member to the end given there are driver's data. In
+theory, this u8 could fit into hole after mfp in that structure, but I
+am not sure about the behaviour of the bools across all architectures we
+support.
+
+Signed-off-by: Jiri Slaby <jslaby@suse.cz>
+---
+ include/net/mac80211.h  | 4 ----
+ net/mac80211/agg-rx.c   | 7 ++-----
+ net/mac80211/sta_info.c | 3 ---
+ 3 files changed, 2 insertions(+), 12 deletions(-)
+
+diff --git a/include/net/mac80211.h b/include/net/mac80211.h
+index 4e51f9a5a177..ebd73169d53b 100644
+--- a/include/net/mac80211.h
++++ b/include/net/mac80211.h
+@@ -1662,9 +1662,6 @@ struct ieee80211_sta_rates {
+  * @supp_rates: Bitmap of supported rates (per band)
+  * @ht_cap: HT capabilities of this STA; restricted to our own capabilities
+  * @vht_cap: VHT capabilities of this STA; restricted to our own capabilities
+- * @max_rx_aggregation_subframes: maximal amount of frames in a single AMPDU
+- *	that this station is allowed to transmit to us.
+- *	Can be modified by driver.
+  * @wme: indicates whether the STA supports QoS/WME (if local devices does,
+  *	otherwise always false)
+  * @drv_priv: data area for driver use, will always be aligned to
+@@ -1691,7 +1688,6 @@ struct ieee80211_sta {
+ 	u16 aid;
+ 	struct ieee80211_sta_ht_cap ht_cap;
+ 	struct ieee80211_sta_vht_cap vht_cap;
+-	u8 max_rx_aggregation_subframes;
+ 	bool wme;
+ 	u8 uapsd_queues;
+ 	u8 max_sp;
+diff --git a/net/mac80211/agg-rx.c b/net/mac80211/agg-rx.c
+index a830356b94ac..f598ff80b30e 100644
+--- a/net/mac80211/agg-rx.c
++++ b/net/mac80211/agg-rx.c
+@@ -290,13 +290,10 @@ void __ieee80211_start_rx_ba_session(struct sta_info *sta,
+ 		buf_size = IEEE80211_MAX_AMPDU_BUF;
+ 
+ 	/* make sure the size doesn't exceed the maximum supported by the hw */
+-	if (buf_size > sta->sta.max_rx_aggregation_subframes)
+-		buf_size = sta->sta.max_rx_aggregation_subframes;
++	if (buf_size > local->hw.max_rx_aggregation_subframes)
++		buf_size = local->hw.max_rx_aggregation_subframes;
+ 	params.buf_size = buf_size;
+ 
+-	ht_dbg(sta->sdata, "AddBA Req buf_size=%d for %pM\n",
+-	       buf_size, sta->sta.addr);
+-
+ 	/* examine state machine */
+ 	mutex_lock(&sta->ampdu_mlme.mtx);
+ 
+diff --git a/net/mac80211/sta_info.c b/net/mac80211/sta_info.c
+index 63ea6cbac5ad..67066d048e6f 100644
+--- a/net/mac80211/sta_info.c
++++ b/net/mac80211/sta_info.c
+@@ -329,9 +329,6 @@ struct sta_info *sta_info_alloc(struct ieee80211_sub_if_data *sdata,
+ 
+ 	memcpy(sta->addr, addr, ETH_ALEN);
+ 	memcpy(sta->sta.addr, addr, ETH_ALEN);
+-	sta->sta.max_rx_aggregation_subframes =
+-		local->hw.max_rx_aggregation_subframes;
+-
+ 	sta->local = local;
+ 	sta->sdata = sdata;
+ 	sta->rx_stats.last_rx = jiffies;
+-- 
+2.13.0
+

@@ -1,0 +1,46 @@
+From 283115fb1dcf6b2162e988db98e156b998a5ebb3 Mon Sep 17 00:00:00 2001
+From: Avri Altman <avri.altman@intel.com>
+Date: Sun, 24 Jan 2016 22:16:08 +0200
+Subject: [PATCH] iwlwifi: mvm: Send power command on BSS_CHANGED_BEACON_INFO if needed
+Git-commit: 283115fb1dcf6b2162e988db98e156b998a5ebb3
+Patch-mainline: 4.6-rc1
+References: FATE#321353, FATE#323335
+
+Beacon abort (ba) is set while sending power command, but only
+after at least one beacon_filter command was successfully sent.
+
+If we heard a beacon before starting association, this order
+is maintained and ba is properly set.
+
+However, if the first beacon is received after association,
+we send the power command upon association, configure the
+beacon filtering when the first beacon arrives, and in that case,
+beacon abort is not set.
+
+So identify this, and send a power command post the beacon_filter
+command if needed.
+
+Signed-off-by: Avri Altman <avri.altman@intel.com>
+Signed-off-by: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/iwlwifi/mvm/mac80211.c |    7 ++++++-
+ 1 file changed, 6 insertions(+), 1 deletion(-)
+
+--- a/drivers/net/wireless/iwlwifi/mvm/mac80211.c
++++ b/drivers/net/wireless/iwlwifi/mvm/mac80211.c
+@@ -1895,7 +1895,12 @@ static void iwl_mvm_bss_info_changed_sta
+ 		WARN_ON(iwl_mvm_enable_beacon_filter(mvm, vif, 0));
+ 	}
+ 
+-	if (changes & (BSS_CHANGED_PS | BSS_CHANGED_P2P_PS | BSS_CHANGED_QOS)) {
++	if (changes & (BSS_CHANGED_PS | BSS_CHANGED_P2P_PS | BSS_CHANGED_QOS |
++		       /*
++			* Send power command on every beacon change,
++			* because we may have not enabled beacon abort yet.
++			*/
++		       BSS_CHANGED_BEACON_INFO)) {
+ 		ret = iwl_mvm_power_update_mac(mvm);
+ 		if (ret)
+ 			IWL_ERR(mvm, "failed to update power mode\n");

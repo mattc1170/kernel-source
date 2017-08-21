@@ -1,0 +1,45 @@
+From: David Ahern <dsa@cumulusnetworks.com>
+Date: Sun, 14 Aug 2016 19:52:56 -0700
+Subject: xfrm: Only add l3mdev oif to dst lookups
+Patch-mainline: v4.8-rc7
+Git-commit: 11d7a0bb95eaaba1741bb24a7c3c169c82f09c7b
+References: bsc#1042286
+
+Subash reported that commit 42a7b32b73d6 ("xfrm: Add oif to dst lookups")
+broke a wifi use case that uses fib rules and xfrms. The intent of
+42a7b32b73d6 was driven by VRFs with IPsec. As a compromise relax the
+use of oif in xfrm lookups to L3 master devices only (ie., oif is either
+an L3 master device or is enslaved to a master device).
+
+Fixes: 42a7b32b73d6 ("xfrm: Add oif to dst lookups")
+Reported-by: Subash Abhinov Kasiviswanathan <subashab@codeaurora.org>
+Signed-off-by: David Ahern <dsa@cumulusnetworks.com>
+Signed-off-by: Steffen Klassert <steffen.klassert@secunet.com>
+Acked-by: Benjamin Poirier <bpoirier@suse.com>
+---
+ net/ipv4/xfrm4_policy.c |    2 +-
+ net/ipv6/xfrm6_policy.c |    2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+--- a/net/ipv4/xfrm4_policy.c
++++ b/net/ipv4/xfrm4_policy.c
+@@ -29,7 +29,7 @@ static struct dst_entry *__xfrm4_dst_loo
+ 	memset(fl4, 0, sizeof(*fl4));
+ 	fl4->daddr = daddr->a4;
+ 	fl4->flowi4_tos = tos;
+-	fl4->flowi4_oif = oif;
++	fl4->flowi4_oif = l3mdev_master_ifindex_by_index(net, oif);
+ 	if (saddr)
+ 		fl4->saddr = saddr->a4;
+ 
+--- a/net/ipv6/xfrm6_policy.c
++++ b/net/ipv6/xfrm6_policy.c
+@@ -36,7 +36,7 @@ static struct dst_entry *xfrm6_dst_looku
+ 	int err;
+ 
+ 	memset(&fl6, 0, sizeof(fl6));
+-	fl6.flowi6_oif = oif;
++	fl6.flowi6_oif = l3mdev_master_ifindex_by_index(net, oif);
+ 	fl6.flowi6_flags = FLOWI_FLAG_SKIP_NH_OIF;
+ 	memcpy(&fl6.daddr, daddr, sizeof(fl6.daddr));
+ 	if (saddr)

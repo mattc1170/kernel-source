@@ -1,0 +1,36 @@
+Subject: xen-blkfront: free resources if xlvbd_alloc_gendisk fails
+From: Bob Liu <bob.liu@oracle.com>
+Patch-mainline: v4.8
+Git-commit: 4e876c2bd37fbb5c37a4554a79cf979d486f0e82
+References: none
+
+Current code forgets to free resources in the failure path of
+xlvbd_alloc_gendisk(), this patch fix it.
+
+Signed-off-by: Bob Liu <bob.liu@oracle.com>
+Signed-off-by: Konrad Rzeszutek Wilk <konrad.wilk@oracle.com>
+Acked-by: jbeulich@suse.com
+
+--- a/drivers/block/xen-blkfront.c
++++ b/drivers/block/xen-blkfront.c
+@@ -2070,7 +2070,7 @@ static void blkfront_connect(struct blkf
+ 	if (err) {
+ 		xenbus_dev_fatal(info->xbdev, err, "xlvbd_add at %s",
+ 				 info->xbdev->otherend);
+-		return;
++		goto fail;
+ 	}
+ 
+ 	xenbus_switch_state(info->xbdev, XenbusStateConnected);
+@@ -2084,6 +2084,11 @@ static void blkfront_connect(struct blkf
+ 	add_disk(info->gd);
+ 
+ 	info->is_ready = 1;
++	return;
++
++fail:
++	blkif_free(info, 0);
++	return;
+ }
+ 
+ /**

@@ -1,0 +1,303 @@
+From: David Sterba <dsterba@suse.com>
+Date: Mon, 9 May 2016 11:32:39 +0200
+Patch-mainline: 4.7
+Git-commit: 05135f597adcb94dc34fa87b82e68eb55e00f0eb
+References: bsc#1012452
+Subject: [PATCH] btrfs: switch to common message helpers in
+ open_ctree, adjust messages
+
+Currently we lack the identification of the filesystem in most if not
+all mount messages, done via printk/pr_* functions. We can use the
+btrfs_* helpers in open_ctree, as the fs_info <-> sb link is established
+at the beginning of the function.
+
+The messages have been updated at the same time to be more consistent:
+
+* dropped sb->s_id, as it's not available via btrfs_*
+* added %d for return code where appropriate
+* wording changed
+* %Lx replaced by %llx
+
+Signed-off-by: David Sterba <dsterba@suse.com>
+---
+ fs/btrfs/disk-io.c |   90 +++++++++++++++++++++++++----------------------------
+ 1 file changed, 44 insertions(+), 46 deletions(-)
+
+--- a/fs/btrfs/disk-io.c
++++ b/fs/btrfs/disk-io.c
+@@ -2703,7 +2703,7 @@ int open_ctree(struct super_block *sb,
+ 	 * Pass the whole disk block of size BTRFS_SUPER_INFO_SIZE (4k).
+ 	 */
+ 	if (btrfs_check_super_csum(bh->b_data)) {
+-		printk(KERN_ERR "BTRFS: superblock checksum mismatch\n");
++		btrfs_err(fs_info, "superblock checksum mismatch");
+ 		err = -EINVAL;
+ 		brelse(bh);
+ 		goto fail_alloc;
+@@ -2723,7 +2723,7 @@ int open_ctree(struct super_block *sb,
+ 
+ 	ret = btrfs_check_super_valid(fs_info, sb->s_flags & MS_RDONLY);
+ 	if (ret) {
+-		printk(KERN_ERR "BTRFS: superblock contains fatal errors\n");
++		btrfs_err(fs_info, "superblock contains fatal errors");
+ 		err = -EINVAL;
+ 		goto fail_alloc;
+ 	}
+@@ -2758,9 +2758,9 @@ int open_ctree(struct super_block *sb,
+ 	features = btrfs_super_incompat_flags(disk_super) &
+ 		~BTRFS_FEATURE_INCOMPAT_SUPP;
+ 	if (features) {
+-		printk(KERN_ERR "BTRFS: couldn't mount because of "
+-		       "unsupported optional features (%Lx).\n",
+-		       features);
++		btrfs_err(fs_info,
++		    "cannot mount because of unsupported optional features (%llx)",
++		    features);
+ 		err = -EINVAL;
+ 		goto fail_alloc;
+ 	}
+@@ -2771,7 +2771,7 @@ int open_ctree(struct super_block *sb,
+ 		features |= BTRFS_FEATURE_INCOMPAT_COMPRESS_LZO;
+ 
+ 	if (features & BTRFS_FEATURE_INCOMPAT_SKINNY_METADATA)
+-		printk(KERN_INFO "BTRFS: has skinny extents\n");
++		btrfs_info(fs_info, "has skinny extents");
+ 
+ 	/*
+ 	 * flag our filesystem as having big metadata blocks if
+@@ -2779,7 +2779,8 @@ int open_ctree(struct super_block *sb,
+ 	 */
+ 	if (btrfs_super_nodesize(disk_super) > PAGE_CACHE_SIZE) {
+ 		if (!(features & BTRFS_FEATURE_INCOMPAT_BIG_METADATA))
+-			printk(KERN_INFO "BTRFS: flagging fs with big metadata feature\n");
++			btrfs_info(fs_info,
++				"flagging fs with big metadata feature");
+ 		features |= BTRFS_FEATURE_INCOMPAT_BIG_METADATA;
+ 	}
+ 
+@@ -2795,9 +2796,9 @@ int open_ctree(struct super_block *sb,
+ 	 */
+ 	if ((features & BTRFS_FEATURE_INCOMPAT_MIXED_GROUPS) &&
+ 	    (sectorsize != nodesize)) {
+-		printk(KERN_ERR "BTRFS: unequal leaf/node/sector sizes "
+-				"are not allowed for mixed block groups on %s\n",
+-				sb->s_id);
++		btrfs_err(fs_info,
++"unequal nodesize/sectorsize (%u != %u) are not allowed for mixed block groups",
++			nodesize, sectorsize);
+ 		goto fail_alloc;
+ 	}
+ 
+@@ -2810,8 +2811,8 @@ int open_ctree(struct super_block *sb,
+ 	features = btrfs_super_compat_ro_flags(disk_super) &
+ 		~BTRFS_FEATURE_COMPAT_RO_SUPP;
+ 	if (!(sb->s_flags & MS_RDONLY) && features) {
+-		printk(KERN_ERR "BTRFS: couldn't mount RDWR because of "
+-		       "unsupported option features (%Lx).\n",
++		btrfs_err(fs_info,
++	"cannot mount read-write because of unsupported optional features (%llx)",
+ 		       features);
+ 		err = -EINVAL;
+ 		goto fail_alloc;
+@@ -2840,8 +2841,7 @@ int open_ctree(struct super_block *sb,
+ 	ret = btrfs_read_sys_array(tree_root);
+ 	mutex_unlock(&fs_info->chunk_mutex);
+ 	if (ret) {
+-		printk(KERN_ERR "BTRFS: failed to read the system "
+-		       "array on %s\n", sb->s_id);
++		btrfs_err(fs_info, "failed to read the system array: %d", ret);
+ 		goto fail_sb_buffer;
+ 	}
+ 
+@@ -2855,8 +2855,7 @@ int open_ctree(struct super_block *sb,
+ 					   generation);
+ 	if (IS_ERR(chunk_root->node) ||
+ 	    !extent_buffer_uptodate(chunk_root->node)) {
+-		printk(KERN_ERR "BTRFS: failed to read chunk root on %s\n",
+-		       sb->s_id);
++		btrfs_err(fs_info, "failed to read chunk root");
+ 		if (!IS_ERR(chunk_root->node))
+ 			free_extent_buffer(chunk_root->node);
+ 		chunk_root->node = NULL;
+@@ -2870,8 +2869,7 @@ int open_ctree(struct super_block *sb,
+ 
+ 	ret = btrfs_read_chunk_tree(chunk_root);
+ 	if (ret) {
+-		printk(KERN_ERR "BTRFS: failed to read chunk tree on %s\n",
+-		       sb->s_id);
++		btrfs_err(fs_info, "failed to read chunk tree: %d", ret);
+ 		goto fail_tree_roots;
+ 	}
+ 
+@@ -2882,8 +2880,7 @@ int open_ctree(struct super_block *sb,
+ 	btrfs_close_extra_devices(fs_devices, 0);
+ 
+ 	if (!fs_devices->latest_bdev) {
+-		printk(KERN_ERR "BTRFS: failed to read devices on %s\n",
+-		       sb->s_id);
++		btrfs_err(fs_info, "failed to read devices");
+ 		goto fail_tree_roots;
+ 	}
+ 
+@@ -2895,8 +2892,7 @@ retry_root_backup:
+ 					  generation);
+ 	if (IS_ERR(tree_root->node) ||
+ 	    !extent_buffer_uptodate(tree_root->node)) {
+-		printk(KERN_WARNING "BTRFS: failed to read tree root on %s\n",
+-		       sb->s_id);
++		btrfs_warn(fs_info, "failed to read tree root");
+ 		if (!IS_ERR(tree_root->node))
+ 			free_extent_buffer(tree_root->node);
+ 		tree_root->node = NULL;
+@@ -2928,20 +2924,19 @@ retry_root_backup:
+ 
+ 	ret = btrfs_recover_balance(fs_info);
+ 	if (ret) {
+-		printk(KERN_ERR "BTRFS: failed to recover balance\n");
++		btrfs_err(fs_info, "failed to recover balance: %d", ret);
+ 		goto fail_block_groups;
+ 	}
+ 
+ 	ret = btrfs_init_dev_stats(fs_info);
+ 	if (ret) {
+-		printk(KERN_ERR "BTRFS: failed to init dev_stats: %d\n",
+-		       ret);
++		btrfs_err(fs_info, "failed to init dev_stats: %d", ret);
+ 		goto fail_block_groups;
+ 	}
+ 
+ 	ret = btrfs_init_dev_replace(fs_info);
+ 	if (ret) {
+-		pr_err("BTRFS: failed to init dev_replace: %d\n", ret);
++		btrfs_err(fs_info, "failed to init dev_replace: %d", ret);
+ 		goto fail_block_groups;
+ 	}
+ 
+@@ -2949,31 +2944,33 @@ retry_root_backup:
+ 
+ 	ret = btrfs_sysfs_add_fsid(fs_devices, NULL);
+ 	if (ret) {
+-		pr_err("BTRFS: failed to init sysfs fsid interface: %d\n", ret);
++		btrfs_err(fs_info, "failed to init sysfs fsid interface: %d",
++				ret);
+ 		goto fail_block_groups;
+ 	}
+ 
+ 	ret = btrfs_sysfs_add_device(fs_devices);
+ 	if (ret) {
+-		pr_err("BTRFS: failed to init sysfs device interface: %d\n", ret);
++		btrfs_err(fs_info, "failed to init sysfs device interface: %d",
++				ret);
+ 		goto fail_fsdev_sysfs;
+ 	}
+ 
+ 	ret = btrfs_sysfs_add_mounted(fs_info);
+ 	if (ret) {
+-		pr_err("BTRFS: failed to init sysfs interface: %d\n", ret);
++		btrfs_err(fs_info, "failed to init sysfs interface: %d", ret);
+ 		goto fail_fsdev_sysfs;
+ 	}
+ 
+ 	ret = btrfs_init_space_info(fs_info);
+ 	if (ret) {
+-		printk(KERN_ERR "BTRFS: Failed to initial space info: %d\n", ret);
++		btrfs_err(fs_info, "failed to initialize space info: %d", ret);
+ 		goto fail_sysfs;
+ 	}
+ 
+ 	ret = btrfs_read_block_groups(fs_info->extent_root);
+ 	if (ret) {
+-		printk(KERN_ERR "BTRFS: Failed to read block groups: %d\n", ret);
++		btrfs_err(fs_info, "failed to read block groups: %d", ret);
+ 		goto fail_sysfs;
+ 	}
+ 	fs_info->num_tolerated_disk_barrier_failures =
+@@ -2981,7 +2978,8 @@ retry_root_backup:
+ 	if (fs_info->fs_devices->missing_devices >
+ 	     fs_info->num_tolerated_disk_barrier_failures &&
+ 	    !(sb->s_flags & MS_RDONLY)) {
+-		pr_warn("BTRFS: missing devices(%llu) exceeds the limit(%d), writeable mount is not allowed\n",
++		btrfs_warn(fs_info,
++"missing devices (%llu) exceeds the limit (%d), writeable mount is not allowed",
+ 			fs_info->fs_devices->missing_devices,
+ 			fs_info->num_tolerated_disk_barrier_failures);
+ 		goto fail_sysfs;
+@@ -3008,8 +3006,7 @@ retry_root_backup:
+ 	if (!btrfs_test_opt(tree_root, SSD) &&
+ 	    !btrfs_test_opt(tree_root, NOSSD) &&
+ 	    !fs_info->fs_devices->rotating) {
+-		printk(KERN_INFO "BTRFS: detected SSD devices, enabling SSD "
+-		       "mode\n");
++		btrfs_info(fs_info, "detected SSD devices, enabling SSD mode");
+ 		btrfs_set_opt(fs_info->mount_opt, SSD);
+ 	}
+ 
+@@ -3027,8 +3024,9 @@ retry_root_backup:
+ 				    1 : 0,
+ 				    fs_info->check_integrity_print_mask);
+ 		if (ret)
+-			printk(KERN_WARNING "BTRFS: failed to initialize"
+-			       " integrity check module %s\n", sb->s_id);
++			btrfs_warn(fs_info,
++				"failed to initialize integrity check module: %d",
++				ret);
+ 	}
+ #endif
+ 	ret = btrfs_read_qgroup_config(fs_info);
+@@ -3055,8 +3053,8 @@ retry_root_backup:
+ 		/* We locked cleaner_mutex before creating cleaner_kthread. */
+ 		ret = btrfs_recover_relocation(tree_root);
+ 		if (ret < 0) {
+-			printk(KERN_WARNING
+-			       "BTRFS: failed to recover relocation\n");
++			btrfs_warn(fs_info, "failed to recover relocation: %d",
++					ret);
+ 			err = -EINVAL;
+ 			goto fail_qgroup;
+ 		}
+@@ -3088,14 +3086,14 @@ retry_root_backup:
+ 
+ 	ret = btrfs_resume_balance_async(fs_info);
+ 	if (ret) {
+-		printk(KERN_WARNING "BTRFS: failed to resume balance\n");
++		btrfs_warn(fs_info, "failed to resume balance: %d", ret);
+ 		close_ctree(tree_root);
+ 		return ret;
+ 	}
+ 
+ 	ret = btrfs_resume_dev_replace_async(fs_info);
+ 	if (ret) {
+-		pr_warn("BTRFS: failed to resume dev_replace\n");
++		btrfs_warn(fs_info, "failed to resume device replace: %d", ret);
+ 		close_ctree(tree_root);
+ 		return ret;
+ 	}
+@@ -3103,22 +3101,22 @@ retry_root_backup:
+ 	btrfs_qgroup_rescan_resume(fs_info);
+ 
+ 	if (!fs_info->uuid_root) {
+-		pr_info("BTRFS: creating UUID tree\n");
++		btrfs_info(fs_info, "creating UUID tree");
+ 		ret = btrfs_create_uuid_tree(fs_info);
+ 		if (ret) {
+-			pr_warn("BTRFS: failed to create the UUID tree %d\n",
+-				ret);
++			btrfs_warn(fs_info,
++				"failed to create the UUID tree: %d", ret);
+ 			close_ctree(tree_root);
+ 			return ret;
+ 		}
+ 	} else if (btrfs_test_opt(tree_root, RESCAN_UUID_TREE) ||
+ 		   fs_info->generation !=
+ 				btrfs_super_uuid_tree_generation(disk_super)) {
+-		pr_info("BTRFS: checking UUID tree\n");
++		btrfs_info(fs_info, "checking UUID tree");
+ 		ret = btrfs_check_uuid_tree(fs_info);
+ 		if (ret) {
+-			pr_warn("BTRFS: failed to check the UUID tree %d\n",
+-				ret);
++			btrfs_warn(fs_info,
++				"failed to check the UUID tree: %d", ret);
+ 			close_ctree(tree_root);
+ 			return ret;
+ 		}

@@ -1,0 +1,128 @@
+From: Martin Schwidefsky <schwidefsky@de.ibm.com>
+Subject: s390/time: move PTFF definitions
+Patch-mainline: v4.8-rc1
+Git-commit: 9dc06ccf4699db81b88a6ff45a8acefd6c278327
+References: bnc#1009718, LTC#146920
+
+Description:  kernel: tolerate LPAR clock offsets
+Symptom:      The remote copy of a DASD in an extended-remote-copy setup
+              can get inconsistent due to misorder of I/O requests.
+Problem:      If the activation profile of an LPAR specifies a logical-
+              partition time offset, the time stamps stored by the
+              get_sync_clock function includes this offset. With two
+              LPARs writing to a shared DASD but using different clock
+              offsets the I/O requests may be ordered incorrectly.
+Solution:     Use the PTFF instruction to retrieve the TOD clock offset
+              and subtract it from the TOD clock value to get physical
+              timestamps.
+Reproduction: Write to a shared DASD volume on two LPARs with differing
+              logical-partition time offsets and use XRC to copy the
+              volume to a secondary volume. Compare the two volumes.
+
+Upstream-Description:
+
+              s390/time: move PTFF definitions
+
+              The PTFF instruction is not a function of ETR, rename and move the
+              PTFF definitions from etr.h to timex.h.
+
+              Signed-off-by: Martin Schwidefsky <schwidefsky@de.ibm.com>
+
+
+Signed-off-by: Martin Schwidefsky <schwidefsky@de.ibm.com>
+Acked-by: John Jolly <jjolly@suse.com>
+---
+ arch/s390/include/asm/etr.h   |   32 --------------------------------
+ arch/s390/include/asm/timex.h |   33 +++++++++++++++++++++++++++++++++
+ 2 files changed, 33 insertions(+), 32 deletions(-)
+
+--- a/arch/s390/include/asm/etr.h
++++ b/arch/s390/include/asm/etr.h
+@@ -129,14 +129,6 @@ struct etr_irq_parm {
+ 	unsigned int _pad2	: 18;
+ } __attribute__ ((packed));
+ 
+-/* Query TOD offset result */
+-struct etr_ptff_qto {
+-	unsigned long long physical_clock;
+-	unsigned long long tod_offset;
+-	unsigned long long logical_tod_offset;
+-	unsigned long long tod_epoch_difference;
+-} __attribute__ ((packed));
+-
+ /* Inline assembly helper functions */
+ static inline int etr_setr(struct etr_eacr *ctrl)
+ {
+@@ -186,30 +178,6 @@ static inline int etr_steai(struct etr_a
+ #define ETR_STEAI_PORT_0		0x12
+ #define ETR_STEAI_PORT_1		0x13
+ 
+-static inline int etr_ptff(void *ptff_block, unsigned int func)
+-{
+-	register unsigned int reg0 asm("0") = func;
+-	register unsigned long reg1 asm("1") = (unsigned long) ptff_block;
+-	int rc = -EOPNOTSUPP;
+-
+-	asm volatile(
+-		"	.word	0x0104\n"
+-		"	ipm	%0\n"
+-		"	srl	%0,28\n"
+-		: "=d" (rc), "=m" (ptff_block)
+-		: "d" (reg0), "d" (reg1), "m" (ptff_block) : "cc");
+-	return rc;
+-}
+-
+-/* Function codes for the ptff instruction. */
+-#define ETR_PTFF_QAF	0x00	/* query available functions */
+-#define ETR_PTFF_QTO	0x01	/* query tod offset */
+-#define ETR_PTFF_QSI	0x02	/* query steering information */
+-#define ETR_PTFF_ATO	0x40	/* adjust tod offset */
+-#define ETR_PTFF_STO	0x41	/* set tod offset */
+-#define ETR_PTFF_SFS	0x42	/* set fine steering rate */
+-#define ETR_PTFF_SGS	0x43	/* set gross steering rate */
+-
+ /* Functions needed by the machine check handler */
+ int etr_switch_to_local(void);
+ int etr_sync_check(void);
+--- a/arch/s390/include/asm/timex.h
++++ b/arch/s390/include/asm/timex.h
+@@ -52,6 +52,39 @@ static inline void store_clock_comparato
+ 
+ void clock_comparator_work(void);
+ 
++/* Function codes for the ptff instruction. */
++#define PTFF_QAF	0x00	/* query available functions */
++#define PTFF_QTO	0x01	/* query tod offset */
++#define PTFF_QSI	0x02	/* query steering information */
++#define PTFF_ATO	0x40	/* adjust tod offset */
++#define PTFF_STO	0x41	/* set tod offset */
++#define PTFF_SFS	0x42	/* set fine steering rate */
++#define PTFF_SGS	0x43	/* set gross steering rate */
++
++/* Query TOD offset result */
++struct ptff_qto {
++	unsigned long long physical_clock;
++	unsigned long long tod_offset;
++	unsigned long long logical_tod_offset;
++	unsigned long long tod_epoch_difference;
++} __packed;
++
++static inline int ptff(void *ptff_block, size_t len, unsigned int func)
++{
++	typedef struct { char _[len]; } addrtype;
++	register unsigned int reg0 asm("0") = func;
++	register unsigned long reg1 asm("1") = (unsigned long) ptff_block;
++	int rc;
++
++	asm volatile(
++		"	.word	0x0104\n"
++		"	ipm	%0\n"
++		"	srl	%0,28\n"
++		: "=d" (rc), "+m" (*(addrtype *) ptff_block)
++		: "d" (reg0), "d" (reg1) : "cc");
++	return rc;
++}
++
+ static inline unsigned long long local_tick_disable(void)
+ {
+ 	unsigned long long old;

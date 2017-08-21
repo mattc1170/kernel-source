@@ -1,0 +1,57 @@
+From 7aeba09cd55a00053f03c2c1a48f0a530729a8b1 Mon Sep 17 00:00:00 2001
+From: Paul Gortmaker <paul.gortmaker@windriver.com>
+Date: Sat, 2 Jul 2016 19:13:34 -0400
+Subject: [PATCH 23/36] PCI: xgene: Make explicitly non-modular
+
+Git-commit: 50dcd29096cb64ff8c5542f561a8646997a41e73
+Patch-mainline: v4.8-rc1
+References: bsc#1019351
+
+This code is not being built as a module by anyone:
+
+  drivers/pci/host/Kconfig:config PCI_XGENE
+  drivers/pci/host/Kconfig:       bool "X-Gene PCIe controller"
+
+Remove uses of MODULE_DESCRIPTION(), MODULE_AUTHOR(), MODULE_LICENSE(),
+etc., so that when reading the driver there is no doubt it is builtin-only.
+The information is preserved in comments at the top of the file.
+
+Replace module_platform_driver() with builtin_platform_driver(), which uses
+the same init level priority, so init ordering is unchanged.
+
+[bhelgaas: changelog]
+Signed-off-by: Paul Gortmaker <paul.gortmaker@windriver.com>
+Signed-off-by: Bjorn Helgaas <bhelgaas@google.com>
+CC: Tanmay Inamdar <tinamdar@apm.com>
+
+Signed-off-by: Mian Yousaf Kaukab <yousaf.kaukab@suse.com>
+---
+ drivers/pci/host/pci-xgene.c | 8 ++------
+ 1 file changed, 2 insertions(+), 6 deletions(-)
+
+diff --git a/drivers/pci/host/pci-xgene.c b/drivers/pci/host/pci-xgene.c
+index 7eb20cc76dd3..a81273c23341 100644
+--- a/drivers/pci/host/pci-xgene.c
++++ b/drivers/pci/host/pci-xgene.c
+@@ -21,7 +21,7 @@
+ #include <linux/io.h>
+ #include <linux/jiffies.h>
+ #include <linux/memblock.h>
+-#include <linux/module.h>
++#include <linux/init.h>
+ #include <linux/of.h>
+ #include <linux/of_address.h>
+ #include <linux/of_irq.h>
+@@ -579,8 +579,4 @@ static struct platform_driver xgene_pcie_driver = {
+ 	},
+ 	.probe = xgene_pcie_probe_bridge,
+ };
+-module_platform_driver(xgene_pcie_driver);
+-
+-MODULE_AUTHOR("Tanmay Inamdar <tinamdar@apm.com>");
+-MODULE_DESCRIPTION("APM X-Gene PCIe driver");
+-MODULE_LICENSE("GPL v2");
++builtin_platform_driver(xgene_pcie_driver);
+-- 
+2.11.0
+

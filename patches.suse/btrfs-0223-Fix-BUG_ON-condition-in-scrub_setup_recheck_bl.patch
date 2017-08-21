@@ -1,0 +1,29 @@
+From: Ashish Samant <ashish.samant@oracle.com>
+Date: Fri, 29 Apr 2016 18:33:59 -0700
+Patch-mainline: 4.7
+Git-commit: 2473114981a36b4f0f57cf6e9548037d547a71b7
+References: bsc#1012452
+Subject: [PATCH] btrfs: Fix BUG_ON condition in
+ scrub_setup_recheck_block()
+
+pagev array in scrub_block{} is of size SCRUB_MAX_PAGES_PER_BLOCK.
+page_index should be checked with the same to trigger BUG_ON().
+
+Signed-off-by: Ashish Samant <ashish.samant@oracle.com>
+Reviewed-by: David Sterba <dsterba@suse.com>
+Signed-off-by: David Sterba <dsterba@suse.com>
+---
+ fs/btrfs/scrub.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+--- a/fs/btrfs/scrub.c
++++ b/fs/btrfs/scrub.c
+@@ -1350,7 +1350,7 @@ static int scrub_setup_recheck_block(str
+ 		recover->bbio = bbio;
+ 		recover->map_length = mapped_length;
+ 
+-		BUG_ON(page_index >= SCRUB_PAGES_PER_RD_BIO);
++		BUG_ON(page_index >= SCRUB_MAX_PAGES_PER_BLOCK);
+ 
+ 		nmirrors = min(scrub_nr_raid_mirrors(bbio), BTRFS_MAX_MIRRORS);
+ 

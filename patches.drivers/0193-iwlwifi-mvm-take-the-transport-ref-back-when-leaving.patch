@@ -1,0 +1,36 @@
+From e27deb4583642d6c5b3cf18060e8239db1be9e59 Mon Sep 17 00:00:00 2001
+From: Luca Coelho <luciano.coelho@intel.com>
+Date: Tue, 1 Mar 2016 10:30:48 +0200
+Subject: [PATCH] iwlwifi: mvm: take the transport ref back when leaving
+Git-commit: e27deb4583642d6c5b3cf18060e8239db1be9e59
+Patch-mainline: 4.6-rc1
+References: FATE#321353, FATE#323335
+
+If d0i3 is supported, we have released the initial transport reference
+in iwl_op_mode_mvm_start(), so we should take it back in
+iwl_op_mode_mvm_stop() to keep it balanced.
+
+Signed-off-by: Luca Coelho <luciano.coelho@intel.com>
+Signed-off-by: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/iwlwifi/mvm/ops.c |    7 +++++++
+ 1 file changed, 7 insertions(+)
+
+--- a/drivers/net/wireless/iwlwifi/mvm/ops.c
++++ b/drivers/net/wireless/iwlwifi/mvm/ops.c
+@@ -686,6 +686,13 @@ static void iwl_op_mode_mvm_stop(struct
+ 	struct iwl_mvm *mvm = IWL_OP_MODE_GET_MVM(op_mode);
+ 	int i;
+ 
++	/* If d0i3 is supported, we have released the reference that
++	 * the transport started with, so we should take it back now
++	 * that we are leaving.
++	 */
++	if (iwl_mvm_is_d0i3_supported(mvm))
++		iwl_trans_ref(mvm->trans);
++
+ 	iwl_mvm_leds_exit(mvm);
+ 
+ 	iwl_mvm_thermal_exit(mvm);

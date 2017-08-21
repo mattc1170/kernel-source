@@ -1,0 +1,323 @@
+From: Anand Jain <anand.jain@oracle.com>
+Date: Wed, 16 Mar 2016 16:43:06 +0800
+Patch-mainline: 4.7
+Git-commit: 34d9700702f4042ce10d68a092ab7f79575e7a3b
+References: bsc#1012452
+Subject: [PATCH] btrfs: rename btrfs_std_error to
+ btrfs_handle_fs_error
+
+btrfs_std_error() handles errors, puts FS into readonly mode
+(as of now). So its good idea to rename it to btrfs_handle_fs_error().
+
+Signed-off-by: Anand Jain <anand.jain@oracle.com>
+Reviewed-by: David Sterba <dsterba@suse.com>
+[ edit changelog ]
+Signed-off-by: David Sterba <dsterba@suse.com>
+---
+ fs/btrfs/ctree.c       |    6 +++---
+ fs/btrfs/ctree.h       |    6 +++---
+ fs/btrfs/disk-io.c     |    8 ++++----
+ fs/btrfs/extent-tree.c |    2 +-
+ fs/btrfs/inode-item.c  |    2 +-
+ fs/btrfs/ioctl.c       |    2 +-
+ fs/btrfs/relocation.c  |    2 +-
+ fs/btrfs/root-tree.c   |    4 ++--
+ fs/btrfs/super.c       |    6 +++---
+ fs/btrfs/transaction.c |    2 +-
+ fs/btrfs/tree-log.c    |    8 ++++----
+ fs/btrfs/volumes.c     |   14 +++++++-------
+ 12 files changed, 31 insertions(+), 31 deletions(-)
+
+--- a/fs/btrfs/ctree.c
++++ b/fs/btrfs/ctree.c
+@@ -1011,7 +1011,7 @@ static noinline int update_ref_for_cow(s
+ 			return ret;
+ 		if (refs == 0) {
+ 			ret = -EROFS;
+-			btrfs_std_error(root->fs_info, ret, NULL);
++			btrfs_handle_fs_error(root->fs_info, ret, NULL);
+ 			return ret;
+ 		}
+ 	} else {
+@@ -1929,7 +1929,7 @@ static noinline int balance_level(struct
+ 		child = read_node_slot(root, mid, 0);
+ 		if (!child) {
+ 			ret = -EROFS;
+-			btrfs_std_error(root->fs_info, ret, NULL);
++			btrfs_handle_fs_error(root->fs_info, ret, NULL);
+ 			goto enospc;
+ 		}
+ 
+@@ -2032,7 +2032,7 @@ static noinline int balance_level(struct
+ 		 */
+ 		if (!left) {
+ 			ret = -EROFS;
+-			btrfs_std_error(root->fs_info, ret, NULL);
++			btrfs_handle_fs_error(root->fs_info, ret, NULL);
+ 			goto enospc;
+ 		}
+ 		wret = balance_node_right(trans, root, mid, left);
+--- a/fs/btrfs/ctree.h
++++ b/fs/btrfs/ctree.h
+@@ -4227,7 +4227,7 @@ static inline void assfail(char *expr, c
+ #define btrfs_assert()
+ __printf(5, 6)
+ __cold
+-void __btrfs_std_error(struct btrfs_fs_info *fs_info, const char *function,
++void __btrfs_handle_fs_error(struct btrfs_fs_info *fs_info, const char *function,
+ 		     unsigned int line, int errno, const char *fmt, ...);
+ 
+ const char *btrfs_decode_error(int errno);
+@@ -4288,9 +4288,9 @@ do {								\
+ 				  __LINE__, (errno));		\
+ } while (0)
+ 
+-#define btrfs_std_error(fs_info, errno, fmt, args...)		\
++#define btrfs_handle_fs_error(fs_info, errno, fmt, args...)		\
+ do {								\
+-	__btrfs_std_error((fs_info), __func__, __LINE__,	\
++	__btrfs_handle_fs_error((fs_info), __func__, __LINE__,	\
+ 			  (errno), fmt, ##args);		\
+ } while (0)
+ 
+--- a/fs/btrfs/disk-io.c
++++ b/fs/btrfs/disk-io.c
+@@ -2415,7 +2415,7 @@ static int btrfs_replay_log(struct btrfs
+ 	/* returns with log_tree_root freed on success */
+ 	ret = btrfs_recover_log_trees(log_tree_root);
+ 	if (ret) {
+-		btrfs_std_error(tree_root->fs_info, ret,
++		btrfs_handle_fs_error(tree_root->fs_info, ret,
+ 			    "Failed to recover log tree");
+ 		free_extent_buffer(log_tree_root->node);
+ 		kfree(log_tree_root);
+@@ -3616,7 +3616,7 @@ static int write_all_supers(struct btrfs
+ 		if (ret) {
+ 			mutex_unlock(
+ 				&root->fs_info->fs_devices->device_list_mutex);
+-			btrfs_std_error(root->fs_info, ret,
++			btrfs_handle_fs_error(root->fs_info, ret,
+ 				    "errors while submitting device barriers.");
+ 			return ret;
+ 		}
+@@ -3656,7 +3656,7 @@ static int write_all_supers(struct btrfs
+ 		mutex_unlock(&root->fs_info->fs_devices->device_list_mutex);
+ 
+ 		/* FUA is masked off if unsupported and can't be the reason */
+-		btrfs_std_error(root->fs_info, -EIO,
++		btrfs_handle_fs_error(root->fs_info, -EIO,
+ 			    "%d errors while writing supers", total_errors);
+ 		return -EIO;
+ 	}
+@@ -3674,7 +3674,7 @@ static int write_all_supers(struct btrfs
+ 	}
+ 	mutex_unlock(&root->fs_info->fs_devices->device_list_mutex);
+ 	if (total_errors > max_errors) {
+-		btrfs_std_error(root->fs_info, -EIO,
++		btrfs_handle_fs_error(root->fs_info, -EIO,
+ 			    "%d errors while writing supers", total_errors);
+ 		return -EIO;
+ 	}
+--- a/fs/btrfs/extent-tree.c
++++ b/fs/btrfs/extent-tree.c
+@@ -9045,7 +9045,7 @@ out:
+ 	if (!for_reloc && root_dropped == false)
+ 		btrfs_add_dead_root(root);
+ 	if (err && err != -EAGAIN)
+-		btrfs_std_error(root->fs_info, err, NULL);
++		btrfs_handle_fs_error(root->fs_info, err, NULL);
+ 	return err;
+ }
+ 
+--- a/fs/btrfs/inode-item.c
++++ b/fs/btrfs/inode-item.c
+@@ -157,7 +157,7 @@ static int btrfs_del_inode_extref(struct
+ 	 */
+ 	if (!btrfs_find_name_in_ext_backref(path, ref_objectid,
+ 					    name, name_len, &extref)) {
+-		btrfs_std_error(root->fs_info, -ENOENT, NULL);
++		btrfs_handle_fs_error(root->fs_info, -ENOENT, NULL);
+ 		ret = -EROFS;
+ 		goto out;
+ 	}
+--- a/fs/btrfs/ioctl.c
++++ b/fs/btrfs/ioctl.c
+@@ -4983,7 +4983,7 @@ static long btrfs_ioctl_qgroup_assign(st
+ 	/* update qgroup status and info */
+ 	err = btrfs_run_qgroups(trans, root->fs_info);
+ 	if (err < 0)
+-		btrfs_std_error(root->fs_info, ret,
++		btrfs_handle_fs_error(root->fs_info, ret,
+ 			    "failed to update qgroup status and info\n");
+ 	err = btrfs_end_transaction(trans, root);
+ 	if (err && !ret)
+--- a/fs/btrfs/relocation.c
++++ b/fs/btrfs/relocation.c
+@@ -2428,7 +2428,7 @@ again:
+ 	}
+ out:
+ 	if (ret) {
+-		btrfs_std_error(root->fs_info, ret, NULL);
++		btrfs_handle_fs_error(root->fs_info, ret, NULL);
+ 		if (!list_empty(&reloc_roots))
+ 			free_reloc_roots(&reloc_roots);
+ 
+--- a/fs/btrfs/root-tree.c
++++ b/fs/btrfs/root-tree.c
+@@ -284,7 +284,7 @@ int btrfs_find_orphan_roots(struct btrfs
+ 			trans = btrfs_join_transaction(tree_root);
+ 			if (IS_ERR(trans)) {
+ 				err = PTR_ERR(trans);
+-				btrfs_std_error(tree_root->fs_info, err,
++				btrfs_handle_fs_error(tree_root->fs_info, err,
+ 					    "Failed to start trans to delete "
+ 					    "orphan item");
+ 				break;
+@@ -293,7 +293,7 @@ int btrfs_find_orphan_roots(struct btrfs
+ 						    root_key.objectid);
+ 			btrfs_end_transaction(trans, tree_root);
+ 			if (err) {
+-				btrfs_std_error(tree_root->fs_info, err,
++				btrfs_handle_fs_error(tree_root->fs_info, err,
+ 					    "Failed to delete root orphan "
+ 					    "item");
+ 				break;
+--- a/fs/btrfs/super.c
++++ b/fs/btrfs/super.c
+@@ -131,11 +131,11 @@ static void btrfs_handle_error(struct bt
+ }
+ 
+ /*
+- * __btrfs_std_error decodes expected errors from the caller and
++ * __btrfs_handle_fs_error decodes expected errors from the caller and
+  * invokes the approciate error response.
+  */
+ __cold
+-void __btrfs_std_error(struct btrfs_fs_info *fs_info, const char *function,
++void __btrfs_handle_fs_error(struct btrfs_fs_info *fs_info, const char *function,
+ 		       unsigned int line, int errno, const char *fmt, ...)
+ {
+ 	struct super_block *sb = fs_info->sb;
+@@ -252,7 +252,7 @@ void __btrfs_abort_transaction(struct bt
+ 	/* Wake up anybody who may be waiting on this transaction */
+ 	wake_up(&root->fs_info->transaction_wait);
+ 	wake_up(&root->fs_info->transaction_blocked_wait);
+-	__btrfs_std_error(root->fs_info, function, line, errno, NULL);
++	__btrfs_handle_fs_error(root->fs_info, function, line, errno, NULL);
+ }
+ /*
+  * __btrfs_panic decodes unexpected, fatal errors from the caller,
+--- a/fs/btrfs/transaction.c
++++ b/fs/btrfs/transaction.c
+@@ -2223,7 +2223,7 @@ int btrfs_commit_transaction(struct btrf
+ 
+ 	ret = btrfs_write_and_wait_transaction(trans, root);
+ 	if (ret) {
+-		btrfs_std_error(root->fs_info, ret,
++		btrfs_handle_fs_error(root->fs_info, ret,
+ 			    "Error while writing out transaction");
+ 		mutex_unlock(&root->fs_info->tree_log_mutex);
+ 		goto scrub_continue;
+--- a/fs/btrfs/tree-log.c
++++ b/fs/btrfs/tree-log.c
+@@ -5510,7 +5510,7 @@ int btrfs_recover_log_trees(struct btrfs
+ 
+ 	ret = walk_log_tree(trans, log_root_tree, &wc);
+ 	if (ret) {
+-		btrfs_std_error(fs_info, ret, "Failed to pin buffers while "
++		btrfs_handle_fs_error(fs_info, ret, "Failed to pin buffers while "
+ 			    "recovering log root tree.");
+ 		goto error;
+ 	}
+@@ -5524,7 +5524,7 @@ again:
+ 		ret = btrfs_search_slot(NULL, log_root_tree, &key, path, 0, 0);
+ 
+ 		if (ret < 0) {
+-			btrfs_std_error(fs_info, ret,
++			btrfs_handle_fs_error(fs_info, ret,
+ 				    "Couldn't find tree log root.");
+ 			goto error;
+ 		}
+@@ -5542,7 +5542,7 @@ again:
+ 		log = btrfs_read_fs_root(log_root_tree, &found_key);
+ 		if (IS_ERR(log)) {
+ 			ret = PTR_ERR(log);
+-			btrfs_std_error(fs_info, ret,
++			btrfs_handle_fs_error(fs_info, ret,
+ 				    "Couldn't read tree log root.");
+ 			goto error;
+ 		}
+@@ -5557,7 +5557,7 @@ again:
+ 			free_extent_buffer(log->node);
+ 			free_extent_buffer(log->commit_root);
+ 			kfree(log);
+-			btrfs_std_error(fs_info, ret, "Couldn't read target root "
++			btrfs_handle_fs_error(fs_info, ret, "Couldn't read target root "
+ 				    "for tree log recovery.");
+ 			goto error;
+ 		}
+--- a/fs/btrfs/volumes.c
++++ b/fs/btrfs/volumes.c
+@@ -1454,7 +1454,7 @@ again:
+ 		extent = btrfs_item_ptr(leaf, path->slots[0],
+ 					struct btrfs_dev_extent);
+ 	} else {
+-		btrfs_std_error(root->fs_info, ret, "Slot search failed");
++		btrfs_handle_fs_error(root->fs_info, ret, "Slot search failed");
+ 		goto out;
+ 	}
+ 
+@@ -1462,7 +1462,7 @@ again:
+ 
+ 	ret = btrfs_del_item(trans, root, path);
+ 	if (ret) {
+-		btrfs_std_error(root->fs_info, ret,
++		btrfs_handle_fs_error(root->fs_info, ret,
+ 			    "Failed to remove dev extent item");
+ 	} else {
+ 		set_bit(BTRFS_TRANS_HAVE_FREE_BGS, &trans->transaction->flags);
+@@ -2427,7 +2427,7 @@ int btrfs_init_new_device(struct btrfs_r
+ 
+ 		ret = btrfs_relocate_sys_chunks(root);
+ 		if (ret < 0)
+-			btrfs_std_error(root->fs_info, ret,
++			btrfs_handle_fs_error(root->fs_info, ret,
+ 				    "Failed to relocate sys chunks after "
+ 				    "device initialization. This can be fixed "
+ 				    "using the \"btrfs balance\" command.");
+@@ -2672,7 +2672,7 @@ static int btrfs_free_chunk(struct btrfs
+ 	if (ret < 0)
+ 		goto out;
+ 	else if (ret > 0) { /* Logic error or corruption */
+-		btrfs_std_error(root->fs_info, -ENOENT,
++		btrfs_handle_fs_error(root->fs_info, -ENOENT,
+ 			    "Failed lookup while freeing chunk.");
+ 		ret = -ENOENT;
+ 		goto out;
+@@ -2680,7 +2680,7 @@ static int btrfs_free_chunk(struct btrfs
+ 
+ 	ret = btrfs_del_item(trans, root, path);
+ 	if (ret < 0)
+-		btrfs_std_error(root->fs_info, ret,
++		btrfs_handle_fs_error(root->fs_info, ret,
+ 			    "Failed to delete chunk item.");
+ out:
+ 	btrfs_free_path(path);
+@@ -2866,7 +2866,7 @@ static int btrfs_relocate_chunk(struct b
+ 						     chunk_offset);
+ 	if (IS_ERR(trans)) {
+ 		ret = PTR_ERR(trans);
+-		btrfs_std_error(root->fs_info, ret, NULL);
++		btrfs_handle_fs_error(root->fs_info, ret, NULL);
+ 		return ret;
+ 	}
+ 
+@@ -3648,7 +3648,7 @@ static void __cancel_balance(struct btrf
+ 	unset_balance_control(fs_info);
+ 	ret = del_balance_item(fs_info->tree_root);
+ 	if (ret)
+-		btrfs_std_error(fs_info, ret, NULL);
++		btrfs_handle_fs_error(fs_info, ret, NULL);
+ 
+ 	atomic_set(&fs_info->mutually_exclusive_operation_running, 0);
+ }

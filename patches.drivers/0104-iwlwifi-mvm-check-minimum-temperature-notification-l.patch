@@ -1,0 +1,32 @@
+From be720d3fc049e14323f2ba637c053fe39d3e0157 Mon Sep 17 00:00:00 2001
+From: Johannes Berg <johannes.berg@intel.com>
+Date: Tue, 5 Jan 2016 16:16:31 +0100
+Subject: [PATCH] iwlwifi: mvm: check minimum temperature notification length
+Git-commit: be720d3fc049e14323f2ba637c053fe39d3e0157
+Patch-mainline: 4.5-rc1
+References: FATE#321353, FATE#323335
+
+This notification will be extended with extra data, so just
+check that it has a minimum length, not the exact length;
+we might later add handling for the extra fields added and
+have more code to handle both versions.
+
+Signed-off-by: Johannes Berg <johannes.berg@intel.com>
+Signed-off-by: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/iwlwifi/mvm/tt.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+--- a/drivers/net/wireless/iwlwifi/mvm/tt.c
++++ b/drivers/net/wireless/iwlwifi/mvm/tt.c
+@@ -120,7 +120,7 @@ static int iwl_mvm_temp_notif_parse(stru
+ 	int len = iwl_rx_packet_payload_len(pkt);
+ 	int temp;
+ 
+-	if (WARN_ON_ONCE(len != sizeof(*notif))) {
++	if (WARN_ON_ONCE(len < sizeof(*notif))) {
+ 		IWL_ERR(mvm, "Invalid DTS_MEASUREMENT_NOTIFICATION\n");
+ 		return -EINVAL;
+ 	}

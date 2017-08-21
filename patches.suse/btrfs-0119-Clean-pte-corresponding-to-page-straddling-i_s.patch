@@ -1,0 +1,82 @@
+From: Chandan Rajendra <chandan@linux.vnet.ibm.com>
+Date: Thu, 21 Jan 2016 15:56:03 +0530
+Patch-mainline: 4.6
+Git-commit: 27772b68f6994f0011690899c31717b7cbec51c9
+References: bsc#1012452
+Subject: [PATCH] Btrfs: Clean pte corresponding to page straddling
+ i_size
+
+When extending a file by either "truncate up" or by writing beyond i_size, the
+page which had i_size needs to be marked "read only" so that future writes to
+the page via mmap interface causes btrfs_page_mkwrite() to be invoked. If not,
+a write performed after extending the file via the mmap interface will find
+the page to be writaeable and continue writing to the page without invoking
+btrfs_page_mkwrite() i.e. we end up writing to a file without reserving disk
+space.
+
+Signed-off-by: Chandan Rajendra <chandan@linux.vnet.ibm.com>
+Signed-off-by: David Sterba <dsterba@suse.com>
+---
+ fs/btrfs/file.c  |   12 ++++++++++--
+ fs/btrfs/inode.c |    2 +-
+ 2 files changed, 11 insertions(+), 3 deletions(-)
+
+--- a/fs/btrfs/file.c
++++ b/fs/btrfs/file.c
+@@ -1777,6 +1777,8 @@ static ssize_t btrfs_file_write_iter(str
+ 	ssize_t err;
+ 	loff_t pos;
+ 	size_t count;
++	loff_t oldsize;
++	int clean_page = 0;
+ 
+ 	mutex_lock(&inode->i_mutex);
+ 	err = generic_write_checks(iocb, from);
+@@ -1815,14 +1817,17 @@ static ssize_t btrfs_file_write_iter(str
+ 	pos = iocb->ki_pos;
+ 	count = iov_iter_count(from);
+ 	start_pos = round_down(pos, root->sectorsize);
+-	if (start_pos > i_size_read(inode)) {
++	oldsize = i_size_read(inode);
++	if (start_pos > oldsize) {
+ 		/* Expand hole size to cover write data, preventing empty gap */
+ 		end_pos = round_up(pos + count, root->sectorsize);
+-		err = btrfs_cont_expand(inode, i_size_read(inode), end_pos);
++		err = btrfs_cont_expand(inode, oldsize, end_pos);
+ 		if (err) {
+ 			mutex_unlock(&inode->i_mutex);
+ 			goto out;
+ 		}
++		if (start_pos > round_up(oldsize, root->sectorsize))
++			clean_page = 1;
+ 	}
+ 
+ 	if (sync)
+@@ -1834,6 +1839,9 @@ static ssize_t btrfs_file_write_iter(str
+ 		num_written = __btrfs_buffered_write(file, from, pos);
+ 		if (num_written > 0)
+ 			iocb->ki_pos = pos + num_written;
++		if (clean_page)
++			pagecache_isize_extended(inode, oldsize,
++						i_size_read(inode));
+ 	}
+ 
+ 	mutex_unlock(&inode->i_mutex);
+--- a/fs/btrfs/inode.c
++++ b/fs/btrfs/inode.c
+@@ -4919,7 +4919,6 @@ static int btrfs_setsize(struct inode *i
+ 	}
+ 
+ 	if (newsize > oldsize) {
+-		truncate_pagecache(inode, newsize);
+ 		/*
+ 		 * Don't do an expanding truncate while snapshoting is ongoing.
+ 		 * This is to ensure the snapshot captures a fully consistent
+@@ -4942,6 +4941,7 @@ static int btrfs_setsize(struct inode *i
+ 
+ 		i_size_write(inode, newsize);
+ 		btrfs_ordered_update_i_size(inode, i_size_read(inode), NULL);
++		pagecache_isize_extended(inode, oldsize, newsize);
+ 		ret = btrfs_update_inode(trans, root, inode);
+ 		btrfs_end_write_no_snapshoting(root);
+ 		btrfs_end_transaction(trans, root);

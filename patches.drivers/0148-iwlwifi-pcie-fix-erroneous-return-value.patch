@@ -1,0 +1,30 @@
+From 20aa99bbddae74bded68338f9ba200ccae02858b Mon Sep 17 00:00:00 2001
+From: Anton Protopopov <a.s.protopopov@gmail.com>
+Date: Thu, 11 Feb 2016 08:35:15 +0200
+Subject: [PATCH] iwlwifi: pcie: fix erroneous return value
+Git-commit: 20aa99bbddae74bded68338f9ba200ccae02858b
+Patch-mainline: 4.5-rc6
+References: FATE#321353, FATE#323335
+
+The iwl_trans_pcie_start_fw() function may return the positive value EIO
+instead of -EIO in case of error.
+
+Signed-off-by: Anton Protopopov <a.s.protopopov@gmail.com>
+Signed-off-by: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/iwlwifi/pcie/trans.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+--- a/drivers/net/wireless/iwlwifi/pcie/trans.c
++++ b/drivers/net/wireless/iwlwifi/pcie/trans.c
+@@ -1169,7 +1169,7 @@ static int iwl_trans_pcie_start_fw(struc
+ 	if (trans_pcie->is_down) {
+ 		IWL_WARN(trans,
+ 			 "Can't start_fw since the HW hasn't been started\n");
+-		ret = EIO;
++		ret = -EIO;
+ 		goto out;
+ 	}
+ 

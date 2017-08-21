@@ -1,0 +1,33 @@
+From 5d4e8d6463dd7a7fb4f7f0bd1a045036c30b3bed Mon Sep 17 00:00:00 2001
+From: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Date: Thu, 17 Dec 2015 10:41:49 +0200
+Subject: [PATCH] iwlwifi: fix printf specifier
+Git-commit: 5d4e8d6463dd7a7fb4f7f0bd1a045036c30b3bed
+Patch-mainline: 4.5-rc1
+References: FATE#321353, FATE#323335
+
+Smatch warned about a bad specifier being used. Fix that.
+
+Signed-off-by: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/iwlwifi/iwl-eeprom-parse.c |    4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+--- a/drivers/net/wireless/iwlwifi/iwl-eeprom-parse.c
++++ b/drivers/net/wireless/iwlwifi/iwl-eeprom-parse.c
+@@ -454,11 +454,11 @@ static void iwl_eeprom_enhanced_txpower(
+ 				 TXP_CHECK_AND_PRINT(COMMON_TYPE),
+ 				 txp->flags);
+ 		IWL_DEBUG_EEPROM(dev,
+-				 "\t\t chain_A: 0x%02x chain_B: 0X%02x chain_C: 0X%02x\n",
++				 "\t\t chain_A: %d chain_B: %d chain_C: %d\n",
+ 				 txp->chain_a_max, txp->chain_b_max,
+ 				 txp->chain_c_max);
+ 		IWL_DEBUG_EEPROM(dev,
+-				 "\t\t MIMO2: 0x%02x MIMO3: 0x%02x High 20_on_40: 0x%02x Low 20_on_40: 0x%02x\n",
++				 "\t\t MIMO2: %d MIMO3: %d High 20_on_40: 0x%02x Low 20_on_40: 0x%02x\n",
+ 				 txp->mimo2_max, txp->mimo3_max,
+ 				 ((txp->delta_20_in_40 & 0xf0) >> 4),
+ 				 (txp->delta_20_in_40 & 0x0f));

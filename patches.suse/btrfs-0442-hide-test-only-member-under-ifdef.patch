@@ -1,0 +1,44 @@
+From: David Sterba <dsterba@suse.com>
+Date: Fri, 15 Jul 2016 15:23:37 +0200
+Patch-mainline: 4.8
+Git-commit: 05653ef38659edc46a886c9bda105e64edba6896
+References: bsc#1012452
+Subject: [PATCH] btrfs: hide test-only member under ifdef
+
+Signed-off-by: David Sterba <dsterba@suse.com>
+---
+ fs/btrfs/ctree.h       |    2 ++
+ fs/btrfs/extent-tree.c |    2 ++
+ 2 files changed, 4 insertions(+)
+
+--- a/fs/btrfs/ctree.h
++++ b/fs/btrfs/ctree.h
+@@ -1160,8 +1160,10 @@ struct btrfs_root {
+ 
+ 	u64 highest_objectid;
+ 
++#ifdef CONFIG_BTRFS_FS_RUN_SANITY_TESTS
+ 	/* only used with CONFIG_BTRFS_FS_RUN_SANITY_TESTS is enabled */
+ 	u64 alloc_bytenr;
++#endif
+ 
+ 	u64 defrag_trans_start;
+ 	struct btrfs_key defrag_progress;
+--- a/fs/btrfs/extent-tree.c
++++ b/fs/btrfs/extent-tree.c
+@@ -8324,6 +8324,7 @@ struct extent_buffer *btrfs_alloc_tree_b
+ 	bool skinny_metadata = btrfs_fs_incompat(root->fs_info,
+ 						 SKINNY_METADATA);
+ 
++#ifdef CONFIG_BTRFS_FS_RUN_SANITY_TESTS
+ 	if (btrfs_test_is_dummy_root(root)) {
+ 		buf = btrfs_init_new_buffer(trans, root, root->alloc_bytenr,
+ 					    level);
+@@ -8331,6 +8332,7 @@ struct extent_buffer *btrfs_alloc_tree_b
+ 			root->alloc_bytenr += blocksize;
+ 		return buf;
+ 	}
++#endif
+ 
+ 	block_rsv = use_block_rsv(trans, root, blocksize);
+ 	if (IS_ERR(block_rsv))

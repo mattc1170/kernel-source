@@ -1,0 +1,44 @@
+From: Josef Bacik <jbacik@fb.com>
+Date: Fri, 25 Mar 2016 13:25:58 -0400
+Patch-mainline: 4.8
+Git-commit: 31bada7c4e5e80b9cc031e89247175bed58ed9e9
+References: bsc#1012452
+Subject: [PATCH] Btrfs: fix release reserved extents trace points
+
+We were doing trace_btrfs_release_reserved_extent() in pin_down_extent which
+isn't quite right because we will go through and free that extent later when we
+unpin, so it messes up apps that are accounting for the reservation space.  We
+were also unconditionally doing it in __btrfs_free_reserved_extent(), when we
+only actually free the reservation instead of pinning the extent.  Thanks,
+
+Signed-off-by: Josef Bacik <jbacik@fb.com>
+Signed-off-by: David Sterba <dsterba@suse.com>
+---
+ fs/btrfs/extent-tree.c |    6 +-----
+ 1 file changed, 1 insertion(+), 5 deletions(-)
+
+--- a/fs/btrfs/extent-tree.c
++++ b/fs/btrfs/extent-tree.c
+@@ -6318,8 +6318,6 @@ static int pin_down_extent(struct btrfs_
+ 				      cache->space_info->flags, num_bytes, 1);
+ 	set_extent_dirty(root->fs_info->pinned_extents, bytenr,
+ 			 bytenr + num_bytes - 1, GFP_NOFS | __GFP_NOFAIL);
+-	if (reserved)
+-		trace_btrfs_reserved_extent_free(root, bytenr, num_bytes);
+ 	return 0;
+ }
+ 
+@@ -7988,12 +7986,10 @@ static int __btrfs_free_reserved_extent(
+ 			ret = btrfs_discard_extent(root, start, len, NULL);
+ 		btrfs_add_free_space(cache, start, len);
+ 		btrfs_update_reserved_bytes(cache, len, RESERVE_FREE, delalloc);
++		trace_btrfs_reserved_extent_free(root, start, len);
+ 	}
+ 
+ 	btrfs_put_block_group(cache);
+-
+-	trace_btrfs_reserved_extent_free(root, start, len);
+-
+ 	return ret;
+ }
+ 

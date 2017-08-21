@@ -1,0 +1,40 @@
+From: Jeff Mahoney <jeffm@suse.com>
+Date: Fri, 1 Apr 2016 16:14:23 -0400
+Patch-mainline: 4.7
+Git-commit: d4ae133b2d195d88cf5394072724adfa6ccdd64b
+References: bsc#1012452
+Subject: [PATCH] btrfs: uapi/linux/btrfs.h migration, move
+ BTRFS_LABEL_SIZE
+
+BTRFS_LABEL_SIZE is required to define the BTRFS_IOC_GET_FSLABEL and
+BTRFS_IOC_SET_FSLABEL ioctls.
+
+Signed-off-by: Jeff Mahoney <jeffm@suse.com>
+Reviewed-by: Liu Bo <bo.li.liu@oracle.com>
+Reviewed-by: Josef Bacik <jbacik@fb.com>
+Signed-off-by: David Sterba <dsterba@suse.com>
+---
+ fs/btrfs/ctree.h           |    1 -
+ include/uapi/linux/btrfs.h |    1 +
+ 2 files changed, 1 insertion(+), 1 deletion(-)
+
+--- a/fs/btrfs/ctree.h
++++ b/fs/btrfs/ctree.h
+@@ -403,7 +403,6 @@ struct btrfs_header {
+  * room to translate 14 chunks with 3 stripes each.
+  */
+ #define BTRFS_SYSTEM_CHUNK_ARRAY_SIZE 2048
+-#define BTRFS_LABEL_SIZE 256
+ 
+ /*
+  * just in case we somehow lose the roots and are not able to mount,
+--- a/include/uapi/linux/btrfs.h
++++ b/include/uapi/linux/btrfs.h
+@@ -23,6 +23,7 @@
+ 
+ #define BTRFS_IOCTL_MAGIC 0x94
+ #define BTRFS_VOL_NAME_MAX 255
++#define BTRFS_LABEL_SIZE 256
+ 
+ /* this should be 4k */
+ #define BTRFS_PATH_NAME_MAX 4087

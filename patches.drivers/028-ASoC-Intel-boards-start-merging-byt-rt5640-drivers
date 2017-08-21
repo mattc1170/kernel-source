@@ -183,13 +183,14 @@ Signed-off-by: Takashi Iwai <tiwai@suse.de>
  	},
  	[MERR_DPCM_COMPR] = {
  		.name = "Baytrail Compressed Port",
-@@ -186,55 +240,57 @@ static struct snd_soc_dai_link byt_daili
+@@ -186,56 +240,58 @@ static struct snd_soc_dai_link byt_daili
  		.codec_name = "i2c-10EC5640:00",
  		.dai_fmt = SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_NB_NF
  						| SND_SOC_DAIFMT_CBS_CFS,
 -		.be_hw_params_fixup = byt_codec_fixup,
 +		.be_hw_params_fixup = byt_rt5640_codec_fixup,
  		.ignore_suspend = 1,
+ 		.nonatomic = true,
  		.dpcm_playback = 1,
  		.dpcm_capture = 1,
 -		.ops = &byt_be_ssp2_ops,

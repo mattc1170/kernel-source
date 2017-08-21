@@ -1,0 +1,41 @@
+From: Eric Wheeler <git@linux.ewheeler.net>
+Date: Sun, 23 Oct 2016 18:19:20 -0700
+Subject: [PATCH] bcache: partition support: add 16 minors per bcacheN device
+Git-commit: b8c0d911ac5285e6be8967713271a51bdc5a936a
+Patch-mainline: v4.10-rc1 
+References: bsc#1019784
+
+Signed-off-by: Eric Wheeler <bcache@linux.ewheeler.net>
+Tested-by: Wido den Hollander <wido@widodh.nl>
+Signed-off-by: Coly Li <colyli@suse.de>
+---
+ drivers/md/bcache/super.c | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/md/bcache/super.c b/drivers/md/bcache/super.c
+index b33dd3b..3a19cbc 100644
+--- a/drivers/md/bcache/super.c
++++ b/drivers/md/bcache/super.c
+@@ -58,6 +58,7 @@ static wait_queue_head_t unregister_wait;
+ struct workqueue_struct *bcache_wq;
+ 
+ #define BTREE_MAX_PAGES		(256 * 1024 / PAGE_SIZE)
++#define BCACHE_MINORS		16 /* partition support */
+ 
+ /* Superblock */
+ 
+@@ -783,8 +784,10 @@ static int bcache_device_init(struct bcache_device *d, unsigned block_size,
+ 	if (minor < 0)
+ 		return minor;
+ 
++	minor *= BCACHE_MINORS;
++
+ 	if (!(d->bio_split = bioset_create(4, offsetof(struct bbio, bio))) ||
+-	    !(d->disk = alloc_disk(1))) {
++	    !(d->disk = alloc_disk(BCACHE_MINORS))) {
+ 		ida_simple_remove(&bcache_minor, minor);
+ 		return -ENOMEM;
+ 	}
+-- 
+2.6.6
+

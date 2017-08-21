@@ -15,16 +15,13 @@ Cc: Sagi Grimberg <sagig@mellanox.com>
 Signed-off-by: Nicholas Bellinger <nab@linux-iscsi.org>
 Acked-by: Lee Duncan <lduncan@suse.com>
 ---
- drivers/target/target_core_tpg.c       | 3 ---
- drivers/target/target_core_transport.c | 1 -
- include/target/target_core_base.h      | 2 --
- 3 files changed, 6 deletions(-)
+ drivers/target/target_core_tpg.c  |    3 ---
+ include/target/target_core_base.h |    2 --
+ 2 files changed, 5 deletions(-)
 
-diff --git a/drivers/target/target_core_tpg.c b/drivers/target/target_core_tpg.c
-index 5fb9dd7f08bb..62103a8cbe72 100644
 --- a/drivers/target/target_core_tpg.c
 +++ b/drivers/target/target_core_tpg.c
-@@ -219,7 +219,6 @@ static void target_add_node_acl(struct se_node_acl *acl)
+@@ -231,7 +231,6 @@ static void target_add_node_acl(struct s
  
  	mutex_lock(&tpg->acl_node_mutex);
  	list_add_tail(&acl->acl_list, &tpg->acl_node_list);
@@ -32,7 +29,7 @@ index 5fb9dd7f08bb..62103a8cbe72 100644
  	mutex_unlock(&tpg->acl_node_mutex);
  
  	pr_debug("%s_TPG[%hu] - Added %s ACL with TCQ Depth: %d for %s"
-@@ -318,7 +317,6 @@ void core_tpg_del_initiator_node_acl(struct se_node_acl *acl)
+@@ -358,7 +357,6 @@ void core_tpg_del_initiator_node_acl(str
  		acl->dynamic_node_acl = 0;
  	}
  	list_del(&acl->acl_list);
@@ -40,7 +37,7 @@ index 5fb9dd7f08bb..62103a8cbe72 100644
  	mutex_unlock(&tpg->acl_node_mutex);
  
  	spin_lock_irqsave(&acl->nacl_sess_lock, flags);
-@@ -595,7 +593,6 @@ int core_tpg_deregister(struct se_portal_group *se_tpg)
+@@ -635,7 +633,6 @@ int core_tpg_deregister(struct se_portal
  	 */
  	list_for_each_entry_safe(nacl, nacl_tmp, &node_list, acl_list) {
  		list_del(&nacl->acl_list);
@@ -48,23 +45,9 @@ index 5fb9dd7f08bb..62103a8cbe72 100644
  
  		core_tpg_wait_for_nacl_pr_ref(nacl);
  		core_free_device_list_for_node(nacl, se_tpg);
-diff --git a/drivers/target/target_core_transport.c b/drivers/target/target_core_transport.c
-index 717c73bbebec..c0e112c4de28 100644
---- a/drivers/target/target_core_transport.c
-+++ b/drivers/target/target_core_transport.c
-@@ -502,7 +502,6 @@ void transport_deregister_session(struct se_session *se_sess)
- 	if (se_nacl && se_nacl->dynamic_node_acl) {
- 		if (!se_tfo->tpg_check_demo_mode_cache(se_tpg)) {
- 			list_del(&se_nacl->acl_list);
--			se_tpg->num_node_acls--;
- 			drop_nacl = true;
- 		}
- 	}
-diff --git a/include/target/target_core_base.h b/include/target/target_core_base.h
-index 4b258fcc7d6f..a4bed07f92a9 100644
 --- a/include/target/target_core_base.h
 +++ b/include/target/target_core_base.h
-@@ -868,8 +868,6 @@ struct se_portal_group {
+@@ -882,8 +882,6 @@ struct se_portal_group {
  	 * Negative values can be used by fabric drivers for internal use TPGs.
  	 */
  	int			proto_id;
@@ -73,4 +56,3 @@ index 4b258fcc7d6f..a4bed07f92a9 100644
  	/* Used for PR SPEC_I_PT=1 and REGISTER_AND_MOVE */
  	atomic_t		tpg_pr_ref_count;
  	/* Spinlock for adding/removing ACLed Nodes */
-

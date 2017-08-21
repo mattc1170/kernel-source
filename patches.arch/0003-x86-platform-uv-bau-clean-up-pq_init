@@ -1,0 +1,79 @@
+From: Andrew Banman <abanman@sgi.com>
+Date: Wed, 21 Sep 2016 11:09:14 -0500
+Subject: x86/platform/uv/BAU: Clean up pq_init()
+Git-commit: d2a57afa53f3fdf9f68d1f4240ace85a7d20ca20
+Patch-mainline: v4.9-rc1
+References: bsc#1035024
+
+The payload queue first MMR requires the physical memory address and hub
+GNODE of where the payload queue resides in memory, but the associated
+variables are named as if the PNODE were used. Rename gnode-related
+variables and clarify the definitions of the payload queue head, last, and
+tail pointers.
+
+Signed-off-by: Andrew Banman <abanman@sgi.com>
+Acked-by: Thomas Gleixner <tglx@linutronix.de>
+Acked-by: Mike Travis <travis@sgi.com>
+Acked-by: Dimitri Sivanich <sivanich@sgi.com>
+Acked-by: Thomas Gleixner <tglx@linutronix.de>
+Cc: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: Peter Zijlstra <peterz@infradead.org>
+Cc: akpm@linux-foundation.org
+Cc: rja@sgi.com
+Link: http://lkml.kernel.org/r/1474474161-265604-4-git-send-email-abanman@sgi.com
+Signed-off-by: Ingo Molnar <mingo@kernel.org>
+Acked-by: Joerg Roedel <jroedel@suse.de>
+---
+ arch/x86/include/asm/uv/uv_bau.h |  2 +-
+ arch/x86/platform/uv/tlb_uv.c    | 19 ++++++++-----------
+ 2 files changed, 9 insertions(+), 12 deletions(-)
+
+--- a/arch/x86/include/asm/uv/uv_bau.h
++++ b/arch/x86/include/asm/uv/uv_bau.h
+@@ -49,7 +49,7 @@
+ #define UV_NET_ENDPOINT_INTD		(is_uv1_hub() ?			\
+ 			UV1_NET_ENDPOINT_INTD : UV2_NET_ENDPOINT_INTD)
+ #define UV_DESC_PSHIFT			49
+-#define UV_PAYLOADQ_PNODE_SHIFT		49
++#define UV_PAYLOADQ_GNODE_SHIFT		49
+ #define UV_PTC_BASENAME			"sgi_uv/ptc_statistics"
+ #define UV_BAU_BASENAME			"sgi_uv/bau_tunables"
+ #define UV_BAU_TUNABLES_DIR		"sgi_uv"
+--- a/arch/x86/platform/uv/tlb_uv.c
++++ b/arch/x86/platform/uv/tlb_uv.c
+@@ -1790,10 +1790,7 @@ static void pq_init(int node, int pnode)
+ 	size_t plsize;
+ 	char *cp;
+ 	void *vp;
+-	unsigned long pn;
+-	unsigned long first;
+-	unsigned long pn_first;
+-	unsigned long last;
++	unsigned long gnode, first, last, tail;
+ 	struct bau_pq_entry *pqp;
+ 	struct bau_control *bcp;
+ 
+@@ -1814,16 +1811,16 @@ static void pq_init(int node, int pnode)
+ 		bcp->bau_msg_head	= pqp;
+ 		bcp->queue_last		= pqp + (DEST_Q_SIZE - 1);
+ 	}
+-	/*
+-	 * need the gnode of where the memory was really allocated
+-	 */
+-	pn = uv_gpa_to_gnode(uv_gpa(pqp));
++
+ 	first = uv_physnodeaddr(pqp);
+-	pn_first = ((unsigned long)pn << UV_PAYLOADQ_PNODE_SHIFT) | first;
+ 	last = uv_physnodeaddr(pqp + (DEST_Q_SIZE - 1));
+-	write_mmr_payload_first(pnode, pn_first);
+-	write_mmr_payload_tail(pnode, first);
++	tail = first;
++	gnode = uv_gpa_to_gnode(uv_gpa(pqp));
++	first = (gnode << UV_PAYLOADQ_GNODE_SHIFT) | tail;
++
++	write_mmr_payload_first(pnode, first);
+ 	write_mmr_payload_last(pnode, last);
++	write_mmr_payload_tail(pnode, tail);
+ 	write_gmmr_sw_ack(pnode, 0xffffUL);
+ 
+ 	/* in effect, all msg_type's are set to MSG_NOOP */

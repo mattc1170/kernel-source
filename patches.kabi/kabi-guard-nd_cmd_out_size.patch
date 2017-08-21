@@ -1,0 +1,76 @@
+From: Johannes Thumshirn <jthumshirn@suse.de> 
+Subject: nvdimm: kabi protect nd_cmd_out_size()
+Date: Thu Feb  2 13:37:47 CET 2017
+References: bsc#1023175
+Patch-mainline: Never, kABI fix
+
+kabi protect nd_cmd_out_size() by introducing __nd_cmd_out_size() and letting
+nd_cmd_out_size() wrap __nd_cmd_out_size().
+
+Signed-off-by: Johannes Thumshirn <jthumshirn@suse.de>
+
+---
+ drivers/acpi/nfit.c       |    2 +-
+ drivers/nvdimm/bus.c      |   13 +++++++++++--
+ include/linux/libnvdimm.h |    3 +++
+ 3 files changed, 15 insertions(+), 3 deletions(-)
+
+--- a/drivers/acpi/nfit.c
++++ b/drivers/acpi/nfit.c
+@@ -304,7 +304,7 @@ static int acpi_nfit_ctl(struct nvdimm_b
+ 	}
+ 
+ 	for (i = 0, offset = 0; i < desc->out_num; i++) {
+-		u32 out_size = nd_cmd_out_size(nvdimm, cmd, desc, i, buf,
++		u32 out_size = __nd_cmd_out_size(nvdimm, cmd, desc, i, buf,
+ 				(u32 *) out_obj->buffer.pointer,
+ 				out_obj->buffer.length - offset);
+ 
+--- a/drivers/nvdimm/bus.c
++++ b/drivers/nvdimm/bus.c
+@@ -527,7 +527,7 @@ u32 nd_cmd_in_size(struct nvdimm *nvdimm
+ }
+ EXPORT_SYMBOL_GPL(nd_cmd_in_size);
+ 
+-u32 nd_cmd_out_size(struct nvdimm *nvdimm, int cmd,
++u32 __nd_cmd_out_size(struct nvdimm *nvdimm, int cmd,
+ 		const struct nd_cmd_desc *desc, int idx, const u32 *in_field,
+ 		const u32 *out_field, unsigned long remainder)
+ {
+@@ -567,6 +567,15 @@ u32 nd_cmd_out_size(struct nvdimm *nvdim
+ 
+ 	return UINT_MAX;
+ }
++EXPORT_SYMBOL_GPL(__nd_cmd_out_size);
++
++u32 nd_cmd_out_size(struct nvdimm *nvdimm, int cmd,
++		const struct nd_cmd_desc *desc, int idx, const u32 *in_field,
++		const u32 *out_field)
++{
++	return __nd_cmd_out_size(nvdimm, cmd, desc, idx,
++				 in_field, out_field, 0);
++}
+ EXPORT_SYMBOL_GPL(nd_cmd_out_size);
+ 
+ void wait_nvdimm_bus_probe_idle(struct device *dev)
+@@ -705,7 +714,7 @@ static int __nd_ioctl(struct nvdimm_bus
+ 	/* process an output envelope */
+ 	for (i = 0; i < desc->out_num; i++) {
+ 		u32 out_size = nd_cmd_out_size(nvdimm, cmd, desc, i,
+-				(u32 *) in_env, (u32 *) out_env, 0);
++				(u32 *) in_env, (u32 *) out_env);
+ 		u32 copy;
+ 
+ 		if (out_size == UINT_MAX) {
+--- a/include/linux/libnvdimm.h
++++ b/include/linux/libnvdimm.h
+@@ -141,6 +141,9 @@ u32 nd_cmd_in_size(struct nvdimm *nvdimm
+ 		const struct nd_cmd_desc *desc, int idx, void *buf);
+ u32 nd_cmd_out_size(struct nvdimm *nvdimm, int cmd,
+ 		const struct nd_cmd_desc *desc, int idx, const u32 *in_field,
++		const u32 *out_field);
++u32 __nd_cmd_out_size(struct nvdimm *nvdimm, int cmd,
++		const struct nd_cmd_desc *desc, int idx, const u32 *in_field,
+ 		const u32 *out_field, unsigned long remainder);
+ int nvdimm_bus_check_dimm_count(struct nvdimm_bus *nvdimm_bus, int dimm_count);
+ struct nd_region *nvdimm_pmem_region_create(struct nvdimm_bus *nvdimm_bus,

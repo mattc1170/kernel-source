@@ -1,0 +1,312 @@
+From: Jitendra Bhivare <jitendra.bhivare@broadcom.com>
+Date: Fri, 19 Aug 2016 15:20:13 +0530
+Subject: scsi: be2iscsi: Fix to add timer for UE detection
+References: bsc#1038458
+Git-commit: 10bcd47dff496206de68223aeb1a581bccad03d3
+Patch-Mainline: v4.9-rc1
+
+UE detection in health check is done in a work scheduled in global wq.
+UE caused due to transient parity errors are recoverable and reported
+within 1s. If this check for TPE gets delayed, PF0 might initiate
+soft-reset and then status of UE recoverable is lost.
+
+Handle UE detection in timer routine. Move out EQ delay update work
+from health check. Make the IOCTL for EQ delay update non-blocking
+as the completion status is ignored.
+
+Signed-off-by: Jitendra Bhivare <jitendra.bhivare@broadcom.com>
+Reviewed-by: Hannes Reinecke <hare@suse.com>
+Signed-off-by: Martin K. Petersen <martin.petersen@oracle.com>
+Signed-off-by: Hannes Reinecke <hare@suse.de>
+---
+ drivers/scsi/be2iscsi/be.h      |  9 +++--
+ drivers/scsi/be2iscsi/be_cmds.c |  7 ++++
+ drivers/scsi/be2iscsi/be_cmds.h |  2 +-
+ drivers/scsi/be2iscsi/be_main.c | 90 ++++++++++++++++++++++-------------------
+ drivers/scsi/be2iscsi/be_main.h |  7 +++-
+ drivers/scsi/be2iscsi/be_mgmt.c | 11 +++--
+ 6 files changed, 75 insertions(+), 51 deletions(-)
+
+diff --git a/drivers/scsi/be2iscsi/be.h b/drivers/scsi/be2iscsi/be.h
+index 454002d..bb4042c 100644
+--- a/drivers/scsi/be2iscsi/be.h
++++ b/drivers/scsi/be2iscsi/be.h
+@@ -89,7 +89,7 @@ struct be_aic_obj {		/* Adaptive interrupt coalescing (AIC) info */
+ 	u32 max_eqd;		/* in usecs */
+ 	u32 prev_eqd;		/* in usecs */
+ 	u32 et_eqd;		/* configured val when aic is off */
+-	ulong jiffs;
++	ulong jiffies;
+ 	u64 eq_prev;		/* Used to calculate eqe */
+ };
+ 
+@@ -111,9 +111,10 @@ struct be_mcc_obj {
+ 
+ struct beiscsi_mcc_tag_state {
+ 	unsigned long tag_state;
+-#define MCC_TAG_STATE_RUNNING	1
+-#define MCC_TAG_STATE_TIMEOUT	2
+-#define MCC_TAG_STATE_ASYNC	3
++#define MCC_TAG_STATE_RUNNING	0
++#define MCC_TAG_STATE_TIMEOUT	1
++#define MCC_TAG_STATE_ASYNC	2
++#define MCC_TAG_STATE_IGNORE	3
+ 	void (*cbfn)(struct beiscsi_hba *, unsigned int);
+ 	struct be_dma_mem tag_mem_state;
+ };
+diff --git a/drivers/scsi/be2iscsi/be_cmds.c b/drivers/scsi/be2iscsi/be_cmds.c
+index 27d10ce..7cb009e 100644
+--- a/drivers/scsi/be2iscsi/be_cmds.c
++++ b/drivers/scsi/be2iscsi/be_cmds.c
+@@ -515,6 +515,13 @@ int beiscsi_process_mcc_compl(struct be_ctrl_info *ctrl,
+ 		return 0;
+ 	}
+ 
++	if (test_bit(MCC_TAG_STATE_IGNORE, &ctrl->ptag_state[tag].tag_state)) {
++		/* just check completion status and free wrb */
++		__beiscsi_mcc_compl_status(phba, tag, NULL, NULL);
++		free_mcc_wrb(ctrl, tag);
++		return 0;
++	}
++
+ 	wake_up_interruptible(&ctrl->mcc_wait[tag]);
+ 	return 0;
+ }
+diff --git a/drivers/scsi/be2iscsi/be_cmds.h b/drivers/scsi/be2iscsi/be_cmds.h
+index 0510b67..6fb9673 100644
+--- a/drivers/scsi/be2iscsi/be_cmds.h
++++ b/drivers/scsi/be2iscsi/be_cmds.h
+@@ -743,7 +743,7 @@ unsigned int be_cmd_get_initname(struct beiscsi_hba *phba);
+ 
+ void free_mcc_wrb(struct be_ctrl_info *ctrl, unsigned int tag);
+ 
+-int be_cmd_modify_eq_delay(struct beiscsi_hba *phba, struct be_set_eqd *,
++int beiscsi_modify_eq_delay(struct beiscsi_hba *phba, struct be_set_eqd *,
+ 			    int num);
+ int beiscsi_mccq_compl_wait(struct beiscsi_hba *phba,
+ 			    unsigned int tag,
+diff --git a/drivers/scsi/be2iscsi/be_main.c b/drivers/scsi/be2iscsi/be_main.c
+index eb4ce17..3dd4f9d 100644
+--- a/drivers/scsi/be2iscsi/be_main.c
++++ b/drivers/scsi/be2iscsi/be_main.c
+@@ -4999,8 +4999,9 @@ static void beiscsi_quiesce(struct beiscsi_hba *phba)
+ 		if (phba->pcidev->irq)
+ 			free_irq(phba->pcidev->irq, phba);
+ 	pci_disable_msix(phba->pcidev);
+-	cancel_delayed_work_sync(&phba->beiscsi_hw_check_task);
++	cancel_delayed_work_sync(&phba->eqd_update);
+ 	cancel_work_sync(&phba->boot_work);
++	del_timer_sync(&phba->hw_check);
+ 
+ 	for (i = 0; i < phba->num_cpus; i++) {
+ 		pbe_eq = &phwi_context->be_eq[i];
+@@ -5339,18 +5340,32 @@ static void beiscsi_boot_work(struct work_struct *work)
+ 	}
+ }
+ 
+-static void be_eqd_update(struct beiscsi_hba *phba)
++static void beiscsi_hw_health_check(unsigned long ptr)
+ {
++	struct beiscsi_hba *phba;
++
++	phba = (struct beiscsi_hba *)ptr;
++	beiscsi_ue_detect(phba);
++	if (test_bit(BEISCSI_HBA_IN_UE, &phba->state))
++		return;
++
++	mod_timer(&phba->hw_check,
++		  jiffies + msecs_to_jiffies(BEISCSI_UE_DETECT_INTERVAL));
++}
++
++static void beiscsi_eqd_update_work(struct work_struct *work)
++{
++	struct hwi_context_memory *phwi_context;
+ 	struct be_set_eqd set_eqd[MAX_CPUS];
+-	struct be_aic_obj *aic;
+-	struct be_eq_obj *pbe_eq;
+ 	struct hwi_controller *phwi_ctrlr;
+-	struct hwi_context_memory *phwi_context;
++	struct be_eq_obj *pbe_eq;
++	struct beiscsi_hba *phba;
++	unsigned int pps, delta;
++	struct be_aic_obj *aic;
+ 	int eqd, i, num = 0;
+-	ulong now;
+-	u32 pps, delta;
+-	unsigned int tag;
++	unsigned long now;
+ 
++	phba = container_of(work, struct beiscsi_hba, eqd_update.work);
+ 	if (beiscsi_hba_in_error(phba))
+ 		return;
+ 
+@@ -5361,13 +5376,13 @@ static void be_eqd_update(struct beiscsi_hba *phba)
+ 		aic = &phba->aic_obj[i];
+ 		pbe_eq = &phwi_context->be_eq[i];
+ 		now = jiffies;
+-		if (!aic->jiffs || time_before(now, aic->jiffs) ||
++		if (!aic->jiffies || time_before(now, aic->jiffies) ||
+ 		    pbe_eq->cq_count < aic->eq_prev) {
+-			aic->jiffs = now;
++			aic->jiffies = now;
+ 			aic->eq_prev = pbe_eq->cq_count;
+ 			continue;
+ 		}
+-		delta = jiffies_to_msecs(now - aic->jiffs);
++		delta = jiffies_to_msecs(now - aic->jiffies);
+ 		pps = (((u32)(pbe_eq->cq_count - aic->eq_prev) * 1000) / delta);
+ 		eqd = (pps / 1500) << 2;
+ 
+@@ -5376,7 +5391,7 @@ static void be_eqd_update(struct beiscsi_hba *phba)
+ 		eqd = min_t(u32, eqd, phwi_context->max_eqd);
+ 		eqd = max_t(u32, eqd, phwi_context->min_eqd);
+ 
+-		aic->jiffs = now;
++		aic->jiffies = now;
+ 		aic->eq_prev = pbe_eq->cq_count;
+ 
+ 		if (eqd != aic->prev_eqd) {
+@@ -5386,32 +5401,12 @@ static void be_eqd_update(struct beiscsi_hba *phba)
+ 			num++;
+ 		}
+ 	}
+-	if (num) {
+-		tag = be_cmd_modify_eq_delay(phba, set_eqd, num);
+-		if (tag)
+-			beiscsi_mccq_compl_wait(phba, tag, NULL, NULL);
+-	}
+-}
++	if (num)
++		/* completion of this is ignored */
++		beiscsi_modify_eq_delay(phba, set_eqd, num);
+ 
+-/*
+- * beiscsi_hw_health_check()- Check adapter health
+- * @work: work item to check HW health
+- *
+- * Check if adapter in an unrecoverable state or not.
+- **/
+-static void
+-beiscsi_hw_health_check(struct work_struct *work)
+-{
+-	struct beiscsi_hba *phba =
+-		container_of(work, struct beiscsi_hba,
+-			     beiscsi_hw_check_task.work);
+-
+-	be_eqd_update(phba);
+-
+-	beiscsi_ue_detect(phba);
+-
+-	schedule_delayed_work(&phba->beiscsi_hw_check_task,
+-			      msecs_to_jiffies(1000));
++	schedule_delayed_work(&phba->eqd_update,
++			      msecs_to_jiffies(BEISCSI_EQD_UPDATE_INTERVAL));
+ }
+ 
+ 
+@@ -5560,6 +5555,11 @@ static void beiscsi_eeh_resume(struct pci_dev *pdev)
+ 	hwi_enable_intr(phba);
+ 	clear_bit(BEISCSI_HBA_PCI_ERR, &phba->state);
+ 
++	/* start hw_check timer and eqd_update work */
++	schedule_delayed_work(&phba->eqd_update,
++			      msecs_to_jiffies(BEISCSI_EQD_UPDATE_INTERVAL));
++	mod_timer(&phba->hw_check,
++		  jiffies + msecs_to_jiffies(BEISCSI_UE_DETECT_INTERVAL));
+ 	return;
+ ret_err:
+ 	beiscsi_log(phba, KERN_ERR, BEISCSI_LOG_INIT,
+@@ -5707,8 +5707,7 @@ static int beiscsi_dev_probe(struct pci_dev *pcidev,
+ 		goto free_twq;
+ 	}
+ 
+-	INIT_DELAYED_WORK(&phba->beiscsi_hw_check_task,
+-			  beiscsi_hw_health_check);
++	INIT_DELAYED_WORK(&phba->eqd_update, beiscsi_eqd_update_work);
+ 
+ 	phwi_ctrlr = phba->phwi_ctrlr;
+ 	phwi_context = phwi_ctrlr->phwi_ctxt;
+@@ -5749,8 +5748,17 @@ static int beiscsi_dev_probe(struct pci_dev *pcidev,
+ 	}
+ 
+ 	beiscsi_iface_create_default(phba);
+-	schedule_delayed_work(&phba->beiscsi_hw_check_task,
+-			      msecs_to_jiffies(1000));
++	schedule_delayed_work(&phba->eqd_update,
++			      msecs_to_jiffies(BEISCSI_EQD_UPDATE_INTERVAL));
++	/**
++	 * Start UE detection here. UE before this will cause stall in probe
++	 * and eventually fail the probe.
++	 */
++	init_timer(&phba->hw_check);
++	phba->hw_check.function = beiscsi_hw_health_check;
++	phba->hw_check.data = (unsigned long)phba;
++	mod_timer(&phba->hw_check,
++		  jiffies + msecs_to_jiffies(BEISCSI_UE_DETECT_INTERVAL));
+ 
+ 	beiscsi_log(phba, KERN_INFO, BEISCSI_LOG_INIT,
+ 		    "\n\n\n BM_%d : SUCCESS - DRIVER LOADED\n\n\n");
+diff --git a/drivers/scsi/be2iscsi/be_main.h b/drivers/scsi/be2iscsi/be_main.h
+index 780c3fc..0d34ac6 100644
+--- a/drivers/scsi/be2iscsi/be_main.h
++++ b/drivers/scsi/be2iscsi/be_main.h
+@@ -414,7 +414,12 @@ struct beiscsi_hba {
+ 				 (1 << BEISCSI_HBA_IN_UE))
+ 
+ 	u8 optic_state;
+-	struct delayed_work beiscsi_hw_check_task;
++	struct delayed_work eqd_update;
++	/* update EQ delay timer every 1000ms */
++#define BEISCSI_EQD_UPDATE_INTERVAL	1000
++	struct timer_list hw_check;
++	/* check for UE every 1000ms */
++#define BEISCSI_UE_DETECT_INTERVAL	1000
+ 
+ 	bool mac_addr_set;
+ 	u8 mac_address[ETH_ALEN];
+diff --git a/drivers/scsi/be2iscsi/be_mgmt.c b/drivers/scsi/be2iscsi/be_mgmt.c
+index 756e7ae..60a1163 100644
+--- a/drivers/scsi/be2iscsi/be_mgmt.c
++++ b/drivers/scsi/be2iscsi/be_mgmt.c
+@@ -97,7 +97,7 @@ static const char * const desc_ue_status_hi[] = {
+ };
+ 
+ /*
+- * beiscsi_ue_detec()- Detect Unrecoverable Error on adapter
++ * beiscsi_ue_detect()- Detect Unrecoverable Error on adapter
+  * @phba: Driver priv structure
+  *
+  * Read registers linked to UE and check for the UE status
+@@ -152,8 +152,9 @@ void beiscsi_ue_detect(struct beiscsi_hba *phba)
+ 	}
+ }
+ 
+-int be_cmd_modify_eq_delay(struct beiscsi_hba *phba,
+-		 struct be_set_eqd *set_eqd, int num)
++int beiscsi_modify_eq_delay(struct beiscsi_hba *phba,
++			    struct be_set_eqd *set_eqd,
++			    int num)
+ {
+ 	struct be_ctrl_info *ctrl = &phba->ctrl;
+ 	struct be_mcc_wrb *wrb;
+@@ -171,7 +172,7 @@ int be_cmd_modify_eq_delay(struct beiscsi_hba *phba,
+ 	req = embedded_payload(wrb);
+ 	be_wrb_hdr_prepare(wrb, sizeof(*req), true, 0);
+ 	be_cmd_hdr_prepare(&req->hdr, CMD_SUBSYSTEM_COMMON,
+-		OPCODE_COMMON_MODIFY_EQ_DELAY, sizeof(*req));
++			   OPCODE_COMMON_MODIFY_EQ_DELAY, sizeof(*req));
+ 
+ 	req->num_eq = cpu_to_le32(num);
+ 	for (i = 0; i < num; i++) {
+@@ -181,6 +182,8 @@ int be_cmd_modify_eq_delay(struct beiscsi_hba *phba,
+ 				cpu_to_le32(set_eqd[i].delay_multiplier);
+ 	}
+ 
++	/* ignore the completion of this mbox command */
++	set_bit(MCC_TAG_STATE_IGNORE, &ctrl->ptag_state[tag].tag_state);
+ 	be_mcc_notify(phba, tag);
+ 	mutex_unlock(&ctrl->mbox_lock);
+ 	return tag;
+-- 
+1.8.5.6
+

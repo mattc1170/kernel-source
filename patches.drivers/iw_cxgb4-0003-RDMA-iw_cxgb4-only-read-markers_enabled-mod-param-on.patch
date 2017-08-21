@@ -1,0 +1,76 @@
+From: Hariprasad S <hariprasad@chelsio.com>
+Date: Fri, 10 Jun 2016 01:05:11 +0530
+Subject: RDMA/iw_cxgb4: only read markers_enabled mod param once
+Patch-mainline: v4.8-rc1
+Git-commit: 3d4e79949cf9e8032f0cd1f91564c6ce3304755c
+References: bsc#1026570
+
+markers_enabled should be read only once during MPA negotiation.
+The present code does read markers_enabled twice during negotiation
+which results in setting wrong recv/xmit markers if the markers_enabled is
+changed in the middle of negotiation.
+With this change the markers_enabled is read only once during MPA
+negotiation. recv markers are set based on markers enabled module
+parameter and xmit markers are set based on markers flag from the
+MPA_START_REQ/MPA_START_REP.
+
+Signed-off-by: Steve Wise <swise@opengridcomputing.com>
+Signed-off-by: Hariprasad Shenai <hariprasad@chelsio.com>
+Signed-off-by: Doug Ledford <dledford@redhat.com>
+Acked-by: Thomas Bogendoerfer <tbogendoerfer@suse.de>
+---
+ drivers/infiniband/hw/cxgb4/cm.c | 24 ++++++++++++++++++------
+ 1 file changed, 18 insertions(+), 6 deletions(-)
+
+diff --git a/drivers/infiniband/hw/cxgb4/cm.c b/drivers/infiniband/hw/cxgb4/cm.c
+index 93b7a5556a18..f9d1992d03c9 100644
+--- a/drivers/infiniband/hw/cxgb4/cm.c
++++ b/drivers/infiniband/hw/cxgb4/cm.c
+@@ -846,9 +846,19 @@ static void send_mpa_req(struct c4iw_ep *ep, struct sk_buff *skb,
+ 
+ 	mpa = (struct mpa_message *)(req + 1);
+ 	memcpy(mpa->key, MPA_KEY_REQ, sizeof(mpa->key));
+-	mpa->flags = (crc_enabled ? MPA_CRC : 0) |
+-		     (markers_enabled ? MPA_MARKERS : 0) |
+-		     (mpa_rev_to_use == 2 ? MPA_ENHANCED_RDMA_CONN : 0);
++
++	mpa->flags = 0;
++	if (crc_enabled)
++		mpa->flags |= MPA_CRC;
++	if (markers_enabled) {
++		mpa->flags |= MPA_MARKERS;
++		ep->mpa_attr.recv_marker_enabled = 1;
++	} else {
++		ep->mpa_attr.recv_marker_enabled = 0;
++	}
++	if (mpa_rev_to_use == 2)
++		mpa->flags |= MPA_ENHANCED_RDMA_CONN;
++
+ 	mpa->private_data_size = htons(ep->plen);
+ 	mpa->revision = mpa_rev_to_use;
+ 	if (mpa_rev_to_use == 1) {
+@@ -1021,8 +1031,11 @@ static int send_mpa_reply(struct c4iw_ep *ep, const void *pdata, u8 plen)
+ 	mpa = (struct mpa_message *)(req + 1);
+ 	memset(mpa, 0, sizeof(*mpa));
+ 	memcpy(mpa->key, MPA_KEY_REP, sizeof(mpa->key));
+-	mpa->flags = (ep->mpa_attr.crc_enabled ? MPA_CRC : 0) |
+-		     (markers_enabled ? MPA_MARKERS : 0);
++	mpa->flags = 0;
++	if (ep->mpa_attr.crc_enabled)
++		mpa->flags |= MPA_CRC;
++	if (ep->mpa_attr.recv_marker_enabled)
++		mpa->flags |= MPA_MARKERS;
+ 	mpa->revision = ep->mpa_attr.version;
+ 	mpa->private_data_size = htons(plen);
+ 
+@@ -1397,7 +1410,6 @@ static int process_mpa_reply(struct c4iw_ep *ep, struct sk_buff *skb)
+ 	 */
+ 	__state_set(&ep->com, FPDU_MODE);
+ 	ep->mpa_attr.crc_enabled = (mpa->flags & MPA_CRC) | crc_enabled ? 1 : 0;
+-	ep->mpa_attr.recv_marker_enabled = markers_enabled;
+ 	ep->mpa_attr.xmit_marker_enabled = mpa->flags & MPA_MARKERS ? 1 : 0;
+ 	ep->mpa_attr.version = mpa->revision;
+ 	ep->mpa_attr.p2p_type = FW_RI_INIT_P2PTYPE_DISABLED;
+-- 
+1.8.5.6
+

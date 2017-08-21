@@ -1,0 +1,30 @@
+From 7281b16423cd9b8795ea319c65140f38fd8187a2 Mon Sep 17 00:00:00 2001
+From: Dan Carpenter <dan.carpenter@oracle.com>
+Date: Sat, 21 Nov 2015 13:33:38 +0300
+Subject: [PATCH] iwlwifi: mvm: rs: fix a warning message
+Git-commit: 7281b16423cd9b8795ea319c65140f38fd8187a2
+Patch-mainline: 4.5-rc1
+References: FATE#321353, FATE#323335
+
+WARN_ON_ONCE() doesn't take a message, it only takes a condition.  I
+have changed this to WARN(1, ...).
+
+Signed-off-by: Dan Carpenter <dan.carpenter@oracle.com>
+Signed-off-by: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/iwlwifi/mvm/rs.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+--- a/drivers/net/wireless/iwlwifi/mvm/rs.c
++++ b/drivers/net/wireless/iwlwifi/mvm/rs.c
+@@ -1827,7 +1827,7 @@ static int rs_switch_to_column(struct iw
+ 		rate->type = lq_sta->is_vht ? LQ_VHT_MIMO2 : LQ_HT_MIMO2;
+ 		rate_mask = lq_sta->active_mimo2_rate;
+ 	} else {
+-		WARN_ON_ONCE("Bad column mode");
++		WARN_ONCE(1, "Bad column mode");
+ 	}
+ 
+ 	if (column->mode != RS_LEGACY) {

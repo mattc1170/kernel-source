@@ -1,0 +1,55 @@
+From 5151ad953c68f2af0b50cf8d074a902ccf001ae0 Mon Sep 17 00:00:00 2001
+From: Matti Gottlieb <matti.gottlieb@intel.com>
+Date: Wed, 9 Mar 2016 14:46:28 +0200
+Subject: [PATCH] iwlwifi: mvm: ROC: cleanup time event info on FW failure
+Git-commit: 5151ad953c68f2af0b50cf8d074a902ccf001ae0
+Patch-mainline: 4.6-rc1
+References: FATE#321353, FATE#323335
+
+Currently when the FW sends start/stop aux roc time event
+notification with an error status, the driver returns an
+error value, but does not remove the time event, and does
+not notify the stack above that the time event is over.
+
+This causes problems that the stack above assumes we are still
+in the middle of a time event, and therefore can block different
+events, such as scanning.
+
+On FW failure notification, cleanup the time event parameters and
+notify the stack above that the time event is over.
+
+Signed-off-by: Matti Gottlieb <matti.gottlieb@intel.com>
+Signed-off-by: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/iwlwifi/mvm/time-event.c |   15 ++++-----------
+ 1 file changed, 4 insertions(+), 11 deletions(-)
+
+--- a/drivers/net/wireless/iwlwifi/mvm/time-event.c
++++ b/drivers/net/wireless/iwlwifi/mvm/time-event.c
+@@ -371,20 +371,13 @@ static int iwl_mvm_aux_roc_te_handle_not
+ 
+ 	iwl_mvm_te_check_trigger(mvm, notif, te_data);
+ 
+-	if (!le32_to_cpu(notif->status)) {
+-		IWL_DEBUG_TE(mvm,
+-			     "ERROR: Aux ROC Time Event %s notification failure\n",
+-			     (le32_to_cpu(notif->action) &
+-			      TE_V2_NOTIF_HOST_EVENT_START) ? "start" : "end");
+-		return -EINVAL;
+-	}
+-
+ 	IWL_DEBUG_TE(mvm,
+-		     "Aux ROC time event notification  - UID = 0x%x action %d\n",
++		     "Aux ROC time event notification  - UID = 0x%x action %d (error = %d)\n",
+ 		     le32_to_cpu(notif->unique_id),
+-		     le32_to_cpu(notif->action));
++		     le32_to_cpu(notif->action), le32_to_cpu(notif->status));
+ 
+-	if (le32_to_cpu(notif->action) == TE_V2_NOTIF_HOST_EVENT_END) {
++	if (!le32_to_cpu(notif->status) ||
++	    le32_to_cpu(notif->action) == TE_V2_NOTIF_HOST_EVENT_END) {
+ 		/* End TE, notify mac80211 */
+ 		ieee80211_remain_on_channel_expired(mvm->hw);
+ 		iwl_mvm_roc_finished(mvm); /* flush aux queue */

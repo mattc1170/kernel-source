@@ -1,0 +1,44 @@
+From: David Sterba <dsterba@suse.com>
+Date: Thu, 11 Feb 2016 14:25:38 +0100
+Patch-mainline: 4.6
+Git-commit: 32fc932e30c4b6a03847426f52e23459c9fb906f
+References: bsc#1012452
+Subject: [PATCH] btrfs: fallocate: use GFP_KERNEL
+
+Fallocate is initiated from userspace and is not on the critical
+writeback path, we don't need to use GFP_NOFS for allocations.
+
+Signed-off-by: David Sterba <dsterba@suse.com>
+---
+ fs/btrfs/file.c |    6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+--- a/fs/btrfs/file.c
++++ b/fs/btrfs/file.c
+@@ -2636,7 +2636,7 @@ static int add_falloc_range(struct list_
+ 		return 0;
+ 	}
+ insert:
+-	range = kmalloc(sizeof(*range), GFP_NOFS);
++	range = kmalloc(sizeof(*range), GFP_KERNEL);
+ 	if (!range)
+ 		return -ENOMEM;
+ 	range->start = start;
+@@ -2737,7 +2737,7 @@ static long btrfs_fallocate(struct file
+ 			btrfs_put_ordered_extent(ordered);
+ 			unlock_extent_cached(&BTRFS_I(inode)->io_tree,
+ 					     alloc_start, locked_end,
+-					     &cached_state, GFP_NOFS);
++					     &cached_state, GFP_KERNEL);
+ 			/*
+ 			 * we can't wait on the range with the transaction
+ 			 * running or with the extent lock held
+@@ -2831,7 +2831,7 @@ static long btrfs_fallocate(struct file
+ 	}
+ out_unlock:
+ 	unlock_extent_cached(&BTRFS_I(inode)->io_tree, alloc_start, locked_end,
+-			     &cached_state, GFP_NOFS);
++			     &cached_state, GFP_KERNEL);
+ out:
+ 	/*
+ 	 * As we waited the extent range, the data_rsv_map must be empty

@@ -1,0 +1,30 @@
+From d1cae0fd22e9d0c55c97da29dcdfe28d99d96ea6 Mon Sep 17 00:00:00 2001
+From: Rodrigo Freire <rfreire@redhat.com>
+Date: Wed, 6 Jan 2016 20:24:01 -0200
+Subject: [PATCH] iwlwifi: Document missing module options
+Git-commit: d1cae0fd22e9d0c55c97da29dcdfe28d99d96ea6
+Patch-mainline: 4.6-rc1
+References: FATE#321353, FATE#323335
+
+This patch documents two missing module options in the internal
+code comment block.
+
+Signed-off-by: Rodrigo Freire <rfreire@redhat.com>
+Signed-off-by: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/iwlwifi/iwl-modparams.h |    2 ++
+ 1 file changed, 2 insertions(+)
+
+--- a/drivers/net/wireless/iwlwifi/iwl-modparams.h
++++ b/drivers/net/wireless/iwlwifi/iwl-modparams.h
+@@ -108,6 +108,8 @@ enum iwl_amsdu_size {
+  * @power_level: power level, default = 1
+  * @debug_level: levels are IWL_DL_*
+  * @ant_coupling: antenna coupling in dB, default = 0
++ * @nvm_file: specifies a external NVM file
++ * @uapsd_disable: disable U-APSD, default = 1
+  * @d0i3_disable: disable d0i3, default = 1,
+  * @d0i3_entry_delay: time to wait after no refs are taken before
+  *	entering D0i3 (in msecs)

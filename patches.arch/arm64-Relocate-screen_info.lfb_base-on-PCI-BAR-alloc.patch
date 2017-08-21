@@ -26,13 +26,11 @@ even after Linux remapped BARs.
 
 Signed-off-by: Alexander Graf <agraf@suse.de>
 ---
- arch/arm64/kernel/efi.c | 40 +++++++++++++++++++++++++++++++++++++++-
- drivers/pci/setup-res.c | 29 +++++++++++++++++++++++++++++
- include/linux/pci.h     |  8 ++++++++
- 3 files changed, 76 insertions(+), 1 deletion(-)
+ arch/arm64/kernel/efi.c |   40 +++++++++++++++++++++++++++++++++++++++-
+ drivers/pci/setup-res.c |   30 ++++++++++++++++++++++++++++++
+ include/linux/pci.h     |    8 ++++++++
+ 3 files changed, 77 insertions(+), 1 deletion(-)
 
-diff --git a/arch/arm64/kernel/efi.c b/arch/arm64/kernel/efi.c
-index 56a76b6..3612110 100644
 --- a/arch/arm64/kernel/efi.c
 +++ b/arch/arm64/kernel/efi.c
 @@ -27,6 +27,7 @@
@@ -97,11 +95,9 @@ index 56a76b6..3612110 100644
  }
  
  static int __init register_gop_device(void)
-diff --git a/drivers/pci/setup-res.c b/drivers/pci/setup-res.c
-index 604011e..d5c24fc 100644
 --- a/drivers/pci/setup-res.c
 +++ b/drivers/pci/setup-res.c
-@@ -23,8 +23,10 @@
+@@ -23,8 +23,11 @@
  #include <linux/ioport.h>
  #include <linux/cache.h>
  #include <linux/slab.h>
@@ -109,21 +105,22 @@ index 604011e..d5c24fc 100644
  #include "pci.h"
  
 +static RAW_NOTIFIER_HEAD(bar_update_chain);
- 
- void pci_update_resource(struct pci_dev *dev, int resno)
++
+ static void pci_std_update_resource(struct pci_dev *dev, int resno)
  {
-@@ -35,6 +37,9 @@ void pci_update_resource(struct pci_dev *dev, int resno)
+ 	struct pci_bus_region region;
+@@ -33,6 +36,9 @@ static void pci_std_update_resource(stru
+ 	u32 new, check, mask;
  	int reg;
- 	enum pci_bar_type type;
  	struct resource *res = dev->resource + resno;
 +	struct pci_bar_update_info update_info;
 +	struct pci_bus_region update_reg;
 +	struct resource update_res;
  
- 	if (dev->is_virtfn) {
- 		dev_warn(&dev->dev, "can't update VF BAR%d\n", resno);
-@@ -77,6 +82,22 @@ void pci_update_resource(struct pci_dev *dev, int resno)
- 	}
+ 	/* Per SR-IOV spec 3.4.1.11, VF BARs are RO zero */
+ 	if (dev->is_virtfn)
+@@ -87,6 +93,22 @@ static void pci_std_update_resource(stru
+ 		return;
  
  	/*
 +	 * Fetch the old BAR location from the device, so we can notify
@@ -145,7 +142,7 @@ index 604011e..d5c24fc 100644
  	 * We can't update a 64-bit BAR atomically, so when possible,
  	 * disable decoding so that a half-updated BAR won't conflict
  	 * with another device.
-@@ -108,6 +129,14 @@ void pci_update_resource(struct pci_dev *dev, int resno)
+@@ -118,6 +140,14 @@ static void pci_std_update_resource(stru
  
  	if (disable)
  		pci_write_config_word(dev, PCI_COMMAND, cmd);
@@ -159,9 +156,7 @@ index 604011e..d5c24fc 100644
 +        return raw_notifier_chain_register(&bar_update_chain, nb);
  }
  
- int pci_claim_resource(struct pci_dev *dev, int resource)
-diff --git a/include/linux/pci.h b/include/linux/pci.h
-index c061250..04a430e 100644
+ void pci_update_resource(struct pci_dev *dev, int resno)
 --- a/include/linux/pci.h
 +++ b/include/linux/pci.h
 @@ -30,6 +30,7 @@
@@ -172,7 +167,7 @@ index c061250..04a430e 100644
  #include <uapi/linux/pci.h>
  
  #include <linux/pci_ids.h>
-@@ -1037,6 +1038,13 @@ int pci_select_bars(struct pci_dev *dev, unsigned long flags);
+@@ -1042,6 +1043,13 @@ int pci_select_bars(struct pci_dev *dev,
  bool pci_device_is_present(struct pci_dev *pdev);
  void pci_ignore_hotplug(struct pci_dev *dev);
  
@@ -186,6 +181,3 @@ index c061250..04a430e 100644
  /* ROM control related routines */
  int pci_enable_rom(struct pci_dev *pdev);
  void pci_disable_rom(struct pci_dev *pdev);
--- 
-1.8.5.6
-

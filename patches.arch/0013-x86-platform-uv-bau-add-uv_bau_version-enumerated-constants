@@ -1,0 +1,96 @@
+From: Andrew Banman <abanman@hpe.com>
+Date: Thu, 9 Mar 2017 10:42:09 -0600
+Subject: x86/platform/uv/BAU: Add uv_bau_version enumerated constants
+Git-commit: 491bd88cdb256cdabd25362b923d94ab80cf72c9
+Patch-mainline: v3.20-rc1
+References: bsc#1035024
+
+Define enumerated constants for each UV hub version and replace magic
+numbers with the appropriate constant.
+
+Signed-off-by: Andrew Banman <abanman@hpe.com>
+Acked-by: Ingo Molnar <mingo@kernel.org>
+Cc: sivanich@hpe.com
+Cc: rja@hpe.com
+Cc: mike.travis@hpe.com
+Cc: akpm@linux-foundation.org
+Link: http://lkml.kernel.org/r/1489077734-111753-2-git-send-email-abanman@hpe.com
+Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
+Acked-by: Joerg Roedel <jroedel@suse.de>
+---
+ arch/x86/include/asm/uv/uv_bau.h |  7 +++++++
+ arch/x86/platform/uv/tlb_uv.c    | 16 ++++++++--------
+ 2 files changed, 15 insertions(+), 8 deletions(-)
+
+--- a/arch/x86/include/asm/uv/uv_bau.h
++++ b/arch/x86/include/asm/uv/uv_bau.h
+@@ -185,6 +185,13 @@
+ #define MSG_REGULAR			1
+ #define MSG_RETRY			2
+ 
++enum uv_bau_version {
++	UV_BAU_V1 = 1,
++	UV_BAU_V2,
++	UV_BAU_V3,
++	UV_BAU_V4,
++};
++
+ /*
+  * Distribution: 32 bytes (256 bits) (bytes 0-0x1f of descriptor)
+  * If the 'multilevel' flag in the header portion of the descriptor
+--- a/arch/x86/platform/uv/tlb_uv.c
++++ b/arch/x86/platform/uv/tlb_uv.c
+@@ -708,7 +708,7 @@ static int wait_completion(struct bau_de
+ 		right_shift = ((desc - UV_CPUS_PER_AS) * UV_ACT_STATUS_SIZE);
+ 	}
+ 
+-	if (bcp->uvhub_version == 1)
++	if (bcp->uvhub_version == UV_BAU_V1)
+ 		return uv1_wait_completion(bau_desc, mmr_offset, right_shift, bcp, try);
+ 	else
+ 		return uv2_3_wait_completion(bau_desc, mmr_offset, right_shift, bcp, try);
+@@ -902,7 +902,7 @@ int uv_flush_send_and_wait(struct cpumas
+ 	struct uv1_bau_msg_header *uv1_hdr = NULL;
+ 	struct uv2_3_bau_msg_header *uv2_3_hdr = NULL;
+ 
+-	if (bcp->uvhub_version == 1) {
++	if (bcp->uvhub_version == UV_BAU_V1) {
+ 		uv1 = 1;
+ 		uv1_throttle(hmaster, stat);
+ 	}
+@@ -1280,7 +1280,7 @@ void uv_bau_message_interrupt(struct pt_
+ 
+ 		msgdesc.msg_slot = msg - msgdesc.queue_first;
+ 		msgdesc.msg = msg;
+-		if (bcp->uvhub_version == 2)
++		if (bcp->uvhub_version == UV_BAU_V2)
+ 			process_uv2_message(&msgdesc, bcp);
+ 		else
+ 			/* no error workaround for uv1 or uv3 */
+@@ -1822,7 +1822,7 @@ static void pq_init(int node, int pnode)
+ 	 * and the payload queue tail must be maintained by the kernel.
+ 	 */
+ 	bcp = &per_cpu(bau_control, smp_processor_id());
+-	if (bcp->uvhub_version <= 3) {
++	if (bcp->uvhub_version <= UV_BAU_V3) {
+ 		tail = first;
+ 		gnode = uv_gpa_to_gnode(uv_gpa(pqp));
+ 		first = (gnode << UV_PAYLOADQ_GNODE_SHIFT) | tail;
+@@ -2036,13 +2036,13 @@ static int scan_sock(struct socket_desc
+ 		bcp->socket_master = *smasterp;
+ 		bcp->uvhub = bdp->uvhub;
+ 		if (is_uv1_hub())
+-			bcp->uvhub_version = 1;
++			bcp->uvhub_version = UV_BAU_V1;
+ 		else if (is_uv2_hub())
+-			bcp->uvhub_version = 2;
++			bcp->uvhub_version = UV_BAU_V2;
+ 		else if (is_uv3_hub())
+-			bcp->uvhub_version = 3;
++			bcp->uvhub_version = UV_BAU_V3;
+ 		else if (is_uv4_hub())
+-			bcp->uvhub_version = 4;
++			bcp->uvhub_version = UV_BAU_V4;
+ 		else {
+ 			pr_emerg("uvhub version not 1, 2, 3, or 4\n");
+ 			return 1;

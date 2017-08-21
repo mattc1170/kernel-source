@@ -1,0 +1,36 @@
+From: NeilBrown <neilb@suse.com>
+Subject: Fix soft lockup in svc_rdma_send
+Patch-mainline: v4.10
+Git-commit: e4eb42cecc6dc546aac888ee4913d59121e886ee (partial)
+References: bsc#1044854
+
+This code tests for a condition, and if it is it drops locks and waits
+not for the inverse of that condition, but the inverse
+of a different strict condition, to be true.
+If the first condition is true, and the second also true, which
+is certainly possible, the code spins in the kernel tying up a CPU.
+
+This bug was introduced by
+Commit: 5b180a9a64ca ("svcrdma: Add support to svc_rdma_send to handle chained WR")
+in v2.6.28 and silently fixed by
+Commit: e4eb42cecc6d ("svcrdma: Remove BH-disabled spin locking in svc_rdma_send()")
+in v4.10.
+
+Acked-by: NeilBrown <neilb@suse.com>
+Signed-off-by: Neil Brown <neilb@suse.com>
+
+---
+ net/sunrpc/xprtrdma/svc_rdma_transport.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+--- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+@@ -1270,7 +1270,7 @@ int svc_rdma_send(struct svcxprt_rdma *x
+ 
+ 			/* Wait until SQ WR available if SQ still full */
+ 			wait_event(xprt->sc_send_wait,
+-				   atomic_read(&xprt->sc_sq_count) <
++				   atomic_read(&xprt->sc_sq_count) + wr_count <=
+ 				   xprt->sc_sq_depth);
+ 			if (test_bit(XPT_CLOSE, &xprt->sc_xprt.xpt_flags))
+ 				return -ENOTCONN;

@@ -1,0 +1,39 @@
+From: Hariprasad Shenai <hariprasad@chelsio.com>
+Date: Tue, 3 May 2016 18:58:01 +0530
+Subject: cxgb4: Don't sleep when mbox cmd is issued from interrupt context
+Patch-mainline: v4.7-rc1
+Git-commit: 5a20f5cfd7276862a8d21d75f83359840ed6e662
+References: bsc#1021424
+
+When link goes down, from the interrupt handler DCB priority for the
+Tx queues needs to be unset. We issue mbox command to unset the Tx queue
+priority with negative timeout. In t4_wr_mbox_meat_timeout() do not sleep
+when negative timeout is passed, since it is called from interrupt context.
+
+Signed-off-by: Hariprasad Shenai <hariprasad@chelsio.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+Acked-by: Thomas Bogendoerfer <tbogendoerfer@suse.de>
+---
+ drivers/net/ethernet/chelsio/cxgb4/t4_hw.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/drivers/net/ethernet/chelsio/cxgb4/t4_hw.c b/drivers/net/ethernet/chelsio/cxgb4/t4_hw.c
+index 49bcbf16c9ca..59f5e0b40286 100644
+--- a/drivers/net/ethernet/chelsio/cxgb4/t4_hw.c
++++ b/drivers/net/ethernet/chelsio/cxgb4/t4_hw.c
+@@ -304,6 +304,12 @@ int t4_wr_mbox_meat_timeout(struct adapter *adap, int mbox, const void *cmd,
+ 	if (adap->pdev->error_state != pci_channel_io_normal)
+ 		return -EIO;
+ 
++	/* If we have a negative timeout, that implies that we can't sleep. */
++	if (timeout < 0) {
++		sleep_ok = false;
++		timeout = -timeout;
++	}
++
+ 	v = MBOWNER_G(t4_read_reg(adap, ctl_reg));
+ 	for (i = 0; v == MBOX_OWNER_NONE && i < 3; i++)
+ 		v = MBOWNER_G(t4_read_reg(adap, ctl_reg));
+-- 
+1.8.5.6
+

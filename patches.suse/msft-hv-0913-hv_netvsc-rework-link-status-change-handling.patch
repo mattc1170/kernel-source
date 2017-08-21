@@ -27,12 +27,10 @@ Signed-off-by: Vitaly Kuznetsov <vkuznets@redhat.com>
 Signed-off-by: David S. Miller <davem@davemloft.net>
 Acked-by: <ohering@suse.de>
 ---
- drivers/net/hyperv/hyperv_net.h |  14 +++-
- drivers/net/hyperv/netvsc_drv.c | 142 +++++++++++++++++++++++++++-------------
+ drivers/net/hyperv/hyperv_net.h |   14 +++
+ drivers/net/hyperv/netvsc_drv.c |  142 ++++++++++++++++++++++++++--------------
  2 files changed, 108 insertions(+), 48 deletions(-)
 
-diff --git a/drivers/net/hyperv/hyperv_net.h b/drivers/net/hyperv/hyperv_net.h
-index 5fa98f5..7661a12 100644
 --- a/drivers/net/hyperv/hyperv_net.h
 +++ b/drivers/net/hyperv/hyperv_net.h
 @@ -177,7 +177,6 @@ struct rndis_device {
@@ -68,19 +66,17 @@ index 5fa98f5..7661a12 100644
  	struct work_struct work;
  	u32 msg_enable; /* debug level */
  
-diff --git a/drivers/net/hyperv/netvsc_drv.c b/drivers/net/hyperv/netvsc_drv.c
-index 409b48e..268a058 100644
 --- a/drivers/net/hyperv/netvsc_drv.c
 +++ b/drivers/net/hyperv/netvsc_drv.c
-@@ -42,6 +42,7 @@
- 
+@@ -44,6 +44,7 @@
+ #define NETVSC_GSO_MAX_SIZE	62768
  
  #define RING_SIZE_MIN 64
 +#define LINKCHANGE_INT (2 * HZ)
  static int ring_size = 128;
  module_param(ring_size, int, S_IRUGO);
  MODULE_PARM_DESC(ring_size, "Ring buffer size (# of pages)");
-@@ -647,37 +648,33 @@ void netvsc_linkstatus_callback(struct hv_device *device_obj,
+@@ -649,37 +650,33 @@ void netvsc_linkstatus_callback(struct h
  	struct net_device *net;
  	struct net_device_context *ndev_ctx;
  	struct netvsc_device *net_device;
@@ -136,7 +132,7 @@ index 409b48e..268a058 100644
  }
  
  /*
-@@ -1009,12 +1006,9 @@ static const struct net_device_ops device_ops = {
+@@ -1012,12 +1009,9 @@ static const struct net_device_ops devic
  };
  
  /*
@@ -152,7 +148,7 @@ index 409b48e..268a058 100644
   */
  static void netvsc_link_change(struct work_struct *w)
  {
-@@ -1022,36 +1016,89 @@ static void netvsc_link_change(struct work_struct *w)
+@@ -1025,36 +1019,89 @@ static void netvsc_link_change(struct wo
  	struct net_device *net;
  	struct netvsc_device *net_device;
  	struct rndis_device *rdev;
@@ -217,7 +213,7 @@ index 409b48e..268a058 100644
 +			netif_tx_wake_all_queues(net);
 +		} else {
 +			notify = true;
-+		}
+ 		}
 +		kfree(event);
 +		break;
 +	case RNDIS_STATUS_MEDIA_DISCONNECT:
@@ -239,7 +235,7 @@ index 409b48e..268a058 100644
 +			list_add_tail(&event->list, &ndev_ctx->reconfig_events);
 +			spin_unlock_irqrestore(&ndev_ctx->lock, flags);
 +			reschedule = true;
- 		}
++		}
 +		break;
  	}
  
@@ -259,7 +255,7 @@ index 409b48e..268a058 100644
  }
  
  static void netvsc_free_netdev(struct net_device *netdev)
-@@ -1106,6 +1153,9 @@ static int netvsc_probe(struct hv_device *dev,
+@@ -1109,6 +1156,9 @@ static int netvsc_probe(struct hv_device
  	INIT_DELAYED_WORK(&net_device_ctx->dwork, netvsc_link_change);
  	INIT_WORK(&net_device_ctx->work, do_set_multicast);
  
@@ -269,7 +265,7 @@ index 409b48e..268a058 100644
  	net->netdev_ops = &device_ops;
  
  	net->hw_features = NETIF_F_RXCSUM | NETIF_F_SG | NETIF_F_IP_CSUM |
-@@ -1145,8 +1195,6 @@ static int netvsc_probe(struct hv_device *dev,
+@@ -1148,8 +1198,6 @@ static int netvsc_probe(struct hv_device
  		pr_err("Unable to register netdev.\n");
  		rndis_filter_device_remove(dev);
  		netvsc_free_netdev(net);

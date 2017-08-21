@@ -333,12 +333,21 @@ fi
 	--disable CONFIG_DEBUG_INFO
 %endif
 
-MAKE_ARGS="$MAKE_ARGS %{?_smp_mflags} -C .. O=$PWD"
+makeoutputsync=
+if make --output-sync --help >/dev/null 2>&1 ; then
+        makeoutputsync=--output-sync
+else
+        echo make does not support --output-sync flag. Build messages may be mangled. 1>&2
+fi
+MAKE_ARGS="$MAKE_ARGS $makeoutputsync %{?_smp_mflags}"
+echo export MAKE_ARGS=\""$MAKE_ARGS"\" >> .kernel-binary.spec.buildenv
+
+KERN_DIRS="-C .. O=$PWD"
 if test -e %_sourcedir/TOLERATE-UNKNOWN-NEW-CONFIG-OPTIONS; then
-    yes '' | make oldconfig $MAKE_ARGS
+    yes '' | make oldconfig $MAKE_ARGS $KERN_DIRS
 else
     cp .config .config.orig
-    make silentoldconfig $MAKE_ARGS < /dev/null
+    make silentoldconfig $MAKE_ARGS $KERN_DIRS < /dev/null
     %_sourcedir/check-for-config-changes .config.orig .config
     rm .config.orig
 fi
@@ -379,23 +388,22 @@ for f in %_sourcedir/*.crt; do
     cat "$f" >>certs/signing_key.pem
 done
 
-MAKE_ARGS="$MAKE_ARGS %{?_smp_mflags}"
-
 %if %CONFIG_KMSG_IDS == "y"
     chmod +x ../scripts/kmsg-doc
     MAKE_ARGS="$MAKE_ARGS D=2"
 %endif
 
+mkdir -p %_topdir/OTHER
+log=%_topdir/OTHER/make-stderr.log
 while true; do
-    make all $MAKE_ARGS 2>&1 \
-        | tee buildlog
+    make all $MAKE_ARGS 2> >(tee "$log")
     if test "${PIPESTATUS[0]}" -eq 0; then
         break
     fi
     # In the linux-next and vanilla branches, we try harder to build a
     # package.
     if test 0%vanilla_only -gt 0 &&
-			%_sourcedir/try-disable-staging-driver buildlog; then
+			%_sourcedir/try-disable-staging-driver "$log"; then
         echo "Retrying make"
     else
         exit 1
@@ -502,11 +510,11 @@ fi
 # and have mokutil enroll them when the kernel is installed
 certs=()
 if test %CONFIG_MODULE_SIG = "y"; then
-    for f in *.x509; do
+    for f in %_sourcedir/*.crt; do
             if ! test -s "$f"; then
                     continue
             fi
-            h=$(openssl x509 -inform DER -fingerprint -noout -in "$f")
+            h=$(openssl x509 -inform PEM -fingerprint -noout -in "$f")
             test -n "$h"
             cert=/etc/uefi/certs/$(echo "$h" | \
                 sed -rn 's/^SHA1 Fingerprint=//; T; s/://g; s/(.{8}).*/\1/p').crt
@@ -514,7 +522,7 @@ if test %CONFIG_MODULE_SIG = "y"; then
                     continue
             fi
             mkdir -p %buildroot/etc/uefi/certs
-            cp "$f" %buildroot/"$cert"
+            openssl x509 -inform PEM -in "$f" -outform DER -out %buildroot/"$cert"
             certs=("${certs[@]}" "$cert")
     done
 fi

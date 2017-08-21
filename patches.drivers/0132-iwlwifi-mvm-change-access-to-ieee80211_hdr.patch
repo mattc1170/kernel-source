@@ -1,0 +1,29 @@
+From 0c1c6e37137fc2333ef9898c24ea0cb9efbd8df0 Mon Sep 17 00:00:00 2001
+From: Sara Sharon <sara.sharon@intel.com>
+Date: Wed, 16 Dec 2015 21:17:06 +0200
+Subject: [PATCH] iwlwifi: mvm: change access to ieee80211_hdr
+Git-commit: 0c1c6e37137fc2333ef9898c24ea0cb9efbd8df0
+Patch-mainline: 4.6-rc1
+References: FATE#321353, FATE#323335
+
+Make the code clearer.
+
+Signed-off-by: Sara Sharon <sara.sharon@intel.com>
+Signed-off-by: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/iwlwifi/mvm/rxmq.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+--- a/drivers/net/wireless/iwlwifi/mvm/rxmq.c
++++ b/drivers/net/wireless/iwlwifi/mvm/rxmq.c
+@@ -212,7 +212,7 @@ void iwl_mvm_rx_mpdu_mq(struct iwl_mvm *
+ 	struct ieee80211_rx_status *rx_status;
+ 	struct iwl_rx_packet *pkt = rxb_addr(rxb);
+ 	struct iwl_rx_mpdu_desc *desc = (void *)pkt->data;
+-	struct ieee80211_hdr *hdr = (void *)(desc + 1);
++	struct ieee80211_hdr *hdr = (void *)(pkt->data + sizeof(*desc));
+ 	u32 len = le16_to_cpu(desc->mpdu_len);
+ 	u32 rate_n_flags = le32_to_cpu(desc->rate_n_flags);
+ 	struct ieee80211_sta *sta = NULL;

@@ -1,0 +1,52 @@
+From e1464c992a6f0241dcb65058241986a975c25c94 Mon Sep 17 00:00:00 2001
+From: Shrikrishna Khare <skhare@vmware.com>
+Date: Wed, 8 Jun 2016 07:40:53 -0700
+References: bsc#988065
+Patch-mainline: v4.7-rc1
+Git-commit: 50219538ffc0493a2b451a3aa0191138ef8bfe9d
+Subject: [PATCH] vmxnet3: segCnt can be 1 for LRO packets
+
+The device emulation may send segCnt of 1 for LRO packets.
+
+Signed-off-by: Shrikrishna Khare <skhare@vmware.com>
+Signed-off-by: Jin Heo <heoj@vmware.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+Acked-by: Ales Novak <alnovak@suse.cz>
+---
+ drivers/net/vmxnet3/vmxnet3_drv.c | 2 +-
+ drivers/net/vmxnet3/vmxnet3_int.h | 4 ++--
+ 2 files changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/net/vmxnet3/vmxnet3_drv.c b/drivers/net/vmxnet3/vmxnet3_drv.c
+index 349dfd2..d879c1c 100644
+--- a/drivers/net/vmxnet3/vmxnet3_drv.c
++++ b/drivers/net/vmxnet3/vmxnet3_drv.c
+@@ -1281,7 +1281,7 @@ vmxnet3_rq_rx_complete(struct vmxnet3_rx_queue *rq,
+ 				rcdlro = (struct Vmxnet3_RxCompDescExt *)rcd;
+ 
+ 				segCnt = rcdlro->segCnt;
+-				BUG_ON(segCnt <= 1);
++				WARN_ON_ONCE(segCnt == 0);
+ 				mss = rcdlro->mss;
+ 				if (unlikely(segCnt <= 1))
+ 					segCnt = 0;
+diff --git a/drivers/net/vmxnet3/vmxnet3_int.h b/drivers/net/vmxnet3/vmxnet3_int.h
+index d89b3c8..a51b266 100644
+--- a/drivers/net/vmxnet3/vmxnet3_int.h
++++ b/drivers/net/vmxnet3/vmxnet3_int.h
+@@ -69,10 +69,10 @@
+ /*
+  * Version numbers
+  */
+-#define VMXNET3_DRIVER_VERSION_STRING   "1.4.7.0-k"
++#define VMXNET3_DRIVER_VERSION_STRING   "1.4.8.0-k"
+ 
+ /* a 32-bit int, each byte encode a verion number in VMXNET3_DRIVER_VERSION */
+-#define VMXNET3_DRIVER_VERSION_NUM      0x01040700
++#define VMXNET3_DRIVER_VERSION_NUM      0x01040800
+ 
+ #if defined(CONFIG_PCI_MSI)
+ 	/* RSS only makes sense if MSI-X is supported. */
+-- 
+2.7.0
+

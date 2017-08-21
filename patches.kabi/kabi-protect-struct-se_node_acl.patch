@@ -1,0 +1,30 @@
+From: Jiri Slaby <jslaby@suse.cz>
+Subject: kABI: protect struct se_node_acl
+Patch-mainline: never, kabi
+References: kabi
+
+In 4.4.53, commit 6af0acc0b69f96b28285ddd994555e5ac71f9bb5 (target: Fix
+multi-session dynamic se_node_acl double free OOPs), upstream commit
+01d4d673558985d9a118e1e05026633c3e2ade9b added dynamic_stop bool into
+struct se_node_acl.
+
+Luckily, the bool uses a hole in the structure, so we can just protect
+the change by __GENKSYMS__.
+
+Signed-off-by: Jiri Slaby <jslaby@suse.cz>
+---
+ include/target/target_core_base.h |    2 ++
+ 1 file changed, 2 insertions(+)
+
+--- a/include/target/target_core_base.h
++++ b/include/target/target_core_base.h
+@@ -547,7 +547,9 @@ struct se_node_acl {
+ 	/* Used to signal demo mode created ACL, disabled by default */
+ 	bool			dynamic_node_acl;
+ 	bool			acl_stop:1;
++#ifndef __GENKSYMS__
+ 	bool			dynamic_stop;
++#endif
+ 	u32			queue_depth;
+ 	u32			acl_index;
+ 	enum target_prot_type	saved_prot_type;

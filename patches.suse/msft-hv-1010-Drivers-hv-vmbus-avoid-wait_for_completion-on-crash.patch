@@ -17,17 +17,15 @@ Signed-off-by: K. Y. Srinivasan <kys@microsoft.com>
 Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
 Acked-by: <ohering@suse.de>
 ---
- drivers/hv/channel_mgmt.c | 4 ++--
- drivers/hv/connection.c   | 2 +-
- drivers/hv/hyperv_vmbus.h | 2 +-
- drivers/hv/vmbus_drv.c    | 4 ++--
+ drivers/hv/channel_mgmt.c |    4 ++--
+ drivers/hv/connection.c   |    2 +-
+ drivers/hv/hyperv_vmbus.h |    2 +-
+ drivers/hv/vmbus_drv.c    |    4 ++--
  4 files changed, 6 insertions(+), 6 deletions(-)
 
-diff --git a/drivers/hv/channel_mgmt.c b/drivers/hv/channel_mgmt.c
-index b40f429..f70e352 100644
 --- a/drivers/hv/channel_mgmt.c
 +++ b/drivers/hv/channel_mgmt.c
-@@ -641,7 +641,7 @@ static void vmbus_unload_response(struct vmbus_channel_message_header *hdr)
+@@ -641,7 +641,7 @@ static void vmbus_unload_response(struct
  	complete(&vmbus_connection.unload_event);
  }
  
@@ -45,8 +43,6 @@ index b40f429..f70e352 100644
  		wait_for_completion(&vmbus_connection.unload_event);
  	else
  		vmbus_wait_for_unload();
-diff --git a/drivers/hv/connection.c b/drivers/hv/connection.c
-index fa86b2c..3b6dc00 100644
 --- a/drivers/hv/connection.c
 +++ b/drivers/hv/connection.c
 @@ -236,7 +236,7 @@ void vmbus_disconnect(void)
@@ -58,11 +54,9 @@ index fa86b2c..3b6dc00 100644
  
  	if (vmbus_connection.work_queue) {
  		drain_workqueue(vmbus_connection.work_queue);
-diff --git a/drivers/hv/hyperv_vmbus.h b/drivers/hv/hyperv_vmbus.h
-index b9ea7f5..b0299da 100644
 --- a/drivers/hv/hyperv_vmbus.h
 +++ b/drivers/hv/hyperv_vmbus.h
-@@ -663,7 +663,7 @@ void hv_vss_onchannelcallback(void *);
+@@ -657,7 +657,7 @@ void hv_vss_onchannelcallback(void *);
  int hv_fcopy_init(struct hv_util_service *);
  void hv_fcopy_deinit(void);
  void hv_fcopy_onchannelcallback(void *);
@@ -71,11 +65,9 @@ index b9ea7f5..b0299da 100644
  
  static inline void hv_poll_channel(struct vmbus_channel *channel,
  				   void (*cb)(void *))
-diff --git a/drivers/hv/vmbus_drv.c b/drivers/hv/vmbus_drv.c
-index 30ea8ad..c8f1671 100644
 --- a/drivers/hv/vmbus_drv.c
 +++ b/drivers/hv/vmbus_drv.c
-@@ -1291,7 +1291,7 @@ static void hv_kexec_handler(void)
+@@ -1302,7 +1302,7 @@ static void hv_kexec_handler(void)
  	int cpu;
  
  	hv_synic_clockevents_cleanup();
@@ -83,8 +75,8 @@ index 30ea8ad..c8f1671 100644
 +	vmbus_initiate_unload(false);
  	for_each_online_cpu(cpu)
  		smp_call_function_single(cpu, hv_synic_cleanup, NULL, 1);
- 	hv_cleanup();
-@@ -1299,7 +1299,7 @@ static void hv_kexec_handler(void)
+ 	hv_cleanup(false);
+@@ -1310,7 +1310,7 @@ static void hv_kexec_handler(void)
  
  static void hv_crash_handler(struct pt_regs *regs)
  {

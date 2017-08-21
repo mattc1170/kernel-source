@@ -1,0 +1,179 @@
+From 00f481bd895a826058d301b3093e86e819497b51 Mon Sep 17 00:00:00 2001
+From: Chaya Rachel Ivgi <chaya.rachel.ivgi@intel.com>
+Date: Wed, 24 Feb 2016 12:19:22 +0200
+Subject: [PATCH] iwlwifi: mvm: add ctdp operations to debugfs
+Git-commit: 00f481bd895a826058d301b3093e86e819497b51
+Patch-mainline: 4.6-rc1
+References: FATE#321353, FATE#323335
+
+Add debugfs entries to get the ctdp budget average
+and to stop ctdp.
+
+Signed-off-by: Chaya Rachel Ivgi <chaya.rachel.ivgi@intel.com>
+Signed-off-by: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/iwlwifi/mvm/debugfs.c |   42 +++++++++++++++
+ drivers/net/wireless/iwlwifi/mvm/tt.c      |   78 ++++++++++++++++-------------
+ 2 files changed, 86 insertions(+), 34 deletions(-)
+
+--- a/drivers/net/wireless/iwlwifi/mvm/debugfs.c
++++ b/drivers/net/wireless/iwlwifi/mvm/debugfs.c
+@@ -72,6 +72,44 @@
+ #include "debugfs.h"
+ #include "iwl-fw-error-dump.h"
+ 
++static ssize_t iwl_dbgfs_ctdp_budget_read(struct file *file,
++					  char __user *user_buf,
++					  size_t count, loff_t *ppos)
++{
++	struct iwl_mvm *mvm = file->private_data;
++	char buf[16];
++	int pos, budget;
++
++	if (!mvm->ucode_loaded || mvm->cur_ucode != IWL_UCODE_REGULAR)
++		return -EIO;
++
++	mutex_lock(&mvm->mutex);
++	budget = iwl_mvm_ctdp_command(mvm, CTDP_CMD_OPERATION_REPORT, 0);
++	mutex_unlock(&mvm->mutex);
++
++	if (budget < 0)
++		return budget;
++
++	pos = scnprintf(buf, sizeof(buf), "%d\n", budget);
++
++	return simple_read_from_buffer(user_buf, count, ppos, buf, pos);
++}
++
++static ssize_t iwl_dbgfs_stop_ctdp_write(struct iwl_mvm *mvm, char *buf,
++					 size_t count, loff_t *ppos)
++{
++	int ret;
++
++	if (!mvm->ucode_loaded || mvm->cur_ucode != IWL_UCODE_REGULAR)
++		return -EIO;
++
++	mutex_lock(&mvm->mutex);
++	ret = iwl_mvm_ctdp_command(mvm, CTDP_CMD_OPERATION_STOP, 0);
++	mutex_unlock(&mvm->mutex);
++
++	return ret ?: count;
++}
++
+ static ssize_t iwl_dbgfs_tx_flush_write(struct iwl_mvm *mvm, char *buf,
+ 					size_t count, loff_t *ppos)
+ {
+@@ -1476,6 +1514,8 @@ iwl_dbgfs_send_echo_cmd_write(struct iwl
+ MVM_DEBUGFS_READ_WRITE_FILE_OPS(prph_reg, 64);
+ 
+ /* Device wide debugfs entries */
++MVM_DEBUGFS_READ_FILE_OPS(ctdp_budget);
++MVM_DEBUGFS_WRITE_FILE_OPS(stop_ctdp, 8);
+ MVM_DEBUGFS_WRITE_FILE_OPS(tx_flush, 16);
+ MVM_DEBUGFS_WRITE_FILE_OPS(sta_drain, 8);
+ MVM_DEBUGFS_WRITE_FILE_OPS(send_echo_cmd, 8);
+@@ -1524,6 +1564,8 @@ int iwl_mvm_dbgfs_register(struct iwl_mv
+ 	MVM_DEBUGFS_ADD_FILE(set_nic_temperature, mvm->debugfs_dir,
+ 			     S_IWUSR | S_IRUSR);
+ 	MVM_DEBUGFS_ADD_FILE(nic_temp, dbgfs_dir, S_IRUSR);
++	MVM_DEBUGFS_ADD_FILE(ctdp_budget, dbgfs_dir, S_IRUSR);
++	MVM_DEBUGFS_ADD_FILE(stop_ctdp, dbgfs_dir, S_IWUSR);
+ 	MVM_DEBUGFS_ADD_FILE(stations, dbgfs_dir, S_IRUSR);
+ 	MVM_DEBUGFS_ADD_FILE(bt_notif, dbgfs_dir, S_IRUSR);
+ 	MVM_DEBUGFS_ADD_FILE(bt_cmd, dbgfs_dir, S_IRUSR);
+--- a/drivers/net/wireless/iwlwifi/mvm/tt.c
++++ b/drivers/net/wireless/iwlwifi/mvm/tt.c
+@@ -510,6 +510,50 @@ static const struct iwl_tt_params iwl_mv
+ 	.support_tx_backoff = true,
+ };
+ 
++int iwl_mvm_ctdp_command(struct iwl_mvm *mvm, u32 op, u32 budget)
++{
++	struct iwl_mvm_ctdp_cmd cmd = {
++		.operation = cpu_to_le32(op),
++		.budget = cpu_to_le32(budget),
++		.window_size = 0,
++	};
++	int ret;
++	u32 status;
++
++	lockdep_assert_held(&mvm->mutex);
++
++	ret = iwl_mvm_send_cmd_pdu_status(mvm, WIDE_ID(PHY_OPS_GROUP,
++						       CTDP_CONFIG_CMD),
++					  sizeof(cmd), &cmd, &status);
++
++	if (ret) {
++		IWL_ERR(mvm, "cTDP command failed (err=%d)\n", ret);
++		return ret;
++	}
++
++	switch (op) {
++	case CTDP_CMD_OPERATION_START:
++#ifdef CONFIG_THERMAL
++		mvm->cooling_dev.cur_state = budget;
++#endif /* CONFIG_THERMAL */
++		break;
++	case CTDP_CMD_OPERATION_REPORT:
++		IWL_DEBUG_TEMP(mvm, "cTDP avg energy in mWatt = %d\n", status);
++		/* when the function is called with CTDP_CMD_OPERATION_REPORT
++		 * option the function should return the average budget value
++		 * that is received from the FW.
++		 * The budget can't be less or equal to 0, so it's possible
++		 * to distinguish between error values and budgets.
++		 */
++		return status;
++	case CTDP_CMD_OPERATION_STOP:
++		IWL_DEBUG_TEMP(mvm, "cTDP stopped successfully\n");
++		break;
++	}
++
++	return 0;
++}
++
+ #ifdef CONFIG_THERMAL
+ static int compare_temps(const void *a, const void *b)
+ {
+@@ -738,40 +782,6 @@ static const u32 iwl_mvm_cdev_budgets[]
+ 	150,	/* cooling state 19 */
+ };
+ 
+-int iwl_mvm_ctdp_command(struct iwl_mvm *mvm, u32 op, u32 budget)
+-{
+-	struct iwl_mvm_ctdp_cmd cmd = {
+-		.operation = cpu_to_le32(op),
+-		.budget = cpu_to_le32(budget),
+-		.window_size = 0,
+-	};
+-	int ret;
+-	u32 status;
+-
+-	lockdep_assert_held(&mvm->mutex);
+-
+-	ret = iwl_mvm_send_cmd_pdu_status(mvm, WIDE_ID(PHY_OPS_GROUP,
+-						       CTDP_CONFIG_CMD),
+-					  sizeof(cmd), &cmd, &status);
+-
+-	if (ret) {
+-		IWL_ERR(mvm, "cTDP command failed (err=%d)\n", ret);
+-		return ret;
+-	}
+-
+-	/* can happen if the registration failed */
+-	if (!mvm->cooling_dev.cdev)
+-		return -EINVAL;
+-
+-	if (op == CTDP_CMD_OPERATION_START)
+-		mvm->cooling_dev.cur_state = budget;
+-
+-	else if (op == CTDP_CMD_OPERATION_REPORT)
+-		IWL_DEBUG_TEMP(mvm, "cTDP avg energy in mWatt = %d\n", status);
+-
+-	return 0;
+-}
+-
+ static int iwl_mvm_tcool_get_max_state(struct thermal_cooling_device *cdev,
+ 				       unsigned long *state)
+ {

@@ -1,0 +1,34 @@
+From: Maor Gottlieb <maorg@mellanox.com>
+Date: Wed, 28 Dec 2016 14:58:36 +0200
+Subject: net/mlx5: Release FTE lock in error flow
+Patch-mainline: v4.10-rc3
+Git-commit: 9b8c514291a83e53c073b473bdca6267f17a02c2
+References: bsc#966170 bsc#966172 bsc#966191
+
+Release the FTE lock when adding rule to the FTE has failed.
+
+Fixes: 0fd758d6112f ('net/mlx5: Don't unlock fte while still using it')
+Signed-off-by: Maor Gottlieb <maorg@mellanox.com>
+Reviewed-by: Mark Bloch <markb@mellanox.com>
+Signed-off-by: Saeed Mahameed <saeedm@mellanox.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+Acked-by: Thomas Bogendoerfer <tbogendoerfer@suse.de>
+---
+ drivers/net/ethernet/mellanox/mlx5/core/fs_core.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/drivers/net/ethernet/mellanox/mlx5/core/fs_core.c b/drivers/net/ethernet/mellanox/mlx5/core/fs_core.c
+index 00562de91e1c..91bb82ff0c7e 100644
+--- a/drivers/net/ethernet/mellanox/mlx5/core/fs_core.c
++++ b/drivers/net/ethernet/mellanox/mlx5/core/fs_core.c
+@@ -1053,6 +1053,7 @@ static struct mlx5_flow_rule *add_rule_fg(struct mlx5_flow_group *fg,
+ 	nested_lock_ref_node(&fte->node, FS_MUTEX_CHILD);
+ 	rule = add_rule_fte(fte, fg, dest);
+ 	if (IS_ERR(rule)) {
++		unlock_ref_node(&fte->node);
+ 		kfree(fte);
+ 		goto unlock_fg;
+ 	}
+-- 
+2.12.3
+

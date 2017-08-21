@@ -1,0 +1,31 @@
+From 04b089922412ad3d0cee0046fd0cb495ef22b8e8 Mon Sep 17 00:00:00 2001
+From: Nicholas Krause <xerofoify@gmail.com>
+Date: Tue, 22 Sep 2015 20:24:19 -0400
+Subject: [PATCH] iwlwifi: mvm: fix incorrect fallthrough in iwl_mvm_check_running_scans()
+Git-commit: 04b089922412ad3d0cee0046fd0cb495ef22b8e8
+Patch-mainline: 4.5-rc1
+References: FATE#321353, FATE#323335
+
+In the iwl_mvm_check_running_scans() we were mistakenly ignoring the
+value returned by iwl_mvm_scan_stop() for scheduled scans and falling
+thorugh to the next case, which caused us to always return zero.
+
+Signed-off-by: Nicholas Krause <xerofoify@gmail.com>
+Signed-off-by: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/iwlwifi/mvm/scan.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+--- a/drivers/net/wireless/iwlwifi/mvm/scan.c
++++ b/drivers/net/wireless/iwlwifi/mvm/scan.c
+@@ -1162,7 +1162,7 @@ static int iwl_mvm_check_running_scans(s
+ 	case IWL_MVM_SCAN_SCHED:
+ 		if (mvm->scan_status & IWL_MVM_SCAN_SCHED_MASK)
+ 			return -EBUSY;
+-		iwl_mvm_scan_stop(mvm, IWL_MVM_SCAN_REGULAR, true);
++		return iwl_mvm_scan_stop(mvm, IWL_MVM_SCAN_REGULAR, true);
+ 	case IWL_MVM_SCAN_NETDETECT:
+ 		/* No need to stop anything for net-detect since the
+ 		 * firmware is restarted anyway.  This way, any sched

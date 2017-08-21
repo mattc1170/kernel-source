@@ -1,0 +1,84 @@
+From bfb3f9b474b4f7b7e7894aeacceda6f1cb7e74d5 Mon Sep 17 00:00:00 2001
+From: Brian Foster <bfoster@redhat.com>
+Date: Mon, 26 Sep 2016 08:32:07 +1000
+Subject: [PATCH 3/6] xfs: pass current lsn to log recovery buffer validation
+Git-commit: 22db9af2488655f7f841e9588d25384a5e694fa6
+Patch-mainline: v4.9-rc1
+References: bsc#1043598
+
+The current LSN must be available to the buffer validation function to
+provide the ability to update the metadata LSN of the buffer. Pass the
+current_lsn value down to xlog_recover_validate_buf_type() in
+preparation.
+
+Signed-off-by: Brian Foster <bfoster@redhat.com>
+Reviewed-by: Dave Chinner <dchinner@redhat.com>
+Signed-off-by: Dave Chinner <david@fromorbit.com>
+Acked-by: Nikolay Borisov <nborisov@suse.com>
+---
+ fs/xfs/xfs_log_recover.c | 14 ++++++++------
+ 1 file changed, 8 insertions(+), 6 deletions(-)
+
+diff --git a/fs/xfs/xfs_log_recover.c b/fs/xfs/xfs_log_recover.c
+index 82bf239d93b5..7cc6fb8b7c46 100644
+--- a/fs/xfs/xfs_log_recover.c
++++ b/fs/xfs/xfs_log_recover.c
+@@ -1975,7 +1975,8 @@ static void
+ xlog_recover_validate_buf_type(
+ 	struct xfs_mount	*mp,
+ 	struct xfs_buf		*bp,
+-	xfs_buf_log_format_t	*buf_f)
++	xfs_buf_log_format_t	*buf_f,
++	xfs_lsn_t		current_lsn)
+ {
+ 	struct xfs_da_blkinfo	*info = bp->b_addr;
+ 	__uint32_t		magic32;
+@@ -2174,7 +2175,8 @@ xlog_recover_do_reg_buffer(
+ 	struct xfs_mount	*mp,
+ 	xlog_recover_item_t	*item,
+ 	struct xfs_buf		*bp,
+-	xfs_buf_log_format_t	*buf_f)
++	xfs_buf_log_format_t	*buf_f,
++	xfs_lsn_t		current_lsn)
+ {
+ 	int			i;
+ 	int			bit;
+@@ -2247,7 +2249,7 @@ xlog_recover_do_reg_buffer(
+ 	/* Shouldn't be any more regions */
+ 	ASSERT(i == item->ri_total);
+ 
+-	xlog_recover_validate_buf_type(mp, bp, buf_f);
++	xlog_recover_validate_buf_type(mp, bp, buf_f, current_lsn);
+ }
+ 
+ /*
+@@ -2290,7 +2292,7 @@ xlog_recover_do_dquot_buffer(
+ 	if (log->l_quotaoffs_flag & type)
+ 		return false;
+ 
+-	xlog_recover_do_reg_buffer(mp, item, bp, buf_f);
++	xlog_recover_do_reg_buffer(mp, item, bp, buf_f, NULLCOMMITLSN);
+ 	return true;
+ }
+ 
+@@ -2378,7 +2380,7 @@ xlog_recover_buffer_pass2(
+ 	 */
+ 	lsn = xlog_recover_get_buf_lsn(mp, bp);
+ 	if (lsn && lsn != -1 && XFS_LSN_CMP(lsn, current_lsn) >= 0) {
+-		xlog_recover_validate_buf_type(mp, bp, buf_f);
++		xlog_recover_validate_buf_type(mp, bp, buf_f, NULLCOMMITLSN);
+ 		goto out_release;
+ 	}
+ 
+@@ -2394,7 +2396,7 @@ xlog_recover_buffer_pass2(
+ 		if (!dirty)
+ 			goto out_release;
+ 	} else {
+-		xlog_recover_do_reg_buffer(mp, item, bp, buf_f);
++		xlog_recover_do_reg_buffer(mp, item, bp, buf_f, current_lsn);
+ 	}
+ 
+ 	/*
+-- 
+2.7.4
+

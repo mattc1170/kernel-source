@@ -1,0 +1,47 @@
+From 431469259df6ebc8e022b268bbb2d9bc5562f920 Mon Sep 17 00:00:00 2001
+From: Sara Sharon <sara.sharon@intel.com>
+Date: Mon, 14 Mar 2016 13:11:47 +0200
+Subject: [PATCH] iwlwifi: pcie: fix global table size
+Git-commit: 431469259df6ebc8e022b268bbb2d9bc5562f920
+Patch-mainline: 4.7-rc1
+References: FATE#321353, FATE#323335
+
+My patch resized the pool size, but neglected to resize
+the global table, which is obviously wrong since the global
+table maps the pool's rxb to vid one to one. This results
+in a panic in 9000 devices.
+Add a build bug to avoid such a case in the future.
+
+Fixes: 7b5424361ec9 ("iwlwifi: pcie: fine tune number of rxbs")
+Reported-by: Haim Dreyfuss <haim.dreyfuss@intel.com>
+Signed-off-by: Sara Sharon <sara.sharon@intel.com>
+Signed-off-by: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/iwlwifi/pcie/internal.h |    2 +-
+ drivers/net/wireless/iwlwifi/pcie/rx.c       |    2 ++
+ 2 files changed, 3 insertions(+), 1 deletion(-)
+
+--- a/drivers/net/wireless/iwlwifi/pcie/internal.h
++++ b/drivers/net/wireless/iwlwifi/pcie/internal.h
+@@ -348,7 +348,7 @@ struct iwl_tso_hdr_page {
+ struct iwl_trans_pcie {
+ 	struct iwl_rxq *rxq;
+ 	struct iwl_rx_mem_buffer rx_pool[RX_POOL_SIZE];
+-	struct iwl_rx_mem_buffer *global_table[MQ_RX_TABLE_SIZE];
++	struct iwl_rx_mem_buffer *global_table[RX_POOL_SIZE];
+ 	struct iwl_rb_allocator rba;
+ 	struct iwl_trans *trans;
+ 	struct iwl_drv *drv;
+--- a/drivers/net/wireless/iwlwifi/pcie/rx.c
++++ b/drivers/net/wireless/iwlwifi/pcie/rx.c
+@@ -908,6 +908,8 @@ int iwl_pcie_rx_init(struct iwl_trans *t
+ 	allocator_pool_size = trans->num_rx_queues *
+ 		(RX_CLAIM_REQ_ALLOC - RX_POST_REQ_ALLOC);
+ 	num_alloc = queue_size + allocator_pool_size;
++	BUILD_BUG_ON(ARRAY_SIZE(trans_pcie->global_table) !=
++		     ARRAY_SIZE(trans_pcie->rx_pool));
+ 	for (i = 0; i < num_alloc; i++) {
+ 		struct iwl_rx_mem_buffer *rxb = &trans_pcie->rx_pool[i];
+ 

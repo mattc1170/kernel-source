@@ -1,0 +1,36 @@
+From 85e5a3876393484361db8ae8d43b1bc27b8ad9c2 Mon Sep 17 00:00:00 2001
+From: Johannes Berg <johannes.berg@intel.com>
+Date: Thu, 12 Nov 2015 16:16:01 +0100
+Subject: [PATCH] iwlwifi: trans: make various conversion macros inlines
+Git-commit: 85e5a3876393484361db8ae8d43b1bc27b8ad9c2
+Patch-mainline: 4.5-rc1
+References: FATE#321353, FATE#323335
+
+Make the various conversion functions typesafe, so we don't
+accidentally try to call them with the wrong pointers and
+cast them to something that will crash.
+
+Signed-off-by: Johannes Berg <johannes.berg@intel.com>
+Signed-off-by: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/iwlwifi/pcie/internal.h |    7 +++++--
+ 1 file changed, 5 insertions(+), 2 deletions(-)
+
+--- a/drivers/net/wireless/iwlwifi/pcie/internal.h
++++ b/drivers/net/wireless/iwlwifi/pcie/internal.h
+@@ -378,8 +378,11 @@ struct iwl_trans_pcie {
+ 	u32 fw_mon_size;
+ };
+ 
+-#define IWL_TRANS_GET_PCIE_TRANS(_iwl_trans) \
+-	((struct iwl_trans_pcie *) ((_iwl_trans)->trans_specific))
++static inline struct iwl_trans_pcie *
++IWL_TRANS_GET_PCIE_TRANS(struct iwl_trans *trans)
++{
++	return (void *)trans->trans_specific;
++}
+ 
+ static inline struct iwl_trans *
+ iwl_trans_pcie_get_trans(struct iwl_trans_pcie *trans_pcie)

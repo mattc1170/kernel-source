@@ -1,0 +1,36 @@
+From: Josef Bacik <jbacik@fb.com>
+Date: Fri, 27 May 2016 13:01:08 -0400
+Patch-mainline: 4.8
+Git-commit: 40acc3eededbe16f6104a32776e541f223d00b5e
+References: bsc#1012452
+Subject: [PATCH] Btrfs: always use trans->block_rsv for orphans
+
+This is the case all the time anyway except for relocation which could be doing
+a reloc root for a non ref counted root, in which case we'd end up with some
+random block rsv rather than the one we have our reservation in.  If there isn't
+enough space in the block rsv we are trying to steal from we'll BUG() because we
+expect there to be space for the orphan to make its reservation.  Thanks,
+
+Signed-off-by: Josef Bacik <jbacik@fb.com>
+Signed-off-by: David Sterba <dsterba@suse.com>
+---
+ fs/btrfs/extent-tree.c |    8 +++++++-
+ 1 file changed, 7 insertions(+), 1 deletion(-)
+
+--- a/fs/btrfs/extent-tree.c
++++ b/fs/btrfs/extent-tree.c
+@@ -5731,7 +5731,13 @@ int btrfs_orphan_reserve_metadata(struct
+ 				  struct inode *inode)
+ {
+ 	struct btrfs_root *root = BTRFS_I(inode)->root;
+-	struct btrfs_block_rsv *src_rsv = get_block_rsv(trans, root);
++	/*
++	 * We always use trans->block_rsv here as we will have reserved space
++	 * for our orphan when starting the transaction, using get_block_rsv()
++	 * here will sometimes make us choose the wrong block rsv as we could be
++	 * doing a reloc inode for a non refcounted root.
++	 */
++	struct btrfs_block_rsv *src_rsv = trans->block_rsv;
+ 	struct btrfs_block_rsv *dst_rsv = root->orphan_block_rsv;
+ 
+ 	/*

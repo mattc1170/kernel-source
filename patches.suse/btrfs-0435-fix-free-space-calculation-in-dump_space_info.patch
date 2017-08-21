@@ -1,0 +1,34 @@
+From: Wang Xiaoguang <wangxg.fnst@cn.fujitsu.com>
+Date: Mon, 11 Jul 2016 19:30:04 +0800
+Patch-mainline: 4.8
+Git-commit: 39581a3a1af7e03af41dde62a6485a934deb109b
+References: bsc#1012452
+Subject: [PATCH] btrfs: fix free space calculation in
+ dump_space_info()
+
+In btrfs, btrfs_space_info's bytes_may_use is treated as fs used
+space, as what we do in reserve_metadata_bytes() or
+btrfs_alloc_data_chunk_ondemand(), so in dump_space_info(), when
+calculating free space, we should also subtract btrfs_space_info's
+bytes_may_use.
+
+Signed-off-by: Wang Xiaoguang <wangxg.fnst@cn.fujitsu.com>
+Reviewed-by: David Sterba <dsterba@suse.com>
+Signed-off-by: David Sterba <dsterba@suse.com>
+---
+ fs/btrfs/extent-tree.c |    4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+--- a/fs/btrfs/extent-tree.c
++++ b/fs/btrfs/extent-tree.c
+@@ -7886,8 +7886,8 @@ static void dump_space_info(struct btrfs
+ 	printk(KERN_INFO "BTRFS: space_info %llu has %llu free, is %sfull\n",
+ 	       info->flags,
+ 	       info->total_bytes - info->bytes_used - info->bytes_pinned -
+-	       info->bytes_reserved - info->bytes_readonly,
+-	       (info->full) ? "" : "not ");
++	       info->bytes_reserved - info->bytes_readonly -
++	       info->bytes_may_use, (info->full) ? "" : "not ");
+ 	printk(KERN_INFO "BTRFS: space_info total=%llu, used=%llu, pinned=%llu, "
+ 	       "reserved=%llu, may_use=%llu, readonly=%llu\n",
+ 	       info->total_bytes, info->bytes_used, info->bytes_pinned,

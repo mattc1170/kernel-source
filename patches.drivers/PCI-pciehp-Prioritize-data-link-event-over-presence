@@ -1,0 +1,70 @@
+From 385895fef6b5f4723e33d0e58251c45bc708132d Mon Sep 17 00:00:00 2001
+From: Ashok Raj <ashok.raj@intel.com>
+Date: Sat, 19 Nov 2016 00:32:45 -0800
+Subject: [PATCH] PCI: pciehp: Prioritize data-link event over presence detect
+Git-commit: 385895fef6b5f4723e33d0e58251c45bc708132d
+Patch-mainline: 4.10-rc1
+References: bsc#1031040,bsc#1037483
+
+If Slot Status indicates changes in both Data Link Layer Status and
+Presence Detect, prioritize the Link status change.
+
+When both events are observed, pciehp currently relies on the Slot Status
+Presence Detect State (PDS) to agree with the Link Status Data Link Layer
+Active status.  The Presence Detect State, however, may be set to 1 through
+out-of-band presence detect even if the link is down, which creates
+conflicting events.
+
+Since the Link Status accurately reflects the reachability of the
+downstream bus, the Link Status event should take precedence over a
+Presence Detect event.  Skip checking the PDC status if we handled a link
+event in the same handler.
+
+Signed-off-by: Ashok Raj <ashok.raj@intel.com>
+Signed-off-by: Bjorn Helgaas <bhelgaas@google.com>
+Reviewed-by: Keith Busch <keith.busch@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/pci/hotplug/pciehp_hpc.c |   23 +++++++++++++----------
+ 1 file changed, 13 insertions(+), 10 deletions(-)
+
+--- a/drivers/pci/hotplug/pciehp_hpc.c
++++ b/drivers/pci/hotplug/pciehp_hpc.c
+@@ -624,8 +624,19 @@ static irqreturn_t pcie_isr(int irq, voi
+ 		pciehp_queue_interrupt_event(slot, INT_BUTTON_PRESS);
+ 	}
+ 
+-	/* Check Presence Detect Changed */
+-	if (intr_loc & PCI_EXP_SLTSTA_PDC) {
++	/*
++	 * Check Link Status Changed at higher precedence than Presence
++	 * Detect Changed.  The PDS value may be set to "card present" from
++	 * out-of-band detection, which may be in conflict with a Link Down
++	 * and cause the wrong event to queue.
++	 */
++	if (intr_loc & PCI_EXP_SLTSTA_DLLSC) {
++		link = pciehp_check_link_active(ctrl);
++		ctrl_info(ctrl, "slot(%s): Link %s event\n",
++			  slot_name(slot), link ? "Up" : "Down");
++		pciehp_queue_interrupt_event(slot, link ? INT_LINK_UP :
++					     INT_LINK_DOWN);
++	} else if (intr_loc & PCI_EXP_SLTSTA_PDC) {
+ 		pciehp_get_adapter_status(slot, &present);
+ 		ctrl_info(ctrl, "Card %spresent on Slot(%s)\n",
+ 			  present ? "" : "not ", slot_name(slot));
+@@ -640,14 +651,6 @@ static irqreturn_t pcie_isr(int irq, voi
+ 		pciehp_queue_interrupt_event(slot, INT_POWER_FAULT);
+ 	}
+ 
+-	if (intr_loc & PCI_EXP_SLTSTA_DLLSC) {
+-		link = pciehp_check_link_active(ctrl);
+-		ctrl_info(ctrl, "slot(%s): Link %s event\n",
+-			  slot_name(slot), link ? "Up" : "Down");
+-		pciehp_queue_interrupt_event(slot, link ? INT_LINK_UP :
+-					     INT_LINK_DOWN);
+-	}
+-
+ 	return IRQ_HANDLED;
+ }
+ 

@@ -1,0 +1,80 @@
+From ca95ff3a9f9edea919a53a297a4cba178b6cdf5f Mon Sep 17 00:00:00 2001
+From: David Spinadel <david.spinadel@intel.com>
+Date: Sun, 3 Jan 2016 17:08:32 +0200
+Subject: [PATCH] iwlwifi: mvm: fix extended dwell time
+Git-commit: ca95ff3a9f9edea919a53a297a4cba178b6cdf5f
+Patch-mainline: 4.5-rc1
+References: FATE#321353, FATE#323335
+
+FW adds 10 msec for every dwell time in low band, so we need
+to set 10 msec less.
+Don't use extended dwell time when fragmented scan is needed
+because FW adds 3 msec per probe and it can easily exceed
+max out of channel time.
+
+Fixes: c3e230b167a9 ("iwlwifi: mvm: add extended dwell time")
+Signed-off-by: David Spinadel <david.spinadel@intel.com>
+Signed-off-by: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/iwlwifi/mvm/scan.c |   13 +++++++------
+ 1 file changed, 7 insertions(+), 6 deletions(-)
+
+--- a/drivers/net/wireless/iwlwifi/mvm/scan.c
++++ b/drivers/net/wireless/iwlwifi/mvm/scan.c
+@@ -92,7 +92,7 @@ static struct iwl_mvm_scan_timing_params
+ 		.dwell_active = 10,
+ 		.dwell_passive = 110,
+ 		.dwell_fragmented = 44,
+-		.dwell_extended = 100,
++		.dwell_extended = 90,
+ 		.suspend_time = 0,
+ 		.max_out_time = 0,
+ 	},
+@@ -100,7 +100,7 @@ static struct iwl_mvm_scan_timing_params
+ 		.dwell_active = 10,
+ 		.dwell_passive = 110,
+ 		.dwell_fragmented = 44,
+-		.dwell_extended = 100,
++		.dwell_extended = 90,
+ 		.suspend_time = 30,
+ 		.max_out_time = 120,
+ 	},
+@@ -108,7 +108,7 @@ static struct iwl_mvm_scan_timing_params
+ 		.dwell_active = 10,
+ 		.dwell_passive = 110,
+ 		.dwell_fragmented = 44,
+-		.dwell_extended = 100,
++		.dwell_extended = 90,
+ 		.suspend_time = 120,
+ 		.max_out_time = 120,
+ 	},
+@@ -116,7 +116,6 @@ static struct iwl_mvm_scan_timing_params
+ 		.dwell_active = 10,
+ 		.dwell_passive = 110,
+ 		.dwell_fragmented = 44,
+-		.dwell_extended = 44,
+ 		.suspend_time = 95,
+ 		.max_out_time = 44,
+ 	},
+@@ -790,7 +789,8 @@ static int iwl_mvm_scan_lmac_flags(struc
+ #endif
+ 
+ 	if (iwl_mvm_is_regular_scan(params) &&
+-	    vif->type != NL80211_IFTYPE_P2P_DEVICE)
++	    vif->type != NL80211_IFTYPE_P2P_DEVICE &&
++	    params->type != IWL_SCAN_TYPE_FRAGMENTED)
+ 		flags |= IWL_MVM_LMAC_SCAN_FLAG_EXTENDED_DWELL;
+ 
+ 	return flags;
+@@ -1072,7 +1072,8 @@ static u32 iwl_mvm_scan_umac_flags(struc
+ #endif
+ 
+ 	if (iwl_mvm_is_regular_scan(params) &&
+-	    vif->type != NL80211_IFTYPE_P2P_DEVICE)
++	    vif->type != NL80211_IFTYPE_P2P_DEVICE &&
++	    params->type != IWL_SCAN_TYPE_FRAGMENTED)
+ 		flags |= IWL_UMAC_SCAN_GEN_FLAGS_EXTENDED_DWELL;
+ 
+ 	return flags;

@@ -1,0 +1,35 @@
+From e5f91d91ac2e09f93f58ab8f6813d12f2b3afa03 Mon Sep 17 00:00:00 2001
+From: Sara Sharon <sara.sharon@intel.com>
+Date: Wed, 2 Mar 2016 15:17:28 +0200
+Subject: [PATCH] iwlwifi: pcie: set RB chunk size back to 64
+Git-commit: e5f91d91ac2e09f93f58ab8f6813d12f2b3afa03
+Patch-mainline: 4.6-rc1
+References: FATE#321353, FATE#323335
+
+128 byte chunk size is supported only on PCIe and not
+on IOSF. For now, change it back to 64 byte.
+
+Reported-by: Oren Givon <oren.givon@intel.com>
+Signed-off-by: Sara Sharon <sara.sharon@intel.com>
+Signed-off-by: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/iwlwifi/pcie/rx.c |    3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
+
+--- a/drivers/net/wireless/iwlwifi/pcie/rx.c
++++ b/drivers/net/wireless/iwlwifi/pcie/rx.c
+@@ -801,11 +801,10 @@ static void iwl_pcie_rx_mq_hw_init(struc
+ 
+ 	/*
+ 	 * Activate DMA snooping.
+-	 * Set RX DMA chunk size to 128 bit
++	 * Set RX DMA chunk size to 64B
+ 	 * Default queue is 0
+ 	 */
+ 	iwl_write_prph(trans, RFH_GEN_CFG, RFH_GEN_CFG_RFH_DMA_SNOOP |
+-		       RFH_GEN_CFG_RB_CHUNK_SIZE |
+ 		       (DEFAULT_RXQ_NUM << RFH_GEN_CFG_DEFAULT_RXQ_NUM_POS) |
+ 		       RFH_GEN_CFG_SERVICE_DMA_SNOOP);
+ 	/* Enable the relevant rx queues */

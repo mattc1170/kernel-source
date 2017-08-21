@@ -20,7 +20,7 @@ Signed-off-by: Mike Galbraith <mgalbraith@suse.de>
 
 --- a/Documentation/kernel-parameters.txt
 +++ b/Documentation/kernel-parameters.txt
-@@ -3430,6 +3430,10 @@ bytes respectively. Such letter suffixes
+@@ -3441,6 +3441,10 @@ bytes respectively. Such letter suffixes
  			Memory area to be used by remote processor image,
  			managed by CMA.
  
@@ -33,7 +33,7 @@ Signed-off-by: Mike Galbraith <mgalbraith@suse.de>
  	S		[KNL] Run init in single mode
 --- a/kernel/kthread.c
 +++ b/kernel/kthread.c
-@@ -244,6 +244,24 @@ static void create_kthread(struct kthrea
+@@ -246,6 +246,24 @@ static void create_kthread(struct kthrea
  	}
  }
  
@@ -58,7 +58,7 @@ Signed-off-by: Mike Galbraith <mgalbraith@suse.de>
  /**
   * kthread_create_on_node - create a kthread.
   * @threadfn: the function to run until signal_pending(current).
-@@ -310,7 +328,6 @@ struct task_struct *kthread_create_on_no
+@@ -312,7 +330,6 @@ struct task_struct *kthread_create_on_no
  	}
  	task = create->result;
  	if (!IS_ERR(task)) {
@@ -66,7 +66,7 @@ Signed-off-by: Mike Galbraith <mgalbraith@suse.de>
  		va_list args;
  
  		va_start(args, namefmt);
-@@ -320,7 +337,7 @@ struct task_struct *kthread_create_on_no
+@@ -322,7 +339,7 @@ struct task_struct *kthread_create_on_no
  		 * root may have changed our (kthreadd's) priority or CPU mask.
  		 * The kernel thread should not inherit these properties.
  		 */
@@ -75,7 +75,7 @@ Signed-off-by: Mike Galbraith <mgalbraith@suse.de>
  		set_cpus_allowed_ptr(task, cpu_all_mask);
  	}
  	kfree(create);
-@@ -488,6 +505,7 @@ int kthread_stop(struct task_struct *k)
+@@ -490,6 +507,7 @@ int kthread_stop(struct task_struct *k)
  	if (kthread) {
  		set_bit(KTHREAD_SHOULD_STOP, &kthread->flags);
  		__kthread_unpark(k, kthread);
@@ -83,15 +83,15 @@ Signed-off-by: Mike Galbraith <mgalbraith@suse.de>
  		wake_up_process(k);
  		wait_for_completion(&kthread->exited);
  	}
-@@ -508,6 +526,7 @@ int kthreadd(void *unused)
+@@ -510,6 +528,7 @@ int kthreadd(void *unused)
  	ignore_signals(tsk);
  	set_cpus_allowed_ptr(tsk, cpu_all_mask);
  	set_mems_allowed(node_states[N_MEMORY]);
 +	kthread_set_sched_params(current);
  
  	current->flags |= PF_NOFREEZE;
- 
-@@ -709,3 +728,17 @@ void flush_kthread_worker(struct kthread
+ 	cgroup_init_kthreadd();
+@@ -712,3 +731,17 @@ void flush_kthread_worker(struct kthread
  	wait_for_completion(&fwork.done);
  }
  EXPORT_SYMBOL_GPL(flush_kthread_worker);
@@ -111,7 +111,7 @@ Signed-off-by: Mike Galbraith <mgalbraith@suse.de>
 +__setup("rtkthreads=", setup_rtkthreads);
 --- a/kernel/workqueue.c
 +++ b/kernel/workqueue.c
-@@ -1612,6 +1612,27 @@ static struct worker *alloc_worker(int n
+@@ -1651,6 +1651,27 @@ static struct worker *alloc_worker(int n
  	return worker;
  }
  
@@ -139,7 +139,7 @@ Signed-off-by: Mike Galbraith <mgalbraith@suse.de>
  /**
   * worker_attach_to_pool() - attach a worker to a pool
   * @worker: worker to be attached
-@@ -1715,6 +1736,7 @@ static struct worker *create_worker(stru
+@@ -1754,6 +1775,7 @@ static struct worker *create_worker(stru
  
  	set_user_nice(worker->task, pool->attrs->nice);
  	kthread_bind_mask(worker->task, pool->attrs->cpumask);
@@ -147,7 +147,7 @@ Signed-off-by: Mike Galbraith <mgalbraith@suse.de>
  
  	/* successful, attach the worker to the pool */
  	worker_attach_to_pool(worker, pool);
-@@ -1762,6 +1784,7 @@ static void destroy_worker(struct worker
+@@ -1801,6 +1823,7 @@ static void destroy_worker(struct worker
  
  	list_del_init(&worker->entry);
  	worker->flags |= WORKER_DIE;
@@ -155,7 +155,7 @@ Signed-off-by: Mike Galbraith <mgalbraith@suse.de>
  	wake_up_process(worker->task);
  }
  
-@@ -3857,6 +3880,7 @@ struct workqueue_struct *__alloc_workque
+@@ -3896,6 +3919,7 @@ struct workqueue_struct *__alloc_workque
  
  		wq->rescuer = rescuer;
  		kthread_bind_mask(rescuer->task, cpu_possible_mask);
@@ -163,7 +163,7 @@ Signed-off-by: Mike Galbraith <mgalbraith@suse.de>
  		wake_up_process(rescuer->task);
  	}
  
-@@ -3936,8 +3960,10 @@ void destroy_workqueue(struct workqueue_
+@@ -3975,8 +3999,10 @@ void destroy_workqueue(struct workqueue_
  
  	workqueue_sysfs_unregister(wq);
  
@@ -175,7 +175,7 @@ Signed-off-by: Mike Galbraith <mgalbraith@suse.de>
  
  	if (!(wq->flags & WQ_UNBOUND)) {
  		/*
-@@ -5293,3 +5319,17 @@ static int __init init_workqueues(void)
+@@ -5343,3 +5369,17 @@ static int __init init_workqueues(void)
  	return 0;
  }
  early_initcall(init_workqueues);

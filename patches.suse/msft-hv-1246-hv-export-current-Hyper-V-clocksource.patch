@@ -1,0 +1,72 @@
+From: Vitaly Kuznetsov <vkuznets@redhat.com>
+Date: Sat, 4 Feb 2017 09:57:13 -0700
+Patch-mainline: v4.11-rc1
+Subject: hv: export current Hyper-V clocksource
+Git-commit: dee863b571b0a76e9c549ee99e8782bb4bc6502b
+References: bsc#1031206
+
+As a preparation to implementing Hyper-V PTP device supporting
+.getcrosststamp we need to export a reference to the current Hyper-V
+clocksource in use (MSR or TSC page).
+
+Signed-off-by: Vitaly Kuznetsov <vkuznets@redhat.com>
+Signed-off-by: K. Y. Srinivasan <kys@microsoft.com>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Acked-by: <ohering@suse.de>
+---
+ arch/x86/hyperv/hv_init.c       | 13 +++++++++----
+ arch/x86/include/asm/mshyperv.h |  3 +++
+ 2 files changed, 12 insertions(+), 4 deletions(-)
+
+--- a/arch/x86/include/asm/mshyperv.h
++++ b/arch/x86/include/asm/mshyperv.h
+@@ -3,6 +3,7 @@
+ 
+ #include <linux/types.h>
+ #include <linux/interrupt.h>
++#include <linux/clocksource.h>
+ #include <asm/hyperv.h>
+ 
+ struct ms_hyperv_info {
+@@ -25,4 +26,5 @@ void hv_setup_kexec_handler(void (*handl
+ void hv_remove_kexec_handler(void);
+ void hv_setup_crash_handler(void (*handler)(struct pt_regs *regs));
+ void hv_remove_crash_handler(void);
++extern struct clocksource *hyperv_cs;
+ #endif
+--- a/drivers/hv/hv.c
++++ b/drivers/hv/hv.c
+@@ -249,6 +249,7 @@ int hv_init(void)
+ 			goto cleanup;
+ 		hv_context.tsc_page = va_tsc;
+ 
++		hyperv_cs = &hyperv_cs_tsc;
+ 		rdmsrl(HV_X64_MSR_REFERENCE_TSC, tsc_msr.as_uint64);
+ 
+ 		tsc_msr.enable = 1;
+--- a/arch/x86/kernel/cpu/mshyperv.c
++++ b/arch/x86/kernel/cpu/mshyperv.c
+@@ -145,7 +145,10 @@ static cycle_t read_hv_clock(struct cloc
+ 	return current_tick;
+ }
+ 
+-static struct clocksource hyperv_cs = {
++struct clocksource *hyperv_cs;
++EXPORT_SYMBOL_GPL(hyperv_cs);
++
++static struct clocksource hyperv_cs_msr = {
+ 	.name		= "hyperv_clocksource",
+ 	.rating		= 400, /* use this when running on Hyperv*/
+ 	.read		= read_hv_clock,
+@@ -209,7 +212,10 @@ static void __init ms_hyperv_init_platfo
+ #endif
+ 
+ 	if (ms_hyperv.features & HV_X64_MSR_TIME_REF_COUNT_AVAILABLE)
+-		clocksource_register_hz(&hyperv_cs, NSEC_PER_SEC/100);
++	{
++		hyperv_cs = &hyperv_cs_msr;
++		clocksource_register_hz(&hyperv_cs_msr, NSEC_PER_SEC/100);
++	}
+ 
+ #ifdef CONFIG_X86_IO_APIC
+ 	no_timer_check = 1;

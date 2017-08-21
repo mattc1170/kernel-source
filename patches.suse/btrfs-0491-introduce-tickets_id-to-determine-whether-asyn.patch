@@ -1,0 +1,107 @@
+From: Wang Xiaoguang <wangxg.fnst@cn.fujitsu.com>
+Date: Fri, 2 Sep 2016 10:58:46 +0800
+Patch-mainline: 4.8
+Git-commit: ce129655c9d9aaa7b3bcc46529db1b36693575ed
+References: bsc#1012452
+Subject: [PATCH] btrfs: introduce tickets_id to determine whether
+ asynchronous metadata reclaim work makes progress
+
+In btrfs_async_reclaim_metadata_space(), we use ticket's address to
+determine whether asynchronous metadata reclaim work is making progress.
+
+	ticket = list_first_entry(&space_info->tickets,
+				  struct reserve_ticket, list);
+	if (last_ticket == ticket) {
+		flush_state++;
+	} else {
+		last_ticket = ticket;
+		flush_state = FLUSH_DELAYED_ITEMS_NR;
+		if (commit_cycles)
+			commit_cycles--;
+	}
+
+But indeed it's wrong, we should not rely on local variable's address to
+do this check, because addresses may be same. In my test environment, I
+dd one 168MB file in a 256MB fs, found that for this file, every time
+wait_reserve_ticket() called, local variable ticket's address is same,
+
+For above codes, assume a previous ticket's address is addrA, last_ticket
+is addrA. Btrfs_async_reclaim_metadata_space() finished this ticket and
+wake up it, then another ticket is added, but with the same address addrA,
+now last_ticket will be same to current ticket, then current ticket's flush
+work will start from current flush_state, not initial FLUSH_DELAYED_ITEMS_NR,
+which may result in some enospc issues(I have seen this in my test machine).
+
+Signed-off-by: Wang Xiaoguang <wangxg.fnst@cn.fujitsu.com>
+Reviewed-by: Josef Bacik <jbacik@fb.com>
+Signed-off-by: David Sterba <dsterba@suse.com>
+---
+ fs/btrfs/ctree.h       |    1 +
+ fs/btrfs/extent-tree.c |   11 ++++++-----
+ 2 files changed, 7 insertions(+), 5 deletions(-)
+
+--- a/fs/btrfs/ctree.h
++++ b/fs/btrfs/ctree.h
+@@ -431,6 +431,7 @@ struct btrfs_space_info {
+ 	struct list_head ro_bgs;
+ 	struct list_head priority_tickets;
+ 	struct list_head tickets;
++	u64 tickets_id;
+ 
+ 	struct rw_semaphore groups_sem;
+ 	/* for block groups in our same type */
+--- a/fs/btrfs/extent-tree.c
++++ b/fs/btrfs/extent-tree.c
+@@ -4953,12 +4953,12 @@ static void wake_all_tickets(struct list
+  */
+ static void btrfs_async_reclaim_metadata_space(struct work_struct *work)
+ {
+-	struct reserve_ticket *last_ticket = NULL;
+ 	struct btrfs_fs_info *fs_info;
+ 	struct btrfs_space_info *space_info;
+ 	u64 to_reclaim;
+ 	int flush_state;
+ 	int commit_cycles = 0;
++	u64 last_tickets_id;
+ 
+ 	fs_info = container_of(work, struct btrfs_fs_info, async_reclaim_work);
+ 	space_info = __find_space_info(fs_info, BTRFS_BLOCK_GROUP_METADATA);
+@@ -4971,8 +4971,7 @@ static void btrfs_async_reclaim_metadata
+ 		spin_unlock(&space_info->lock);
+ 		return;
+ 	}
+-	last_ticket = list_first_entry(&space_info->tickets,
+-				       struct reserve_ticket, list);
++	last_tickets_id = space_info->tickets_id;
+ 	spin_unlock(&space_info->lock);
+ 
+ 	flush_state = FLUSH_DELAYED_ITEMS_NR;
+@@ -4992,10 +4991,10 @@ static void btrfs_async_reclaim_metadata
+ 							      space_info);
+ 		ticket = list_first_entry(&space_info->tickets,
+ 					  struct reserve_ticket, list);
+-		if (last_ticket == ticket) {
++		if (last_tickets_id == space_info->tickets_id) {
+ 			flush_state++;
+ 		} else {
+-			last_ticket = ticket;
++			last_tickets_id = space_info->tickets_id;
+ 			flush_state = FLUSH_DELAYED_ITEMS_NR;
+ 			if (commit_cycles)
+ 				commit_cycles--;
+@@ -5371,6 +5370,7 @@ again:
+ 			list_del_init(&ticket->list);
+ 			num_bytes -= ticket->bytes;
+ 			ticket->bytes = 0;
++			space_info->tickets_id++;
+ 			wake_up(&ticket->wait);
+ 		} else {
+ 			ticket->bytes -= num_bytes;
+@@ -5413,6 +5413,7 @@ again:
+ 			num_bytes -= ticket->bytes;
+ 			space_info->bytes_may_use += ticket->bytes;
+ 			ticket->bytes = 0;
++			space_info->tickets_id++;
+ 			wake_up(&ticket->wait);
+ 		} else {
+ 			trace_btrfs_space_reservation(fs_info, "space_info",

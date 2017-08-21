@@ -65,7 +65,7 @@ Signed-off-by: Michal Marek <mmarek@suse.cz>
  };
  
  struct core_thread {
-@@ -511,6 +512,7 @@ struct mm_struct {
+@@ -512,6 +513,7 @@ struct mm_struct {
  #ifdef CONFIG_HUGETLB_PAGE
  	atomic_long_t hugetlb_usage;
  #endif
@@ -83,9 +83,9 @@ Signed-off-by: Michal Marek <mmarek@suse.cz>
  } ____cacheline_internodealigned_in_smp;
  
  enum zone_flags {
-@@ -689,6 +690,7 @@ typedef struct pglist_data {
- 	 */
+@@ -690,6 +691,7 @@ typedef struct pglist_data {
  	unsigned long first_deferred_pfn;
+ 	unsigned long static_init_size;
  #endif /* CONFIG_DEFERRED_STRUCT_PAGE_INIT */
 +	void *suse_kabi_padding;
  } pg_data_t;
@@ -121,7 +121,7 @@ Signed-off-by: Michal Marek <mmarek@suse.cz>
  };
  
  /*
-@@ -1272,6 +1273,7 @@ struct sched_entity {
+@@ -1273,6 +1274,7 @@ struct sched_entity {
  	/* Per entity load average tracking */
  	struct sched_avg	avg;
  #endif
@@ -129,7 +129,7 @@ Signed-off-by: Michal Marek <mmarek@suse.cz>
  };
  
  struct sched_rt_entity {
-@@ -1814,6 +1816,9 @@ struct task_struct {
+@@ -1820,6 +1822,9 @@ struct task_struct {
  	unsigned long	task_state_change;
  #endif
  	int pagefault_disabled;

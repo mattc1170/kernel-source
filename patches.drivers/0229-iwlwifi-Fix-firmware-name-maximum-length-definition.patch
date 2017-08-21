@@ -1,0 +1,33 @@
+From 0730ffb19e9af9b021927c266b6fbff0b5d93d45 Mon Sep 17 00:00:00 2001
+From: Haim Dreyfuss <haim.dreyfuss@intel.com>
+Date: Wed, 6 Apr 2016 10:45:05 +0300
+Subject: [PATCH] iwlwifi: Fix firmware name maximum length definition
+Git-commit: 0730ffb19e9af9b021927c266b6fbff0b5d93d45
+Patch-mainline: 4.7-rc1
+References: FATE#321353, FATE#323335
+
+Previous patch had changed firmware name convention for
+new generation product. The firmware name is now longer
+than the former convention. Adapt max firmware name length
+to the new convention.
+
+Fixes: e1ba684f762b ("iwlwifi: 8000: fix MODULE_FIRMWARE input")
+Signed-off-by: Haim Dreyfuss <haim.dreyfuss@intel.com>
+Signed-off-by: Luca Coelho <luciano.coelho@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/iwlwifi/iwl-drv.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+--- a/drivers/net/wireless/iwlwifi/iwl-drv.c
++++ b/drivers/net/wireless/iwlwifi/iwl-drv.c
+@@ -117,7 +117,7 @@ struct iwl_drv {
+ 	const struct iwl_cfg *cfg;
+ 
+ 	int fw_index;                   /* firmware we're trying to load */
+-	char firmware_name[32];         /* name of firmware file to load */
++	char firmware_name[64];         /* name of firmware file to load */
+ 
+ 	struct completion request_firmware_complete;
+ 

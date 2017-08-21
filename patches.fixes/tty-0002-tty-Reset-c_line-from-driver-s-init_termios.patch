@@ -1,0 +1,50 @@
+From: Peter Hurley <peter@hurleysoftware.com>
+Date: Sun, 10 Jan 2016 22:40:57 -0800
+Subject: tty: Reset c_line from driver's init_termios
+Patch-mainline: v4.6-rc1
+References: bnc#1043488
+Git-commit: ece53405a1f8ddf60b78e1365addcad521b2c93f
+
+After the ldisc is released, but before the tty is destroyed, the termios
+is saved (in tty_free_termios()); this termios is restored if a new
+tty is created on next open(). However, the line discipline is always
+reset, which is not obvious in the current method. Instead, reset
+as part of the restore.
+
+Restore the original line discipline, which may not have been N_TTY.
+
+Signed-off-by: Peter Hurley <peter@hurleysoftware.com>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Signed-off-by: Jiri Slaby <jslaby@suse.cz>
+---
+ drivers/tty/tty_io.c    |    5 +++--
+ drivers/tty/tty_ldisc.c |    3 ---
+ 2 files changed, 3 insertions(+), 5 deletions(-)
+
+--- a/drivers/tty/tty_io.c
++++ b/drivers/tty/tty_io.c
+@@ -1387,9 +1387,10 @@ int tty_init_termios(struct tty_struct *
+ 	else {
+ 		/* Check for lazy saved data */
+ 		tp = tty->driver->termios[idx];
+-		if (tp != NULL)
++		if (tp != NULL) {
+ 			tty->termios = *tp;
+-		else
++			tty->termios.c_line  = tty->driver->init_termios.c_line;
++		} else
+ 			tty->termios = tty->driver->init_termios;
+ 	}
+ 	/* Compatibility until drivers always set this */
+--- a/drivers/tty/tty_ldisc.c
++++ b/drivers/tty/tty_ldisc.c
+@@ -745,9 +745,6 @@ static void tty_ldisc_kill(struct tty_st
+ 	tty_ldisc_put(tty->ldisc);
+ 	/* Force an oops if we mess this up */
+ 	tty->ldisc = NULL;
+-
+-	/* Ensure the next open requests the N_TTY ldisc */
+-	tty_set_termios_ldisc(tty, N_TTY);
+ }
+ 
+ /**

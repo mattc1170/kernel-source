@@ -1,0 +1,38 @@
+From: Andrew Banman <abanman@sgi.com>
+Date: Wed, 21 Sep 2016 11:09:18 -0500
+Subject: x86/platform/uv/BAU: Populate ->uvhub_version with UV4 version
+ information
+Git-commit: 58d4ab46f21e7e800a7597f271a23ec602796247
+Patch-mainline: v4.9-rc1
+References: bsc#1035024
+
+Signed-off-by: Andrew Banman <abanman@sgi.com>
+Acked-by: Thomas Gleixner <tglx@linutronix.de>
+Acked-by: Mike Travis <travis@sgi.com>
+Acked-by: Dimitri Sivanich <sivanich@sgi.com>
+Acked-by: Thomas Gleixner <tglx@linutronix.de>
+Cc: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: Peter Zijlstra <peterz@infradead.org>
+Cc: akpm@linux-foundation.org
+Cc: rja@sgi.com
+Link: http://lkml.kernel.org/r/1474474161-265604-8-git-send-email-abanman@sgi.com
+Signed-off-by: Ingo Molnar <mingo@kernel.org>
+Acked-by: Joerg Roedel <jroedel@suse.de>
+---
+ arch/x86/platform/uv/tlb_uv.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+--- a/arch/x86/platform/uv/tlb_uv.c
++++ b/arch/x86/platform/uv/tlb_uv.c
+@@ -2044,8 +2044,10 @@ static int scan_sock(struct socket_desc
+ 			bcp->uvhub_version = 2;
+ 		else if (is_uv3_hub())
+ 			bcp->uvhub_version = 3;
++		else if (is_uv4_hub())
++			bcp->uvhub_version = 4;
+ 		else {
+-			pr_emerg("uvhub version not 1, 2, or 3\n");
++			pr_emerg("uvhub version not 1, 2, 3, or 4\n");
+ 			return 1;
+ 		}
+ 		bcp->uvhub_master = *hmasterp;

@@ -22,18 +22,16 @@ Reported-by: Vitaly Kuznetsov <vkuznets@redhat.com>
 Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
 Acked-by: <ohering@suse.de>
 ---
- drivers/hv/hv_fcopy.c    | 2 +-
- drivers/hv/hv_kvp.c      | 2 +-
- drivers/hv/hv_snapshot.c | 2 +-
- drivers/hv/hv_util.c     | 1 +
- include/linux/hyperv.h   | 1 +
+ drivers/hv/hv_fcopy.c    |    2 +-
+ drivers/hv/hv_kvp.c      |    2 +-
+ drivers/hv/hv_snapshot.c |    2 +-
+ drivers/hv/hv_util.c     |    1 +
+ include/linux/hyperv.h   |    1 +
  5 files changed, 5 insertions(+), 3 deletions(-)
 
-diff --git a/drivers/hv/hv_fcopy.c b/drivers/hv/hv_fcopy.c
-index c37a71e..23c7079 100644
 --- a/drivers/hv/hv_fcopy.c
 +++ b/drivers/hv/hv_fcopy.c
-@@ -251,7 +251,6 @@ void hv_fcopy_onchannelcallback(void *context)
+@@ -252,7 +252,6 @@ void hv_fcopy_onchannelcallback(void *co
  		 */
  
  		fcopy_transaction.recv_len = recvlen;
@@ -41,19 +39,17 @@ index c37a71e..23c7079 100644
  		fcopy_transaction.recv_req_id = requestid;
  		fcopy_transaction.fcopy_msg = fcopy_msg;
  
-@@ -317,6 +316,7 @@ static void fcopy_on_reset(void)
+@@ -319,6 +318,7 @@ static void fcopy_on_reset(void)
  int hv_fcopy_init(struct hv_util_service *srv)
  {
  	recv_buffer = srv->recv_buffer;
 +	fcopy_transaction.recv_channel = srv->channel;
  
+ 	init_completion(&release_event);
  	/*
- 	 * When this driver loads, the user level daemon that
-diff --git a/drivers/hv/hv_kvp.c b/drivers/hv/hv_kvp.c
-index d4ab81b..9b9b370 100644
 --- a/drivers/hv/hv_kvp.c
 +++ b/drivers/hv/hv_kvp.c
-@@ -639,7 +639,6 @@ void hv_kvp_onchannelcallback(void *context)
+@@ -640,7 +640,6 @@ void hv_kvp_onchannelcallback(void *cont
  			 */
  
  			kvp_transaction.recv_len = recvlen;
@@ -61,19 +57,17 @@ index d4ab81b..9b9b370 100644
  			kvp_transaction.recv_req_id = requestid;
  			kvp_transaction.kvp_msg = kvp_msg;
  
-@@ -688,6 +687,7 @@ int
+@@ -690,6 +689,7 @@ int
  hv_kvp_init(struct hv_util_service *srv)
  {
  	recv_buffer = srv->recv_buffer;
 +	kvp_transaction.recv_channel = srv->channel;
  
+ 	init_completion(&release_event);
  	/*
- 	 * When this driver loads, the user level daemon that
-diff --git a/drivers/hv/hv_snapshot.c b/drivers/hv/hv_snapshot.c
-index 67def4a..3fba14e 100644
 --- a/drivers/hv/hv_snapshot.c
 +++ b/drivers/hv/hv_snapshot.c
-@@ -263,7 +263,6 @@ void hv_vss_onchannelcallback(void *context)
+@@ -264,7 +264,6 @@ void hv_vss_onchannelcallback(void *cont
  			 */
  
  			vss_transaction.recv_len = recvlen;
@@ -81,7 +75,7 @@ index 67def4a..3fba14e 100644
  			vss_transaction.recv_req_id = requestid;
  			vss_transaction.msg = (struct hv_vss_msg *)vss_msg;
  
-@@ -337,6 +336,7 @@ hv_vss_init(struct hv_util_service *srv)
+@@ -340,6 +339,7 @@ hv_vss_init(struct hv_util_service *srv)
  		return -ENOTSUPP;
  	}
  	recv_buffer = srv->recv_buffer;
@@ -89,11 +83,9 @@ index 67def4a..3fba14e 100644
  
  	/*
  	 * When this driver loads, the user level daemon that
-diff --git a/drivers/hv/hv_util.c b/drivers/hv/hv_util.c
-index 7994ec2..d5acaa2 100644
 --- a/drivers/hv/hv_util.c
 +++ b/drivers/hv/hv_util.c
-@@ -322,6 +322,7 @@ static int util_probe(struct hv_device *dev,
+@@ -326,6 +326,7 @@ static int util_probe(struct hv_device *
  	srv->recv_buffer = kmalloc(PAGE_SIZE * 4, GFP_KERNEL);
  	if (!srv->recv_buffer)
  		return -ENOMEM;
@@ -101,11 +93,9 @@ index 7994ec2..d5acaa2 100644
  	if (srv->util_init) {
  		ret = srv->util_init(srv);
  		if (ret) {
-diff --git a/include/linux/hyperv.h b/include/linux/hyperv.h
-index d23dab0..aa0fadc 100644
 --- a/include/linux/hyperv.h
 +++ b/include/linux/hyperv.h
-@@ -1251,6 +1251,7 @@ u64 hv_do_hypercall(u64 control, void *input, void *output);
+@@ -1251,6 +1251,7 @@ u64 hv_do_hypercall(u64 control, void *i
  
  struct hv_util_service {
  	u8 *recv_buffer;

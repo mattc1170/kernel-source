@@ -1,0 +1,40 @@
+From: Jiri Slaby <jslaby@suse.cz>
+Subject: kABI: protect struct tcp_fastopen_cookie
+Patch-mainline: never, kabi
+References: kabi
+
+In 4.4.47, commit b82981fb273d3d0759bff5a55449f4c22f977869 (tcp: fix
+tcp_fastopen unaligned access complaints on sparc), upstream commit
+003c941057eaa868ca6fedd29a274c863167230d changed the order of val and
+len in struct tcp_fastopen_cookie (and added a union to val). It
+indeed changed the layout of that structure and kABI checker complains.
+
+But struct tcp_fastopen_cookie is internal to tcp and it did not
+change in size. So just hide the change by __GENKSYMS__.
+
+Signed-off-by: Jiri Slaby <jslaby@suse.cz>
+---
+ include/linux/tcp.h |    5 +++++
+ 1 file changed, 5 insertions(+)
+
+--- a/include/linux/tcp.h
++++ b/include/linux/tcp.h
+@@ -56,13 +56,18 @@ static inline unsigned int tcp_optlen(co
+ 
+ /* TCP Fast Open Cookie as stored in memory */
+ struct tcp_fastopen_cookie {
++#ifndef __GENKSYMS__
+ 	union {
+ 		u8	val[TCP_FASTOPEN_COOKIE_MAX];
+ #if IS_ENABLED(CONFIG_IPV6)
+ 		struct in6_addr addr;
+ #endif
+ 	};
++#endif
+ 	s8	len;
++#ifdef __GENKSYMS__
++	u8	val[TCP_FASTOPEN_COOKIE_MAX];
++#endif
+ 	bool	exp;	/* In RFC6994 experimental option format */
+ };
+ 

@@ -1,0 +1,57 @@
+From af2e859edd477fa1ea3d1d106f41a595cff3d162 Mon Sep 17 00:00:00 2001
+From: Chris Wilson <chris@chris-wilson.co.uk>
+Date: Thu, 1 Dec 2016 11:47:04 +0000
+Subject: [PATCH] locking/ww_mutex: Fix compilation of __WW_MUTEX_INITIALIZER
+Git-commit: af2e859edd477fa1ea3d1d106f41a595cff3d162
+Patch-mainline: 4.11-rc1
+References: bsc#1031717
+
+From conflicting macro parameters, passing the wrong name to
+__MUTEX_INITIALIZER and a stray '\', #define __WW_MUTEX_INITIALIZER was
+very unhappy.
+
+One unnecessary change was to choose to pass &ww_class instead of
+implicitly taking the address of the class within the macro.
+
+Signed-off-by: Chris Wilson <chris@chris-wilson.co.uk>
+Signed-off-by: Peter Zijlstra (Intel) <peterz@infradead.org>
+Cc: Andrew Morton <akpm@linux-foundation.org>
+Cc: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: Maarten Lankhorst <maarten.lankhorst@canonical.com>
+Cc: Paul E. McKenney <paulmck@linux.vnet.ibm.com>
+Cc: Peter Zijlstra <peterz@infradead.org>
+Cc: Thomas Gleixner <tglx@linutronix.de>
+Fixes: 1b375dc30710 ("mutex: Move ww_mutex definitions to ww_mutex.h")
+Link: http://lkml.kernel.org/r/20161201114711.28697-2-chris@chris-wilson.co.uk
+Signed-off-by: Ingo Molnar <mingo@kernel.org>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ include/linux/ww_mutex.h |    8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+--- a/include/linux/ww_mutex.h
++++ b/include/linux/ww_mutex.h
+@@ -51,10 +51,10 @@ struct ww_mutex {
+ };
+ 
+ #ifdef CONFIG_DEBUG_LOCK_ALLOC
+-# define __WW_CLASS_MUTEX_INITIALIZER(lockname, ww_class) \
+-		, .ww_class = &ww_class
++# define __WW_CLASS_MUTEX_INITIALIZER(lockname, class) \
++		, .ww_class = class
+ #else
+-# define __WW_CLASS_MUTEX_INITIALIZER(lockname, ww_class)
++# define __WW_CLASS_MUTEX_INITIALIZER(lockname, class)
+ #endif
+ 
+ #define __WW_CLASS_INITIALIZER(ww_class) \
+@@ -63,7 +63,7 @@ struct ww_mutex {
+ 		, .mutex_name = #ww_class "_mutex" }
+ 
+ #define __WW_MUTEX_INITIALIZER(lockname, class) \
+-		{ .base = { \__MUTEX_INITIALIZER(lockname) } \
++		{ .base =  __MUTEX_INITIALIZER(lockname.base) \
+ 		__WW_CLASS_MUTEX_INITIALIZER(lockname, class) }
+ 
+ #define DEFINE_WW_CLASS(classname) \

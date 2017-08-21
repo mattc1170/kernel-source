@@ -1,0 +1,52 @@
+From 58c8c0c096611f6a1d43ed24e320494bf894a66e Mon Sep 17 00:00:00 2001
+From: Brian King <brking@linux.vnet.ibm.com>
+Date: Wed, 19 Apr 2017 13:44:47 -0400
+Subject: [PATCH] ibmvnic: Fixup atomic API usage
+
+References: fate#322021, bsc#1031512
+Patch-mainline: v4.12-rc1
+Git-commit: 58c8c0c096611f6a1d43ed24e320494bf894a66e
+
+Replace a couple of modifications of an atomic followed
+by a read of the atomic, which is no longer atomic, to
+use atomic_XX_return variants to avoid race conditions.
+
+Signed-off-by: Brian King <brking@linux.vnet.ibm.com>
+Signed-off-by: Nathan Fontenot <nfont@linux.vnet.ibm.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+Acked-by: Michal Suchanek <msuchanek@suse.de>
+---
+ drivers/net/ethernet/ibm/ibmvnic.c | 10 ++++------
+ 1 file changed, 4 insertions(+), 6 deletions(-)
+
+diff --git a/drivers/net/ethernet/ibm/ibmvnic.c b/drivers/net/ethernet/ibm/ibmvnic.c
+index c10bae7..b5871df 100644
+--- a/drivers/net/ethernet/ibm/ibmvnic.c
++++ b/drivers/net/ethernet/ibm/ibmvnic.c
+@@ -962,9 +962,8 @@ static int ibmvnic_xmit(struct sk_buff *skb, struct net_device *netdev)
+ 		goto out;
+ 	}
+ 
+-	atomic_inc(&tx_scrq->used);
+-
+-	if (atomic_read(&tx_scrq->used) >= adapter->req_tx_entries_per_subcrq) {
++	if (atomic_inc_return(&tx_scrq->used)
++					>= adapter->req_tx_entries_per_subcrq) {
+ 		netdev_info(netdev, "Stopping queue %d\n", queue_num);
+ 		netif_stop_subqueue(netdev, queue_num);
+ 	}
+@@ -1499,9 +1498,8 @@ restart_loop:
+ 			}
+ 
+ 			if (txbuff->last_frag) {
+-				atomic_dec(&scrq->used);
+-
+-				if (atomic_read(&scrq->used) <=
++				if (atomic_sub_return(next->tx_comp.num_comps,
++						      &scrq->used) <=
+ 				    (adapter->req_tx_entries_per_subcrq / 2) &&
+ 				    netif_subqueue_stopped(adapter->netdev,
+ 							   txbuff->skb)) {
+-- 
+2.10.2
+

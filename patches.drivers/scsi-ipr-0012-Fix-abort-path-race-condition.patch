@@ -1,0 +1,169 @@
+From 439ae285b9d9da12343e3d51a0dff1b473a6a6ac Mon Sep 17 00:00:00 2001
+From: Brian King <brking@linux.vnet.ibm.com>
+Date: Wed, 15 Mar 2017 16:58:39 -0500
+Subject: [PATCH] scsi: ipr: Fix abort path race condition
+
+References: bsc#1031555, fate#321595
+Patch-mainline: queued, next-20170328
+Git-repo: https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git
+Git-commit: 439ae285b9d9da12343e3d51a0dff1b473a6a6ac
+
+This fixes a race condition in the error handlomg paths of ipr. While a
+command is outstanding to the adapter, it is placed on a pending queue
+for the hrrq it is associated with, while holding the HRRQ lock. When a
+command is completed, it is removed from the pending queue, under HRRQ
+lock, and placed on a local list.  This list is then iterated through
+without any locks and each command's done function is invoked, inside of
+which, the command gets returned to the free list while grabbing the
+HRRQ lock. This fixes two race conditions when commands have been
+removed from the pending list but have not yet been added to the free
+list. Both of these changes fix race conditions that could result in
+returning success from eh_abort_handler and then later calling scsi_done
+for the same request.
+
+The first race condition is in ipr_cancel_op. It looks through each
+pending queue to see if the command to be aborted is still outstanding
+or not. Rather than looking on the pending queue, reverse the logic to
+check to look for commands that are NOT on the free queue.  The second
+race condition can occur when in ipr_wait_for_ops where we are waiting
+for responses for commands we've aborted.
+
+Signed-off-by: Brian King <brking@linux.vnet.ibm.com>
+Reviewed-by: Wendy Xiong <wenxiong@linux.vnet.ibm.com>
+Tested-by: Wendy Xiong <wenxiong@linux.vnet.ibm.com>
+Signed-off-by: Martin K. Petersen <martin.petersen@oracle.com>
+Acked-by: Michal Suchanek <msuchanek@suse.de>
+---
+ drivers/scsi/ipr.c | 64 +++++++++++++++++++++++++++++++++++++++---------------
+ 1 file changed, 47 insertions(+), 17 deletions(-)
+
+diff --git a/drivers/scsi/ipr.c b/drivers/scsi/ipr.c
+index 0d780c9bb09b..19162d7943cb 100644
+--- a/drivers/scsi/ipr.c
++++ b/drivers/scsi/ipr.c
+@@ -5008,6 +5008,25 @@ static int ipr_match_lun(struct ipr_cmnd *ipr_cmd, void *device)
+ }
+ 
+ /**
++ * ipr_cmnd_is_free - Check if a command is free or not
++ * @ipr_cmd	ipr command struct
++ *
++ * Returns:
++ *	true / false
++ **/
++static bool ipr_cmnd_is_free(struct ipr_cmnd *ipr_cmd)
++{
++	struct ipr_cmnd *loop_cmd;
++
++	list_for_each_entry(loop_cmd, &ipr_cmd->hrrq->hrrq_free_q, queue) {
++		if (loop_cmd == ipr_cmd)
++			return true;
++	}
++
++	return false;
++}
++
++/**
+  * ipr_wait_for_ops - Wait for matching commands to complete
+  * @ipr_cmd:	ipr command struct
+  * @device:		device to match (sdev)
+@@ -5020,7 +5039,7 @@ static int ipr_wait_for_ops(struct ipr_ioa_cfg *ioa_cfg, void *device,
+ 			    int (*match)(struct ipr_cmnd *, void *))
+ {
+ 	struct ipr_cmnd *ipr_cmd;
+-	int wait;
++	int wait, i;
+ 	unsigned long flags;
+ 	struct ipr_hrr_queue *hrrq;
+ 	signed long timeout = IPR_ABORT_TASK_TIMEOUT;
+@@ -5032,10 +5051,13 @@ static int ipr_wait_for_ops(struct ipr_ioa_cfg *ioa_cfg, void *device,
+ 
+ 		for_each_hrrq(hrrq, ioa_cfg) {
+ 			spin_lock_irqsave(hrrq->lock, flags);
+-			list_for_each_entry(ipr_cmd, &hrrq->hrrq_pending_q, queue) {
+-				if (match(ipr_cmd, device)) {
+-					ipr_cmd->eh_comp = &comp;
+-					wait++;
++			for (i = hrrq->min_cmd_id; i <= hrrq->max_cmd_id; i++) {
++				ipr_cmd = ioa_cfg->ipr_cmnd_list[i];
++				if (!ipr_cmnd_is_free(ipr_cmd)) {
++					if (match(ipr_cmd, device)) {
++						ipr_cmd->eh_comp = &comp;
++						wait++;
++					}
+ 				}
+ 			}
+ 			spin_unlock_irqrestore(hrrq->lock, flags);
+@@ -5049,10 +5071,13 @@ static int ipr_wait_for_ops(struct ipr_ioa_cfg *ioa_cfg, void *device,
+ 
+ 				for_each_hrrq(hrrq, ioa_cfg) {
+ 					spin_lock_irqsave(hrrq->lock, flags);
+-					list_for_each_entry(ipr_cmd, &hrrq->hrrq_pending_q, queue) {
+-						if (match(ipr_cmd, device)) {
+-							ipr_cmd->eh_comp = NULL;
+-							wait++;
++					for (i = hrrq->min_cmd_id; i <= hrrq->max_cmd_id; i++) {
++						ipr_cmd = ioa_cfg->ipr_cmnd_list[i];
++						if (!ipr_cmnd_is_free(ipr_cmd)) {
++							if (match(ipr_cmd, device)) {
++								ipr_cmd->eh_comp = NULL;
++								wait++;
++							}
+ 						}
+ 					}
+ 					spin_unlock_irqrestore(hrrq->lock, flags);
+@@ -5219,7 +5244,7 @@ static int __ipr_eh_dev_reset(struct scsi_cmnd *scsi_cmd)
+ 	struct ipr_ioa_cfg *ioa_cfg;
+ 	struct ipr_resource_entry *res;
+ 	struct ata_port *ap;
+-	int rc = 0;
++	int rc = 0, i;
+ 	struct ipr_hrr_queue *hrrq;
+ 
+ 	ENTER;
+@@ -5241,10 +5266,14 @@ static int __ipr_eh_dev_reset(struct scsi_cmnd *scsi_cmd)
+ 
+ 	for_each_hrrq(hrrq, ioa_cfg) {
+ 		spin_lock(&hrrq->_lock);
+-		list_for_each_entry(ipr_cmd, &hrrq->hrrq_pending_q, queue) {
++		for (i = hrrq->min_cmd_id; i <= hrrq->max_cmd_id; i++) {
++			ipr_cmd = ioa_cfg->ipr_cmnd_list[i];
++
+ 			if (ipr_cmd->ioarcb.res_handle == res->res_handle) {
+ 				if (!ipr_cmd->qc)
+ 					continue;
++				if (ipr_cmnd_is_free(ipr_cmd))
++					continue;
+ 
+ 				ipr_cmd->done = ipr_sata_eh_done;
+ 				if (!(ipr_cmd->qc->flags & ATA_QCFLAG_FAILED)) {
+@@ -5394,7 +5423,7 @@ static int ipr_cancel_op(struct scsi_cmnd *scsi_cmd)
+ 	struct ipr_resource_entry *res;
+ 	struct ipr_cmd_pkt *cmd_pkt;
+ 	u32 ioasc, int_reg;
+-	int op_found = 0;
++	int i, op_found = 0;
+ 	struct ipr_hrr_queue *hrrq;
+ 
+ 	ENTER;
+@@ -5423,11 +5452,12 @@ static int ipr_cancel_op(struct scsi_cmnd *scsi_cmd)
+ 
+ 	for_each_hrrq(hrrq, ioa_cfg) {
+ 		spin_lock(&hrrq->_lock);
+-		list_for_each_entry(ipr_cmd, &hrrq->hrrq_pending_q, queue) {
+-			if (ipr_cmd->scsi_cmd == scsi_cmd) {
+-				ipr_cmd->done = ipr_scsi_eh_done;
+-				op_found = 1;
+-				break;
++		for (i = hrrq->min_cmd_id; i <= hrrq->max_cmd_id; i++) {
++			if (ioa_cfg->ipr_cmnd_list[i]->scsi_cmd == scsi_cmd) {
++				if (!ipr_cmnd_is_free(ioa_cfg->ipr_cmnd_list[i])) {
++					op_found = 1;
++					break;
++				}
+ 			}
+ 		}
+ 		spin_unlock(&hrrq->_lock);
+-- 
+2.10.2
+

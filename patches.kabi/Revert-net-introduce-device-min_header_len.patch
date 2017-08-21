@@ -1,0 +1,72 @@
+From: Jiri Slaby <jslaby@suse.cz>
+Date: Mon, 27 Feb 2017 14:26:17 +0100
+Subject: Revert "net: introduce device min_header_len"
+Patch-mainline: never, kabi
+References: kabi
+
+This reverts commit 58691e5b4f277cf1876dc95654a794b093f88a0f, upstream
+commit 217e6fa24ce28ec87fca8da93c9016cb78028612. It breaks kABI.
+
+Signed-off-by: Jiri Slaby <jslaby@suse.cz>
+---
+ drivers/net/loopback.c    | 1 -
+ include/linux/netdevice.h | 4 ----
+ net/ethernet/eth.c        | 1 -
+ 3 files changed, 6 deletions(-)
+
+diff --git a/drivers/net/loopback.c b/drivers/net/loopback.c
+index effcdbfb06e9..dc7d970bd1c0 100644
+--- a/drivers/net/loopback.c
++++ b/drivers/net/loopback.c
+@@ -164,7 +164,6 @@ static void loopback_setup(struct net_device *dev)
+ {
+ 	dev->mtu		= 64 * 1024;
+ 	dev->hard_header_len	= ETH_HLEN;	/* 14	*/
+-	dev->min_header_len	= ETH_HLEN;	/* 14	*/
+ 	dev->addr_len		= ETH_ALEN;	/* 6	*/
+ 	dev->type		= ARPHRD_LOOPBACK;	/* 0x0001*/
+ 	dev->flags		= IFF_LOOPBACK;
+diff --git a/include/linux/netdevice.h b/include/linux/netdevice.h
+index 4035bbe40971..93a6a2c66d15 100644
+--- a/include/linux/netdevice.h
++++ b/include/linux/netdevice.h
+@@ -1399,7 +1399,6 @@ enum netdev_priv_flags {
+  *	@mtu:		Interface MTU value
+  *	@type:		Interface hardware type
+  *	@hard_header_len: Maximum hardware header length.
+- *	@min_header_len:  Minimum hardware header length
+  *
+  *	@needed_headroom: Extra headroom the hardware may need, but not in all
+  *			  cases can this be guaranteed
+@@ -1620,7 +1619,6 @@ struct net_device {
+ 	unsigned int		mtu;
+ 	unsigned short		type;
+ 	unsigned short		hard_header_len;
+-	unsigned short		min_header_len;
+ 
+ 	unsigned short		needed_headroom;
+ 	unsigned short		needed_tailroom;
+@@ -2543,8 +2541,6 @@ static inline bool dev_validate_header(const struct net_device *dev,
+ {
+ 	if (likely(len >= dev->hard_header_len))
+ 		return true;
+-	if (len < dev->min_header_len)
+-		return false;
+ 
+ 	if (capable(CAP_SYS_RAWIO)) {
+ 		memset(ll_header + len, 0, dev->hard_header_len - len);
+diff --git a/net/ethernet/eth.c b/net/ethernet/eth.c
+index 52dcd414c2af..de85d4e1cf43 100644
+--- a/net/ethernet/eth.c
++++ b/net/ethernet/eth.c
+@@ -353,7 +353,6 @@ void ether_setup(struct net_device *dev)
+ 	dev->header_ops		= &eth_header_ops;
+ 	dev->type		= ARPHRD_ETHER;
+ 	dev->hard_header_len 	= ETH_HLEN;
+-	dev->min_header_len	= ETH_HLEN;
+ 	dev->mtu		= ETH_DATA_LEN;
+ 	dev->addr_len		= ETH_ALEN;
+ 	dev->tx_queue_len	= 1000;	/* Ethernet wants good queues */
+-- 
+2.12.0
+

@@ -1,0 +1,43 @@
+From 9119fedddb5b630eec3f3e39c4e382d9f60cca07 Mon Sep 17 00:00:00 2001
+From: Mikulas Patocka <mpatocka@redhat.com>
+Date: Wed, 19 Apr 2017 10:52:54 -0400
+Subject: [PATCH] dm: remove dummy dm_table definition
+Git-commit: 9119fedddb5b630eec3f3e39c4e382d9f60cca07
+Patch-mainline: v4.12-rc1
+References: bsc#1045307
+
+This dummy structure definition was required for RCU macros, but it
+isn't required anymore, so delete it.
+
+The dummy definition confuses the crash tool, see:
+https://www.redhat.com/archives/dm-devel/2017-April/msg00197.html
+
+Signed-off-by: Mikulas Patocka <mpatocka@redhat.com>
+Signed-off-by: Mike Snitzer <snitzer@redhat.com>
+Signed-off-by: Eric Ren <zren@suse.com>
+---
+ drivers/md/dm-ioctl.c | 8 --------
+ 1 file changed, 8 deletions(-)
+
+diff --git a/drivers/md/dm-ioctl.c b/drivers/md/dm-ioctl.c
+index 4da6fc6..641d5e9 100644
+--- a/drivers/md/dm-ioctl.c
++++ b/drivers/md/dm-ioctl.c
+@@ -37,14 +37,6 @@ struct hash_cell {
+ 	struct dm_table *new_map;
+ };
+ 
+-/*
+- * A dummy definition to make RCU happy.
+- * struct dm_table should never be dereferenced in this file.
+- */
+-struct dm_table {
+-	int undefined__;
+-};
+-
+ struct vers_iter {
+     size_t param_size;
+     struct dm_target_versions *vers, *old_vers;
+-- 
+2.10.2
+

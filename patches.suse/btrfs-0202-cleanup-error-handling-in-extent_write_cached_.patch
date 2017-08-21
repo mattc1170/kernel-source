@@ -1,0 +1,54 @@
+From: Liu Bo <bo.li.liu@oracle.com>
+Date: Mon, 7 Mar 2016 16:56:22 -0800
+Patch-mainline: 4.7
+Git-commit: 894b36e35ae01186b77b083f3f67569a349062a6
+References: bsc#1012452
+Subject: [PATCH] Btrfs: cleanup error handling in
+ extent_write_cached_pages
+
+Now that we bail out immediately if ->writepage() returns an error,
+we don't need an extra error to retain the error code.
+
+Signed-off-by: Liu Bo <bo.li.liu@oracle.com>
+Signed-off-by: David Sterba <dsterba@suse.com>
+---
+ fs/btrfs/extent_io.c |    7 ++-----
+ 1 file changed, 2 insertions(+), 5 deletions(-)
+
+--- a/fs/btrfs/extent_io.c
++++ b/fs/btrfs/extent_io.c
+@@ -3914,7 +3914,6 @@ static int extent_write_cache_pages(stru
+ 	struct inode *inode = mapping->host;
+ 	int ret = 0;
+ 	int done = 0;
+-	int err = 0;
+ 	int nr_to_write_done = 0;
+ 	struct pagevec pvec;
+ 	int nr_pages;
+@@ -4007,8 +4006,6 @@ retry:
+ 				unlock_page(page);
+ 				ret = 0;
+ 			}
+-			if (!err && ret < 0)
+-				err = ret;
+ 			if (ret < 0) {
+ 				/*
+ 				 * done_index is set past this page,
+@@ -4034,7 +4031,7 @@ retry:
+ 		pagevec_release(&pvec);
+ 		cond_resched();
+ 	}
+-	if (!scanned && !done && !err) {
++	if (!scanned && !done) {
+ 		/*
+ 		 * We hit the last page and there is more work to be done: wrap
+ 		 * back to the start of the file
+@@ -4048,7 +4045,7 @@ retry:
+ 		mapping->writeback_index = done_index;
+ 
+ 	btrfs_add_delayed_iput(inode);
+-	return err;
++	return ret;
+ }
+ 
+ static void flush_epd_write_bio(struct extent_page_data *epd)

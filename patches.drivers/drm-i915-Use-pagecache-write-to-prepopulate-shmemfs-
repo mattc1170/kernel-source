@@ -1,0 +1,154 @@
+From 4e6fdafa7ac395ad47a80a0e7b4fd1e11550f862 Mon Sep 17 00:00:00 2001
+From: Chris Wilson <chris@chris-wilson.co.uk>
+Date: Tue, 7 Mar 2017 12:03:38 +0000
+Subject: [PATCH] drm/i915: Use pagecache write to prepopulate shmemfs from pwrite-ioctl
+Git-commit: 4e6fdafa7ac395ad47a80a0e7b4fd1e11550f862
+Patch-mainline: 4.11-rc3
+References: bsc#1040463
+
+Before we instantiate/pin the backing store for our use, we
+can prepopulate the shmemfs filp efficiently using a write into the
+pagecache. We avoid the penalty of instantiating all the pages, important
+if the user is just writing to a few and never uses the object on the GPU,
+and using a direct write into shmemfs allows it to avoid the cost of
+retrieving a page (mostly the clear-before-use, but in theory we could
+curtail swapin) before it is overwritten.
+
+This can be extended later to provide additional specialisation for
+other backends (other than shmemfs). For now it provides a defense
+against very large write-only allocations from exhausting all of system
+memory.
+
+V2: Smelling fixes.
+
+Fixes: fe115628d567 ("drm/i915: Implement pwrite without struct-mutex")
+References: https://bugs.freedesktop.org/show_bug.cgi?id=99107
+Signed-off-by: Chris Wilson <chris@chris-wilson.co.uk>
+Cc: Matthew Auld <matthew.william.auld@gmail.com>
+Cc: Joonas Lahtinen <joonas.lahtinen@linux.intel.com>
+Cc: Mika Kuoppala <mika.kuoppala@linux.intel.com>
+Cc: <stable@vger.kernel.org> # v4.10+
+Reviewed-by: Joonas Lahtinen <joonas.lahtinen@linux.intel.com>
+Reviewed-by: Tvrtko Ursulin <tvrtko.ursulin@intel.com>
+Link: http://patchwork.freedesktop.org/patch/msgid/20170307120338.7277-2-chris@chris-wilson.co.uk
+(cherry picked from commit 7c55e2c5772dcf3cbacd0fa2bcfeefae416b73f7)
+
+Signed-off-by: Jani Nikula <jani.nikula@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/gpu/drm/i915/i915_drv.h |    2 +
+ drivers/gpu/drm/i915/i915_gem.c |   77 ++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 79 insertions(+)
+
+--- a/drivers/gpu/drm/i915/i915_gem.c
++++ b/drivers/gpu/drm/i915/i915_gem.c
+@@ -1076,6 +1076,12 @@ i915_gem_pwrite_ioctl(struct drm_device
+ 
+ 	trace_i915_gem_object_pwrite(obj, args->offset, args->size);
+ 
++	ret = -ENODEV;
++	if (obj->ops->pwrite)
++		ret = obj->ops->pwrite(obj, args);
++	if (ret != -ENODEV)
++		goto out;
++
+ 	ret = -EFAULT;
+ 	/* We can only do the GTT pwrite on untiled buffers, as otherwise
+ 	 * it would end up going through the fenced access, and we'll get
+@@ -2532,6 +2538,75 @@ i915_gem_get_seqno(struct drm_device *de
+ 	return 0;
+ }
+ 
++static int
++i915_gem_object_pwrite_gtt(struct drm_i915_gem_object *obj,
++			   const struct drm_i915_gem_pwrite *arg)
++{
++	struct address_space *mapping = obj->base.filp->f_mapping;
++	char __user *user_data = (char __user *)(uintptr_t)arg->data_ptr;
++	u64 remain, offset;
++	unsigned int pg;
++
++	/* Before we instantiate/pin the backing store for our use, we
++	 * can prepopulate the shmemfs filp efficiently using a write into
++	 * the pagecache. We avoid the penalty of instantiating all the
++	 * pages, important if the user is just writing to a few and never
++	 * uses the object on the GPU, and using a direct write into shmemfs
++	 * allows it to avoid the cost of retrieving a page (either swapin
++	 * or clearing-before-use) before it is overwritten.
++	 */
++	if (READ_ONCE(obj->pages))
++		return -ENODEV;
++
++	/* Before the pages are instantiated the object is treated as being
++	 * in the CPU domain. The pages will be clflushed as required before
++	 * use, and we can freely write into the pages directly. If userspace
++	 * races pwrite with any other operation; corruption will ensue -
++	 * that is userspace's prerogative!
++	 */
++
++	remain = arg->size;
++	offset = arg->offset;
++	pg = offset_in_page(offset);
++
++	do {
++		unsigned int len, unwritten;
++		struct page *page;
++		void *data, *vaddr;
++		int err;
++
++		len = PAGE_SIZE - pg;
++		if (len > remain)
++			len = remain;
++
++		err = pagecache_write_begin(obj->base.filp, mapping,
++					    offset, len, 0,
++					    &page, &data);
++		if (err < 0)
++			return err;
++
++		vaddr = kmap(page);
++		unwritten = copy_from_user(vaddr + pg, user_data, len);
++		kunmap(page);
++
++		err = pagecache_write_end(obj->base.filp, mapping,
++					  offset, len, len - unwritten,
++					  page, data);
++		if (err < 0)
++			return err;
++
++		if (unwritten)
++			return -EFAULT;
++
++		remain -= len;
++		user_data += len;
++		offset += len;
++		pg = 0;
++	} while (remain);
++
++	return 0;
++}
++
+ /*
+  * NB: This function is not allowed to fail. Doing so would mean the the
+  * request is not being tracked for completion but the work itself is
+@@ -4394,6 +4469,8 @@ void i915_gem_object_init(struct drm_i91
+ static const struct drm_i915_gem_object_ops i915_gem_object_ops = {
+ 	.get_pages = i915_gem_object_get_pages_gtt,
+ 	.put_pages = i915_gem_object_put_pages_gtt,
++
++	.pwrite = i915_gem_object_pwrite_gtt,
+ };
+ 
+ struct drm_i915_gem_object *i915_gem_alloc_object(struct drm_device *dev,
+--- a/drivers/gpu/drm/i915/i915_drv.h
++++ b/drivers/gpu/drm/i915/i915_drv.h
+@@ -2012,6 +2012,8 @@ struct drm_i915_gem_object_ops {
+ 	 */
+ 	int (*get_pages)(struct drm_i915_gem_object *);
+ 	void (*put_pages)(struct drm_i915_gem_object *);
++	int (*pwrite)(struct drm_i915_gem_object *,
++		      const struct drm_i915_gem_pwrite *);
+ 	int (*dmabuf_export)(struct drm_i915_gem_object *);
+ 	void (*release)(struct drm_i915_gem_object *);
+ };

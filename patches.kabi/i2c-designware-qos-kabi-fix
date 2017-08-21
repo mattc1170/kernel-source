@@ -11,8 +11,8 @@ This patch papers over it.
 Signed-off-by: Takashi Iwai <tiwai@suse.de>
 
 ---
- drivers/i2c/busses/i2c-designware-core.h |    6 +++++-
- 1 file changed, 5 insertions(+), 1 deletion(-)
+ drivers/i2c/busses/i2c-designware-core.h |   12 +++++++++++-
+ 1 file changed, 11 insertions(+), 1 deletion(-)
 
 --- a/drivers/i2c/busses/i2c-designware-core.h
 +++ b/drivers/i2c/busses/i2c-designware-core.h
@@ -26,15 +26,29 @@ Signed-off-by: Takashi Iwai <tiwai@suse.de>
  
  #define DW_IC_CON_MASTER		0x1
  #define DW_IC_CON_SPEED_STD		0x2
-@@ -106,10 +108,12 @@ struct dw_i2c_dev {
+@@ -92,7 +94,11 @@ struct dw_i2c_dev {
+ 	unsigned int		status;
+ 	u32			abort_source;
+ 	int			irq;
++#ifdef __GENKSYMS__
++	u32			accessor_flags;
++#else
+ 	u32			flags;
++#endif
+ 	struct i2c_adapter	adapter;
+ 	u32			functionality;
+ 	u32			master_cfg;
+@@ -106,10 +112,14 @@ struct dw_i2c_dev {
  	u16			ss_lcnt;
  	u16			fs_hcnt;
  	u16			fs_lcnt;
 -	struct pm_qos_request	pm_qos;
  	int			(*acquire_lock)(struct dw_i2c_dev *dev);
  	void			(*release_lock)(struct dw_i2c_dev *dev);
- 	bool			pm_runtime_disabled;
-+#ifndef __GENKSYMS__
++#ifdef __GENKSYMS__
++	bool			pm_runtime_disabled;
++#else
+ 	bool			pm_disabled;
 +	struct pm_qos_request	pm_qos;
 +#endif
  };

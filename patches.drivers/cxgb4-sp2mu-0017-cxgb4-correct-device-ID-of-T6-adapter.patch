@@ -1,0 +1,32 @@
+From: Hariprasad Shenai <hariprasad@chelsio.com>
+Date: Wed, 2 Nov 2016 10:52:53 +0530
+Subject: cxgb4: correct device ID of T6 adapter
+Patch-mainline: v4.9-rc6
+Git-commit: 0b53df1e9e07984a93ad3454686740fc2f4d6b4b
+References: bsc#1021424
+
+Signed-off-by: Hariprasad Shenai <hariprasad@chelsio.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+Acked-by: Thomas Bogendoerfer <tbogendoerfer@suse.de>
+---
+ drivers/net/ethernet/chelsio/cxgb4/t4_pci_id_tbl.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/net/ethernet/chelsio/cxgb4/t4_pci_id_tbl.h b/drivers/net/ethernet/chelsio/cxgb4/t4_pci_id_tbl.h
+index 50812a1d67bd..df1573c4a659 100644
+--- a/drivers/net/ethernet/chelsio/cxgb4/t4_pci_id_tbl.h
++++ b/drivers/net/ethernet/chelsio/cxgb4/t4_pci_id_tbl.h
+@@ -178,9 +178,9 @@ CH_PCI_DEVICE_ID_TABLE_DEFINE_BEGIN
+ 	CH_PCI_ID_TABLE_FENTRY(0x6005),
+ 	CH_PCI_ID_TABLE_FENTRY(0x6006),
+ 	CH_PCI_ID_TABLE_FENTRY(0x6007),
++	CH_PCI_ID_TABLE_FENTRY(0x6008),
+ 	CH_PCI_ID_TABLE_FENTRY(0x6009),
+ 	CH_PCI_ID_TABLE_FENTRY(0x600d),
+-	CH_PCI_ID_TABLE_FENTRY(0x6010),
+ 	CH_PCI_ID_TABLE_FENTRY(0x6011),
+ 	CH_PCI_ID_TABLE_FENTRY(0x6014),
+ 	CH_PCI_ID_TABLE_FENTRY(0x6015),
+-- 
+1.8.5.6
+

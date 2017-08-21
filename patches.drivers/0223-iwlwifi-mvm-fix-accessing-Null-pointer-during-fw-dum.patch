@@ -1,0 +1,68 @@
+From f742aaf36edf0390c54d0614bc4d20fd4cd3762a Mon Sep 17 00:00:00 2001
+From: Matti Gottlieb <matti.gottlieb@intel.com>
+Date: Sun, 10 Apr 2016 10:53:57 +0300
+Subject: [PATCH] iwlwifi: mvm: fix accessing Null pointer during fw dump collection
+Git-commit: f742aaf36edf0390c54d0614bc4d20fd4cd3762a
+Patch-mainline: 4.6-rc7
+References: FATE#321353, FATE#323335
+
+The firwmare file can come with data that is relevant for paging. This
+data is availablet to the firmware upon request, but it stored in the
+host's memory. During the firmware init flow, the driver configures the
+firmware so that the firwmare knows where is the data.
+When paging is used, the variable paging_mem_size is the number of bytes
+that are available through paging. This variable is not zeror-ed if the
+driver fails to configure the paging in the firmware, but the memory is
+freed which is inconsistent.
+This inconsistency led to a NULL pointer dereference in the code that
+collects the debug data.
+
+Fix this by zero-ing the paging_mem_size variable and NULLify the
+relevant pointers, so that the code that collects the debug data will
+know that the paging data is not available.
+
+Signed-off-by: Matti Gottlieb <matti.gottlieb@intel.com>
+Signed-off-by: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/iwlwifi/mvm/fw-dbg.c |    6 ++++--
+ drivers/net/wireless/iwlwifi/mvm/fw.c     |    2 ++
+ 2 files changed, 6 insertions(+), 2 deletions(-)
+
+--- a/drivers/net/wireless/iwlwifi/mvm/fw-dbg.c
++++ b/drivers/net/wireless/iwlwifi/mvm/fw-dbg.c
+@@ -526,7 +526,8 @@ void iwl_mvm_fw_error_dump(struct iwl_mv
+ 		file_len += sizeof(*dump_data) + sizeof(*dump_mem) + sram2_len;
+ 
+ 	/* Make room for fw's virtual image pages, if it exists */
+-	if (mvm->fw->img[mvm->cur_ucode].paging_mem_size)
++	if (mvm->fw->img[mvm->cur_ucode].paging_mem_size &&
++	    mvm->fw_paging_db[0].fw_paging_block)
+ 		file_len += mvm->num_of_paging_blk *
+ 			(sizeof(*dump_data) +
+ 			 sizeof(struct iwl_fw_error_dump_paging) +
+@@ -643,7 +644,8 @@ void iwl_mvm_fw_error_dump(struct iwl_mv
+ 	}
+ 
+ 	/* Dump fw's virtual image */
+-	if (mvm->fw->img[mvm->cur_ucode].paging_mem_size) {
++	if (mvm->fw->img[mvm->cur_ucode].paging_mem_size &&
++	    mvm->fw_paging_db[0].fw_paging_block) {
+ 		for (i = 1; i < mvm->num_of_paging_blk + 1; i++) {
+ 			struct iwl_fw_error_dump_paging *paging;
+ 			struct page *pages =
+--- a/drivers/net/wireless/iwlwifi/mvm/fw.c
++++ b/drivers/net/wireless/iwlwifi/mvm/fw.c
+@@ -144,9 +144,11 @@ void iwl_free_fw_paging(struct iwl_mvm *
+ 
+ 		__free_pages(mvm->fw_paging_db[i].fw_paging_block,
+ 			     get_order(mvm->fw_paging_db[i].fw_paging_size));
++		mvm->fw_paging_db[i].fw_paging_block = NULL;
+ 	}
+ 	kfree(mvm->trans->paging_download_buf);
+ 	mvm->trans->paging_download_buf = NULL;
++	mvm->trans->paging_db = NULL;
+ 
+ 	memset(mvm->fw_paging_db, 0, sizeof(mvm->fw_paging_db));
+ }

@@ -1,0 +1,54 @@
+From: "Yan, Zheng" <zyan@redhat.com>
+Date: Wed, 29 Mar 2017 15:30:24 +0800
+Subject: ceph: fix potential use-after-free
+Git-commit: 0a07fc8cd01b6838d999a5eacaa99fe90b8f768b
+Patch-mainline: v4.12-rc1
+References: bsc#1043371
+
+__unregister_session() free the session if it drops the last
+reference. We should grab an extra reference if we want to use
+session after __unregister_session().
+
+Signed-off-by: "Yan, Zheng" <zyan@redhat.com>
+Reviewed-by: Jeff Layton <jlayton@redhat.com>
+Signed-off-by: Ilya Dryomov <idryomov@gmail.com>
+Acked-by: Luis Henriques <lhenriques@suse.com>
+---
+ fs/ceph/mds_client.c |   10 ++++++++--
+ 1 file changed, 8 insertions(+), 2 deletions(-)
+
+--- a/fs/ceph/mds_client.c
++++ b/fs/ceph/mds_client.c
+@@ -2658,8 +2658,10 @@ static void handle_session(struct ceph_m
+ 	seq = le64_to_cpu(h->seq);
+ 
+ 	mutex_lock(&mdsc->mutex);
+-	if (op == CEPH_SESSION_CLOSE)
++	if (op == CEPH_SESSION_CLOSE) {
++		get_session(session);
+ 		__unregister_session(mdsc, session);
++	}
+ 	/* FIXME: this ttl calculation is generous */
+ 	session->s_ttl = jiffies + HZ*mdsc->mdsmap->m_session_autoclose;
+ 	mutex_unlock(&mdsc->mutex);
+@@ -2739,6 +2741,8 @@ static void handle_session(struct ceph_m
+ 			kick_requests(mdsc, mds);
+ 		mutex_unlock(&mdsc->mutex);
+ 	}
++	if (op == CEPH_SESSION_CLOSE)
++		ceph_put_mds_session(session);
+ 	return;
+ 
+ bad:
+@@ -3097,8 +3101,10 @@ static void check_new_map(struct ceph_md
+ 			if (s->s_state == CEPH_MDS_SESSION_OPENING) {
+ 				/* the session never opened, just close it
+ 				 * out now */
+-				__wake_requests(mdsc, &s->s_waiting);
++				get_session(s);
+ 				__unregister_session(mdsc, s);
++				__wake_requests(mdsc, &s->s_waiting);
++				ceph_put_mds_session(s);
+ 			} else {
+ 				/* just close it */
+ 				mutex_unlock(&mdsc->mutex);

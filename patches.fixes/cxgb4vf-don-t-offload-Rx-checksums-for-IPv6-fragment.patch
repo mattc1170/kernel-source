@@ -1,0 +1,45 @@
+From cd5281908db8a7a5a93a7587602582708a5ebd92 Mon Sep 17 00:00:00 2001
+From: Hariprasad Shenai <hariprasad@chelsio.com>
+Date: Tue, 13 Sep 2016 13:39:24 +0530
+Subject: cxgb4vf: don't offload Rx checksums for IPv6 fragments
+References: bsc#1026692
+Git-commit: 5400e54add3618759ef607a97d711e356eef6e2a
+Patch-mainline: v4.9-rc1
+
+The checksum provided by the device doesn't include the L3 headers,
+as IPv6 expects
+
+Signed-off-by: Hariprasad Shenai <hariprasad@chelsio.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+Acked-by: Thomas Bogendoerfer <tbogendoerfer@suse.de>
+
+---
+ drivers/net/ethernet/chelsio/cxgb4vf/sge.c | 7 ++++---
+ 1 file changed, 4 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/net/ethernet/chelsio/cxgb4vf/sge.c b/drivers/net/ethernet/chelsio/cxgb4vf/sge.c
+index 83afad6..6706a08 100644
+--- a/drivers/net/ethernet/chelsio/cxgb4vf/sge.c
++++ b/drivers/net/ethernet/chelsio/cxgb4vf/sge.c
+@@ -1648,14 +1648,15 @@ int t4vf_ethrx_handler(struct sge_rspq *rspq, const __be64 *rsp,
+ 
+ 	if (csum_ok && !pkt->err_vec &&
+ 	    (be32_to_cpu(pkt->l2info) & (RXF_UDP_F | RXF_TCP_F))) {
+-		if (!pkt->ip_frag)
++		if (!pkt->ip_frag) {
+ 			skb->ip_summed = CHECKSUM_UNNECESSARY;
+-		else {
++			rxq->stats.rx_cso++;
++		} else if (pkt->l2info & htonl(RXF_IP_F)) {
+ 			__sum16 c = (__force __sum16)pkt->csum;
+ 			skb->csum = csum_unfold(c);
+ 			skb->ip_summed = CHECKSUM_COMPLETE;
++			rxq->stats.rx_cso++;
+ 		}
+-		rxq->stats.rx_cso++;
+ 	} else
+ 		skb_checksum_none_assert(skb);
+ 
+-- 
+1.8.5.6
+

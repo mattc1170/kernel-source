@@ -1,0 +1,46 @@
+From 3f50a69077b5b8086fd16cfa0b71138082126a69 Mon Sep 17 00:00:00 2001
+From: Eliad Peller <eliad@wizery.com>
+Date: Sun, 15 Nov 2015 15:44:17 +0200
+Subject: [PATCH] iwlwifi: mvm: check iwl_mvm_wowlan_config_key_params() return value
+Git-commit: 3f50a69077b5b8086fd16cfa0b71138082126a69
+Patch-mainline: 4.5-rc1
+References: FATE#321353, FATE#323335
+
+commit 9a4c830007817e ("iwlwifi: mvm: refactor d3 key
+update functions") refactored some code into
+iwl_mvm_wowlan_config_key_params() function, but the
+return value was never checked, and not all the function
+flows returned valid values. fix it.
+
+Fixes: ac8ef0ce38de ("iwlwifi: mvm: refactor d3 key update functions")
+Signed-off-by: Eliad Peller <eliadx.peller@intel.com>
+Signed-off-by: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/iwlwifi/mvm/d3.c |    6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
+
+--- a/drivers/net/wireless/iwlwifi/mvm/d3.c
++++ b/drivers/net/wireless/iwlwifi/mvm/d3.c
+@@ -917,6 +917,7 @@ int iwl_mvm_wowlan_config_key_params(str
+ 		if (ret)
+ 			goto out;
+ 	}
++	ret = 0;
+ out:
+ 	kfree(key_data.rsc_tsc);
+ 	return ret;
+@@ -946,8 +947,11 @@ iwl_mvm_wowlan_config(struct iwl_mvm *mv
+ 		 * that isn't really a problem though.
+ 		 */
+ 		mutex_unlock(&mvm->mutex);
+-		iwl_mvm_wowlan_config_key_params(mvm, vif, true, CMD_ASYNC);
++		ret = iwl_mvm_wowlan_config_key_params(mvm, vif, true,
++						       CMD_ASYNC);
+ 		mutex_lock(&mvm->mutex);
++		if (ret)
++			return ret;
+ 	}
+ 
+ 	ret = iwl_mvm_send_cmd_pdu(mvm, WOWLAN_CONFIGURATION, 0,

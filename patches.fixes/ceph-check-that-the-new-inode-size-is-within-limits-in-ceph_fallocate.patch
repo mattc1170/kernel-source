@@ -1,0 +1,38 @@
+From: Luis Henriques <lhenriques@suse.com>
+Date: Fri, 5 May 2017 18:28:44 +0100
+Subject: ceph: Check that the new inode size is within limits in
+ ceph_fallocate()
+Patch-mainline: Queued in subsystem maintainer repository
+Git-repo: git://github.com/ceph/ceph-client
+Git-commit: 6f58448462f50f65a56d09b22f9adfc34af2e353
+References: bsc#1037969
+
+Currently the ceph client doesn't respect the rlimit in fallocate.  This
+means that a user can allocate a file with size > RLIMIT_FSIZE.  This
+patch adds the call to inode_newsize_ok() to verify filesystem limits and
+ulimits.  This should make ceph successfully run xfstest generic/228.
+
+Signed-off-by: Luis Henriques <lhenriques@suse.com>
+---
+ fs/ceph/file.c | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
+
+diff --git a/fs/ceph/file.c b/fs/ceph/file.c
+index 23224a455f1f..2ac033a63300 100644
+--- a/fs/ceph/file.c
++++ b/fs/ceph/file.c
+@@ -1605,8 +1605,12 @@ static long ceph_fallocate(struct file *file, int mode,
+ 	}
+ 
+ 	size = i_size_read(inode);
+-	if (!(mode & FALLOC_FL_KEEP_SIZE))
++	if (!(mode & FALLOC_FL_KEEP_SIZE)) {
+ 		endoff = offset + length;
++		ret = inode_newsize_ok(inode, endoff);
++		if (ret)
++			goto unlock;
++	}
+ 
+ 	if (fi->fmode & CEPH_FILE_MODE_LAZY)
+ 		want = CEPH_CAP_FILE_BUFFER | CEPH_CAP_FILE_LAZYIO;
+

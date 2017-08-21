@@ -2,6 +2,7 @@ From: Hannes Reinecke <hare@suse.de>
 Date: Thu, 3 Mar 2016 07:41:24 +0100
 Subject: scsi_sysfs: add 'is_bin_visible' callback
 Git-commit: 7e47976bcff23cbe011635e8931855cd3fb3aa6f
+No-Fix: 688875826f0dfbe34d9eda4c47b707d08130fe7b
 Patch-Mainline: v4.6
 
 Add 'is_bin_visible' callback to blank out unsupported vpd pages.

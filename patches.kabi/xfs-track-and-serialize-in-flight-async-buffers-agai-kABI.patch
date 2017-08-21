@@ -1,0 +1,33 @@
+From: Nikolay Borisov <nborisov@suse.com>
+Date: Mon, 13 Feb 2017 17:59:22 +0200
+Subject: xfs: track and serialize in-flight async buffers against unmount - kABI
+Patch-mainline: Never, kABI fix
+References: bsc#1024508
+
+Hide kABI change in xfs_buftarg. This is safe since struct xfs_buftarg is only
+ever allocated dynamically and never embedded.
+
+Signed-off-by: Nikolay Borisov <nborisov@suse.com>
+---
+ fs/xfs/xfs_buf.h | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/fs/xfs/xfs_buf.h b/fs/xfs/xfs_buf.h
+index a2a4df733c5d..095f02a1fa65 100644
+--- a/fs/xfs/xfs_buf.h
++++ b/fs/xfs/xfs_buf.h
+@@ -118,8 +118,10 @@ typedef struct xfs_buftarg {
+ 	/* LRU control structures */
+ 	struct shrinker		bt_shrinker;
+ 	struct list_lru		bt_lru;
+-
++#ifndef __GENKSYMS__
+ 	struct percpu_counter	bt_io_count;
++#endif
++
+ } xfs_buftarg_t;
+ 
+ struct xfs_buf;
+-- 
+2.7.4
+

@@ -1,0 +1,39 @@
+From: Jiri Slaby <jslaby@suse.cz>
+Subject: kABI: protect struct mm_struct
+Patch-mainline: never, kabi
+References: kabi
+
+In 4.4.40, commit 03eed7afbc09e061f66b448daf7863174c3dc3f3 (mm: Add a
+user_ns owner to mm_struct and fix ptrace permission checks), upstream
+commit bfedb589252c01fa505ac9f6f2a3d5d68d707ef4 added one member to
+struct mm_struct and it indeed changed kABI of literally everything.
+
+Use suse_kabi_padding to cover the newly added member.
+
+Signed-off-by: Jiri Slaby <jslaby@suse.cz>
+---
+ include/linux/mm_types.h |    5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+--- a/include/linux/mm_types.h
++++ b/include/linux/mm_types.h
+@@ -470,7 +470,6 @@ struct mm_struct {
+ 	 */
+ 	struct task_struct __rcu *owner;
+ #endif
+-	struct user_namespace *user_ns;
+ 
+ 	/* store ref to file /proc/<pid>/exe symlink points to */
+ 	struct file __rcu *exe_file;
+@@ -513,7 +512,11 @@ struct mm_struct {
+ #ifdef CONFIG_HUGETLB_PAGE
+ 	atomic_long_t hugetlb_usage;
+ #endif
++#ifdef __GENKSYMS__
+ 	void *suse_kabi_padding;
++#else
++	struct user_namespace *user_ns;
++#endif
+ };
+ 
+ static inline void mm_init_cpumask(struct mm_struct *mm)

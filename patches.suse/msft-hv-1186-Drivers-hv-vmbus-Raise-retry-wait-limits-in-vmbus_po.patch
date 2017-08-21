@@ -1,0 +1,72 @@
+From: Vitaly Kuznetsov <vkuznets@redhat.com>
+Date: Wed, 7 Dec 2016 01:16:24 -0800
+Patch-mainline: v4.11-rc1
+Subject: Drivers: hv: vmbus: Raise retry/wait limits in vmbus_post_msg()
+Git-commit: c0bb03924f1a80e7f65900e36c8e6b3dc167c5f8
+References: fate#320485, bsc#1023287, bsc#1028217
+
+DoS protection conditions were altered in WS2016 and now it's easy to get
+-EAGAIN returned from vmbus_post_msg() (e.g. when we try changing MTU on a
+netvsc device in a loop). All vmbus_post_msg() callers don't retry the
+operation and we usually end up with a non-functional device or crash.
+
+While host's DoS protection conditions are unknown to me my tests show that
+it can take up to 10 seconds before the message is sent so doing udelay()
+is not an option, we really need to sleep. Almost all vmbus_post_msg()
+callers are ready to sleep but there is one special case:
+vmbus_initiate_unload() which can be called from interrupt/NMI context and
+we can't sleep there. I'm also not sure about the lonely
+vmbus_send_tl_connect_request() which has no in-tree users but its external
+users are most likely waiting for the host to reply so sleeping there is
+also appropriate.
+
+Signed-off-by: Vitaly Kuznetsov <vkuznets@redhat.com>
+Signed-off-by: K. Y. Srinivasan <kys@microsoft.com>
+Cc: <stable@vger.kernel.org>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Acked-by: <ohering@suse.de>
+---
+ drivers/hv/channel.c      | 17 +++++++++--------
+ drivers/hv/channel_mgmt.c | 10 ++++++----
+ drivers/hv/connection.c   | 17 ++++++++++++-----
+ drivers/hv/hyperv_vmbus.h |  2 +-
+ 4 files changed, 28 insertions(+), 18 deletions(-)
+
+--- a/drivers/hv/connection.c
++++ b/drivers/hv/connection.c
+@@ -440,6 +440,9 @@ int vmbus_post_msg(void *buffer, size_t
+ 	int ret = 0;
+ 	int retries = 0;
+ 	u32 usec = 1;
++	/* No sleep in case of crash */
++	struct vmbus_channel_message_header *hdr = buffer;
++	bool can_sleep = !(buflen == sizeof(*hdr) && hdr->msgtype == CHANNELMSG_UNLOAD);
+ 
+ 	conn_id.asu32 = 0;
+ 	conn_id.u.id = VMBUS_MESSAGE_CONNECTION_ID;
+@@ -449,7 +452,7 @@ int vmbus_post_msg(void *buffer, size_t
+ 	 * insufficient resources. Retry the operation a couple of
+ 	 * times before giving up.
+ 	 */
+-	while (retries < 20) {
++	while (retries < 100) {
+ 		ret = hv_post_message(conn_id, 1, buffer, buflen);
+ 
+ 		switch (ret) {
+@@ -472,8 +475,14 @@ int vmbus_post_msg(void *buffer, size_t
+ 		}
+ 
+ 		retries++;
+-		udelay(usec);
+-		if (usec < 2048)
++		if (can_sleep && usec > 1000)
++			msleep(usec / 1000);
++		else if (usec < MAX_UDELAY_MS * 1000)
++			udelay(usec);
++		else
++			mdelay(usec / 1000);
++
++		if (usec < 256000)
+ 			usec *= 2;
+ 	}
+ 	return ret;

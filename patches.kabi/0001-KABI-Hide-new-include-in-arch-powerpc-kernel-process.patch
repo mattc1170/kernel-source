@@ -1,0 +1,31 @@
+From 58ab186e7074fa0f3be33943c2c7e593438b0139 Mon Sep 17 00:00:00 2001
+From: Michal Marek <mmarek@suse.com>
+Date: Mon, 10 Apr 2017 13:04:50 +0200
+Subject: [PATCH] KABI: Hide new include in arch/powerpc/kernel/process.c
+References: fate#322421
+Patch-mainline: Never, kabi
+
+Hide the added include from genksyms, otherwise we get
+
+arch/powerpc/kernel/process.c:154: warning: flush_fp_to_thread: modversion changed because of changes in struct module (became defined)
+arch/powerpc/kernel/process.c:205: warning: flush_altivec_to_thread: modversion changed because of changes in struct module (became defined)
+arch/powerpc/kernel/process.c:247: warning: flush_vsx_to_thread: modversion changed because of changes in struct module (became defined)
+arch/powerpc/kernel/process.c:1491: warning: validate_sp: modversion changed because of changes in struct module (became defined)
+
+Signed-off-by: Michal Marek <mmarek@suse.com>
+---
+ arch/powerpc/kernel/process.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+--- a/arch/powerpc/kernel/process.c
++++ b/arch/powerpc/kernel/process.c
+@@ -55,7 +55,9 @@
+ #include <asm/firmware.h>
+ #endif
+ #include <asm/code-patching.h>
++#ifndef __GENKSYMS__
+ #include <asm/livepatch.h>
++#endif
+ 
+ #include <linux/kprobes.h>
+ #include <linux/kdebug.h>

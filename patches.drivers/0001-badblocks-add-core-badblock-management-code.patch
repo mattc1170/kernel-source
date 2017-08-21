@@ -18,17 +18,15 @@ Signed-off-by: Vishal Verma <vishal.l.verma@intel.com>
 Signed-off-by: Dan Williams <dan.j.williams@intel.com>
 Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
 ---
- block/Makefile            |   2 +-
- block/badblocks.c         | 561 ++++++++++++++++++++++++++++++++++++++++++++++
- include/linux/badblocks.h |  53 +++++
+ block/Makefile            |    2 
+ block/badblocks.c         |  561 ++++++++++++++++++++++++++++++++++++++++++++++
+ include/linux/badblocks.h |   53 ++++
  3 files changed, 615 insertions(+), 1 deletion(-)
 
-diff --git a/block/Makefile b/block/Makefile
-index 00ecc97..db5f622 100644
 --- a/block/Makefile
 +++ b/block/Makefile
-@@ -8,7 +8,7 @@ obj-$(CONFIG_BLOCK) := bio.o elevator.o blk-core.o blk-tag.o blk-sysfs.o \
- 			blk-iopoll.o blk-lib.o blk-mq.o blk-mq-tag.o \
+@@ -8,7 +8,7 @@ obj-$(CONFIG_BLOCK) := bio.o elevator.o
+ 			blk-lib.o blk-mq.o blk-mq-tag.o \
  			blk-mq-sysfs.o blk-mq-cpu.o blk-mq-cpumap.o ioctl.o \
  			genhd.o scsi_ioctl.o partition-generic.o ioprio.o \
 -			partitions/
@@ -36,9 +34,6 @@ index 00ecc97..db5f622 100644
  
  obj-$(CONFIG_BOUNCE)	+= bounce.o
  obj-$(CONFIG_BLK_DEV_BSG)	+= bsg.o
-diff --git a/block/badblocks.c b/block/badblocks.c
-new file mode 100644
-index 0000000..96aeb91
 --- /dev/null
 +++ b/block/badblocks.c
 @@ -0,0 +1,561 @@
@@ -603,9 +598,6 @@ index 0000000..96aeb91
 +	bb->page = NULL;
 +}
 +EXPORT_SYMBOL_GPL(badblocks_free);
-diff --git a/include/linux/badblocks.h b/include/linux/badblocks.h
-new file mode 100644
-index 0000000..9293446
 --- /dev/null
 +++ b/include/linux/badblocks.h
 @@ -0,0 +1,53 @@
@@ -662,4 +654,3 @@ index 0000000..9293446
 +void badblocks_free(struct badblocks *bb);
 +
 +#endif
-

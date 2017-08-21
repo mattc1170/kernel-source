@@ -1,0 +1,49 @@
+From d0fe85e95f56a01a49e4893aa26263e8aee67eef Mon Sep 17 00:00:00 2001
+From: Arnd Bergmann <arnd@arndb.de>
+Date: Tue, 19 Jul 2016 12:14:35 -0300
+Subject: [PATCH] [media] dvb-usb: avoid link error with dib3000m{b,c|
+Git-commit: d0fe85e95f56a01a49e4893aa26263e8aee67eef
+Patch-mainline: 4.9-rc1
+References: bsc#1031717
+
+Tha ARM randconfig builds came up with another rare build failure
+for the dib3000mc driver, when dvb-usb-dibusb-mb is built-in and
+dib3000mc is a loadable module:
+
+Error: "dibusb_dib3000mc_frontend_attach" [drivers/media/usb/dvb-usb/dvb-usb-nova-t-usb2.ko] undefined!
+Error: "dibusb_dib3000mc_tuner_attach" [drivers/media/usb/dvb-usb/dvb-usb-nova-t-usb2.ko] undefined!
+
+Apparently this used to be a valid configuration (build-time, not
+run-time), but broke as part of a cleanup.
+
+I tried reverting the cleanup, but saw that the code was still wrong
+then. This version adds a dependency for dib3000mb, to ensure that
+dib3000mb does not force the dibusb_dib3000mc_frontend_attach function
+to be built-in when dib3000mc is a loadable module.
+
+I have also checked the two other files that were changed in the original
+cleanup, and found them to be correct in either version, so I do not
+touch that part.
+
+As this is a rather obscure bug, there is no need for backports.
+
+Fixes: 028c70ff42783 ("[media] dvb-usb/dvb-usb-v2: use IS_ENABLED")
+
+Signed-off-by: Arnd Bergmann <arnd@arndb.de>
+Signed-off-by: Mauro Carvalho Chehab <mchehab@s-opensource.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/media/usb/dvb-usb/Kconfig |    1 +
+ 1 file changed, 1 insertion(+)
+
+--- a/drivers/media/usb/dvb-usb/Kconfig
++++ b/drivers/media/usb/dvb-usb/Kconfig
+@@ -34,6 +34,7 @@ config DVB_USB_DIBUSB_MB
+ 	depends on DVB_USB
+ 	select DVB_PLL if MEDIA_SUBDRV_AUTOSELECT
+ 	select DVB_DIB3000MB
++	depends on DVB_DIB3000MC || !DVB_DIB3000MC
+ 	select MEDIA_TUNER_MT2060 if MEDIA_SUBDRV_AUTOSELECT
+ 	help
+ 	  Support for USB 1.1 and 2.0 DVB-T receivers based on reference designs made by

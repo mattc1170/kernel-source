@@ -1,0 +1,44 @@
+From 04ddc2aacc1c52793c1e30db5073bef6fbc08942 Mon Sep 17 00:00:00 2001
+From: Chaya Rachel Ivgi <chaya.rachel.ivgi@intel.com>
+Date: Thu, 3 Mar 2016 13:31:39 +0200
+Subject: [PATCH] iwlwifi: mvm: fix unregistration of thermal in some error flows
+Git-commit: 04ddc2aacc1c52793c1e30db5073bef6fbc08942
+Patch-mainline: 4.6-rc1
+References: FATE#321353, FATE#323335
+
+The call to iwl_mvm_thermal_initialize() was too early in the
+function.
+Unregister will be performed when goto out_unregister is called,
+but as the code was - out_free may be called and leave without
+unregistering from thermal.
+
+Signed-off-by: Chaya Rachel Ivgi <chaya.rachel.ivgi@intel.com>
+Signed-off-by: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/iwlwifi/mvm/ops.c |    6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+--- a/drivers/net/wireless/iwlwifi/mvm/ops.c
++++ b/drivers/net/wireless/iwlwifi/mvm/ops.c
+@@ -594,9 +594,6 @@ iwl_op_mode_mvm_start(struct iwl_trans *
+ 	IWL_INFO(mvm, "Detected %s, REV=0x%X\n",
+ 		 mvm->cfg->name, mvm->trans->hw_rev);
+ 
+-	min_backoff = calc_min_backoff(trans, cfg);
+-	iwl_mvm_thermal_initialize(mvm, min_backoff);
+-
+ 	if (iwlwifi_mod_params.nvm_file)
+ 		mvm->nvm_file_name = iwlwifi_mod_params.nvm_file;
+ 	else
+@@ -649,6 +646,9 @@ iwl_op_mode_mvm_start(struct iwl_trans *
+ 	if (err)
+ 		goto out_free;
+ 
++	min_backoff = calc_min_backoff(trans, cfg);
++	iwl_mvm_thermal_initialize(mvm, min_backoff);
++
+ 	err = iwl_mvm_dbgfs_register(mvm, dbgfs_dir);
+ 	if (err)
+ 		goto out_unregister;

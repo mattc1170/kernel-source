@@ -1,0 +1,38 @@
+From 141de28ed5678a2e4d6aecf3338261b524e82db6 Mon Sep 17 00:00:00 2001
+From: Randy Dunlap <rdunlap@infradead.org>
+Date: Wed, 22 Feb 2017 15:46:48 -0800
+Subject: [PATCH] mm: fix <linux/pagemap.h> stray kernel-doc notation
+
+References: bnc#971975 VM -- git fixes
+Patch-mainline: v4.11
+Git-commit: 083fb8edda0487d192e8c117f625563b920cf7a4
+
+Delete stray (second) function description in find_lock_page()
+kernel-doc notation.
+
+Note: scripts/kernel-doc just ignores the second function description.
+
+Fixes: 2457aec63745e ("mm: non-atomically mark page accessed during page cache allocation where possible")
+Link: http://lkml.kernel.org/r/b037e9a3-516c-ec02-6c8e-fa5479747ba6@infradead.org
+Signed-off-by: Randy Dunlap <rdunlap@infradead.org>
+Reported-by: Matthew Wilcox <mawilcox@microsoft.com>
+Cc: Mel Gorman <mgorman@suse.de>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+Signed-off-by: Linus Torvalds <torvalds@linux-foundation.org>
+Signed-off-by: Mel Gorman <mgorman@suse.de>
+---
+ include/linux/pagemap.h | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/include/linux/pagemap.h b/include/linux/pagemap.h
+index 3cce4a2dcb36..9bf68e64d317 100644
+--- a/include/linux/pagemap.h
++++ b/include/linux/pagemap.h
+@@ -297,7 +297,6 @@ static inline struct page *find_get_page_flags(struct address_space *mapping,
+ 
+ /**
+  * find_lock_page - locate, pin and lock a pagecache page
+- * pagecache_get_page - find and get a page reference
+  * @mapping: the address_space to search
+  * @offset: the page index
+  *

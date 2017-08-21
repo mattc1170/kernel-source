@@ -1,0 +1,27 @@
+From: Josef Bacik <jbacik@fb.com>
+Date: Wed, 23 Sep 2015 15:00:37 -0400
+Patch-mainline: 4.7
+Git-commit: 65d4f4c151a5fa7b2dacaaf70def3f95001766d7
+References: bsc#1012452
+Subject: [PATCH] Btrfs: end transaction if we abort when creating uuid
+ root
+
+We still need to call btrfs_end_transaction if we call btrfs_abort_transaction,
+otherwise we hang and make me super grumpy.  Thanks,
+
+Signed-off-by: Josef Bacik <jbacik@fb.com>
+Signed-off-by: David Sterba <dsterba@suse.com>
+---
+ fs/btrfs/volumes.c |    1 +
+ 1 file changed, 1 insertion(+)
+
+--- a/fs/btrfs/volumes.c
++++ b/fs/btrfs/volumes.c
+@@ -4242,6 +4242,7 @@ int btrfs_create_uuid_tree(struct btrfs_
+ 	if (IS_ERR(uuid_root)) {
+ 		ret = PTR_ERR(uuid_root);
+ 		btrfs_abort_transaction(trans, tree_root, ret);
++		btrfs_end_transaction(trans, tree_root);
+ 		return ret;
+ 	}
+ 

@@ -1,0 +1,152 @@
+From: Andrew Banman <abanman@hpe.com>
+Date: Thu, 9 Mar 2017 10:42:12 -0600
+Subject: x86/platform/uv/BAU: Add status mmr location fields to bau_control
+Git-commit: dfeb28f068ff9cc4f714c7d1edaf61597ea1768b
+Patch-mainline: v3.20-rc1
+References: bsc#1035024
+
+The location of the ERROR and BUSY status bits depends on the descriptor
+index, i.e. the CPU, of the message. Since this index does not change,
+there is no need to calculate the mmr and index location during message
+processing. The less work we do in the hot path the better.
+
+Add status_mmr and status_index fields to bau_control and compute their
+values during initialization. Add kerneldoc descriptions for the new
+fields. Update uv*_wait_completion to use these fields rather than
+receiving the information as parameters.
+
+Signed-off-by: Andrew Banman <abanman@hpe.com>
+Acked-by: Ingo Molnar <mingo@kernel.org>
+Acked-by: Mike Travis <mike.travis@hpe.com>
+Cc: sivanich@hpe.com
+Cc: rja@hpe.com
+Cc: akpm@linux-foundation.org
+Link: http://lkml.kernel.org/r/1489077734-111753-5-git-send-email-abanman@hpe.com
+Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
+Acked-by: Joerg Roedel <jroedel@suse.de>
+---
+ arch/x86/include/asm/uv/uv_bau.h | 10 +++++++--
+ arch/x86/platform/uv/tlb_uv.c    | 46 +++++++++++++++++++---------------------
+ 2 files changed, 30 insertions(+), 26 deletions(-)
+
+--- a/arch/x86/include/asm/uv/uv_bau.h
++++ b/arch/x86/include/asm/uv/uv_bau.h
+@@ -601,8 +601,12 @@ struct uvhub_desc {
+ 	struct socket_desc	socket[2];
+ };
+ 
+-/*
+- * one per-cpu; to locate the software tables
++/**
++ * struct bau_control
++ * @status_mmr: location of status mmr, determined by uvhub_cpu
++ * @status_index: index of ERR|BUSY bits in status mmr, determined by uvhub_cpu
++ *
++ * Per-cpu control struct containing CPU topology information and BAU tuneables.
+  */
+ struct bau_control {
+ 	struct bau_desc		*descriptor_base;
+@@ -620,6 +624,8 @@ struct bau_control {
+ 	int			timeout_tries;
+ 	int			ipi_attempts;
+ 	int			conseccompletes;
++	u64			status_mmr;
++	int			status_index;
+ 	bool			nobau;
+ 	short			baudisabled;
+ 	short			cpu;
+--- a/arch/x86/platform/uv/tlb_uv.c
++++ b/arch/x86/platform/uv/tlb_uv.c
+@@ -528,11 +528,12 @@ static unsigned long uv1_read_status(uns
+  * return COMPLETE, RETRY(PLUGGED or TIMEOUT) or GIVEUP
+  */
+ static int uv1_wait_completion(struct bau_desc *bau_desc,
+-				unsigned long mmr_offset, int right_shift,
+ 				struct bau_control *bcp, long try)
+ {
+ 	unsigned long descriptor_status;
+ 	cycles_t ttm;
++	u64 mmr_offset = bcp->status_mmr;
++	int right_shift = bcp->status_index;
+ 	struct ptc_stats *stat = bcp->statp;
+ 
+ 	descriptor_status = uv1_read_status(mmr_offset, right_shift);
+@@ -624,11 +625,12 @@ int handle_uv2_busy(struct bau_control *
+ }
+ 
+ static int uv2_3_wait_completion(struct bau_desc *bau_desc,
+-				unsigned long mmr_offset, int right_shift,
+ 				struct bau_control *bcp, long try)
+ {
+ 	unsigned long descriptor_stat;
+ 	cycles_t ttm;
++	u64 mmr_offset = bcp->status_mmr;
++	int right_shift = bcp->status_index;
+ 	int desc = bcp->uvhub_cpu;
+ 	long busy_reps = 0;
+ 	struct ptc_stats *stat = bcp->statp;
+@@ -689,29 +691,12 @@ static int uv2_3_wait_completion(struct
+ 	return FLUSH_COMPLETE;
+ }
+ 
+-/*
+- * There are 2 status registers; each and array[32] of 2 bits. Set up for
+- * which register to read and position in that register based on cpu in
+- * current hub.
+- */
+ static int wait_completion(struct bau_desc *bau_desc, struct bau_control *bcp, long try)
+ {
+-	int right_shift;
+-	unsigned long mmr_offset;
+-	int desc = bcp->uvhub_cpu;
+-
+-	if (desc < UV_CPUS_PER_AS) {
+-		mmr_offset = UVH_LB_BAU_SB_ACTIVATION_STATUS_0;
+-		right_shift = desc * UV_ACT_STATUS_SIZE;
+-	} else {
+-		mmr_offset = UVH_LB_BAU_SB_ACTIVATION_STATUS_1;
+-		right_shift = ((desc - UV_CPUS_PER_AS) * UV_ACT_STATUS_SIZE);
+-	}
+-
+ 	if (bcp->uvhub_version == UV_BAU_V1)
+-		return uv1_wait_completion(bau_desc, mmr_offset, right_shift, bcp, try);
++		return uv1_wait_completion(bau_desc, bcp, try);
+ 	else
+-		return uv2_3_wait_completion(bau_desc, mmr_offset, right_shift, bcp, try);
++		return uv2_3_wait_completion(bau_desc, bcp, try);
+ }
+ 
+ /*
+@@ -2029,8 +2014,7 @@ static int scan_sock(struct socket_desc
+ 			struct bau_control **smasterp,
+ 			struct bau_control **hmasterp)
+ {
+-	int i;
+-	int cpu;
++	int i, cpu, uvhub_cpu;
+ 	struct bau_control *bcp;
+ 
+ 	for (i = 0; i < sdp->num_cpus; i++) {
+@@ -2059,7 +2043,21 @@ static int scan_sock(struct socket_desc
+ 			return 1;
+ 		}
+ 		bcp->uvhub_master = *hmasterp;
+-		bcp->uvhub_cpu = uv_cpu_blade_processor_id(cpu);
++		uvhub_cpu = uv_cpu_blade_processor_id(cpu);
++		bcp->uvhub_cpu = uvhub_cpu;
++
++		/*
++		 * The ERROR and BUSY status registers are located pairwise over
++		 * the STATUS_0 and STATUS_1 mmrs; each an array[32] of 2 bits.
++		 */
++		if (uvhub_cpu < UV_CPUS_PER_AS) {
++			bcp->status_mmr = UVH_LB_BAU_SB_ACTIVATION_STATUS_0;
++			bcp->status_index = uvhub_cpu * UV_ACT_STATUS_SIZE;
++		} else {
++			bcp->status_mmr = UVH_LB_BAU_SB_ACTIVATION_STATUS_1;
++			bcp->status_index = (uvhub_cpu - UV_CPUS_PER_AS)
++						* UV_ACT_STATUS_SIZE;
++		}
+ 
+ 		if (bcp->uvhub_cpu >= MAX_CPUS_PER_UVHUB) {
+ 			pr_emerg("%d cpus per uvhub invalid\n",

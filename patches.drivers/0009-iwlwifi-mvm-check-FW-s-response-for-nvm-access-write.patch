@@ -1,0 +1,64 @@
+From 9a57f650d0c95b827cb795e69d824accda045a9d Mon Sep 17 00:00:00 2001
+From: Matti Gottlieb <matti.gottlieb@intel.com>
+Date: Mon, 2 Nov 2015 13:01:54 +0200
+Subject: [PATCH] iwlwifi: mvm: check FW's response for nvm access write cmd
+Git-commit: 9a57f650d0c95b827cb795e69d824accda045a9d
+Patch-mainline: 4.5-rc1
+References: FATE#321353, FATE#323335
+
+In case of using an external NVM file, the driver sends to the
+FW the different nvm sections. In the response of the cmd, the
+FW states the status of the writing of the chunk.
+
+Currently the value is not checked by the driver.
+
+Check FW's response for writing the nvm chunk in the NVM_ACCESS_CMD.
+
+Signed-off-by: Matti Gottlieb <matti.gottlieb@intel.com>
+Signed-off-by: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/iwlwifi/mvm/nvm.c |   26 ++++++++++++++++++++++++--
+ 1 file changed, 24 insertions(+), 2 deletions(-)
+
+--- a/drivers/net/wireless/iwlwifi/mvm/nvm.c
++++ b/drivers/net/wireless/iwlwifi/mvm/nvm.c
+@@ -104,13 +104,35 @@ static int iwl_nvm_write_chunk(struct iw
+ 	struct iwl_host_cmd cmd = {
+ 		.id = NVM_ACCESS_CMD,
+ 		.len = { sizeof(struct iwl_nvm_access_cmd), length },
+-		.flags = CMD_SEND_IN_RFKILL,
++		.flags = CMD_WANT_SKB | CMD_SEND_IN_RFKILL,
+ 		.data = { &nvm_access_cmd, data },
+ 		/* data may come from vmalloc, so use _DUP */
+ 		.dataflags = { 0, IWL_HCMD_DFL_DUP },
+ 	};
++	struct iwl_rx_packet *pkt;
++	struct iwl_nvm_access_resp *nvm_resp;
++	int ret;
+ 
+-	return iwl_mvm_send_cmd(mvm, &cmd);
++	ret = iwl_mvm_send_cmd(mvm, &cmd);
++	if (ret)
++		return ret;
++
++	pkt = cmd.resp_pkt;
++	if (!pkt) {
++		IWL_ERR(mvm, "Error in NVM_ACCESS response\n");
++		return -EINVAL;
++	}
++	/* Extract & check NVM write response */
++	nvm_resp = (void *)pkt->data;
++	if (le16_to_cpu(nvm_resp->status) != READ_NVM_CHUNK_SUCCEED) {
++		IWL_ERR(mvm,
++			"NVM access write command failed for section %u (status = 0x%x)\n",
++			section, le16_to_cpu(nvm_resp->status));
++		ret = -EIO;
++	}
++
++	iwl_free_resp(&cmd);
++	return ret;
+ }
+ 
+ static int iwl_nvm_read_chunk(struct iwl_mvm *mvm, u16 section,

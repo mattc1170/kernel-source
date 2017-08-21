@@ -51,7 +51,7 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  
  	memset(&fl6, 0, sizeof fl6);
 @@ -281,6 +288,7 @@ static int addr6_resolve(struct sockaddr
- 	if ((ret = dst->error))
+ 	if (ret < 0)
  		goto put;
  
 +	rt = (struct rt6_info *)dst;

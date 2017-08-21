@@ -1,0 +1,48 @@
+From: Wang Xiaoguang <wangxg.fnst@cn.fujitsu.com>
+Date: Fri, 26 Aug 2016 11:33:14 +0800
+Patch-mainline: 4.8
+Git-commit: ed7a6948394305b810d0c6203268648715e5006f
+References: bsc#1012452
+Subject: [PATCH] btrfs: do not decrease bytes_may_use when replaying
+ extents
+
+When replaying extents, there is no need to update bytes_may_use
+in btrfs_alloc_logged_file_extent(), otherwise it'll trigger a
+WARN_ON about bytes_may_use.
+
+Fixes: ("btrfs: update btrfs_space_info's bytes_may_use timely")
+Signed-off-by: Wang Xiaoguang <wangxg.fnst@cn.fujitsu.com>
+Reviewed-by: Josef Bacik <jbacik@fb.com>
+Signed-off-by: David Sterba <dsterba@suse.com>
+---
+ fs/btrfs/extent-tree.c |   12 +++++++++---
+ 1 file changed, 9 insertions(+), 3 deletions(-)
+
+--- a/fs/btrfs/extent-tree.c
++++ b/fs/btrfs/extent-tree.c
+@@ -8186,6 +8186,7 @@ int btrfs_alloc_logged_file_extent(struc
+ {
+ 	int ret;
+ 	struct btrfs_block_group_cache *block_group;
++	struct btrfs_space_info *space_info;
+ 
+ 	/*
+ 	 * Mixed block groups will exclude before processing the log so we only
+@@ -8201,9 +8202,14 @@ int btrfs_alloc_logged_file_extent(struc
+ 	if (!block_group)
+ 		return -EINVAL;
+ 
+-	ret = btrfs_add_reserved_bytes(block_group, ins->offset,
+-				       ins->offset, 0);
+-	BUG_ON(ret); /* logic error */
++	space_info = block_group->space_info;
++	spin_lock(&space_info->lock);
++	spin_lock(&block_group->lock);
++	space_info->bytes_reserved += ins->offset;
++	block_group->reserved += ins->offset;
++	spin_unlock(&block_group->lock);
++	spin_unlock(&space_info->lock);
++
+ 	ret = alloc_reserved_file_extent(trans, root, 0, root_objectid,
+ 					 0, owner, offset, ins, 1);
+ 	btrfs_put_block_group(block_group);

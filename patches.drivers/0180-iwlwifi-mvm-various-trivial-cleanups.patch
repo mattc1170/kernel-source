@@ -1,0 +1,45 @@
+From f1704618987b2710760582c87b5f7f600e529a60 Mon Sep 17 00:00:00 2001
+From: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Date: Thu, 25 Feb 2016 10:19:59 +0200
+Subject: [PATCH] iwlwifi: mvm: various trivial cleanups
+Git-commit: f1704618987b2710760582c87b5f7f600e529a60
+Patch-mainline: 4.6-rc1
+References: FATE#321353, FATE#323335
+
+* Remove uneeded includes:
+	iwl-csr.h and devcoredump aren't used in mac80211.c.
+* Remove uneeded empty line
+
+Signed-off-by: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/iwlwifi/mvm/mac80211.c |    3 ---
+ 1 file changed, 3 deletions(-)
+
+--- a/drivers/net/wireless/iwlwifi/mvm/mac80211.c
++++ b/drivers/net/wireless/iwlwifi/mvm/mac80211.c
+@@ -69,7 +69,6 @@
+ #include <linux/etherdevice.h>
+ #include <linux/ip.h>
+ #include <linux/if_arp.h>
+-#include <linux/devcoredump.h>
+ #include <linux/time.h>
+ #include <net/mac80211.h>
+ #include <net/ieee80211_radiotap.h>
+@@ -85,7 +84,6 @@
+ #include "testmode.h"
+ #include "iwl-fw-error-dump.h"
+ #include "iwl-prph.h"
+-#include "iwl-csr.h"
+ #include "iwl-nvm-parse.h"
+ #include "fw-dbg.h"
+ 
+@@ -2084,7 +2082,6 @@ iwl_mvm_bss_info_changed_ap_ibss(struct
+ 				bss_conf->txpower);
+ 		iwl_mvm_set_tx_power(mvm, vif, bss_conf->txpower);
+ 	}
+-
+ }
+ 
+ static void iwl_mvm_bss_info_changed(struct ieee80211_hw *hw,

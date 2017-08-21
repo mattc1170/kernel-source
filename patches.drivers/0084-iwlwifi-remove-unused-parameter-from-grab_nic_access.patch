@@ -1,0 +1,252 @@
+From 23ba93403b29f828feb29c06397355213a5af4b5 Mon Sep 17 00:00:00 2001
+From: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Date: Thu, 17 Dec 2015 11:55:13 +0200
+Subject: [PATCH] iwlwifi: remove unused parameter from grab_nic_access
+Git-commit: 23ba93403b29f828feb29c06397355213a5af4b5
+Patch-mainline: 4.5-rc1
+References: FATE#321353, FATE#323335
+
+All the callers used silent = false.
+
+Signed-off-by: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/iwlwifi/dvm/main.c   |    4 ++--
+ drivers/net/wireless/iwlwifi/dvm/tt.c     |    2 +-
+ drivers/net/wireless/iwlwifi/iwl-io.c     |   14 +++++++-------
+ drivers/net/wireless/iwlwifi/iwl-trans.h  |    7 +++----
+ drivers/net/wireless/iwlwifi/mvm/fw-dbg.c |    4 ++--
+ drivers/net/wireless/iwlwifi/pcie/trans.c |   27 ++++++++++++---------------
+ drivers/net/wireless/iwlwifi/pcie/tx.c    |    2 +-
+ 7 files changed, 28 insertions(+), 32 deletions(-)
+
+--- a/drivers/net/wireless/iwlwifi/dvm/main.c
++++ b/drivers/net/wireless/iwlwifi/dvm/main.c
+@@ -429,7 +429,7 @@ static void iwl_print_cont_event_trace(s
+ 		ptr = base + (4 * sizeof(u32)) + (start_idx * 3 * sizeof(u32));
+ 
+ 	/* Make sure device is powered up for SRAM reads */
+-	if (!iwl_trans_grab_nic_access(priv->trans, false, &reg_flags))
++	if (!iwl_trans_grab_nic_access(priv->trans, &reg_flags))
+ 		return;
+ 
+ 	/* Set starting address; reads will auto-increment */
+@@ -1731,7 +1731,7 @@ static int iwl_print_event_log(struct iw
+ 	ptr = base + EVENT_START_OFFSET + (start_idx * event_size);
+ 
+ 	/* Make sure device is powered up for SRAM reads */
+-	if (!iwl_trans_grab_nic_access(trans, false, &reg_flags))
++	if (!iwl_trans_grab_nic_access(trans, &reg_flags))
+ 		return pos;
+ 
+ 	/* Set starting address; reads will auto-increment */
+--- a/drivers/net/wireless/iwlwifi/dvm/tt.c
++++ b/drivers/net/wireless/iwlwifi/dvm/tt.c
+@@ -184,7 +184,7 @@ static void iwl_tt_check_exit_ct_kill(un
+ 			priv->thermal_throttle.ct_kill_toggle = true;
+ 		}
+ 		iwl_read32(priv->trans, CSR_UCODE_DRV_GP1);
+-		if (iwl_trans_grab_nic_access(priv->trans, false, &flags))
++		if (iwl_trans_grab_nic_access(priv->trans, &flags))
+ 			iwl_trans_release_nic_access(priv->trans, &flags);
+ 
+ 		/* Reschedule the ct_kill timer to occur in
+--- a/drivers/net/wireless/iwlwifi/iwl-io.c
++++ b/drivers/net/wireless/iwlwifi/iwl-io.c
+@@ -82,7 +82,7 @@ u32 iwl_read_direct32(struct iwl_trans *
+ {
+ 	u32 value = 0x5a5a5a5a;
+ 	unsigned long flags;
+-	if (iwl_trans_grab_nic_access(trans, false, &flags)) {
++	if (iwl_trans_grab_nic_access(trans, &flags)) {
+ 		value = iwl_read32(trans, reg);
+ 		iwl_trans_release_nic_access(trans, &flags);
+ 	}
+@@ -95,7 +95,7 @@ void iwl_write_direct32(struct iwl_trans
+ {
+ 	unsigned long flags;
+ 
+-	if (iwl_trans_grab_nic_access(trans, false, &flags)) {
++	if (iwl_trans_grab_nic_access(trans, &flags)) {
+ 		iwl_write32(trans, reg, value);
+ 		iwl_trans_release_nic_access(trans, &flags);
+ 	}
+@@ -138,7 +138,7 @@ u32 iwl_read_prph(struct iwl_trans *tran
+ 	unsigned long flags;
+ 	u32 val = 0x5a5a5a5a;
+ 
+-	if (iwl_trans_grab_nic_access(trans, false, &flags)) {
++	if (iwl_trans_grab_nic_access(trans, &flags)) {
+ 		val = iwl_read_prph_no_grab(trans, ofs);
+ 		iwl_trans_release_nic_access(trans, &flags);
+ 	}
+@@ -150,7 +150,7 @@ void iwl_write_prph(struct iwl_trans *tr
+ {
+ 	unsigned long flags;
+ 
+-	if (iwl_trans_grab_nic_access(trans, false, &flags)) {
++	if (iwl_trans_grab_nic_access(trans, &flags)) {
+ 		iwl_write_prph_no_grab(trans, ofs, val);
+ 		iwl_trans_release_nic_access(trans, &flags);
+ 	}
+@@ -176,7 +176,7 @@ void iwl_set_bits_prph(struct iwl_trans
+ {
+ 	unsigned long flags;
+ 
+-	if (iwl_trans_grab_nic_access(trans, false, &flags)) {
++	if (iwl_trans_grab_nic_access(trans, &flags)) {
+ 		iwl_write_prph_no_grab(trans, ofs,
+ 				       iwl_read_prph_no_grab(trans, ofs) |
+ 				       mask);
+@@ -190,7 +190,7 @@ void iwl_set_bits_mask_prph(struct iwl_t
+ {
+ 	unsigned long flags;
+ 
+-	if (iwl_trans_grab_nic_access(trans, false, &flags)) {
++	if (iwl_trans_grab_nic_access(trans, &flags)) {
+ 		iwl_write_prph_no_grab(trans, ofs,
+ 				       (iwl_read_prph_no_grab(trans, ofs) &
+ 					mask) | bits);
+@@ -204,7 +204,7 @@ void iwl_clear_bits_prph(struct iwl_tran
+ 	unsigned long flags;
+ 	u32 val;
+ 
+-	if (iwl_trans_grab_nic_access(trans, false, &flags)) {
++	if (iwl_trans_grab_nic_access(trans, &flags)) {
+ 		val = iwl_read_prph_no_grab(trans, ofs);
+ 		iwl_write_prph_no_grab(trans, ofs, (val & ~mask));
+ 		iwl_trans_release_nic_access(trans, &flags);
+--- a/drivers/net/wireless/iwlwifi/iwl-trans.h
++++ b/drivers/net/wireless/iwlwifi/iwl-trans.h
+@@ -652,8 +652,7 @@ struct iwl_trans_ops {
+ 	void (*configure)(struct iwl_trans *trans,
+ 			  const struct iwl_trans_config *trans_cfg);
+ 	void (*set_pmi)(struct iwl_trans *trans, bool state);
+-	bool (*grab_nic_access)(struct iwl_trans *trans, bool silent,
+-				unsigned long *flags);
++	bool (*grab_nic_access)(struct iwl_trans *trans, unsigned long *flags);
+ 	void (*release_nic_access)(struct iwl_trans *trans,
+ 				   unsigned long *flags);
+ 	void (*set_bits_mask)(struct iwl_trans *trans, u32 reg, u32 mask,
+@@ -1170,9 +1169,9 @@ iwl_trans_set_bits_mask(struct iwl_trans
+ 	trans->ops->set_bits_mask(trans, reg, mask, value);
+ }
+ 
+-#define iwl_trans_grab_nic_access(trans, silent, flags)	\
++#define iwl_trans_grab_nic_access(trans, flags)	\
+ 	__cond_lock(nic_access,				\
+-		    likely((trans)->ops->grab_nic_access(trans, silent, flags)))
++		    likely((trans)->ops->grab_nic_access(trans, flags)))
+ 
+ static inline void __releases(nic_access)
+ iwl_trans_release_nic_access(struct iwl_trans *trans, unsigned long *flags)
+--- a/drivers/net/wireless/iwlwifi/mvm/fw-dbg.c
++++ b/drivers/net/wireless/iwlwifi/mvm/fw-dbg.c
+@@ -122,7 +122,7 @@ static void iwl_mvm_dump_fifos(struct iw
+ 	unsigned long flags;
+ 	int i, j;
+ 
+-	if (!iwl_trans_grab_nic_access(mvm->trans, false, &flags))
++	if (!iwl_trans_grab_nic_access(mvm->trans, &flags))
+ 		return;
+ 
+ 	/* Pull RXF data from all RXFs */
+@@ -359,7 +359,7 @@ static u32 iwl_dump_prph(struct iwl_tran
+ 	unsigned long flags;
+ 	u32 prph_len = 0, i;
+ 
+-	if (!iwl_trans_grab_nic_access(trans, false, &flags))
++	if (!iwl_trans_grab_nic_access(trans, &flags))
+ 		return 0;
+ 
+ 	for (i = 0; i < ARRAY_SIZE(iwl_prph_dump_addr); i++) {
+--- a/drivers/net/wireless/iwlwifi/pcie/trans.c
++++ b/drivers/net/wireless/iwlwifi/pcie/trans.c
+@@ -1514,8 +1514,8 @@ static void iwl_trans_pcie_set_pmi(struc
+ 		clear_bit(STATUS_TPOWER_PMI, &trans->status);
+ }
+ 
+-static bool iwl_trans_pcie_grab_nic_access(struct iwl_trans *trans, bool silent,
+-						unsigned long *flags)
++static bool iwl_trans_pcie_grab_nic_access(struct iwl_trans *trans,
++					   unsigned long *flags)
+ {
+ 	int ret;
+ 	struct iwl_trans_pcie *trans_pcie = IWL_TRANS_GET_PCIE_TRANS(trans);
+@@ -1556,14 +1556,11 @@ static bool iwl_trans_pcie_grab_nic_acce
+ 			    CSR_GP_CNTRL_REG_FLAG_GOING_TO_SLEEP), 15000);
+ 	if (unlikely(ret < 0)) {
+ 		iwl_write32(trans, CSR_RESET, CSR_RESET_REG_FLAG_FORCE_NMI);
+-		if (!silent) {
+-			u32 val = iwl_read32(trans, CSR_GP_CNTRL);
+-			WARN_ONCE(1,
+-				  "Timeout waiting for hardware access (CSR_GP_CNTRL 0x%08x)\n",
+-				  val);
+-			spin_unlock_irqrestore(&trans_pcie->reg_lock, *flags);
+-			return false;
+-		}
++		WARN_ONCE(1,
++			  "Timeout waiting for hardware access (CSR_GP_CNTRL 0x%08x)\n",
++			  iwl_read32(trans, CSR_GP_CNTRL));
++		spin_unlock_irqrestore(&trans_pcie->reg_lock, *flags);
++		return false;
+ 	}
+ 
+ out:
+@@ -1611,7 +1608,7 @@ static int iwl_trans_pcie_read_mem(struc
+ 	int offs, ret = 0;
+ 	u32 *vals = buf;
+ 
+-	if (iwl_trans_grab_nic_access(trans, false, &flags)) {
++	if (iwl_trans_grab_nic_access(trans, &flags)) {
+ 		iwl_write32(trans, HBUS_TARG_MEM_RADDR, addr);
+ 		for (offs = 0; offs < dwords; offs++)
+ 			vals[offs] = iwl_read32(trans, HBUS_TARG_MEM_RDAT);
+@@ -1629,7 +1626,7 @@ static int iwl_trans_pcie_write_mem(stru
+ 	int offs, ret = 0;
+ 	const u32 *vals = buf;
+ 
+-	if (iwl_trans_grab_nic_access(trans, false, &flags)) {
++	if (iwl_trans_grab_nic_access(trans, &flags)) {
+ 		iwl_write32(trans, HBUS_TARG_MEM_WADDR, addr);
+ 		for (offs = 0; offs < dwords; offs++)
+ 			iwl_write32(trans, HBUS_TARG_MEM_WDAT,
+@@ -2255,7 +2252,7 @@ static u32 iwl_trans_pcie_fh_regs_dump(s
+ 	__le32 *val;
+ 	int i;
+ 
+-	if (!iwl_trans_grab_nic_access(trans, false, &flags))
++	if (!iwl_trans_grab_nic_access(trans, &flags))
+ 		return 0;
+ 
+ 	(*data)->type = cpu_to_le32(IWL_FW_ERROR_DUMP_FH_REGS);
+@@ -2282,7 +2279,7 @@ iwl_trans_pci_dump_marbh_monitor(struct
+ 	unsigned long flags;
+ 	u32 i;
+ 
+-	if (!iwl_trans_grab_nic_access(trans, false, &flags))
++	if (!iwl_trans_grab_nic_access(trans, &flags))
+ 		return 0;
+ 
+ 	iwl_write_prph_no_grab(trans, MON_DMARB_RD_CTL_ADDR, 0x1);
+@@ -2667,7 +2664,7 @@ struct iwl_trans *iwl_trans_pcie_alloc(s
+ 			goto out_pci_disable_msi;
+ 		}
+ 
+-		if (iwl_trans_grab_nic_access(trans, false, &flags)) {
++		if (iwl_trans_grab_nic_access(trans, &flags)) {
+ 			u32 hw_step;
+ 
+ 			hw_step = iwl_read_prph_no_grab(trans, WFPM_CTRL_REG);
+--- a/drivers/net/wireless/iwlwifi/pcie/tx.c
++++ b/drivers/net/wireless/iwlwifi/pcie/tx.c
+@@ -770,7 +770,7 @@ static void iwl_pcie_tx_stop_fh(struct i
+ 
+ 	spin_lock(&trans_pcie->irq_lock);
+ 
+-	if (!iwl_trans_grab_nic_access(trans, false, &flags))
++	if (!iwl_trans_grab_nic_access(trans, &flags))
+ 		goto out;
+ 
+ 	/* Stop each Tx DMA channel */

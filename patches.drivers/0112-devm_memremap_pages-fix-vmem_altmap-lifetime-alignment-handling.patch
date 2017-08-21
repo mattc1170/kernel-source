@@ -47,7 +47,7 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
  
  	mutex_lock(&pgmap_lock);
  	for (key = res->start; key <= res->end; key += SECTION_SIZE)
-@@ -229,12 +233,11 @@ static void devm_memremap_pages_release(
+@@ -229,14 +233,13 @@ static void devm_memremap_pages_release(
  		percpu_ref_put(pgmap->ref);
  	}
  
@@ -56,12 +56,14 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
  	/* pages are dead and unused, undo the arch mapping */
  	align_start = res->start & ~(SECTION_SIZE - 1);
  	align_size = ALIGN(resource_size(res), SECTION_SIZE);
+ 	mem_hotplug_begin();
  	arch_remove_memory(align_start, align_size);
+ 	mem_hotplug_done();
 +	pgmap_radix_release(res);
  	dev_WARN_ONCE(dev, pgmap->altmap && pgmap->altmap->alloc,
  			"%s: failed to free all reserved pages\n", __func__);
  }
-@@ -270,7 +273,7 @@ void *devm_memremap_pages(struct device
+@@ -272,7 +275,7 @@ void *devm_memremap_pages(struct device
  {
  	int is_ram = region_intersects(res->start, resource_size(res),
  				       IORESOURCE_SYSTEM_RAM, IORES_DESC_NONE);
@@ -70,7 +72,7 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
  	struct dev_pagemap *pgmap;
  	struct page_map *page_map;
  	unsigned long pfn;
-@@ -312,7 +315,10 @@ void *devm_memremap_pages(struct device
+@@ -314,7 +317,10 @@ void *devm_memremap_pages(struct device
  
  	mutex_lock(&pgmap_lock);
  	error = 0;
@@ -82,12 +84,12 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
  		struct dev_pagemap *dup;
  
  		rcu_read_lock();
-@@ -339,8 +345,6 @@ void *devm_memremap_pages(struct device
+@@ -341,8 +347,6 @@ void *devm_memremap_pages(struct device
  	if (nid < 0)
  		nid = numa_mem_id();
  
 -	align_start = res->start & ~(SECTION_SIZE - 1);
 -	align_size = ALIGN(resource_size(res), SECTION_SIZE);
+ 	mem_hotplug_begin();
  	error = arch_add_memory(nid, align_start, align_size, true);
- 	if (error)
- 		goto err_add_memory;
+ 	mem_hotplug_done();

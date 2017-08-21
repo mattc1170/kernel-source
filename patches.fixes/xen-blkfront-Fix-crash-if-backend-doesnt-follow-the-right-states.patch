@@ -1,0 +1,72 @@
+From: Konrad Rzeszutek Wilk <konrad.wilk@oracle.com>
+Subject: xen/blkfront: Fix crash if backend doesn't follow the right states.
+Patch-mainline: 4.5-rc1
+Git-commit: c31ecf6c126dbc7f30234eaf6c4a079649a38de7
+References: none
+
+We have split the setting up of all the resources in two steps:
+1) talk_to_blkback  - which figures out the num_ring_pages (from
+   the default value of zero), sets up shadow and so
+2) blkfront_connect - does the real part of filling out the
+   internal structures.
+
+The problem is if we bypass the 1) step and go straight to 2)
+and call blkfront_setup_indirect where we use the macro
+BLK_RING_SIZE - which returns an negative value (because
+sz is zero  - since num_ring_pages is zero - since it has never
+been set).
+
+We can fix this by making sure that we always have called
+talk_to_blkback before going to blkfront_connect.
+
+Or we could set in blkfront_probe info->nr_ring_pages = 1
+to have a default value. But that looks odd - as we haven't
+actually negotiated any ring size.
+
+This patch changes XenbusStateConnected state to detect if
+we haven't done the initial handshake - and if so continue
+on as if were in XenbusStateInitWait state.
+
+We also roll the error recovery (freeing the structure) into
+talk_to_blkback error path - which is safe since that function
+is only called from blkback_changed.
+
+Signed-off-by: Konrad Rzeszutek Wilk <konrad.wilk@oracle.com>
+Acked-by: jbeulich@suse.com
+
+--- a/drivers/block/xen-blkfront.c
++++ b/drivers/block/xen-blkfront.c
+@@ -1556,6 +1556,9 @@ again:
+  destroy_blkring:
+ 	blkif_free(info, 0);
+  out:
++	kfree(info);
++	dev_set_drvdata(&dev->dev, NULL);
++
+ 	return err;
+ }
+ 
+@@ -2097,11 +2100,8 @@ static void blkback_changed(struct xenbu
+ 	case XenbusStateInitWait:
+ 		if (dev->state != XenbusStateInitialising)
+ 			break;
+-		if (talk_to_blkback(dev, info)) {
+-			kfree(info);
+-			dev_set_drvdata(&dev->dev, NULL);
++		if (talk_to_blkback(dev, info))
+ 			break;
+-		}
+ 	case XenbusStateInitialising:
+ 	case XenbusStateInitialised:
+ 	case XenbusStateReconfiguring:
+@@ -2110,6 +2110,10 @@ static void blkback_changed(struct xenbu
+ 		break;
+ 
+ 	case XenbusStateConnected:
++		if (dev->state != XenbusStateInitialised) {
++			if (talk_to_blkback(dev, info))
++				break;
++		}
+ 		blkfront_connect(info);
+ 		break;
+ 

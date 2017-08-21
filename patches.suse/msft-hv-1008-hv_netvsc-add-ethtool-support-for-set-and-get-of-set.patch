@@ -29,12 +29,10 @@ Signed-off-by: Simon Xiao <sixiao@microsoft.com>
 Signed-off-by: David S. Miller <davem@davemloft.net>
 Acked-by: <ohering@suse.de>
 ---
- drivers/net/hyperv/hyperv_net.h |  4 +++
- drivers/net/hyperv/netvsc_drv.c | 56 +++++++++++++++++++++++++++++++++++++++++
+ drivers/net/hyperv/hyperv_net.h |    4 ++
+ drivers/net/hyperv/netvsc_drv.c |   56 ++++++++++++++++++++++++++++++++++++++++
  2 files changed, 60 insertions(+)
 
-diff --git a/drivers/net/hyperv/hyperv_net.h b/drivers/net/hyperv/hyperv_net.h
-index fcb92c0..b4c6878 100644
 --- a/drivers/net/hyperv/hyperv_net.h
 +++ b/drivers/net/hyperv/hyperv_net.h
 @@ -658,6 +658,10 @@ struct net_device_context {
@@ -48,11 +46,9 @@ index fcb92c0..b4c6878 100644
  };
  
  /* Per netvsc device */
-diff --git a/drivers/net/hyperv/netvsc_drv.c b/drivers/net/hyperv/netvsc_drv.c
-index 2b6595e..0860849 100644
 --- a/drivers/net/hyperv/netvsc_drv.c
 +++ b/drivers/net/hyperv/netvsc_drv.c
-@@ -799,6 +799,58 @@ static int netvsc_set_channels(struct net_device *net,
+@@ -801,6 +801,58 @@ static int netvsc_set_channels(struct ne
  	goto do_set;
  }
  
@@ -111,7 +107,7 @@ index 2b6595e..0860849 100644
  static int netvsc_change_mtu(struct net_device *ndev, int mtu)
  {
  	struct net_device_context *ndevctx = netdev_priv(ndev);
-@@ -923,6 +975,8 @@ static const struct ethtool_ops ethtool_ops = {
+@@ -925,6 +977,8 @@ static const struct ethtool_ops ethtool_
  	.get_channels   = netvsc_get_channels,
  	.set_channels   = netvsc_set_channels,
  	.get_ts_info	= ethtool_op_get_ts_info,
@@ -120,9 +116,9 @@ index 2b6595e..0860849 100644
  };
  
  static const struct net_device_ops device_ops = {
-@@ -1115,6 +1169,8 @@ static int netvsc_probe(struct hv_device *dev,
- 	netif_set_real_num_tx_queues(net, nvdev->num_chn);
+@@ -1118,6 +1172,8 @@ static int netvsc_probe(struct hv_device
  	netif_set_real_num_rx_queues(net, nvdev->num_chn);
+ 	netif_set_gso_max_size(net, NETVSC_GSO_MAX_SIZE);
  
 +	netvsc_init_settings(net);
 +

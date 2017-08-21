@@ -1,0 +1,50 @@
+From: Shaohua Li <shli@fb.com>
+Subject: [PATCH] md/raid1: handle flush request correctly
+Git-commit: aff8da09f2381f0869faaf6637b0d892a3ee99ed
+Patch-mainline: v4.11-rc1
+References: bsc#998106,bsc#1020048,bsc#982783
+
+I got a warning triggered in align_to_barrier_unit_end. It's a flush
+request so sectors == 0. The flush request happens to work well without
+the new barrier patch, but we'd better handle it explictly.
+
+Cc: NeilBrown <neilb@suse.com>
+Acked-by: Coly Li <colyli@suse.de>
+Signed-off-by: Shaohua Li <shli@fb.com>
+Signed-off-by: Coly Li <colyli@suse.de>
+---
+ drivers/md/raid1.c |    9 +++++++--
+ 1 file changed, 7 insertions(+), 2 deletions(-)
+
+--- a/drivers/md/raid1.c
++++ b/drivers/md/raid1.c
+@@ -1282,7 +1282,7 @@ static void raid1_write_request(struct m
+ 	struct bitmap *bitmap = mddev->bitmap;
+ 	unsigned long flags;
+ 	const unsigned long do_sync = (bio->bi_rw & REQ_SYNC);
+-	const unsigned long do_flush_fua = (bio->bi_rw & (REQ_FLUSH | REQ_FUA));
++	const unsigned long do_fua = (bio->bi_rw & REQ_FUA);
+ 	const unsigned long do_discard = (bio->bi_rw
+ 					  & (REQ_DISCARD | REQ_SECURE));
+ 	const unsigned long do_same = (bio->bi_rw & REQ_WRITE_SAME);
+@@ -1500,7 +1500,7 @@ static void raid1_write_request(struct m
+ 		mbio->bi_bdev = conf->mirrors[i].rdev->bdev;
+ 		mbio->bi_end_io	= raid1_end_write_request;
+ 		mbio->bi_rw =
+-			WRITE | do_flush_fua | do_sync | do_discard | do_same;
++			WRITE | do_fua | do_sync | do_discard | do_same;
+ 		if (test_bit(FailFast, &conf->mirrors[i].rdev->flags) &&
+ 		    !test_bit(WriteMostly, &conf->mirrors[i].rdev->flags) &&
+ 		    conf->raid_disks - mddev->degraded > 1)
+@@ -1549,6 +1549,11 @@ static void raid1_make_request(struct md
+ 	struct bio *split;
+ 	sector_t sectors;
+ 
++	if (unlikely(bio->bi_rw & REQ_FLUSH)) {
++		md_flush_request(mddev, bio);
++		return;
++	}
++
+ 	/* if bio exceeds barrier unit boundary, split it */
+ 	do {
+ 		sectors = align_to_barrier_unit_end(

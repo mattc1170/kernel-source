@@ -1,0 +1,93 @@
+From: Jitendra Bhivare <jitendra.bhivare@broadcom.com>
+Date: Fri, 19 Aug 2016 15:20:01 +0530
+Subject: scsi: be2iscsi: Set and return right iface v4/v6 states
+References: bsc#1038458
+Git-commit: f7dd017e133e3b2d0395156f8d1ed16be732a6a7
+Patch-Mainline: v4.9-rc1
+
+ipv4_iface and ipv6_iface fields need to be set to NULL when destroyed.
+Before creation these are checked. Use these to report correct states.
+
+Signed-off-by: Jitendra Bhivare <jitendra.bhivare@broadcom.com>
+Reviewed-by: Hannes Reinecke <hare@suse.com>
+Signed-off-by: Martin K. Petersen <martin.petersen@oracle.com>
+Signed-off-by: Hannes Reinecke <hare@suse.de>
+---
+ drivers/scsi/be2iscsi/be_iscsi.c | 31 +++++++++++++++++++++----------
+ 1 file changed, 21 insertions(+), 10 deletions(-)
+
+diff --git a/drivers/scsi/be2iscsi/be_iscsi.c b/drivers/scsi/be2iscsi/be_iscsi.c
+index ab696ec..eab0f4f 100644
+--- a/drivers/scsi/be2iscsi/be_iscsi.c
++++ b/drivers/scsi/be2iscsi/be_iscsi.c
+@@ -292,10 +292,14 @@ void beiscsi_create_def_ifaces(struct beiscsi_hba *phba)
+ 
+ void beiscsi_destroy_def_ifaces(struct beiscsi_hba *phba)
+ {
+-	if (phba->ipv6_iface)
++	if (phba->ipv6_iface) {
+ 		iscsi_destroy_iface(phba->ipv6_iface);
+-	if (phba->ipv4_iface)
++		phba->ipv6_iface = NULL;
++	}
++	if (phba->ipv4_iface) {
+ 		iscsi_destroy_iface(phba->ipv4_iface);
++		phba->ipv4_iface = NULL;
++	}
+ }
+ 
+ static int
+@@ -406,6 +410,14 @@ beiscsi_set_ipv4(struct Scsi_Host *shost,
+ 
+ 	/* Check the param */
+ 	switch (iface_param->param) {
++	case ISCSI_NET_PARAM_IFACE_ENABLE:
++		if (iface_param->value[0] == ISCSI_IFACE_ENABLE)
++			ret = beiscsi_create_ipv4_iface(phba);
++		else {
++			iscsi_destroy_iface(phba->ipv4_iface);
++			phba->ipv4_iface = NULL;
++		}
++		break;
+ 	case ISCSI_NET_PARAM_IPV4_GW:
+ 		ret = mgmt_set_gateway(phba, iface_param);
+ 		break;
+@@ -421,12 +433,6 @@ beiscsi_set_ipv4(struct Scsi_Host *shost,
+ 				    "BS_%d : Invalid BOOTPROTO: %d\n",
+ 				    iface_param->value[0]);
+ 		break;
+-	case ISCSI_NET_PARAM_IFACE_ENABLE:
+-		if (iface_param->value[0] == ISCSI_IFACE_ENABLE)
+-			ret = beiscsi_create_ipv4_iface(phba);
+-		else
+-			iscsi_destroy_iface(phba->ipv4_iface);
+-		break;
+ 	case ISCSI_NET_PARAM_IPV4_SUBNET:
+ 	case ISCSI_NET_PARAM_IPV4_ADDR:
+ 		ret = beiscsi_set_static_ip(shost, iface_param,
+@@ -459,7 +465,7 @@ beiscsi_set_ipv6(struct Scsi_Host *shost,
+ 			ret = beiscsi_create_ipv6_iface(phba);
+ 		else {
+ 			iscsi_destroy_iface(phba->ipv6_iface);
+-			ret = 0;
++			phba->ipv6_iface = NULL;
+ 		}
+ 		break;
+ 	case ISCSI_NET_PARAM_IPV6_ADDR:
+@@ -620,7 +626,12 @@ int be2iscsi_iface_get_param(struct iscsi_iface *iface,
+ 		len = be2iscsi_get_if_param(phba, iface, param, buf);
+ 		break;
+ 	case ISCSI_NET_PARAM_IFACE_ENABLE:
+-		len = sprintf(buf, "enable\n");
++		if (iface->iface_type == ISCSI_IFACE_TYPE_IPV4)
++			len = sprintf(buf, "%s\n",
++				      phba->ipv4_iface ? "enable" : "disable");
++		else if (iface->iface_type == ISCSI_IFACE_TYPE_IPV6)
++			len = sprintf(buf, "%s\n",
++				      phba->ipv6_iface ? "enable" : "disable");
+ 		break;
+ 	case ISCSI_NET_PARAM_IPV4_GW:
+ 		memset(&gateway, 0, sizeof(gateway));
+-- 
+1.8.5.6
+

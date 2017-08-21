@@ -1,0 +1,90 @@
+From: Andrew Banman <abanman@sgi.com>
+Date: Wed, 21 Sep 2016 11:09:16 -0500
+Subject: x86/platform/uv/BAU: Add generic function pointers
+Git-commit: 5e4f96fe2a61c759d5d47f8112813618805c85a0
+Patch-mainline: v4.9-rc1
+References: bsc#1035024
+
+Many BAU functions have different implementations depending on the UV
+version. Rather than switching on the uvhub_version throughout the driver,
+we can define a set of operations for each version. This is especially
+beneficial for UV4, which will require many new MMR read/write functions.
+
+Currently, the set of abstracted functions are the same for UV1, UV2, and
+UV3. The functions were chosen because each one will have a different
+implementation for UV4. Other functions will be added as needed to handle
+new implementations or to cleanup the existing differences between UV1,
+UV2, and UV3, i.e. read_status and wait_completion.
+
+Signed-off-by: Andrew Banman <abanman@sgi.com>
+Acked-by: Thomas Gleixner <tglx@linutronix.de>
+Acked-by: Mike Travis <travis@sgi.com>
+Acked-by: Dimitri Sivanich <sivanich@sgi.com>
+Acked-by: Thomas Gleixner <tglx@linutronix.de>
+Cc: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: Peter Zijlstra <peterz@infradead.org>
+Cc: akpm@linux-foundation.org
+Cc: rja@sgi.com
+Link: http://lkml.kernel.org/r/1474474161-265604-6-git-send-email-abanman@sgi.com
+Signed-off-by: Ingo Molnar <mingo@kernel.org>
+Acked-by: Joerg Roedel <jroedel@suse.de>
+---
+ arch/x86/include/asm/uv/uv_bau.h | 11 +++++++++++
+ arch/x86/platform/uv/tlb_uv.c    | 19 +++++++++++++++++++
+ 2 files changed, 30 insertions(+)
+
+--- a/arch/x86/include/asm/uv/uv_bau.h
++++ b/arch/x86/include/asm/uv/uv_bau.h
+@@ -385,6 +385,17 @@ struct uv2_3_bau_msg_header {
+ 	/* bits 127:120 */
+ };
+ 
++/* Abstracted BAU functions */
++struct bau_operations {
++	unsigned long (*read_l_sw_ack)(void);
++	unsigned long (*read_g_sw_ack)(int pnode);
++	unsigned long (*bau_gpa_to_offset)(unsigned long vaddr);
++	void (*write_l_sw_ack)(unsigned long mmr);
++	void (*write_g_sw_ack)(int pnode, unsigned long mmr);
++	void (*write_payload_first)(int pnode, unsigned long mmr);
++	void (*write_payload_last)(int pnode, unsigned long mmr);
++};
++
+ /*
+  * The activation descriptor:
+  * The format of the message to send, plus all accompanying control
+--- a/arch/x86/platform/uv/tlb_uv.c
++++ b/arch/x86/platform/uv/tlb_uv.c
+@@ -24,6 +24,18 @@
+ #include <asm/irq_vectors.h>
+ #include <asm/timer.h>
+ 
++static struct bau_operations ops;
++
++static struct bau_operations uv123_bau_ops = {
++	.bau_gpa_to_offset       = uv_gpa_to_offset,
++	.read_l_sw_ack           = read_mmr_sw_ack,
++	.read_g_sw_ack           = read_gmmr_sw_ack,
++	.write_l_sw_ack          = write_mmr_sw_ack,
++	.write_g_sw_ack          = write_gmmr_sw_ack,
++	.write_payload_first     = write_mmr_payload_first,
++	.write_payload_last      = write_mmr_payload_last,
++};
++
+ /* timeouts in nanoseconds (indexed by UVH_AGING_PRESCALE_SEL urgency7 30:28) */
+ static int timeout_base_ns[] = {
+ 		20,
+@@ -2135,6 +2147,13 @@ static int __init uv_bau_init(void)
+ 	if (!is_uv_system())
+ 		return 0;
+ 
++	if (is_uv3_hub())
++		ops = uv123_bau_ops;
++	else if (is_uv2_hub())
++		ops = uv123_bau_ops;
++	else if (is_uv1_hub())
++		ops = uv123_bau_ops;
++
+ 	for_each_possible_cpu(cur_cpu) {
+ 		mask = &per_cpu(uv_flush_tlb_mask, cur_cpu);
+ 		zalloc_cpumask_var_node(mask, GFP_KERNEL, cpu_to_node(cur_cpu));

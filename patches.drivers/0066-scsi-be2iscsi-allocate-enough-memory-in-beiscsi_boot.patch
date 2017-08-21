@@ -1,0 +1,36 @@
+From: Dan Carpenter <dan.carpenter@oracle.com>
+Date: Fri, 18 Nov 2016 14:53:39 +0300
+Subject: scsi: be2iscsi: allocate enough memory in beiscsi_boot_get_sinfo()
+References: bsc#1038458
+Git-commit: 23b98e4b5fc5efd1d5d5f018bc7f954cd119f538
+Patch-Mainline: v4.9
+
+We accidentally allocate sizeof(u32) instead of sizeof(struct
+be_cmd_get_session_resp).
+
+Fixes: 50a4b824be9e ("scsi: be2iscsi: Fix to make boot discovery non-blocking")
+Signed-off-by: Dan Carpenter <dan.carpenter@oracle.com>
+Reviewed by: Jitendra Bhivare <jitendra.bhivare@broadcom.com>
+Signed-off-by: Martin K. Petersen <martin.petersen@oracle.com>
+
+Signed-off-by: Hannes Reinecke <hare@suse.de>
+---
+ drivers/scsi/be2iscsi/be_mgmt.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/scsi/be2iscsi/be_mgmt.c b/drivers/scsi/be2iscsi/be_mgmt.c
+index 3ac7b88..676b01f 100644
+--- a/drivers/scsi/be2iscsi/be_mgmt.c
++++ b/drivers/scsi/be2iscsi/be_mgmt.c
+@@ -1083,7 +1083,7 @@ unsigned int beiscsi_boot_get_sinfo(struct beiscsi_hba *phba)
+ 	nonemb_cmd = &phba->boot_struct.nonemb_cmd;
+ 	nonemb_cmd->size = sizeof(*resp);
+ 	nonemb_cmd->va = pci_alloc_consistent(phba->ctrl.pdev,
+-					      sizeof(nonemb_cmd->size),
++					      nonemb_cmd->size,
+ 					      &nonemb_cmd->dma);
+ 	if (!nonemb_cmd->va)
+ 		return 0;
+-- 
+1.8.5.6
+

@@ -1,0 +1,44 @@
+From: Oliver O'Halloran <oohall@gmail.com>
+Subject: powerpc/64: Fix flush_(d|i)cache_range() called from modules
+Git-commit: 8f5f525d5b83f7d76a6baf9c4e94d4bf312ea7f6
+Patch-mainline: v4.11
+References: bnc#863764 fate#315275, LTC#103998
+
+ powerpc/64: Fix flush_(d|i)cache_range() called from modules
+
+When the kernel is compiled to use 64bit ABIv2 the _GLOBAL() macro does
+not include a global entry point. A function's global entry point is
+used when the function is called from a different TOC context and in the
+kernel this typically means a call from a module into the vmlinux (or
+vice-versa).
+
+There are a few exported asm functions declared with _GLOBAL() and
+calling them from a module will likely crash the kernel since any TOC
+relative load will yield garbage.
+
+flush_icache_range() and flush_dcache_range() are both exported to
+modules, and use the TOC, so must use _GLOBAL_TOC().
+
+Fixes: 721aeaa9fdf3 ("powerpc: Build little endian ppc64 kernel with ABIv2")
+Cc: stable@vger.kernel.org # v3.16+
+Signed-off-by: Oliver O'Halloran <oohall@gmail.com>
+Signed-off-by: Michael Ellerman <mpe@ellerman.id.au>
+Acked-by: Torsten Duwe <duwe@suse.de>
+
+[backport note: we don't have 6f698df10cb24d466b9a790b9daedb9e7bcd5d2a,
+but the first hunk can safely be ignored, because all supported CPUs
+have CPU_FTR_COHERENT_ICACHE => no TOC used in flush_icache_range].
+
+diff --git a/arch/powerpc/kernel/misc_64.S b/arch/powerpc/kernel/misc_64.S
+index ae179cb..c119044 100644
+--- a/arch/powerpc/kernel/misc_64.S
++++ b/arch/powerpc/kernel/misc_64.S
+@@ -120,7 +120,7 @@ EXPORT_SYMBOL(flush_icache_range)
+  *
+  *    flush all bytes from start to stop-1 inclusive
+  */
+-_GLOBAL(flush_dcache_range)
++_GLOBAL_TOC(flush_dcache_range)
+ 
+ /*
+  * Flush the data cache to memory 

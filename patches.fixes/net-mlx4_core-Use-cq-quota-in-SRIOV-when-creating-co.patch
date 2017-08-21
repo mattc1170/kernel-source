@@ -1,0 +1,67 @@
+From: Jack Morgenstein <jackm@dev.mellanox.co.il>
+Date: Thu, 23 Feb 2017 12:02:44 +0200
+Subject: net/mlx4_core: Use cq quota in SRIOV when creating completion EQs
+Patch-mainline: v4.11-rc1
+Git-commit: 6ed63d845e7866ff1a0eac9f0fa554fdf2c64e1d
+References: bsc#1028017
+
+When creating EQs to handle CQ completion events for the PF
+or for VFs, we create enough EQE entries to handle completions
+for the max number of CQs that can use that EQ.
+
+When SRIOV is activated, the max number of CQs a VF (or the PF) can
+obtain is its CQ quota (determined by the Hypervisor resource tracker).
+Therefore, when creating an EQ, the number of EQE entries that the VF
+should request for that EQ is the CQ quota value (and not the total
+number of CQs available in the FW).
+
+Under SRIOV, the PF, also must use its CQ quota, because
+the resource tracker also controls how many CQs the PF can obtain.
+
+Using the FW total CQs instead of the CQ quota when creating EQs resulted
+wasting MTT entries, due to allocating more EQEs than were needed.
+
+Fixes: 5a0d0a6161ae ("mlx4: Structures and init/teardown for VF resource quotas")
+Signed-off-by: Jack Morgenstein <jackm@dev.mellanox.co.il>
+Reported-by: Dexuan Cui <decui@microsoft.com>
+Signed-off-by: Tariq Toukan <tariqt@mellanox.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+Acked-by: Benjamin Poirier <bpoirier@suse.com>
+---
+ drivers/net/ethernet/mellanox/mlx4/eq.c   |    5 ++---
+ drivers/net/ethernet/mellanox/mlx4/main.c |    3 ++-
+ 2 files changed, 4 insertions(+), 4 deletions(-)
+
+--- a/drivers/net/ethernet/mellanox/mlx4/eq.c
++++ b/drivers/net/ethernet/mellanox/mlx4/eq.c
+@@ -1251,9 +1251,8 @@ int mlx4_init_eq_table(struct mlx4_dev *
+ 					mlx4_warn(dev, "Failed adding irq rmap\n");
+ 			}
+ #endif
+-			err = mlx4_create_eq(dev, dev->caps.num_cqs -
+-						  dev->caps.reserved_cqs +
+-						  MLX4_NUM_SPARE_EQE,
++			err = mlx4_create_eq(dev, dev->quotas.cq +
++					     MLX4_NUM_SPARE_EQE,
+ 					     (dev->flags & MLX4_FLAG_MSI_X) ?
+ 					     i + 1 - !!(i > MLX4_EQ_ASYNC) : 0,
+ 					     eq);
+--- a/drivers/net/ethernet/mellanox/mlx4/main.c
++++ b/drivers/net/ethernet/mellanox/mlx4/main.c
+@@ -3451,6 +3451,8 @@ slave_start:
+ 			goto err_disable_msix;
+ 	}
+ 
++	mlx4_init_quotas(dev);
++
+ 	err = mlx4_setup_hca(dev);
+ 	if (err == -EBUSY && (dev->flags & MLX4_FLAG_MSI_X) &&
+ 	    !mlx4_is_mfunc(dev)) {
+@@ -3463,7 +3465,6 @@ slave_start:
+ 	if (err)
+ 		goto err_steer;
+ 
+-	mlx4_init_quotas(dev);
+ 	/* When PF resources are ready arm its comm channel to enable
+ 	 * getting commands
+ 	 */

@@ -1,0 +1,76 @@
+From f6e6bedb773118713a8eb3736a4c99c71144275e Mon Sep 17 00:00:00 2001
+From: Hari Bathini <hbathini@linux.vnet.ibm.com>
+Date: Fri, 17 Mar 2017 02:35:26 +0530
+Subject: [PATCH] powerpc/fadump: Reserve memory at an offset closer to bottom
+ of RAM
+
+References: bsc#1032141
+Git-repo: https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git
+Patch-mainline: queued, next-20170411
+Git-commit: f6e6bedb773118713a8eb3736a4c99c71144275e
+
+Currently, the area to preserve boot memory is reserved at the top of
+RAM. This leaves fadump vulnerable to memory hot-remove operations. As
+memory for fadump has to be reserved early in the boot process, fadump
+can't be registered after a memory hot-remove operation. Though this
+problem can't be eleminated completely, the impact can be minimized by
+reserving memory at an offset closer to bottom of the RAM. The offset
+for fadump memory reservation can be any value greater than fadump boot
+memory size.
+
+Signed-off-by: Hari Bathini <hbathini@linux.vnet.ibm.com>
+Signed-off-by: Michael Ellerman <mpe@ellerman.id.au>
+Acked-by: Michal Suchanek <msuchanek@suse.de>
+---
+ arch/powerpc/kernel/fadump.c | 33 ++++++++++++++++++++++++++-------
+ 1 file changed, 26 insertions(+), 7 deletions(-)
+
+diff --git a/arch/powerpc/kernel/fadump.c b/arch/powerpc/kernel/fadump.c
+index 8ff0dd4..33b2da3 100644
+--- a/arch/powerpc/kernel/fadump.c
++++ b/arch/powerpc/kernel/fadump.c
+@@ -319,15 +319,34 @@ int __init fadump_reserve_mem(void)
+ 		pr_debug("fadumphdr_addr = %p\n",
+ 				(void *) fw_dump.fadumphdr_addr);
+ 	} else {
+-		/* Reserve the memory at the top of memory. */
+ 		size = get_fadump_area_size();
+-		base = memory_boundary - size;
+-		memblock_reserve(base, size);
+-		printk(KERN_INFO "Reserved %ldMB of memory at %ldMB "
+-				"for firmware-assisted dump\n",
+-				(unsigned long)(size >> 20),
+-				(unsigned long)(base >> 20));
++
++		/*
++		 * Reserve memory at an offset closer to bottom of the RAM to
++		 * minimize the impact of memory hot-remove operation. We can't
++		 * use memblock_find_in_range() here since it doesn't allocate
++		 * from bottom to top.
++		 */
++		for (base = fw_dump.boot_memory_size;
++		     base <= (memory_boundary - size);
++		     base += size) {
++			if (memblock_is_region_memory(base, size) &&
++			    !memblock_is_region_reserved(base, size))
++				break;
++		}
++		if ((base > (memory_boundary - size)) ||
++		    memblock_reserve(base, size)) {
++			pr_err("Failed to reserve memory\n");
++			return 0;
++		}
++
++		pr_info("Reserved %ldMB of memory at %ldMB for firmware-"
++			"assisted dump (System RAM: %ldMB)\n",
++			(unsigned long)(size >> 20),
++			(unsigned long)(base >> 20),
++			(unsigned long)(memblock_phys_mem_size() >> 20));
+ 	}
++
+ 	fw_dump.reserve_dump_area_start = base;
+ 	fw_dump.reserve_dump_area_size = size;
+ 	return 1;
+-- 
+2.10.2
+

@@ -1,0 +1,27 @@
+From ce757aefa1c5fe461b7b18a7adc6f4d064fcc8b4 Mon Sep 17 00:00:00 2001
+From: Oliver Neukum <oneukum@suse.com>
+Date: Thu, 9 Mar 2017 12:01:02 +0100
+Subject: [PATCH 1/2] i2c-designware: increase timeout
+References: bsc#1011913
+Git-commit: 78c43af2c1d79653e2e6fb9a05c8f3def7c87940
+Patch-mainline: v4.12
+
+We get reports of the driver timing out on the semaphore.
+
+
+Signed-off-by: Oliver Neukum <oneukum@suse.com>
+---
+ drivers/i2c/busses/i2c-designware-baytrail.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+--- a/drivers/i2c/busses/i2c-designware-baytrail.c
++++ b/drivers/i2c/busses/i2c-designware-baytrail.c
+@@ -23,7 +23,7 @@
+ 
+ #include "i2c-designware-core.h"
+ 
+-#define SEMAPHORE_TIMEOUT	100
++#define SEMAPHORE_TIMEOUT	500
+ #define PUNIT_SEMAPHORE		0x7
+ #define PUNIT_SEMAPHORE_CHT	0x10e
+ #define PUNIT_SEMAPHORE_BIT	BIT(0)

@@ -1,0 +1,101 @@
+From 4479a899f75cdbd0406d29701d459be5cadaf00b Mon Sep 17 00:00:00 2001
+From: Luca Coelho <luciano.coelho@intel.com>
+Date: Mon, 8 Feb 2016 11:18:46 +0200
+Subject: [PATCH] iwlwifi: pcie: forbid RTPM on device removal
+Git-commit: 4479a899f75cdbd0406d29701d459be5cadaf00b
+Patch-mainline: 4.6-rc1
+References: FATE#321353, FATE#323335
+
+The pci driver keeps any unbound device in active state and forbids
+runtime PM.  When our driver gets probed, we take control of the
+state.  When the device is released (i.e. during unbind or module
+removal), we should return the state to what it was before.  To do so,
+we need to forbid RTPM in the driver remove op.
+
+Additionally, remove an unnecessary pm_runtime_disable() call, move
+the initial ref_count setting to a better place and add some comments
+explaining what is going on.
+
+Signed-off-by: Luca Coelho <luciano.coelho@intel.com>
+Signed-off-by: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/iwlwifi/pcie/drv.c   |   28 ++++++++++++++++++++++++++++
+ drivers/net/wireless/iwlwifi/pcie/trans.c |    6 ------
+ 2 files changed, 28 insertions(+), 6 deletions(-)
+
+--- a/drivers/net/wireless/iwlwifi/pcie/drv.c
++++ b/drivers/net/wireless/iwlwifi/pcie/drv.c
+@@ -648,13 +648,31 @@ static int iwl_pci_probe(struct pci_dev
+ 
+ 	/* if RTPM is in use, enable it in our device */
+ 	if (iwl_trans->runtime_pm_mode != IWL_PLAT_PM_MODE_DISABLED) {
++		/* We explicitly set the device to active here to
++		 * clear contingent errors.
++		 */
+ 		pm_runtime_set_active(&pdev->dev);
++
+ 		pm_runtime_set_autosuspend_delay(&pdev->dev,
+ 					 iwlwifi_mod_params.d0i3_entry_delay);
+ 		pm_runtime_use_autosuspend(&pdev->dev);
++
++		/* We are not supposed to call pm_runtime_allow() by
++		 * ourselves, but let userspace enable runtime PM via
++		 * sysfs.  However, since we don't enable this from
++		 * userspace yet, we need to allow/forbid() ourselves.
++		*/
+ 		pm_runtime_allow(&pdev->dev);
+ 	}
+ 
++	/* The PCI device starts with a reference taken and we are
++	 * supposed to release it here.  But to simplify the
++	 * interaction with the opmode, we don't do it now, but let
++	 * the opmode release it when it's ready.  To account for this
++	 * reference, we start with ref_count set to 1.
++	 */
++	trans_pcie->ref_count = 1;
++
+ 	return 0;
+ 
+ out_free_drv:
+@@ -669,7 +687,17 @@ static void iwl_pci_remove(struct pci_de
+ 	struct iwl_trans *trans = pci_get_drvdata(pdev);
+ 	struct iwl_trans_pcie *trans_pcie = IWL_TRANS_GET_PCIE_TRANS(trans);
+ 
++	/* if RTPM was in use, restore it to the state before probe */
++	if (trans->runtime_pm_mode != IWL_PLAT_PM_MODE_DISABLED) {
++		/* We should not call forbid here, but we do for now.
++		 * Check the comment to pm_runtime_allow() in
++		 * iwl_pci_probe().
++		 */
++		pm_runtime_forbid(trans->dev);
++	}
++
+ 	iwl_drv_stop(trans_pcie->drv);
++
+ 	iwl_trans_pcie_free(trans);
+ }
+ 
+--- a/drivers/net/wireless/iwlwifi/pcie/trans.c
++++ b/drivers/net/wireless/iwlwifi/pcie/trans.c
+@@ -1646,9 +1646,6 @@ static void iwl_trans_pcie_configure(str
+ 	trans->command_groups = trans_cfg->command_groups;
+ 	trans->command_groups_size = trans_cfg->command_groups_size;
+ 
+-	/* init ref_count to 1 (should be cleared when ucode is loaded) */
+-	trans_pcie->ref_count = 1;
+-
+ 	/* Initialize NAPI here - it should be before registering to mac80211
+ 	 * in the opmode but after the HW struct is allocated.
+ 	 * As this function may be called again in some corner cases don't
+@@ -1663,9 +1660,6 @@ void iwl_trans_pcie_free(struct iwl_tran
+ 	struct iwl_trans_pcie *trans_pcie = IWL_TRANS_GET_PCIE_TRANS(trans);
+ 	int i;
+ 
+-	/* TODO: check if this is really needed */
+-	pm_runtime_disable(trans->dev);
+-
+ 	iwl_pcie_synchronize_irqs(trans);
+ 
+ 	iwl_pcie_tx_free(trans);

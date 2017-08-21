@@ -1,0 +1,84 @@
+From 585a6fccf5b843ded7c37b3090f811484d76c509 Mon Sep 17 00:00:00 2001
+From: Sara Sharon <sara.sharon@intel.com>
+Date: Tue, 1 Dec 2015 13:48:18 +0200
+Subject: [PATCH] iwlwifi: mvm: infrastructure for frame-release message
+Git-commit: 585a6fccf5b843ded7c37b3090f811484d76c509
+Patch-mainline: 4.5-rc1
+References: FATE#321353, FATE#323335
+
+Incoming hardware will send frame release notifications to
+the reorder buffer in order to update with the BA session
+status and up to date NSSN.
+This patch enables the API.
+
+Signed-off-by: Johannes Berg <johannes.berg@intel.com>
+Signed-off-by: Sara Sharon <sara.sharon@intel.com>
+Signed-off-by: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/iwlwifi/mvm/fw-api-rx.h |    2 ++
+ drivers/net/wireless/iwlwifi/mvm/mvm.h       |    2 ++
+ drivers/net/wireless/iwlwifi/mvm/ops.c       |    8 +++++++-
+ drivers/net/wireless/iwlwifi/mvm/rxmq.c      |    6 ++++++
+ 4 files changed, 17 insertions(+), 1 deletion(-)
+
+--- a/drivers/net/wireless/iwlwifi/mvm/fw-api-rx.h
++++ b/drivers/net/wireless/iwlwifi/mvm/fw-api-rx.h
+@@ -316,6 +316,8 @@ enum iwl_rx_mpdu_sta_id_flags {
+ 	IWL_RX_MPDU_SIF_FILTER_STATUS_MASK	= 0xc0,
+ };
+ 
++#define IWL_RX_REORDER_DATA_INVALID_BAID 0x7f
++
+ enum iwl_rx_mpdu_reorder_data {
+ 	IWL_RX_MPDU_REORDER_NSSN_MASK		= 0x00000fff,
+ 	IWL_RX_MPDU_REORDER_SN_MASK		= 0x00fff000,
+--- a/drivers/net/wireless/iwlwifi/mvm/mvm.h
++++ b/drivers/net/wireless/iwlwifi/mvm/mvm.h
+@@ -1138,6 +1138,8 @@ void iwl_mvm_rx_rx_mpdu(struct iwl_mvm *
+ void iwl_mvm_rx_phy_cmd_mq(struct iwl_mvm *mvm, struct iwl_rx_cmd_buffer *rxb);
+ void iwl_mvm_rx_mpdu_mq(struct iwl_mvm *mvm, struct napi_struct *napi,
+ 			struct iwl_rx_cmd_buffer *rxb, int queue);
++void iwl_mvm_rx_frame_release(struct iwl_mvm *mvm,
++			      struct iwl_rx_cmd_buffer *rxb, int queue);
+ void iwl_mvm_rx_tx_cmd(struct iwl_mvm *mvm, struct iwl_rx_cmd_buffer *rxb);
+ void iwl_mvm_rx_ba_notif(struct iwl_mvm *mvm, struct iwl_rx_cmd_buffer *rxb);
+ void iwl_mvm_rx_ant_coupling_notif(struct iwl_mvm *mvm,
+--- a/drivers/net/wireless/iwlwifi/mvm/ops.c
++++ b/drivers/net/wireless/iwlwifi/mvm/ops.c
+@@ -822,6 +822,8 @@ static void iwl_mvm_rx(struct iwl_op_mod
+ 
+ 	if (likely(pkt->hdr.cmd == REPLY_RX_MPDU_CMD))
+ 		iwl_mvm_rx_rx_mpdu(mvm, napi, rxb);
++	else if (pkt->hdr.cmd == FRAME_RELEASE)
++		iwl_mvm_rx_frame_release(mvm, rxb, 0);
+ 	else if (pkt->hdr.cmd == REPLY_RX_PHY_CMD)
+ 		iwl_mvm_rx_rx_phy_cmd(mvm, rxb);
+ 	else
+@@ -1488,8 +1490,12 @@ static void iwl_mvm_rx_mq_rss(struct iwl
+ 			      unsigned int queue)
+ {
+ 	struct iwl_mvm *mvm = IWL_OP_MODE_GET_MVM(op_mode);
++	struct iwl_rx_packet *pkt = rxb_addr(rxb);
+ 
+-	iwl_mvm_rx_mpdu_mq(mvm, napi, rxb, queue);
++	if (unlikely(pkt->hdr.cmd == FRAME_RELEASE))
++		iwl_mvm_rx_frame_release(mvm, rxb, queue);
++	else
++		iwl_mvm_rx_mpdu_mq(mvm, napi, rxb, queue);
+ }
+ 
+ static const struct iwl_op_mode_ops iwl_mvm_ops_mq = {
+--- a/drivers/net/wireless/iwlwifi/mvm/rxmq.c
++++ b/drivers/net/wireless/iwlwifi/mvm/rxmq.c
+@@ -370,3 +370,9 @@ void iwl_mvm_rx_mpdu_mq(struct iwl_mvm *
+ 	iwl_mvm_pass_packet_to_mac80211(mvm, napi, skb, hdr, len, ampdu_status,
+ 					crypt_len, rxb);
+ }
++
++void iwl_mvm_rx_frame_release(struct iwl_mvm *mvm,
++			      struct iwl_rx_cmd_buffer *rxb, int queue)
++{
++	/* TODO */
++}

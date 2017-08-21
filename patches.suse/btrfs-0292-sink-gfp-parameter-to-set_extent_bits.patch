@@ -1,0 +1,107 @@
+From: David Sterba <dsterba@suse.com>
+Date: Tue, 26 Apr 2016 23:54:39 +0200
+Patch-mainline: 4.7
+Git-commit: ceeb0ae7bf42a3deaaaee981d2da02e5d3ad2b0f
+References: bsc#1012452
+Subject: [PATCH] btrfs: sink gfp parameter to set_extent_bits
+
+All callers pass GFP_NOFS.
+
+Signed-off-by: David Sterba <dsterba@suse.com>
+---
+ fs/btrfs/extent-tree.c |    4 ++--
+ fs/btrfs/extent_io.c   |    5 ++---
+ fs/btrfs/extent_io.h   |    4 ++--
+ fs/btrfs/file-item.c   |    2 +-
+ fs/btrfs/relocation.c  |    4 ++--
+ fs/btrfs/scrub.c       |    2 +-
+ 6 files changed, 10 insertions(+), 11 deletions(-)
+
+--- a/fs/btrfs/extent-tree.c
++++ b/fs/btrfs/extent-tree.c
+@@ -230,9 +230,9 @@ static int add_excluded_extent(struct bt
+ {
+ 	u64 end = start + num_bytes - 1;
+ 	set_extent_bits(&root->fs_info->freed_extents[0],
+-			start, end, EXTENT_UPTODATE, GFP_NOFS);
++			start, end, EXTENT_UPTODATE);
+ 	set_extent_bits(&root->fs_info->freed_extents[1],
+-			start, end, EXTENT_UPTODATE, GFP_NOFS);
++			start, end, EXTENT_UPTODATE);
+ 	return 0;
+ }
+ 
+--- a/fs/btrfs/extent_io.c
++++ b/fs/btrfs/extent_io.c
+@@ -2234,13 +2234,12 @@ int btrfs_get_io_failure_record(struct i
+ 
+ 		/* set the bits in the private failure tree */
+ 		ret = set_extent_bits(failure_tree, start, end,
+-					EXTENT_LOCKED | EXTENT_DIRTY, GFP_NOFS);
++					EXTENT_LOCKED | EXTENT_DIRTY);
+ 		if (ret >= 0)
+ 			ret = set_state_failrec(failure_tree, start, failrec);
+ 		/* set the bits in the inode's tree */
+ 		if (ret >= 0)
+-			ret = set_extent_bits(tree, start, end, EXTENT_DAMAGED,
+-						GFP_NOFS);
++			ret = set_extent_bits(tree, start, end, EXTENT_DAMAGED);
+ 		if (ret < 0) {
+ 			kfree(failrec);
+ 			return ret;
+--- a/fs/btrfs/extent_io.h
++++ b/fs/btrfs/extent_io.h
+@@ -258,9 +258,9 @@ int set_extent_bit(struct extent_io_tree
+ 		   struct extent_state **cached_state, gfp_t mask);
+ 
+ static inline int set_extent_bits(struct extent_io_tree *tree, u64 start,
+-		u64 end, unsigned bits, gfp_t mask)
++		u64 end, unsigned bits)
+ {
+-	return set_extent_bit(tree, start, end, bits, NULL, NULL, mask);
++	return set_extent_bit(tree, start, end, bits, NULL, NULL, GFP_NOFS);
+ }
+ 
+ static inline int clear_extent_uptodate(struct extent_io_tree *tree, u64 start,
+--- a/fs/btrfs/file-item.c
++++ b/fs/btrfs/file-item.c
+@@ -247,7 +247,7 @@ static int __btrfs_lookup_bio_sums(struc
+ 				    BTRFS_DATA_RELOC_TREE_OBJECTID) {
+ 					set_extent_bits(io_tree, offset,
+ 						offset + root->sectorsize - 1,
+-						EXTENT_NODATASUM, GFP_NOFS);
++						EXTENT_NODATASUM);
+ 				} else {
+ 					btrfs_info(BTRFS_I(inode)->root->fs_info,
+ 						   "no csum found for inode %llu start %llu",
+--- a/fs/btrfs/relocation.c
++++ b/fs/btrfs/relocation.c
+@@ -2828,7 +2828,7 @@ static void mark_block_processed(struct
+ 				 u64 bytenr, u32 blocksize)
+ {
+ 	set_extent_bits(&rc->processed_blocks, bytenr, bytenr + blocksize - 1,
+-			EXTENT_DIRTY, GFP_NOFS);
++			EXTENT_DIRTY);
+ }
+ 
+ static void __mark_block_processed(struct reloc_control *rc,
+@@ -3196,7 +3196,7 @@ static int relocate_file_extent_cluster(
+ 		    page_start + offset == cluster->boundary[nr]) {
+ 			set_extent_bits(&BTRFS_I(inode)->io_tree,
+ 					page_start, page_end,
+-					EXTENT_BOUNDARY, GFP_NOFS);
++					EXTENT_BOUNDARY);
+ 			nr++;
+ 		}
+ 
+--- a/fs/btrfs/scrub.c
++++ b/fs/btrfs/scrub.c
+@@ -745,7 +745,7 @@ static int scrub_fixup_readpage(u64 inum
+ 		 * sure we read the bad mirror.
+ 		 */
+ 		ret = set_extent_bits(&BTRFS_I(inode)->io_tree, offset, end,
+-					EXTENT_DAMAGED, GFP_NOFS);
++					EXTENT_DAMAGED);
+ 		if (ret) {
+ 			/* set_extent_bits should give proper error */
+ 			WARN_ON(ret > 0);

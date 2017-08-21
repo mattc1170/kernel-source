@@ -14,17 +14,15 @@ Signed-off-by: Heiner Kallweit <hkallweit1@gmail.com>
 Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
 Signed-off-by: Oliver Neukum <oneukum@suse.com>
 ---
- drivers/usb/core/devices.c      | 10 ++--------
- drivers/usb/core/hcd.c          | 21 ++++++---------------
- drivers/usb/core/usb.c          |  1 +
- drivers/usb/host/r8a66597-hcd.c |  9 ++-------
- drivers/usb/mon/mon_main.c      |  5 ++---
- include/linux/usb.h             |  1 -
- include/linux/usb/hcd.h         |  3 ++-
+ drivers/usb/core/devices.c      |   10 ++--------
+ drivers/usb/core/hcd.c          |   21 ++++++---------------
+ drivers/usb/core/usb.c          |    1 +
+ drivers/usb/host/r8a66597-hcd.c |    9 ++-------
+ drivers/usb/mon/mon_main.c      |    5 ++---
+ include/linux/usb.h             |    1 -
+ include/linux/usb/hcd.h         |    3 ++-
  7 files changed, 15 insertions(+), 35 deletions(-)
 
-diff --git a/drivers/usb/core/devices.c b/drivers/usb/core/devices.c
-index 332ed27..3785cda 100644
 --- a/drivers/usb/core/devices.c
 +++ b/drivers/usb/core/devices.c
 @@ -110,13 +110,6 @@ static const char format_endpt[] =
@@ -41,7 +39,7 @@ index 332ed27..3785cda 100644
  /*
   * Wait for an connect/disconnect event to happen. We initialize
   * the event counter with an odd number, and each event will increment
-@@ -618,6 +611,7 @@ static ssize_t usb_device_read(struct file *file, char __user *buf,
+@@ -618,6 +611,7 @@ static ssize_t usb_device_read(struct fi
  	struct usb_bus *bus;
  	ssize_t ret, total_written = 0;
  	loff_t skip_bytes = *ppos;
@@ -49,7 +47,7 @@ index 332ed27..3785cda 100644
  
  	if (*ppos < 0)
  		return -EINVAL;
-@@ -628,7 +622,7 @@ static ssize_t usb_device_read(struct file *file, char __user *buf,
+@@ -628,7 +622,7 @@ static ssize_t usb_device_read(struct fi
  
  	mutex_lock(&usb_bus_list_lock);
  	/* print devices for all busses */
@@ -58,8 +56,6 @@ index 332ed27..3785cda 100644
  		/* recurse through all children of the root hub */
  		if (!bus_to_hcd(bus)->rh_registered)
  			continue;
-diff --git a/drivers/usb/core/hcd.c b/drivers/usb/core/hcd.c
-index 7f30b2f..4f1cb1a 100644
 --- a/drivers/usb/core/hcd.c
 +++ b/drivers/usb/core/hcd.c
 @@ -90,12 +90,11 @@ unsigned long usb_hcds_loaded;
@@ -77,16 +73,16 @@ index 7f30b2f..4f1cb1a 100644
  
  /* used when updating list of hcds */
  DEFINE_MUTEX(usb_bus_list_lock);	/* exported only for usbfs */
-@@ -996,8 +995,6 @@ static void usb_bus_init (struct usb_bus *bus)
+@@ -996,8 +995,6 @@ static void usb_bus_init (struct usb_bus
  	bus->bandwidth_int_reqs  = 0;
  	bus->bandwidth_isoc_reqs = 0;
- 	mutex_init(&bus->usb_address0_mutex);
+ 	mutex_init(&bus->devnum_next_mutex);
 -
 -	INIT_LIST_HEAD (&bus->bus_list);
  }
  
  /*-------------------------------------------------------------------------*/
-@@ -1018,16 +1015,12 @@ static int usb_register_bus(struct usb_bus *bus)
+@@ -1018,16 +1015,12 @@ static int usb_register_bus(struct usb_b
  	int busnum;
  
  	mutex_lock(&usb_bus_list_lock);
@@ -106,7 +102,7 @@ index 7f30b2f..4f1cb1a 100644
  	mutex_unlock(&usb_bus_list_lock);
  
  	usb_notify_add_bus(bus);
-@@ -1059,12 +1052,10 @@ static void usb_deregister_bus (struct usb_bus *bus)
+@@ -1059,12 +1052,10 @@ static void usb_deregister_bus (struct u
  	 * itself up
  	 */
  	mutex_lock(&usb_bus_list_lock);
@@ -120,8 +116,6 @@ index 7f30b2f..4f1cb1a 100644
  }
  
  /**
-diff --git a/drivers/usb/core/usb.c b/drivers/usb/core/usb.c
-index ae7a787..1285f1d 100644
 --- a/drivers/usb/core/usb.c
 +++ b/drivers/usb/core/usb.c
 @@ -1114,6 +1114,7 @@ static void __exit usb_exit(void)
@@ -132,11 +126,9 @@ index ae7a787..1285f1d 100644
  }
  
  subsys_initcall(usb_init);
-diff --git a/drivers/usb/host/r8a66597-hcd.c b/drivers/usb/host/r8a66597-hcd.c
-index 4cbd063..1ef8873 100644
 --- a/drivers/usb/host/r8a66597-hcd.c
 +++ b/drivers/usb/host/r8a66597-hcd.c
-@@ -2099,13 +2099,8 @@ static void r8a66597_check_detect_child(struct r8a66597 *r8a66597,
+@@ -2099,13 +2099,8 @@ static void r8a66597_check_detect_child(
  
  	memset(now_map, 0, sizeof(now_map));
  
@@ -152,11 +144,9 @@ index 4cbd063..1ef8873 100644
  		collect_usb_address_map(bus->root_hub, now_map);
  		update_usb_address_map(r8a66597, bus->root_hub, now_map);
  	}
-diff --git a/drivers/usb/mon/mon_main.c b/drivers/usb/mon/mon_main.c
-index f7c292f..e589dd4 100644
 --- a/drivers/usb/mon/mon_main.c
 +++ b/drivers/usb/mon/mon_main.c
-@@ -349,7 +349,7 @@ struct mon_bus *mon_bus_lookup(unsigned int num)
+@@ -349,7 +349,7 @@ struct mon_bus *mon_bus_lookup(unsigned
  static int __init mon_init(void)
  {
  	struct usb_bus *ubus;
@@ -176,20 +166,16 @@ index f7c292f..e589dd4 100644
  	usb_register_notify(&mon_nb);
  	mutex_unlock(&usb_bus_list_lock);
  	return 0;
-diff --git a/include/linux/usb.h b/include/linux/usb.h
-index c1421b1..8fd4256 100644
 --- a/include/linux/usb.h
 +++ b/include/linux/usb.h
-@@ -376,7 +376,6 @@ struct usb_bus {
+@@ -377,7 +377,6 @@ struct usb_bus {
  	struct usb_devmap devmap;	/* device address allocation map */
  	struct usb_device *root_hub;	/* Root hub */
  	struct usb_bus *hs_companion;	/* Companion EHCI bus, if any */
 -	struct list_head bus_list;	/* list of busses */
  
- 	struct mutex usb_address0_mutex; /* unaddressed device mutex */
- 
-diff --git a/include/linux/usb/hcd.h b/include/linux/usb/hcd.h
-index a31ac04..ad153e4 100644
+ 	int bandwidth_allocated;	/* on this bus: how much of the time
+ 					 * reserved for periodic (intr/iso)
 --- a/include/linux/usb/hcd.h
 +++ b/include/linux/usb/hcd.h
 @@ -23,6 +23,7 @@
@@ -200,7 +186,7 @@ index a31ac04..ad153e4 100644
  
  #define MAX_TOPO_LEVEL		6
  
-@@ -634,7 +635,7 @@ extern void usb_set_device_state(struct usb_device *udev,
+@@ -635,7 +636,7 @@ extern void usb_set_device_state(struct
  
  /* exported only within usbcore */
  
@@ -209,6 +195,3 @@ index a31ac04..ad153e4 100644
  extern struct mutex usb_bus_list_lock;
  extern wait_queue_head_t usb_kill_urb_queue;
  
--- 
-2.1.4
-

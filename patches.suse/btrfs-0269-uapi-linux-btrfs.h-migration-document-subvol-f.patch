@@ -1,0 +1,50 @@
+From: Jeff Mahoney <jeffm@suse.com>
+Date: Fri, 1 Apr 2016 16:14:25 -0400
+Patch-mainline: 4.7
+Git-commit: 884f6eca59475bc3cad5c22360523a1261bd5597
+References: bsc#1012452
+Subject: [PATCH] btrfs: uapi/linux/btrfs.h migration, document subvol
+ flags
+
+Signed-off-by: Jeff Mahoney <jeffm@suse.com>
+Reviewed-by: Liu Bo <bo.li.liu@oracle.com>
+Reviewed-by: Josef Bacik <jbacik@fb.com>
+Signed-off-by: David Sterba <dsterba@suse.com>
+---
+ include/uapi/linux/btrfs.h |   18 +++++++++++++++---
+ 1 file changed, 15 insertions(+), 3 deletions(-)
+
+--- a/include/uapi/linux/btrfs.h
++++ b/include/uapi/linux/btrfs.h
+@@ -34,9 +34,6 @@ struct btrfs_ioctl_vol_args {
+ 
+ #define BTRFS_DEVICE_PATH_NAME_MAX 1024
+ 
+-#define BTRFS_SUBVOL_CREATE_ASYNC	(1ULL << 0)
+-#define BTRFS_SUBVOL_RDONLY		(1ULL << 1)
+-#define BTRFS_SUBVOL_QGROUP_INHERIT	(1ULL << 2)
+ #define BTRFS_DEVICE_SPEC_BY_ID		(1ULL << 3)
+ 
+ #define BTRFS_VOL_ARG_V2_FLAGS_SUPPORTED		\
+@@ -93,6 +90,21 @@ struct btrfs_ioctl_qgroup_limit_args {
+ 	struct btrfs_qgroup_limit lim;
+ };
+ 
++/*
++ * flags for subvolumes
++ *
++ * Used by:
++ * struct btrfs_ioctl_vol_args_v2.flags
++ *
++ * BTRFS_SUBVOL_RDONLY is also provided/consumed by the following ioctls:
++ * - BTRFS_IOC_SUBVOL_GETFLAGS
++ * - BTRFS_IOC_SUBVOL_SETFLAGS
++ */
++#define BTRFS_SUBVOL_CREATE_ASYNC	(1ULL << 0)
++#define BTRFS_SUBVOL_RDONLY		(1ULL << 1)
++#define BTRFS_SUBVOL_QGROUP_INHERIT	(1ULL << 2)
++#define BTRFS_DEVICE_SPEC_BY_ID		(1ULL << 3)
++
+ #define BTRFS_SUBVOL_NAME_MAX 4039
+ struct btrfs_ioctl_vol_args_v2 {
+ 	__s64 fd;
