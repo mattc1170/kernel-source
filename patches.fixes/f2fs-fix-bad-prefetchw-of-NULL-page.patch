@@ -1,0 +1,39 @@
+From 88e64fb7db76c735b5a582e52209f654ffd06a32 Mon Sep 17 00:00:00 2001
+From: Kinglong Mee <kinglongmee@gmail.com>
+Date: Mon, 13 Mar 2017 16:35:13 +0800
+Subject: [PATCH] f2fs: fix bad prefetchw of NULL page
+Git-commit: a83d50bc16c4f5d0a359790015b5b32f3f0e52db
+Patch-mainline: v4.12-rc1
+References: bsc#1012829
+
+For f2fs_read_data_pages, the f2fs_mpage_readpages gets "page == NULL",
+so that, the prefetchw(&page->flags) is operated on NULL.
+
+Fixes: f1e8866016 ("f2fs: expose f2fs_mpage_readpages")
+Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+Signed-off-by: Jaegeuk Kim <jaegeuk@kernel.org>
+Acked-by: Jan Kara <jack@suse.cz>
+
+---
+ fs/f2fs/data.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/fs/f2fs/data.c b/fs/f2fs/data.c
+index 972eab7ac071..5806c0ef055f 100644
+--- a/fs/f2fs/data.c
++++ b/fs/f2fs/data.c
+@@ -894,9 +894,10 @@ static int f2fs_mpage_readpages(struct address_space *mapping,
+ 
+ 	for (page_idx = 0; nr_pages; page_idx++, nr_pages--) {
+ 
+-		prefetchw(&page->flags);
+ 		if (pages) {
+ 			page = list_entry(pages->prev, struct page, lru);
++
++			prefetchw(&page->flags);
+ 			list_del(&page->lru);
+ 			if (add_to_page_cache_lru(page, mapping,
+ 						  page->index, GFP_KERNEL))
+-- 
+1.7.12.4
+

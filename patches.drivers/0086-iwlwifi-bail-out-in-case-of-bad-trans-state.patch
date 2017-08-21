@@ -1,0 +1,97 @@
+From e5d15cb530082cc13a6c9457eddd6f75b0f4de65 Mon Sep 17 00:00:00 2001
+From: Eliad Peller <eliad@wizery.com>
+Date: Thu, 17 Dec 2015 13:02:56 +0200
+Subject: [PATCH] iwlwifi: bail out in case of bad trans state
+Git-commit: e5d15cb530082cc13a6c9457eddd6f75b0f4de65
+Patch-mainline: 4.5-rc1
+References: FATE#321353, FATE#323335
+
+In case of bad trans state (i.e. fw is not loaded) bail
+out immediately instead of calling the trans, which might
+not be fully initialized yet.
+
+Also add WARN_ON_ONCE to help debugging where the errorneous
+call is coming from.
+
+Signed-off-by: Eliad Peller <eliadx.peller@intel.com>
+Signed-off-by: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/iwlwifi/iwl-trans.h |   24 ++++++++++++++++++------
+ 1 file changed, 18 insertions(+), 6 deletions(-)
+
+--- a/drivers/net/wireless/iwlwifi/iwl-trans.h
++++ b/drivers/net/wireless/iwlwifi/iwl-trans.h
+@@ -1001,8 +1001,10 @@ static inline int iwl_trans_tx(struct iw
+ 	if (unlikely(test_bit(STATUS_FW_ERROR, &trans->status)))
+ 		return -EIO;
+ 
+-	if (unlikely(trans->state != IWL_TRANS_FW_ALIVE))
++	if (WARN_ON_ONCE(trans->state != IWL_TRANS_FW_ALIVE)) {
+ 		IWL_ERR(trans, "%s bad state = %d\n", __func__, trans->state);
++		return -EIO;
++	}
+ 
+ 	return trans->ops->tx(trans, skb, dev_cmd, queue);
+ }
+@@ -1010,8 +1012,10 @@ static inline int iwl_trans_tx(struct iw
+ static inline void iwl_trans_reclaim(struct iwl_trans *trans, int queue,
+ 				     int ssn, struct sk_buff_head *skbs)
+ {
+-	if (unlikely(trans->state != IWL_TRANS_FW_ALIVE))
++	if (WARN_ON_ONCE(trans->state != IWL_TRANS_FW_ALIVE)) {
+ 		IWL_ERR(trans, "%s bad state = %d\n", __func__, trans->state);
++		return;
++	}
+ 
+ 	trans->ops->reclaim(trans, queue, ssn, skbs);
+ }
+@@ -1029,8 +1033,10 @@ iwl_trans_txq_enable_cfg(struct iwl_tran
+ {
+ 	might_sleep();
+ 
+-	if (unlikely((trans->state != IWL_TRANS_FW_ALIVE)))
++	if (WARN_ON_ONCE(trans->state != IWL_TRANS_FW_ALIVE)) {
+ 		IWL_ERR(trans, "%s bad state = %d\n", __func__, trans->state);
++		return;
++	}
+ 
+ 	trans->ops->txq_enable(trans, queue, ssn, cfg, queue_wdg_timeout);
+ }
+@@ -1070,8 +1076,10 @@ static inline void iwl_trans_freeze_txq_
+ 					      unsigned long txqs,
+ 					      bool freeze)
+ {
+-	if (unlikely(trans->state != IWL_TRANS_FW_ALIVE))
++	if (WARN_ON_ONCE(trans->state != IWL_TRANS_FW_ALIVE)) {
+ 		IWL_ERR(trans, "%s bad state = %d\n", __func__, trans->state);
++		return;
++	}
+ 
+ 	if (trans->ops->freeze_txq_timer)
+ 		trans->ops->freeze_txq_timer(trans, txqs, freeze);
+@@ -1080,8 +1088,10 @@ static inline void iwl_trans_freeze_txq_
+ static inline void iwl_trans_block_txq_ptrs(struct iwl_trans *trans,
+ 					    bool block)
+ {
+-	if (unlikely(trans->state != IWL_TRANS_FW_ALIVE))
++	if (WARN_ON_ONCE(trans->state != IWL_TRANS_FW_ALIVE)) {
+ 		IWL_ERR(trans, "%s bad state = %d\n", __func__, trans->state);
++		return;
++	}
+ 
+ 	if (trans->ops->block_txq_ptrs)
+ 		trans->ops->block_txq_ptrs(trans, block);
+@@ -1090,8 +1100,10 @@ static inline void iwl_trans_block_txq_p
+ static inline int iwl_trans_wait_tx_queue_empty(struct iwl_trans *trans,
+ 						u32 txqs)
+ {
+-	if (unlikely(trans->state != IWL_TRANS_FW_ALIVE))
++	if (WARN_ON_ONCE(trans->state != IWL_TRANS_FW_ALIVE)) {
+ 		IWL_ERR(trans, "%s bad state = %d\n", __func__, trans->state);
++		return -EIO;
++	}
+ 
+ 	return trans->ops->wait_tx_queue_empty(trans, txqs);
+ }

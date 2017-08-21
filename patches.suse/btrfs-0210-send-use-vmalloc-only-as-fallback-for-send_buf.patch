@@ -1,0 +1,41 @@
+From: David Sterba <dsterba@suse.com>
+Date: Mon, 11 Apr 2016 18:40:08 +0200
+Patch-mainline: 4.7
+Git-commit: 6ff48ce06b07255a6459cd8b816a110971a81f00
+References: bsc#1012452
+Subject: [PATCH] btrfs: send: use vmalloc only as fallback for
+ send_buf
+
+Signed-off-by: David Sterba <dsterba@suse.com>
+---
+ fs/btrfs/send.c |   11 +++++++----
+ 1 file changed, 7 insertions(+), 4 deletions(-)
+
+--- a/fs/btrfs/send.c
++++ b/fs/btrfs/send.c
+@@ -6027,10 +6027,13 @@ long btrfs_ioctl_send(struct file *mnt_f
+ 	sctx->clone_roots_cnt = arg->clone_sources_count;
+ 
+ 	sctx->send_max_size = BTRFS_SEND_BUF_SIZE;
+-	sctx->send_buf = vmalloc(sctx->send_max_size);
++	sctx->send_buf = kmalloc(sctx->send_max_size, GFP_KERNEL | __GFP_NOWARN);
+ 	if (!sctx->send_buf) {
+-		ret = -ENOMEM;
+-		goto out;
++		sctx->send_buf = vmalloc(sctx->send_max_size);
++		if (!sctx->send_buf) {
++			ret = -ENOMEM;
++			goto out;
++		}
+ 	}
+ 
+ 	sctx->read_buf = vmalloc(BTRFS_SEND_READ_SIZE);
+@@ -6219,7 +6222,7 @@ out:
+ 			fput(sctx->send_filp);
+ 
+ 		vfree(sctx->clone_roots);
+-		vfree(sctx->send_buf);
++		kvfree(sctx->send_buf);
+ 		vfree(sctx->read_buf);
+ 
+ 		name_cache_free(sctx);

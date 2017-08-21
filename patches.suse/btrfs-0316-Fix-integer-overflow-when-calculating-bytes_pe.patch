@@ -1,0 +1,71 @@
+From: Feifei Xu <xufeifei@linux.vnet.ibm.com>
+Date: Wed, 1 Jun 2016 19:18:24 +0800
+Patch-mainline: 4.7
+Git-commit: 0ef6447a3d2f014e49069c4da33f905ed803aa2a
+References: bsc#1012452
+Subject: [PATCH] Btrfs: Fix integer overflow when calculating
+ bytes_per_bitmap
+
+On ppc64, bytes_per_bitmap will be (65536*8*65536). Hence append UL to
+fix integer overflow.
+
+Reviewed-by: Josef Bacik <jbacik@fb.com>
+Reviewed-by: Chandan Rajendra <chandan@linux.vnet.ibm.com>
+Signed-off-by: Feifei Xu <xufeifei@linux.vnet.ibm.com>
+Signed-off-by: David Sterba <dsterba@suse.com>
+---
+ fs/btrfs/free-space-cache.c       |   12 ++++++------
+ fs/btrfs/tests/free-space-tests.c |    3 ++-
+ 2 files changed, 8 insertions(+), 7 deletions(-)
+
+--- a/fs/btrfs/free-space-cache.c
++++ b/fs/btrfs/free-space-cache.c
+@@ -29,7 +29,7 @@
+ #include "inode-map.h"
+ #include "volumes.h"
+ 
+-#define BITS_PER_BITMAP		(PAGE_CACHE_SIZE * 8)
++#define BITS_PER_BITMAP		(PAGE_CACHE_SIZE * 8UL)
+ #define MAX_CACHE_BYTES_PER_GIG	(32 * 1024)
+ 
+ struct btrfs_trim_range {
+@@ -1421,11 +1421,11 @@ static inline u64 offset_to_bitmap(struc
+ 				   u64 offset)
+ {
+ 	u64 bitmap_start;
+-	u32 bytes_per_bitmap;
++	u64 bytes_per_bitmap;
+ 
+ 	bytes_per_bitmap = BITS_PER_BITMAP * ctl->unit;
+ 	bitmap_start = offset - ctl->start;
+-	bitmap_start = div_u64(bitmap_start, bytes_per_bitmap);
++	bitmap_start = div64_u64(bitmap_start, bytes_per_bitmap);
+ 	bitmap_start *= bytes_per_bitmap;
+ 	bitmap_start += ctl->start;
+ 
+@@ -1644,10 +1644,10 @@ static void recalculate_thresholds(struc
+ 	u64 bitmap_bytes;
+ 	u64 extent_bytes;
+ 	u64 size = block_group->key.offset;
+-	u32 bytes_per_bg = BITS_PER_BITMAP * ctl->unit;
+-	u32 max_bitmaps = div_u64(size + bytes_per_bg - 1, bytes_per_bg);
++	u64 bytes_per_bg = BITS_PER_BITMAP * ctl->unit;
++	u64 max_bitmaps = div64_u64(size + bytes_per_bg - 1, bytes_per_bg);
+ 
+-	max_bitmaps = max_t(u32, max_bitmaps, 1);
++	max_bitmaps = max_t(u64, max_bitmaps, 1);
+ 
+ 	ASSERT(ctl->total_bitmaps <= max_bitmaps);
+ 
+--- a/fs/btrfs/tests/free-space-tests.c
++++ b/fs/btrfs/tests/free-space-tests.c
+@@ -22,7 +22,8 @@
+ #include "../disk-io.h"
+ #include "../free-space-cache.h"
+ 
+-#define BITS_PER_BITMAP		(PAGE_CACHE_SIZE * 8)
++#define BITS_PER_BITMAP		(PAGE_CACHE_SIZE * 8UL)
++
+ static struct btrfs_block_group_cache *init_test_block_group(void)
+ {
+ 	struct btrfs_block_group_cache *cache;

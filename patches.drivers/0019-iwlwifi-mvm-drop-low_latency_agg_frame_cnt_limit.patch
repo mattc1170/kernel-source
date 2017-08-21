@@ -1,0 +1,77 @@
+From 1412ee39afaba8806cf6a631ee7347319ca5ae8a Mon Sep 17 00:00:00 2001
+From: Eyal Shapira <eyal@wizery.com>
+Date: Thu, 22 Oct 2015 13:10:36 +0300
+Subject: [PATCH] iwlwifi: mvm: drop low_latency_agg_frame_cnt_limit
+Git-commit: 1412ee39afaba8806cf6a631ee7347319ca5ae8a
+Patch-mainline: 4.5-rc1
+References: FATE#321353, FATE#323335
+
+This was an old workaround for solving latency issues with
+certain Miracast adapters like ActionTec. However this isn't
+needed anymore and furthermore it hurts throughput in other
+use cases.
+
+Signed-off-by: Eyal Shapira <eyalx.shapira@intel.com>
+Signed-off-by: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/iwlwifi/mvm/debugfs.c |    4 ----
+ drivers/net/wireless/iwlwifi/mvm/mvm.h     |    2 --
+ drivers/net/wireless/iwlwifi/mvm/ops.c     |    1 -
+ drivers/net/wireless/iwlwifi/mvm/rs.c      |    8 +-------
+ 4 files changed, 1 insertion(+), 14 deletions(-)
+
+--- a/drivers/net/wireless/iwlwifi/mvm/debugfs.c
++++ b/drivers/net/wireless/iwlwifi/mvm/debugfs.c
+@@ -1491,10 +1491,6 @@ int iwl_mvm_dbgfs_register(struct iwl_mv
+ 		goto err;
+ #endif
+ 
+-	if (!debugfs_create_u8("low_latency_agg_frame_limit", S_IRUSR | S_IWUSR,
+-			       mvm->debugfs_dir,
+-			       &mvm->low_latency_agg_frame_limit))
+-		goto err;
+ 	if (!debugfs_create_u8("ps_disabled", S_IRUSR,
+ 			       mvm->debugfs_dir, &mvm->ps_disabled))
+ 		goto err;
+--- a/drivers/net/wireless/iwlwifi/mvm/mvm.h
++++ b/drivers/net/wireless/iwlwifi/mvm/mvm.h
+@@ -813,8 +813,6 @@ struct iwl_mvm {
+ 	bool lar_regdom_set;
+ 	enum iwl_mcc_source mcc_src;
+ 
+-	u8 low_latency_agg_frame_limit;
+-
+ 	/* TDLS channel switch data */
+ 	struct {
+ 		struct delayed_work dwork;
+--- a/drivers/net/wireless/iwlwifi/mvm/ops.c
++++ b/drivers/net/wireless/iwlwifi/mvm/ops.c
+@@ -452,7 +452,6 @@ iwl_op_mode_mvm_start(struct iwl_trans *
+ 		mvm->first_agg_queue = 12;
+ 	}
+ 	mvm->sf_state = SF_UNINIT;
+-	mvm->low_latency_agg_frame_limit = 6;
+ 	mvm->cur_ucode = IWL_UCODE_INIT;
+ 
+ 	mutex_init(&mvm->mutex);
+--- a/drivers/net/wireless/iwlwifi/mvm/rs.c
++++ b/drivers/net/wireless/iwlwifi/mvm/rs.c
+@@ -3454,15 +3454,9 @@ static void rs_fill_lq_cmd(struct iwl_mv
+ 	 * Tx Fifo so that it can start a transaction in the same TxOP. This
+ 	 * basically allows the firmware to send bursts.
+ 	 */
+-	if (iwl_mvm_vif_low_latency(mvmvif)) {
++	if (iwl_mvm_vif_low_latency(mvmvif))
+ 		lq_cmd->agg_frame_cnt_limit--;
+ 
+-		if (mvm->low_latency_agg_frame_limit)
+-			lq_cmd->agg_frame_cnt_limit =
+-				min(lq_cmd->agg_frame_cnt_limit,
+-				    mvm->low_latency_agg_frame_limit);
+-	}
+-
+ 	if (mvmsta->vif->p2p)
+ 		lq_cmd->flags |= LQ_FLAG_USE_RTS_MSK;
+ 

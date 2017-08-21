@@ -1,0 +1,32 @@
+From 2d7cf5497cca77c16145c9ad06ae5aee1e497c2e Mon Sep 17 00:00:00 2001
+From: Johannes Berg <johannes.berg@intel.com>
+Date: Fri, 17 Apr 2015 16:39:12 +0200
+Subject: [PATCH] iwlwifi: mvm: advertise NETIF_F_SG
+Git-commit: 2d7cf5497cca77c16145c9ad06ae5aee1e497c2e
+Patch-mainline: 4.5-rc1
+References: FATE#321353, FATE#323335
+
+If the transport supports it, advertise NETIF_F_SG to mac80211 to
+be able to use frag SKBs. This will already improve performance by
+allowing software GSO to be used.
+
+Signed-off-by: Johannes Berg <johannes.berg@intel.com>
+Signed-off-by: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/iwlwifi/mvm/mac80211.c |    3 +++
+ 1 file changed, 3 insertions(+)
+
+--- a/drivers/net/wireless/iwlwifi/mvm/mac80211.c
++++ b/drivers/net/wireless/iwlwifi/mvm/mac80211.c
+@@ -439,6 +439,9 @@ int iwl_mvm_mac_setup_register(struct iw
+ 	ieee80211_hw_set(hw, SUPPORT_FAST_XMIT);
+ 	ieee80211_hw_set(hw, SUPPORTS_CLONED_SKBS);
+ 
++	if (mvm->trans->max_skb_frags)
++		hw->netdev_features = NETIF_F_HIGHDMA | NETIF_F_SG;
++
+ 	hw->queues = mvm->first_agg_queue;
+ 	hw->offchannel_tx_hw_queue = IWL_MVM_OFFCHANNEL_QUEUE;
+ 	hw->radiotap_mcs_details |= IEEE80211_RADIOTAP_MCS_HAVE_FEC |

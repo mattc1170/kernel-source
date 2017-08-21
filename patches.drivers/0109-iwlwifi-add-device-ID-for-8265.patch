@@ -1,0 +1,26 @@
+From 9baa03982b06a62ac817b4983f2da7ca66d4f331 Mon Sep 17 00:00:00 2001
+From: Oren Givon <oren.givon@intel.com>
+Date: Thu, 21 Jan 2016 11:11:11 +0200
+Subject: [PATCH] iwlwifi: add device ID for 8265
+Git-commit: 9baa03982b06a62ac817b4983f2da7ca66d4f331
+Patch-mainline: 4.5-rc3
+References: FATE#321353, FATE#323335
+
+Signed-off-by: Oren Givon <oren.givon@intel.com>
+Signed-off-by: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/iwlwifi/pcie/drv.c |    1 +
+ 1 file changed, 1 insertion(+)
+
+--- a/drivers/net/wireless/iwlwifi/pcie/drv.c
++++ b/drivers/net/wireless/iwlwifi/pcie/drv.c
+@@ -478,6 +478,7 @@ static const struct pci_device_id iwl_hw
+ 	{IWL_PCI_DEVICE(0x24F3, 0x0000, iwl8265_2ac_cfg)},
+ 	{IWL_PCI_DEVICE(0x24FD, 0x0010, iwl8265_2ac_cfg)},
+ 	{IWL_PCI_DEVICE(0x24FD, 0x8010, iwl8265_2ac_cfg)},
++	{IWL_PCI_DEVICE(0x24FD, 0x0810, iwl8265_2ac_cfg)},
+ 
+ /* 9000 Series */
+ 	{IWL_PCI_DEVICE(0x9DF0, 0x2A10, iwl5165_2ac_cfg)},

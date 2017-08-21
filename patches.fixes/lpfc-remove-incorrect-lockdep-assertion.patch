@@ -1,0 +1,50 @@
+From: Sebastian Herbszt <herbszt@gmx.de>
+Date: Sun, 17 Apr 2016 13:27:27 +0200
+Subject: lpfc: remove incorrect lockdep assertion
+Git-commit: 718924180a6a79afa558bd978c8a3436c39691ff
+Patch-Mainline: v4.7
+References: bsc#1040125
+
+Remove incorrect lockdep assertion from lpfc_sli_hbqbuf_find() which
+acquires the hbalock itself. Fix the comment which resulted in this
+mistake.
+
+Fixes: 1c2ba475eb0e ("lpfc: Add lockdep assertions")
+Signed-off-by: Sebastian Herbszt <herbszt@gmx.de>
+Reviewed-by: Johannes Thumshirn <jthumshirn@suse.de>
+Signed-off-by: Martin K. Petersen <martin.petersen@oracle.com>
+Signed-off-by: Hannes Reinecke <hare@suse.de>
+---
+ drivers/scsi/lpfc/lpfc_sli.c | 9 +++------
+ 1 file changed, 3 insertions(+), 6 deletions(-)
+
+diff --git a/drivers/scsi/lpfc/lpfc_sli.c b/drivers/scsi/lpfc/lpfc_sli.c
+index 769d24f..dd2c51a 100644
+--- a/drivers/scsi/lpfc/lpfc_sli.c
++++ b/drivers/scsi/lpfc/lpfc_sli.c
+@@ -2000,10 +2000,9 @@ lpfc_sli_hbqbuf_get(struct list_head *rb_list)
+  * @phba: Pointer to HBA context object.
+  * @tag: Tag of the hbq buffer.
+  *
+- * This function is called with hbalock held. This function searches
+- * for the hbq buffer associated with the given tag in the hbq buffer
+- * list. If it finds the hbq buffer, it returns the hbq_buffer other wise
+- * it returns NULL.
++ * This function searches for the hbq buffer associated with the given tag in
++ * the hbq buffer list. If it finds the hbq buffer, it returns the hbq_buffer
++ * otherwise it returns NULL.
+  **/
+ static struct hbq_dmabuf *
+ lpfc_sli_hbqbuf_find(struct lpfc_hba *phba, uint32_t tag)
+@@ -2012,8 +2011,6 @@ lpfc_sli_hbqbuf_find(struct lpfc_hba *phba, uint32_t tag)
+ 	struct hbq_dmabuf *hbq_buf;
+ 	uint32_t hbqno;
+ 
+-	lockdep_assert_held(&phba->hbalock);
+-
+ 	hbqno = tag >> 16;
+ 	if (hbqno >= LPFC_MAX_HBQS)
+ 		return NULL;
+-- 
+1.8.5.6
+

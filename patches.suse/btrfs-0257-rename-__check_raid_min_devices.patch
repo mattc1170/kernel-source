@@ -1,0 +1,36 @@
+From: David Sterba <dsterba@suse.com>
+Date: Mon, 15 Feb 2016 15:28:48 +0100
+Patch-mainline: 4.7
+Git-commit: f47ab2588e424cb4898b75ace1e2323ddd18b990
+References: bsc#1012452
+Subject: [PATCH] btrfs: rename __check_raid_min_devices
+
+Underscores are for special functions, use the full prefix for better
+stacktrace recognition.
+
+Reviewed-by: Anand Jain <anand.jain@oracle.com>
+Signed-off-by: David Sterba <dsterba@suse.com>
+---
+ fs/btrfs/volumes.c |    4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+--- a/fs/btrfs/volumes.c
++++ b/fs/btrfs/volumes.c
+@@ -1707,7 +1707,7 @@ out:
+ 	return ret;
+ }
+ 
+-static int __check_raid_min_devices(struct btrfs_fs_info *fs_info)
++static int btrfs_check_raid_min_devices(struct btrfs_fs_info *fs_info)
+ {
+ 	u64 all_avail;
+ 	u64 num_devices;
+@@ -1762,7 +1762,7 @@ int btrfs_rm_device(struct btrfs_root *r
+ 
+ 	mutex_lock(&uuid_mutex);
+ 
+-	ret = __check_raid_min_devices(root->fs_info);
++	ret = btrfs_check_raid_min_devices(root->fs_info);
+ 	if (ret)
+ 		goto out;
+ 

@@ -1,0 +1,38 @@
+From 32795a885ac31ccadd45e7886cc2ae31b2d2ef06 Mon Sep 17 00:00:00 2001
+From: Matti Gottlieb <matti.gottlieb@intel.com>
+Date: Thu, 25 Feb 2016 10:18:34 +0200
+Subject: [PATCH] iwlwifi: mvm: Disable beacon storing in  D3 when WOWLAN configured
+Git-commit: 32795a885ac31ccadd45e7886cc2ae31b2d2ef06
+Patch-mainline: 4.6-rc1
+References: FATE#321353, FATE#323335
+
+Currently when entering D3 with WOWLAN configured, we enable in the
+configuration flags beacon storing, and do not disable beacon
+filtering, and do not wake up from a magic packet.
+
+Having both enabled is wrong (should not have both enabled),
+and causes problems in the RX queues in the FW, causing
+the FW not to recognize the magic packet when it comes.
+
+Disable beacon storing in wowlan configuration.
+
+Signed-off-by: Matti Gottlieb <matti.gottlieb@intel.com>
+Signed-off-by: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/iwlwifi/mvm/d3.c |    3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
+
+--- a/drivers/net/wireless/iwlwifi/mvm/d3.c
++++ b/drivers/net/wireless/iwlwifi/mvm/d3.c
+@@ -807,8 +807,7 @@ iwl_mvm_get_wowlan_config(struct iwl_mvm
+ 	wowlan_config_cmd->is_11n_connection =
+ 					ap_sta->ht_cap.ht_supported;
+ 	wowlan_config_cmd->flags = ENABLE_L3_FILTERING |
+-		ENABLE_NBNS_FILTERING | ENABLE_DHCP_FILTERING |
+-		ENABLE_STORE_BEACON;
++		ENABLE_NBNS_FILTERING | ENABLE_DHCP_FILTERING;
+ 
+ 	/* Query the last used seqno and set it */
+ 	ret = iwl_mvm_get_last_nonqos_seq(mvm, vif);

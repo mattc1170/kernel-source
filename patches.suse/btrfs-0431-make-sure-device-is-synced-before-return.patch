@@ -1,0 +1,35 @@
+From: Anand Jain <anand.jain@oracle.com>
+Date: Thu, 23 Jun 2016 20:54:07 +0800
+Patch-mainline: 4.8
+Git-commit: e2bf6e89b4c71ea08223f13a700cfd0b576f7e7a
+References: bsc#1012452
+Subject: [PATCH] btrfs: make sure device is synced before return
+
+An inconsistent behavior due to stale reads from the
+disk was reported
+
+  mail-archive.com/linux-btrfs@vger.kernel.org/msg54188.html
+
+This patch will make sure devices are synced before
+return in the unmount thread.
+
+Signed-off-by: Anand Jain <anand.jain@oracle.com>
+Signed-off-by: David Sterba <dsterba@suse.com>
+---
+ fs/btrfs/volumes.c |    5 +++++
+ 1 file changed, 5 insertions(+)
+
+--- a/fs/btrfs/volumes.c
++++ b/fs/btrfs/volumes.c
+@@ -870,6 +870,11 @@ static void btrfs_close_one_device(struc
+ 	if (device->missing)
+ 		fs_devices->missing_devices--;
+ 
++	if (device->bdev && device->writeable) {
++		sync_blockdev(device->bdev);
++		invalidate_bdev(device->bdev);
++	}
++
+ 	new_device = btrfs_alloc_device(NULL, &device->devid,
+ 					device->uuid);
+ 	BUG_ON(IS_ERR(new_device)); /* -ENOMEM */

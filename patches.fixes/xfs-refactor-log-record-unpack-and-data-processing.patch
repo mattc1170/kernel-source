@@ -1,0 +1,89 @@
+From 10f5feb68db691a40ada0d9268e582b9b392676a Mon Sep 17 00:00:00 2001
+From: Brian Foster <bfoster@redhat.com>
+Date: Mon, 4 Jan 2016 15:55:10 +1100
+Subject: [PATCH 1/6] xfs: refactor log record unpack and data processing
+Git-commit: 9d94901f6e17c4c75d9aeb9efd4213a736c2ef9c
+Patch-mainline: v4.5-rc1
+References: bsc#1043598
+
+xlog_do_recovery_pass() duplicates a couple function calls related to
+processing log records because the function must handle wrapping around
+the end of the log if the head is behind the tail. This is implemented
+as separate loops. CRC verification pass support will modify how records
+are processed in both of these loops.
+
+Rather than continue to duplicate code, factor the calls that process a
+log record into a new helper and call that helper from both loops. This
+patch contains no functional changes.
+
+Signed-off-by: Brian Foster <bfoster@redhat.com>
+Reviewed-by: Dave Chinner <dchinner@redhat.com>
+Signed-off-by: Dave Chinner <david@fromorbit.com>
+Acked-by: Nikolay Borisov <nborisov@suse.com>
+---
+ fs/xfs/xfs_log_recover.c | 35 +++++++++++++++++++++++------------
+ 1 file changed, 23 insertions(+), 12 deletions(-)
+
+diff --git a/fs/xfs/xfs_log_recover.c b/fs/xfs/xfs_log_recover.c
+index 8cab78eeb0c2..143db4f6a9c0 100644
+--- a/fs/xfs/xfs_log_recover.c
++++ b/fs/xfs/xfs_log_recover.c
+@@ -4196,6 +4196,26 @@ xlog_unpack_data(
+ 	return 0;
+ }
+ 
++/*
++ * Unpack and process a log record.
++ */
++STATIC int
++xlog_recover_process(
++	struct xlog		*log,
++	struct hlist_head	rhash[],
++	struct xlog_rec_header	*rhead,
++	char			*dp,
++	int			pass)
++{
++	int			error;
++
++	error = xlog_unpack_data(rhead, dp, log);
++	if (error)
++		return error;
++
++	return xlog_recover_process_data(log, rhash, rhead, dp, pass);
++}
++
+ STATIC int
+ xlog_valid_rec_header(
+ 	struct xlog		*log,
+@@ -4414,12 +4434,8 @@ xlog_do_recovery_pass(
+ 					goto bread_err2;
+ 			}
+ 
+-			error = xlog_unpack_data(rhead, offset, log);
+-			if (error)
+-				goto bread_err2;
+-
+-			error = xlog_recover_process_data(log, rhash,
+-							rhead, offset, pass);
++			error = xlog_recover_process(log, rhash, rhead, offset,
++						     pass);
+ 			if (error)
+ 				goto bread_err2;
+ 			blk_no += bblks;
+@@ -4447,12 +4463,7 @@ xlog_do_recovery_pass(
+ 		if (error)
+ 			goto bread_err2;
+ 
+-		error = xlog_unpack_data(rhead, offset, log);
+-		if (error)
+-			goto bread_err2;
+-
+-		error = xlog_recover_process_data(log, rhash,
+-						rhead, offset, pass);
++		error = xlog_recover_process(log, rhash, rhead, offset, pass);
+ 		if (error)
+ 			goto bread_err2;
+ 		blk_no += bblks + hblks;
+-- 
+2.7.4
+

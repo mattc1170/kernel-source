@@ -1,0 +1,171 @@
+From 0e39eb0386841fc71a86ad3feb5ddff553d2888e Mon Sep 17 00:00:00 2001
+From: Chaya Rachel Ivgi <chaya.rachel.ivgi@intel.com>
+Date: Thu, 3 Dec 2015 15:51:46 +0200
+Subject: [PATCH] iwlwifi: mvm: Add a station in monitor mode
+Git-commit: 0e39eb0386841fc71a86ad3feb5ddff553d2888e
+Patch-mainline: 4.5-rc1
+References: FATE#321353, FATE#323335
+
+Currently when creating a new vif in monitor mode the driver doesn't
+allocate a specific station. This causes that in the situation that
+tx traffic is injected, the tx queues are not scheduled,
+with the result of a TFD queue hang.
+Fix that by allocating a station and ensuring its tx queues
+are scheduled.
+
+This fixes https://bugzilla.kernel.org/show_bug.cgi?id=104591
+
+Signed-off-by: Chaya Rachel Ivgi <chaya.rachel.ivgi@intel.com>
+Signed-off-by: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/iwlwifi/mvm/mac-ctxt.c |   16 ++++++++++++-
+ drivers/net/wireless/iwlwifi/mvm/mac80211.c |    6 +++++
+ drivers/net/wireless/iwlwifi/mvm/mvm.h      |    1 
+ drivers/net/wireless/iwlwifi/mvm/sta.c      |   33 +++++++++++++++++++++++++---
+ drivers/net/wireless/iwlwifi/mvm/sta.h      |    6 +++++
+ 5 files changed, 58 insertions(+), 4 deletions(-)
+
+--- a/drivers/net/wireless/iwlwifi/mvm/mac-ctxt.c
++++ b/drivers/net/wireless/iwlwifi/mvm/mac-ctxt.c
+@@ -855,11 +855,17 @@ static int iwl_mvm_mac_ctxt_cmd_listener
+ 					 u32 action)
+ {
+ 	struct iwl_mac_ctx_cmd cmd = {};
++	u32 tfd_queue_msk = 0;
++	int ret, i;
+ 
+ 	WARN_ON(vif->type != NL80211_IFTYPE_MONITOR);
+ 
+ 	iwl_mvm_mac_ctxt_cmd_common(mvm, vif, &cmd, NULL, action);
+ 
++	for (i = 0; i < IEEE80211_NUM_ACS; i++)
++		if (vif->hw_queue[i] != IEEE80211_INVAL_HW_QUEUE)
++			tfd_queue_msk |= BIT(vif->hw_queue[i]);
++
+ 	cmd.filter_flags = cpu_to_le32(MAC_FILTER_IN_PROMISC |
+ 				       MAC_FILTER_IN_CONTROL_AND_MGMT |
+ 				       MAC_FILTER_IN_BEACON |
+@@ -867,6 +873,12 @@ static int iwl_mvm_mac_ctxt_cmd_listener
+ 				       MAC_FILTER_IN_CRC32);
+ 	ieee80211_hw_set(mvm->hw, RX_INCLUDES_FCS);
+ 
++	/* Allocate sniffer station */
++	ret = iwl_mvm_allocate_int_sta(mvm, &mvm->snif_sta, tfd_queue_msk,
++				       vif->type);
++	if (ret)
++		return ret;
++
+ 	return iwl_mvm_mac_ctxt_send_cmd(mvm, &cmd);
+ }
+ 
+@@ -1289,8 +1301,10 @@ int iwl_mvm_mac_ctxt_remove(struct iwl_m
+ 
+ 	mvmvif->uploaded = false;
+ 
+-	if (vif->type == NL80211_IFTYPE_MONITOR)
++	if (vif->type == NL80211_IFTYPE_MONITOR) {
+ 		__clear_bit(IEEE80211_HW_RX_INCLUDES_FCS, mvm->hw->flags);
++		iwl_mvm_dealloc_snif_sta(mvm);
++	}
+ 
+ 	return 0;
+ }
+--- a/drivers/net/wireless/iwlwifi/mvm/mac80211.c
++++ b/drivers/net/wireless/iwlwifi/mvm/mac80211.c
+@@ -3131,6 +3131,11 @@ static int __iwl_mvm_assign_vif_chanctx(
+ 		ret = iwl_mvm_update_quotas(mvm, false, NULL);
+ 		if (ret)
+ 			goto out_remove_binding;
++
++		ret = iwl_mvm_add_snif_sta(mvm, vif);
++		if (ret)
++			goto out_remove_binding;
++
+ 	}
+ 
+ 	/* Handle binding during CSA */
+@@ -3204,6 +3209,7 @@ static void __iwl_mvm_unassign_vif_chanc
+ 	case NL80211_IFTYPE_MONITOR:
+ 		mvmvif->monitor_active = false;
+ 		mvmvif->ps_disabled = false;
++		iwl_mvm_rm_snif_sta(mvm, vif);
+ 		break;
+ 	case NL80211_IFTYPE_AP:
+ 		/* This part is triggered only during CSA */
+--- a/drivers/net/wireless/iwlwifi/mvm/mvm.h
++++ b/drivers/net/wireless/iwlwifi/mvm/mvm.h
+@@ -677,6 +677,7 @@ struct iwl_mvm {
+ 
+ 	/* Internal station */
+ 	struct iwl_mvm_int_sta aux_sta;
++	struct iwl_mvm_int_sta snif_sta;
+ 
+ 	bool last_ebs_successful;
+ 
+--- a/drivers/net/wireless/iwlwifi/mvm/sta.c
++++ b/drivers/net/wireless/iwlwifi/mvm/sta.c
+@@ -581,9 +581,9 @@ int iwl_mvm_rm_sta_id(struct iwl_mvm *mv
+ 	return ret;
+ }
+ 
+-static int iwl_mvm_allocate_int_sta(struct iwl_mvm *mvm,
+-				    struct iwl_mvm_int_sta *sta,
+-				    u32 qmask, enum nl80211_iftype iftype)
++int iwl_mvm_allocate_int_sta(struct iwl_mvm *mvm,
++			     struct iwl_mvm_int_sta *sta,
++			     u32 qmask, enum nl80211_iftype iftype)
+ {
+ 	if (!test_bit(IWL_MVM_STATUS_IN_HW_RESTART, &mvm->status)) {
+ 		sta->sta_id = iwl_mvm_find_free_sta_id(mvm, iftype);
+@@ -673,6 +673,33 @@ int iwl_mvm_add_aux_sta(struct iwl_mvm *
+ 	return ret;
+ }
+ 
++int iwl_mvm_add_snif_sta(struct iwl_mvm *mvm, struct ieee80211_vif *vif)
++{
++	struct iwl_mvm_vif *mvmvif = iwl_mvm_vif_from_mac80211(vif);
++
++	lockdep_assert_held(&mvm->mutex);
++	return iwl_mvm_add_int_sta_common(mvm, &mvm->snif_sta, vif->addr,
++					 mvmvif->id, 0);
++}
++
++int iwl_mvm_rm_snif_sta(struct iwl_mvm *mvm, struct ieee80211_vif *vif)
++{
++	int ret;
++
++	lockdep_assert_held(&mvm->mutex);
++
++	ret = iwl_mvm_rm_sta_common(mvm, mvm->snif_sta.sta_id);
++	if (ret)
++		IWL_WARN(mvm, "Failed sending remove station\n");
++
++	return ret;
++}
++
++void iwl_mvm_dealloc_snif_sta(struct iwl_mvm *mvm)
++{
++	iwl_mvm_dealloc_int_sta(mvm, &mvm->snif_sta);
++}
++
+ void iwl_mvm_del_aux_sta(struct iwl_mvm *mvm)
+ {
+ 	lockdep_assert_held(&mvm->mutex);
+--- a/drivers/net/wireless/iwlwifi/mvm/sta.h
++++ b/drivers/net/wireless/iwlwifi/mvm/sta.h
+@@ -401,7 +401,13 @@ int iwl_mvm_send_add_bcast_sta(struct iw
+ int iwl_mvm_add_bcast_sta(struct iwl_mvm *mvm, struct ieee80211_vif *vif);
+ int iwl_mvm_send_rm_bcast_sta(struct iwl_mvm *mvm, struct ieee80211_vif *vif);
+ int iwl_mvm_rm_bcast_sta(struct iwl_mvm *mvm, struct ieee80211_vif *vif);
++int iwl_mvm_allocate_int_sta(struct iwl_mvm *mvm,
++			     struct iwl_mvm_int_sta *sta,
++				    u32 qmask, enum nl80211_iftype iftype);
+ void iwl_mvm_dealloc_bcast_sta(struct iwl_mvm *mvm, struct ieee80211_vif *vif);
++int iwl_mvm_add_snif_sta(struct iwl_mvm *mvm, struct ieee80211_vif *vif);
++int iwl_mvm_rm_snif_sta(struct iwl_mvm *mvm, struct ieee80211_vif *vif);
++void iwl_mvm_dealloc_snif_sta(struct iwl_mvm *mvm);
+ 
+ void iwl_mvm_sta_drained_wk(struct work_struct *wk);
+ void iwl_mvm_sta_modify_ps_wake(struct iwl_mvm *mvm,

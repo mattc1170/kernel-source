@@ -1,0 +1,48 @@
+From: Feras Daoud <ferasda@mellanox.com>
+Date: Wed, 14 Jun 2017 09:59:09 +0300
+Subject: IB/ipoib: Fix memory leak in create child syscall
+Patch-mainline: v4.12-rc6
+Git-commit: 4542d66bb26f2d021c70a78e46f183c6675fc4c9
+References: bsc#1022595 FATE#322350
+
+The flow of creating a new child goes through ipoib_vlan_add
+which allocates a new interface and checks the rtnl_lock.
+
+If the lock is taken, restart_syscall will be called to restart
+the system call again. In this case we are not releasing the
+already allocated interface, causing a leak.
+
+Fixes: 9baa0b036410 ("IB/ipoib: Add rtnl_link_ops support")
+Signed-off-by: Feras Daoud <ferasda@mellanox.com>
+Signed-off-by: Leon Romanovsky <leon@kernel.org>
+Signed-off-by: Doug Ledford <dledford@redhat.com>
+Acked-by: Thomas Bogendoerfer <tbogendoerfer@suse.de>
+---
+ drivers/infiniband/ulp/ipoib/ipoib_vlan.c | 7 ++++---
+ 1 file changed, 4 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/infiniband/ulp/ipoib/ipoib_vlan.c b/drivers/infiniband/ulp/ipoib/ipoib_vlan.c
+index 57a34f87dedf..a97a3890dd23 100644
+--- a/drivers/infiniband/ulp/ipoib/ipoib_vlan.c
++++ b/drivers/infiniband/ulp/ipoib/ipoib_vlan.c
+@@ -128,13 +128,14 @@ int ipoib_vlan_add(struct net_device *pdev, unsigned short pkey)
+ 
+ 	snprintf(intf_name, sizeof intf_name, "%s.%04x",
+ 		 ppriv->dev->name, pkey);
+-	priv = ipoib_intf_alloc(intf_name);
+-	if (!priv)
+-		return -ENOMEM;
+ 
+ 	if (!rtnl_trylock())
+ 		return restart_syscall();
+ 
++	priv = ipoib_intf_alloc(intf_name);
++	if (!priv)
++		return -ENOMEM;
++
+ 	down_write(&ppriv->vlan_rwsem);
+ 
+ 	/*
+-- 
+2.12.3
+

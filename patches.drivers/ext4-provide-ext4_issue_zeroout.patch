@@ -14,18 +14,16 @@ Signed-off-by: Jan Kara <jack@suse.com>
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 Acked-by: Jeff Mahoney <jeffm@suse.com>
 ---
- fs/ext4/crypto.c  |  6 ++----
- fs/ext4/ext4.h    |  5 ++++-
- fs/ext4/extents.c | 12 ++----------
- fs/ext4/inode.c   | 15 +++++++++++++++
+ fs/ext4/crypto.c  |    6 ++----
+ fs/ext4/ext4.h    |    5 ++++-
+ fs/ext4/extents.c |   12 ++----------
+ fs/ext4/inode.c   |   15 +++++++++++++++
  4 files changed, 23 insertions(+), 15 deletions(-)
 
-diff --git a/fs/ext4/crypto.c b/fs/ext4/crypto.c
-index 1a08350..c802120 100644
 --- a/fs/ext4/crypto.c
 +++ b/fs/ext4/crypto.c
-@@ -384,14 +384,12 @@ int ext4_decrypt(struct page *page)
- 				EXT4_DECRYPT, page->index, page, page);
+@@ -389,14 +389,12 @@ int ext4_decrypt(struct page *page)
+ 				page->index, page, page, GFP_NOFS);
  }
  
 -int ext4_encrypted_zeroout(struct inode *inode, struct ext4_extent *ex)
@@ -41,21 +39,19 @@ index 1a08350..c802120 100644
  	int			ret, err = 0;
  
  #if 0
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 1008caf..ffc6ab0 100644
 --- a/fs/ext4/ext4.h
 +++ b/fs/ext4/ext4.h
-@@ -2241,7 +2241,8 @@ void ext4_restore_control_page(struct page *data_page);
- struct page *ext4_encrypt(struct inode *inode,
- 			  struct page *plaintext_page);
+@@ -2269,7 +2269,8 @@ struct page *ext4_encrypt(struct inode *
+ 			  struct page *plaintext_page,
+ 			  gfp_t gfp_flags);
  int ext4_decrypt(struct page *page);
 -int ext4_encrypted_zeroout(struct inode *inode, struct ext4_extent *ex);
 +int ext4_encrypted_zeroout(struct inode *inode, ext4_lblk_t lblk,
 +			   ext4_fsblk_t pblk, ext4_lblk_t len);
+ extern const struct dentry_operations ext4_encrypted_d_ops;
  
  #ifdef CONFIG_EXT4_FS_ENCRYPTION
- int ext4_init_crypto(void);
-@@ -2495,6 +2496,8 @@ extern int ext4_filemap_fault(struct vm_area_struct *vma, struct vm_fault *vmf);
+@@ -2512,6 +2513,8 @@ extern int ext4_filemap_fault(struct vm_
  extern qsize_t *ext4_get_reserved_space(struct inode *inode);
  extern void ext4_da_update_reserve_space(struct inode *inode,
  					int used, int quota_claim);
@@ -64,11 +60,9 @@ index 1008caf..ffc6ab0 100644
  extern int ext4_get_next_extent(struct inode *inode, ext4_lblk_t lblk,
  				unsigned int map_len,
  				struct extent_status *result);
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 3578b25..867e98b 100644
 --- a/fs/ext4/extents.c
 +++ b/fs/ext4/extents.c
-@@ -3119,19 +3119,11 @@ static int ext4_ext_zeroout(struct inode *inode, struct ext4_extent *ex)
+@@ -3137,19 +3137,11 @@ static int ext4_ext_zeroout(struct inode
  {
  	ext4_fsblk_t ee_pblock;
  	unsigned int ee_len;
@@ -90,11 +84,9 @@ index 3578b25..867e98b 100644
  }
  
  /*
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index f100c17..0c9a5ee 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -383,6 +383,21 @@ static int __check_block_validity(struct inode *inode, const char *func,
+@@ -388,6 +388,21 @@ static int __check_block_validity(struct
  	return 0;
  }
  
@@ -116,6 +108,3 @@ index f100c17..0c9a5ee 100644
  #define check_block_validity(inode, map)	\
  	__check_block_validity((inode), __func__, __LINE__, (map))
  
-
-
-

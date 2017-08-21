@@ -1,0 +1,641 @@
+From d01c536672304541370ab01fe11f20f1d15b2a55 Mon Sep 17 00:00:00 2001
+From: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Date: Tue, 17 Nov 2015 15:39:56 +0200
+Subject: [PATCH] iwlwifi: change the Intel Wireless email address
+Git-commit: d01c536672304541370ab01fe11f20f1d15b2a55
+Patch-mainline: 4.5-rc1
+References: FATE#321353, FATE#323335
+
+ilw@linux.intel.com is not available anymore.
+linuxwifi@intel.com should be used instead.
+
+Signed-off-by: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/iwlwifi/dvm/calib.c          |    2 +-
+ drivers/net/wireless/iwlwifi/dvm/calib.h          |    2 +-
+ drivers/net/wireless/iwlwifi/dvm/commands.h       |    2 +-
+ drivers/net/wireless/iwlwifi/dvm/devices.c        |    2 +-
+ drivers/net/wireless/iwlwifi/dvm/led.c            |    2 +-
+ drivers/net/wireless/iwlwifi/dvm/lib.c            |    2 +-
+ drivers/net/wireless/iwlwifi/dvm/power.c          |    2 +-
+ drivers/net/wireless/iwlwifi/dvm/power.h          |    2 +-
+ drivers/net/wireless/iwlwifi/dvm/ucode.c          |    2 +-
+ drivers/net/wireless/iwlwifi/iwl-1000.c           |    2 +-
+ drivers/net/wireless/iwlwifi/iwl-2000.c           |    2 +-
+ drivers/net/wireless/iwlwifi/iwl-5000.c           |    2 +-
+ drivers/net/wireless/iwlwifi/iwl-6000.c           |    2 +-
+ drivers/net/wireless/iwlwifi/iwl-agn-hw.h         |    2 +-
+ drivers/net/wireless/iwlwifi/iwl-devtrace-data.h  |    2 +-
+ drivers/net/wireless/iwlwifi/iwl-devtrace-io.h    |    2 +-
+ drivers/net/wireless/iwlwifi/iwl-devtrace-msg.h   |    2 +-
+ drivers/net/wireless/iwlwifi/iwl-devtrace-ucode.h |    2 +-
+ drivers/net/wireless/iwlwifi/iwl-eeprom-parse.c   |    2 +-
+ drivers/net/wireless/iwlwifi/iwl-eeprom-parse.h   |    2 +-
+ drivers/net/wireless/iwlwifi/iwl-eeprom-read.c    |    2 +-
+ drivers/net/wireless/iwlwifi/iwl-eeprom-read.h    |    2 +-
+ drivers/net/wireless/iwlwifi/iwl-fh.h             |    2 +-
+ drivers/net/wireless/iwlwifi/iwl-fw-error-dump.h  |    2 +-
+ drivers/net/wireless/iwlwifi/iwl-fw.h             |    2 +-
+ drivers/net/wireless/iwlwifi/iwl-io.h             |    2 +-
+ drivers/net/wireless/iwlwifi/iwl-notif-wait.c     |    2 +-
+ drivers/net/wireless/iwlwifi/iwl-notif-wait.h     |    2 +-
+ drivers/net/wireless/iwlwifi/iwl-nvm-parse.c      |    2 +-
+ drivers/net/wireless/iwlwifi/iwl-nvm-parse.h      |    2 +-
+ drivers/net/wireless/iwlwifi/iwl-scd.h            |    2 +-
+ drivers/net/wireless/iwlwifi/iwl-trans.c          |    2 +-
+ drivers/net/wireless/iwlwifi/mvm/binding.c        |    2 +-
+ drivers/net/wireless/iwlwifi/mvm/debugfs.h        |    2 +-
+ drivers/net/wireless/iwlwifi/mvm/fw-api-d3.h      |    2 +-
+ drivers/net/wireless/iwlwifi/mvm/fw-api-mac.h     |    2 +-
+ drivers/net/wireless/iwlwifi/mvm/fw-api-power.h   |    2 +-
+ drivers/net/wireless/iwlwifi/mvm/fw-api-rs.h      |    2 +-
+ drivers/net/wireless/iwlwifi/mvm/fw-api-sta.h     |    2 +-
+ drivers/net/wireless/iwlwifi/mvm/fw-api-stats.h   |    2 +-
+ drivers/net/wireless/iwlwifi/mvm/fw-api-tof.h     |    2 +-
+ drivers/net/wireless/iwlwifi/mvm/fw-api-tx.h      |    2 +-
+ drivers/net/wireless/iwlwifi/mvm/fw-dbg.c         |    2 +-
+ drivers/net/wireless/iwlwifi/mvm/fw-dbg.h         |    2 +-
+ drivers/net/wireless/iwlwifi/mvm/led.c            |    2 +-
+ drivers/net/wireless/iwlwifi/mvm/offloading.c     |    2 +-
+ drivers/net/wireless/iwlwifi/mvm/sf.c             |    2 +-
+ drivers/net/wireless/iwlwifi/mvm/testmode.h       |    2 +-
+ drivers/net/wireless/iwlwifi/mvm/time-event.c     |    2 +-
+ drivers/net/wireless/iwlwifi/mvm/time-event.h     |    2 +-
+ drivers/net/wireless/iwlwifi/mvm/tt.c             |    2 +-
+ drivers/net/wireless/iwlwifi/pcie/rx.c            |    2 +-
+ 52 files changed, 52 insertions(+), 52 deletions(-)
+
+--- a/drivers/net/wireless/iwlwifi/dvm/calib.c
++++ b/drivers/net/wireless/iwlwifi/dvm/calib.c
+@@ -25,7 +25,7 @@
+  * in the file called COPYING.
+  *
+  * Contact Information:
+- *  Intel Linux Wireless <ilw@linux.intel.com>
++ *  Intel Linux Wireless <linuxwifi@intel.com>
+  * Intel Corporation, 5200 N.E. Elam Young Parkway, Hillsboro, OR 97124-6497
+  *
+  * BSD LICENSE
+--- a/drivers/net/wireless/iwlwifi/dvm/calib.h
++++ b/drivers/net/wireless/iwlwifi/dvm/calib.h
+@@ -25,7 +25,7 @@
+  * in the file called COPYING.
+  *
+  * Contact Information:
+- *  Intel Linux Wireless <ilw@linux.intel.com>
++ *  Intel Linux Wireless <linuxwifi@intel.com>
+  * Intel Corporation, 5200 N.E. Elam Young Parkway, Hillsboro, OR 97124-6497
+  *
+  * BSD LICENSE
+--- a/drivers/net/wireless/iwlwifi/dvm/commands.h
++++ b/drivers/net/wireless/iwlwifi/dvm/commands.h
+@@ -25,7 +25,7 @@
+  * in the file called COPYING.
+  *
+  * Contact Information:
+- *  Intel Linux Wireless <ilw@linux.intel.com>
++ *  Intel Linux Wireless <linuxwifi@intel.com>
+  * Intel Corporation, 5200 N.E. Elam Young Parkway, Hillsboro, OR 97124-6497
+  *
+  * BSD LICENSE
+--- a/drivers/net/wireless/iwlwifi/dvm/devices.c
++++ b/drivers/net/wireless/iwlwifi/dvm/devices.c
+@@ -19,7 +19,7 @@
+  * file called LICENSE.
+  *
+  * Contact Information:
+- *  Intel Linux Wireless <ilw@linux.intel.com>
++ *  Intel Linux Wireless <linuxwifi@intel.com>
+  * Intel Corporation, 5200 N.E. Elam Young Parkway, Hillsboro, OR 97124-6497
+  *
+  *****************************************************************************/
+--- a/drivers/net/wireless/iwlwifi/dvm/led.c
++++ b/drivers/net/wireless/iwlwifi/dvm/led.c
+@@ -19,7 +19,7 @@
+  * file called LICENSE.
+  *
+  * Contact Information:
+- *  Intel Linux Wireless <ilw@linux.intel.com>
++ *  Intel Linux Wireless <linuxwifi@intel.com>
+  * Intel Corporation, 5200 N.E. Elam Young Parkway, Hillsboro, OR 97124-6497
+  *
+  *****************************************************************************/
+--- a/drivers/net/wireless/iwlwifi/dvm/lib.c
++++ b/drivers/net/wireless/iwlwifi/dvm/lib.c
+@@ -22,7 +22,7 @@
+  * in the file called COPYING.
+  *
+  * Contact Information:
+- *  Intel Linux Wireless <ilw@linux.intel.com>
++ *  Intel Linux Wireless <linuxwifi@intel.com>
+  * Intel Corporation, 5200 N.E. Elam Young Parkway, Hillsboro, OR 97124-6497
+  *
+  *****************************************************************************/
+--- a/drivers/net/wireless/iwlwifi/dvm/power.c
++++ b/drivers/net/wireless/iwlwifi/dvm/power.c
+@@ -22,7 +22,7 @@
+  * file called LICENSE.
+  *
+  * Contact Information:
+- *  Intel Linux Wireless <ilw@linux.intel.com>
++ *  Intel Linux Wireless <linuxwifi@intel.com>
+  * Intel Corporation, 5200 N.E. Elam Young Parkway, Hillsboro, OR 97124-6497
+  *****************************************************************************/
+ 
+--- a/drivers/net/wireless/iwlwifi/dvm/power.h
++++ b/drivers/net/wireless/iwlwifi/dvm/power.h
+@@ -22,7 +22,7 @@
+  * file called LICENSE.
+  *
+  * Contact Information:
+- *  Intel Linux Wireless <ilw@linux.intel.com>
++ *  Intel Linux Wireless <linuxwifi@intel.com>
+  * Intel Corporation, 5200 N.E. Elam Young Parkway, Hillsboro, OR 97124-6497
+  *****************************************************************************/
+ #ifndef __iwl_power_setting_h__
+--- a/drivers/net/wireless/iwlwifi/dvm/ucode.c
++++ b/drivers/net/wireless/iwlwifi/dvm/ucode.c
+@@ -23,7 +23,7 @@
+  * in the file called COPYING.
+  *
+  * Contact Information:
+- *  Intel Linux Wireless <ilw@linux.intel.com>
++ *  Intel Linux Wireless <linuxwifi@intel.com>
+  * Intel Corporation, 5200 N.E. Elam Young Parkway, Hillsboro, OR 97124-6497
+  *
+  *****************************************************************************/
+--- a/drivers/net/wireless/iwlwifi/iwl-1000.c
++++ b/drivers/net/wireless/iwlwifi/iwl-1000.c
+@@ -19,7 +19,7 @@
+  * file called LICENSE.
+  *
+  * Contact Information:
+- *  Intel Linux Wireless <ilw@linux.intel.com>
++ *  Intel Linux Wireless <linuxwifi@intel.com>
+  * Intel Corporation, 5200 N.E. Elam Young Parkway, Hillsboro, OR 97124-6497
+  *
+  *****************************************************************************/
+--- a/drivers/net/wireless/iwlwifi/iwl-2000.c
++++ b/drivers/net/wireless/iwlwifi/iwl-2000.c
+@@ -19,7 +19,7 @@
+  * file called LICENSE.
+  *
+  * Contact Information:
+- *  Intel Linux Wireless <ilw@linux.intel.com>
++ *  Intel Linux Wireless <linuxwifi@intel.com>
+  * Intel Corporation, 5200 N.E. Elam Young Parkway, Hillsboro, OR 97124-6497
+  *
+  *****************************************************************************/
+--- a/drivers/net/wireless/iwlwifi/iwl-5000.c
++++ b/drivers/net/wireless/iwlwifi/iwl-5000.c
+@@ -19,7 +19,7 @@
+  * file called LICENSE.
+  *
+  * Contact Information:
+- *  Intel Linux Wireless <ilw@linux.intel.com>
++ *  Intel Linux Wireless <linuxwifi@intel.com>
+  * Intel Corporation, 5200 N.E. Elam Young Parkway, Hillsboro, OR 97124-6497
+  *
+  *****************************************************************************/
+--- a/drivers/net/wireless/iwlwifi/iwl-6000.c
++++ b/drivers/net/wireless/iwlwifi/iwl-6000.c
+@@ -19,7 +19,7 @@
+  * file called LICENSE.
+  *
+  * Contact Information:
+- *  Intel Linux Wireless <ilw@linux.intel.com>
++ *  Intel Linux Wireless <linuxwifi@intel.com>
+  * Intel Corporation, 5200 N.E. Elam Young Parkway, Hillsboro, OR 97124-6497
+  *
+  *****************************************************************************/
+--- a/drivers/net/wireless/iwlwifi/iwl-agn-hw.h
++++ b/drivers/net/wireless/iwlwifi/iwl-agn-hw.h
+@@ -25,7 +25,7 @@
+  * in the file called COPYING.
+  *
+  * Contact Information:
+- *  Intel Linux Wireless <ilw@linux.intel.com>
++ *  Intel Linux Wireless <linuxwifi@intel.com>
+  * Intel Corporation, 5200 N.E. Elam Young Parkway, Hillsboro, OR 97124-6497
+  *
+  * BSD LICENSE
+--- a/drivers/net/wireless/iwlwifi/iwl-devtrace-data.h
++++ b/drivers/net/wireless/iwlwifi/iwl-devtrace-data.h
+@@ -19,7 +19,7 @@
+  * file called LICENSE.
+  *
+  * Contact Information:
+- *  Intel Linux Wireless <ilw@linux.intel.com>
++ *  Intel Linux Wireless <linuxwifi@intel.com>
+  * Intel Corporation, 5200 N.E. Elam Young Parkway, Hillsboro, OR 97124-6497
+  *
+  *****************************************************************************/
+--- a/drivers/net/wireless/iwlwifi/iwl-devtrace-io.h
++++ b/drivers/net/wireless/iwlwifi/iwl-devtrace-io.h
+@@ -19,7 +19,7 @@
+  * file called LICENSE.
+  *
+  * Contact Information:
+- *  Intel Linux Wireless <ilw@linux.intel.com>
++ *  Intel Linux Wireless <linuxwifi@intel.com>
+  * Intel Corporation, 5200 N.E. Elam Young Parkway, Hillsboro, OR 97124-6497
+  *
+  *****************************************************************************/
+--- a/drivers/net/wireless/iwlwifi/iwl-devtrace-msg.h
++++ b/drivers/net/wireless/iwlwifi/iwl-devtrace-msg.h
+@@ -19,7 +19,7 @@
+  * file called LICENSE.
+  *
+  * Contact Information:
+- *  Intel Linux Wireless <ilw@linux.intel.com>
++ *  Intel Linux Wireless <linuxwifi@intel.com>
+  * Intel Corporation, 5200 N.E. Elam Young Parkway, Hillsboro, OR 97124-6497
+  *
+  *****************************************************************************/
+--- a/drivers/net/wireless/iwlwifi/iwl-devtrace-ucode.h
++++ b/drivers/net/wireless/iwlwifi/iwl-devtrace-ucode.h
+@@ -19,7 +19,7 @@
+  * file called LICENSE.
+  *
+  * Contact Information:
+- *  Intel Linux Wireless <ilw@linux.intel.com>
++ *  Intel Linux Wireless <linuxwifi@intel.com>
+  * Intel Corporation, 5200 N.E. Elam Young Parkway, Hillsboro, OR 97124-6497
+  *
+  *****************************************************************************/
+--- a/drivers/net/wireless/iwlwifi/iwl-eeprom-parse.c
++++ b/drivers/net/wireless/iwlwifi/iwl-eeprom-parse.c
+@@ -26,7 +26,7 @@
+  * in the file called COPYING.
+  *
+  * Contact Information:
+- *  Intel Linux Wireless <ilw@linux.intel.com>
++ *  Intel Linux Wireless <linuxwifi@intel.com>
+  * Intel Corporation, 5200 N.E. Elam Young Parkway, Hillsboro, OR 97124-6497
+  *
+  * BSD LICENSE
+--- a/drivers/net/wireless/iwlwifi/iwl-eeprom-parse.h
++++ b/drivers/net/wireless/iwlwifi/iwl-eeprom-parse.h
+@@ -26,7 +26,7 @@
+  * in the file called COPYING.
+  *
+  * Contact Information:
+- *  Intel Linux Wireless <ilw@linux.intel.com>
++ *  Intel Linux Wireless <linuxwifi@intel.com>
+  * Intel Corporation, 5200 N.E. Elam Young Parkway, Hillsboro, OR 97124-6497
+  *
+  * BSD LICENSE
+--- a/drivers/net/wireless/iwlwifi/iwl-eeprom-read.c
++++ b/drivers/net/wireless/iwlwifi/iwl-eeprom-read.c
+@@ -25,7 +25,7 @@
+  * in the file called COPYING.
+  *
+  * Contact Information:
+- *  Intel Linux Wireless <ilw@linux.intel.com>
++ *  Intel Linux Wireless <linuxwifi@intel.com>
+  * Intel Corporation, 5200 N.E. Elam Young Parkway, Hillsboro, OR 97124-6497
+  *
+  * BSD LICENSE
+--- a/drivers/net/wireless/iwlwifi/iwl-eeprom-read.h
++++ b/drivers/net/wireless/iwlwifi/iwl-eeprom-read.h
+@@ -25,7 +25,7 @@
+  * in the file called COPYING.
+  *
+  * Contact Information:
+- *  Intel Linux Wireless <ilw@linux.intel.com>
++ *  Intel Linux Wireless <linuxwifi@intel.com>
+  * Intel Corporation, 5200 N.E. Elam Young Parkway, Hillsboro, OR 97124-6497
+  *
+  * BSD LICENSE
+--- a/drivers/net/wireless/iwlwifi/iwl-fh.h
++++ b/drivers/net/wireless/iwlwifi/iwl-fh.h
+@@ -25,7 +25,7 @@
+  * in the file called COPYING.
+  *
+  * Contact Information:
+- *  Intel Linux Wireless <ilw@linux.intel.com>
++ *  Intel Linux Wireless <linuxwifi@intel.com>
+  * Intel Corporation, 5200 N.E. Elam Young Parkway, Hillsboro, OR 97124-6497
+  *
+  * BSD LICENSE
+--- a/drivers/net/wireless/iwlwifi/iwl-fw-error-dump.h
++++ b/drivers/net/wireless/iwlwifi/iwl-fw-error-dump.h
+@@ -26,7 +26,7 @@
+  * in the file called COPYING.
+  *
+  * Contact Information:
+- *  Intel Linux Wireless <ilw@linux.intel.com>
++ *  Intel Linux Wireless <linuxwifi@intel.com>
+  * Intel Corporation, 5200 N.E. Elam Young Parkway, Hillsboro, OR 97124-6497
+  *
+  * BSD LICENSE
+--- a/drivers/net/wireless/iwlwifi/iwl-fw.h
++++ b/drivers/net/wireless/iwlwifi/iwl-fw.h
+@@ -26,7 +26,7 @@
+  * in the file called COPYING.
+  *
+  * Contact Information:
+- *  Intel Linux Wireless <ilw@linux.intel.com>
++ *  Intel Linux Wireless <linuxwifi@intel.com>
+  * Intel Corporation, 5200 N.E. Elam Young Parkway, Hillsboro, OR 97124-6497
+  *
+  * BSD LICENSE
+--- a/drivers/net/wireless/iwlwifi/iwl-io.h
++++ b/drivers/net/wireless/iwlwifi/iwl-io.h
+@@ -21,7 +21,7 @@
+  * file called LICENSE.
+  *
+  * Contact Information:
+- *  Intel Linux Wireless <ilw@linux.intel.com>
++ *  Intel Linux Wireless <linuxwifi@intel.com>
+  * Intel Corporation, 5200 N.E. Elam Young Parkway, Hillsboro, OR 97124-6497
+  *
+  *****************************************************************************/
+--- a/drivers/net/wireless/iwlwifi/iwl-notif-wait.c
++++ b/drivers/net/wireless/iwlwifi/iwl-notif-wait.c
+@@ -26,7 +26,7 @@
+  * in the file called COPYING.
+  *
+  * Contact Information:
+- *  Intel Linux Wireless <ilw@linux.intel.com>
++ *  Intel Linux Wireless <linuxwifi@intel.com>
+  * Intel Corporation, 5200 N.E. Elam Young Parkway, Hillsboro, OR 97124-6497
+  *
+  * BSD LICENSE
+--- a/drivers/net/wireless/iwlwifi/iwl-notif-wait.h
++++ b/drivers/net/wireless/iwlwifi/iwl-notif-wait.h
+@@ -26,7 +26,7 @@
+  * in the file called COPYING.
+  *
+  * Contact Information:
+- *  Intel Linux Wireless <ilw@linux.intel.com>
++ *  Intel Linux Wireless <linuxwifi@intel.com>
+  * Intel Corporation, 5200 N.E. Elam Young Parkway, Hillsboro, OR 97124-6497
+  *
+  * BSD LICENSE
+--- a/drivers/net/wireless/iwlwifi/iwl-nvm-parse.c
++++ b/drivers/net/wireless/iwlwifi/iwl-nvm-parse.c
+@@ -26,7 +26,7 @@
+  * in the file called COPYING.
+  *
+  * Contact Information:
+- *  Intel Linux Wireless <ilw@linux.intel.com>
++ *  Intel Linux Wireless <linuxwifi@intel.com>
+  * Intel Corporation, 5200 N.E. Elam Young Parkway, Hillsboro, OR 97124-6497
+  *
+  * BSD LICENSE
+--- a/drivers/net/wireless/iwlwifi/iwl-nvm-parse.h
++++ b/drivers/net/wireless/iwlwifi/iwl-nvm-parse.h
+@@ -25,7 +25,7 @@
+  * in the file called COPYING.
+  *
+  * Contact Information:
+- *  Intel Linux Wireless <ilw@linux.intel.com>
++ *  Intel Linux Wireless <linuxwifi@intel.com>
+  * Intel Corporation, 5200 N.E. Elam Young Parkway, Hillsboro, OR 97124-6497
+  *
+  * BSD LICENSE
+--- a/drivers/net/wireless/iwlwifi/iwl-scd.h
++++ b/drivers/net/wireless/iwlwifi/iwl-scd.h
+@@ -25,7 +25,7 @@
+  * in the file called COPYING.
+  *
+  * Contact Information:
+- *  Intel Linux Wireless <ilw@linux.intel.com>
++ *  Intel Linux Wireless <linuxwifi@intel.com>
+  * Intel Corporation, 5200 N.E. Elam Young Parkway, Hillsboro, OR 97124-6497
+  *
+  * BSD LICENSE
+--- a/drivers/net/wireless/iwlwifi/iwl-trans.c
++++ b/drivers/net/wireless/iwlwifi/iwl-trans.c
+@@ -25,7 +25,7 @@
+  * in the file called COPYING.
+  *
+  * Contact Information:
+- *  Intel Linux Wireless <ilw@linux.intel.com>
++ *  Intel Linux Wireless <linuxwifi@intel.com>
+  * Intel Corporation, 5200 N.E. Elam Young Parkway, Hillsboro, OR 97124-6497
+  *
+  * BSD LICENSE
+--- a/drivers/net/wireless/iwlwifi/mvm/binding.c
++++ b/drivers/net/wireless/iwlwifi/mvm/binding.c
+@@ -25,7 +25,7 @@
+  * in the file called COPYING.
+  *
+  * Contact Information:
+- *  Intel Linux Wireless <ilw@linux.intel.com>
++ *  Intel Linux Wireless <linuxwifi@intel.com>
+  * Intel Corporation, 5200 N.E. Elam Young Parkway, Hillsboro, OR 97124-6497
+  *
+  * BSD LICENSE
+--- a/drivers/net/wireless/iwlwifi/mvm/debugfs.h
++++ b/drivers/net/wireless/iwlwifi/mvm/debugfs.h
+@@ -26,7 +26,7 @@
+  * in the file called COPYING.
+  *
+  * Contact Information:
+- *  Intel Linux Wireless <ilw@linux.intel.com>
++ *  Intel Linux Wireless <linuxwifi@intel.com>
+  * Intel Corporation, 5200 N.E. Elam Young Parkway, Hillsboro, OR 97124-6497
+  *
+  * BSD LICENSE
+--- a/drivers/net/wireless/iwlwifi/mvm/fw-api-d3.h
++++ b/drivers/net/wireless/iwlwifi/mvm/fw-api-d3.h
+@@ -26,7 +26,7 @@
+  * in the file called COPYING.
+  *
+  * Contact Information:
+- *  Intel Linux Wireless <ilw@linux.intel.com>
++ *  Intel Linux Wireless <linuxwifi@intel.com>
+  * Intel Corporation, 5200 N.E. Elam Young Parkway, Hillsboro, OR 97124-6497
+  *
+  * BSD LICENSE
+--- a/drivers/net/wireless/iwlwifi/mvm/fw-api-mac.h
++++ b/drivers/net/wireless/iwlwifi/mvm/fw-api-mac.h
+@@ -25,7 +25,7 @@
+  * in the file called COPYING.
+  *
+  * Contact Information:
+- *  Intel Linux Wireless <ilw@linux.intel.com>
++ *  Intel Linux Wireless <linuxwifi@intel.com>
+  * Intel Corporation, 5200 N.E. Elam Young Parkway, Hillsboro, OR 97124-6497
+  *
+  * BSD LICENSE
+--- a/drivers/net/wireless/iwlwifi/mvm/fw-api-power.h
++++ b/drivers/net/wireless/iwlwifi/mvm/fw-api-power.h
+@@ -27,7 +27,7 @@
+  * in the file called COPYING.
+  *
+  * Contact Information:
+- *  Intel Linux Wireless <ilw@linux.intel.com>
++ *  Intel Linux Wireless <linuxwifi@intel.com>
+  * Intel Corporation, 5200 N.E. Elam Young Parkway, Hillsboro, OR 97124-6497
+  *
+  * BSD LICENSE
+--- a/drivers/net/wireless/iwlwifi/mvm/fw-api-rs.h
++++ b/drivers/net/wireless/iwlwifi/mvm/fw-api-rs.h
+@@ -25,7 +25,7 @@
+  * in the file called COPYING.
+  *
+  * Contact Information:
+- *  Intel Linux Wireless <ilw@linux.intel.com>
++ *  Intel Linux Wireless <linuxwifi@intel.com>
+  * Intel Corporation, 5200 N.E. Elam Young Parkway, Hillsboro, OR 97124-6497
+  *
+  * BSD LICENSE
+--- a/drivers/net/wireless/iwlwifi/mvm/fw-api-sta.h
++++ b/drivers/net/wireless/iwlwifi/mvm/fw-api-sta.h
+@@ -26,7 +26,7 @@
+  * in the file called COPYING.
+  *
+  * Contact Information:
+- *  Intel Linux Wireless <ilw@linux.intel.com>
++ *  Intel Linux Wireless <linuxwifi@intel.com>
+  * Intel Corporation, 5200 N.E. Elam Young Parkway, Hillsboro, OR 97124-6497
+  *
+  * BSD LICENSE
+--- a/drivers/net/wireless/iwlwifi/mvm/fw-api-stats.h
++++ b/drivers/net/wireless/iwlwifi/mvm/fw-api-stats.h
+@@ -26,7 +26,7 @@
+  * in the file called COPYING.
+  *
+  * Contact Information:
+- *  Intel Linux Wireless <ilw@linux.intel.com>
++ *  Intel Linux Wireless <linuxwifi@intel.com>
+  * Intel Corporation, 5200 N.E. Elam Young Parkway, Hillsboro, OR 97124-6497
+  *
+  * BSD LICENSE
+--- a/drivers/net/wireless/iwlwifi/mvm/fw-api-tof.h
++++ b/drivers/net/wireless/iwlwifi/mvm/fw-api-tof.h
+@@ -25,7 +25,7 @@
+  * in the file called COPYING.
+  *
+  * Contact Information:
+- * Intel Linux Wireless <ilw@linux.intel.com>
++ * Intel Linux Wireless <linuxwifi@intel.com>
+  * Intel Corporation, 5200 N.E. Elam Young Parkway, Hillsboro, OR 97124-6497
+  *
+  * BSD LICENSE
+--- a/drivers/net/wireless/iwlwifi/mvm/fw-api-tx.h
++++ b/drivers/net/wireless/iwlwifi/mvm/fw-api-tx.h
+@@ -25,7 +25,7 @@
+  * in the file called COPYING.
+  *
+  * Contact Information:
+- *  Intel Linux Wireless <ilw@linux.intel.com>
++ *  Intel Linux Wireless <linuxwifi@intel.com>
+  * Intel Corporation, 5200 N.E. Elam Young Parkway, Hillsboro, OR 97124-6497
+  *
+  * BSD LICENSE
+--- a/drivers/net/wireless/iwlwifi/mvm/fw-dbg.c
++++ b/drivers/net/wireless/iwlwifi/mvm/fw-dbg.c
+@@ -25,7 +25,7 @@
+  * in the file called COPYING.
+  *
+  * Contact Information:
+- *  Intel Linux Wireless <ilw@linux.intel.com>
++ *  Intel Linux Wireless <linuxwifi@intel.com>
+  * Intel Corporation, 5200 N.E. Elam Young Parkway, Hillsboro, OR 97124-6497
+  *
+  * BSD LICENSE
+--- a/drivers/net/wireless/iwlwifi/mvm/fw-dbg.h
++++ b/drivers/net/wireless/iwlwifi/mvm/fw-dbg.h
+@@ -25,7 +25,7 @@
+  * in the file called COPYING.
+  *
+  * Contact Information:
+- *  Intel Linux Wireless <ilw@linux.intel.com>
++ *  Intel Linux Wireless <linuxwifi@intel.com>
+  * Intel Corporation, 5200 N.E. Elam Young Parkway, Hillsboro, OR 97124-6497
+  *
+  * BSD LICENSE
+--- a/drivers/net/wireless/iwlwifi/mvm/led.c
++++ b/drivers/net/wireless/iwlwifi/mvm/led.c
+@@ -25,7 +25,7 @@
+  * in the file called COPYING.
+  *
+  * Contact Information:
+- *  Intel Linux Wireless <ilw@linux.intel.com>
++ *  Intel Linux Wireless <linuxwifi@intel.com>
+  * Intel Corporation, 5200 N.E. Elam Young Parkway, Hillsboro, OR 97124-6497
+  *
+  * BSD LICENSE
+--- a/drivers/net/wireless/iwlwifi/mvm/offloading.c
++++ b/drivers/net/wireless/iwlwifi/mvm/offloading.c
+@@ -26,7 +26,7 @@
+  * in the file called COPYING.
+  *
+  * Contact Information:
+- *  Intel Linux Wireless <ilw@linux.intel.com>
++ *  Intel Linux Wireless <linuxwifi@intel.com>
+  * Intel Corporation, 5200 N.E. Elam Young Parkway, Hillsboro, OR 97124-6497
+  *
+  * BSD LICENSE
+--- a/drivers/net/wireless/iwlwifi/mvm/sf.c
++++ b/drivers/net/wireless/iwlwifi/mvm/sf.c
+@@ -26,7 +26,7 @@
+  * in the file called COPYING.
+  *
+  * Contact Information:
+- *  Intel Linux Wireless <ilw@linux.intel.com>
++ *  Intel Linux Wireless <linuxwifi@intel.com>
+  * Intel Corporation, 5200 N.E. Elam Young Parkway, Hillsboro, OR 97124-6497
+  *
+  * BSD LICENSE
+--- a/drivers/net/wireless/iwlwifi/mvm/testmode.h
++++ b/drivers/net/wireless/iwlwifi/mvm/testmode.h
+@@ -26,7 +26,7 @@
+  * in the file called COPYING.
+  *
+  * Contact Information:
+- *  Intel Linux Wireless <ilw@linux.intel.com>
++ *  Intel Linux Wireless <linuxwifi@intel.com>
+  * Intel Corporation, 5200 N.E. Elam Young Parkway, Hillsboro, OR 97124-6497
+  *
+  * BSD LICENSE
+--- a/drivers/net/wireless/iwlwifi/mvm/time-event.c
++++ b/drivers/net/wireless/iwlwifi/mvm/time-event.c
+@@ -26,7 +26,7 @@
+  * in the file called COPYING.
+  *
+  * Contact Information:
+- *  Intel Linux Wireless <ilw@linux.intel.com>
++ *  Intel Linux Wireless <linuxwifi@intel.com>
+  * Intel Corporation, 5200 N.E. Elam Young Parkway, Hillsboro, OR 97124-6497
+  *
+  * BSD LICENSE
+--- a/drivers/net/wireless/iwlwifi/mvm/time-event.h
++++ b/drivers/net/wireless/iwlwifi/mvm/time-event.h
+@@ -26,7 +26,7 @@
+  * in the file called COPYING.
+  *
+  * Contact Information:
+- *  Intel Linux Wireless <ilw@linux.intel.com>
++ *  Intel Linux Wireless <linuxwifi@intel.com>
+  * Intel Corporation, 5200 N.E. Elam Young Parkway, Hillsboro, OR 97124-6497
+  *
+  * BSD LICENSE
+--- a/drivers/net/wireless/iwlwifi/mvm/tt.c
++++ b/drivers/net/wireless/iwlwifi/mvm/tt.c
+@@ -26,7 +26,7 @@
+  * in the file called COPYING.
+  *
+  * Contact Information:
+- *  Intel Linux Wireless <ilw@linux.intel.com>
++ *  Intel Linux Wireless <linuxwifi@intel.com>
+  * Intel Corporation, 5200 N.E. Elam Young Parkway, Hillsboro, OR 97124-6497
+  *
+  * BSD LICENSE
+--- a/drivers/net/wireless/iwlwifi/pcie/rx.c
++++ b/drivers/net/wireless/iwlwifi/pcie/rx.c
+@@ -23,7 +23,7 @@
+  * file called LICENSE.
+  *
+  * Contact Information:
+- *  Intel Linux Wireless <ilw@linux.intel.com>
++ *  Intel Linux Wireless <linuxwifi@intel.com>
+  * Intel Corporation, 5200 N.E. Elam Young Parkway, Hillsboro, OR 97124-6497
+  *
+  *****************************************************************************/

@@ -1,0 +1,37 @@
+From: Paolo Abeni <pabeni@redhat.com>
+Date: Thu, 25 Aug 2016 18:42:35 +0200
+Subject: [PATCH] sunrpc: fix UDP memory accounting
+Git-commit: a41bd25ae67d3e4052c7f00ee9f2b4ba9219309e
+Patch-mainline: v4.8
+References: git-fixes
+
+The commit f9b2ee714c5c ("SUNRPC: Move UDP receive data path
+into a workqueue context"), as a side effect, moved the
+skb_free_datagram() call outside the scope of the related socket
+lock, but UDP sockets require such lock to be held for proper
+memory accounting.
+Fix it by replacing skb_free_datagram() with
+skb_free_datagram_locked().
+
+Fixes: f9b2ee714c5c ("SUNRPC: Move UDP receive data path into a workqueue context")
+Reported-and-tested-by: Jan Stancek <jstancek@redhat.com>
+Signed-off-by: Paolo Abeni <pabeni@redhat.com>
+Cc: stable@vger.kernel.org # 4.4+
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+Acked-by: NeilBrown <neilb@suse.com>
+
+---
+ net/sunrpc/xprtsock.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -1056,7 +1056,7 @@ static void xs_udp_data_receive(struct s
+ 		if (skb == NULL)
+ 			break;
+ 		xs_udp_data_read_skb(&transport->xprt, sk, skb);
+-		skb_free_datagram(sk, skb);
++		skb_free_datagram_locked(sk, skb);
+ 	}
+ out:
+ 	mutex_unlock(&transport->recv_mutex);

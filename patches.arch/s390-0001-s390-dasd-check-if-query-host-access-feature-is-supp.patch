@@ -1,0 +1,35 @@
+From: Stefan Haberland <sth@linux.vnet.ibm.com>
+Date: Wed, 22 Mar 2017 10:30:40 +0100
+Patch-mainline: v4.12-rc1
+Git-commit: ccd53fa2261c2676258fe523d9201099f4d5ebc1
+References: bsc#1037871
+Subject: [PATCH] s390/dasd: check if query host access feature is supported
+
+Some storage servers might not support the query host access feature.
+Check if the corresponding feature code is set.
+
+Signed-off-by: Stefan Haberland <sth@linux.vnet.ibm.com>
+Signed-off-by: Martin Schwidefsky <schwidefsky@de.ibm.com>
+Acked-by: John Jolly <jjolly@suse.de>
+---
+ drivers/s390/block/dasd_eckd.c | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/drivers/s390/block/dasd_eckd.c b/drivers/s390/block/dasd_eckd.c
+index 0b38217..eb090e8 100644
+--- a/drivers/s390/block/dasd_eckd.c
++++ b/drivers/s390/block/dasd_eckd.c
+@@ -5172,6 +5172,10 @@ static int dasd_eckd_query_host_access(struct dasd_device *device,
+ 	if (!device->block && private->lcu->pav == HYPER_PAV)
+ 		return -EOPNOTSUPP;
+ 
++	/* may not be supported by the storage server */
++	if (!(private->features.feature[14] & 0x80))
++		return -EOPNOTSUPP;
++
+ 	cqr = dasd_smalloc_request(DASD_ECKD_MAGIC, 1 /* PSF */	+ 1 /* RSSD */,
+ 				   sizeof(struct dasd_psf_prssd_data) + 1,
+ 				   device);
+-- 
+1.8.5.6
+

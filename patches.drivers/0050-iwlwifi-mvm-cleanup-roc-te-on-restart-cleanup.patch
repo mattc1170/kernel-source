@@ -1,0 +1,116 @@
+From 305d236e83b664e0c1e1e29d06f8780fdd311fd4 Mon Sep 17 00:00:00 2001
+From: Eliad Peller <eliad@wizery.com>
+Date: Wed, 9 Dec 2015 16:33:20 +0200
+Subject: [PATCH] iwlwifi: mvm: cleanup roc te on restart cleanup
+Git-commit: 305d236e83b664e0c1e1e29d06f8780fdd311fd4
+Patch-mainline: 4.5-rc1
+References: FATE#321353, FATE#323335
+
+iwl_mvm_restart_cleanup() calls ieee80211_remain_on_channel_expired()
+on cleanup, but it doesn't clean the actual roc time
+events, resulting in failure of further ROC attempts.
+
+Refactor iwl_mvm_stop_roc() a bit, and add a new function
+to only cleanup the roc time events (without sending further
+commands).
+
+Signed-off-by: Eliad Peller <eliadx.peller@intel.com>
+Signed-off-by: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/iwlwifi/mvm/mac80211.c   |    1 
+ drivers/net/wireless/iwlwifi/mvm/time-event.c |   38 +++++++++++++++++---------
+ drivers/net/wireless/iwlwifi/mvm/time-event.h |    1 
+ 3 files changed, 27 insertions(+), 13 deletions(-)
+
+--- a/drivers/net/wireless/iwlwifi/mvm/mac80211.c
++++ b/drivers/net/wireless/iwlwifi/mvm/mac80211.c
+@@ -970,6 +970,7 @@ static void iwl_mvm_restart_cleanup(stru
+ 	mvm->calibrating = false;
+ 
+ 	/* just in case one was running */
++	iwl_mvm_cleanup_roc_te(mvm);
+ 	ieee80211_remain_on_channel_expired(mvm->hw);
+ 
+ 	/*
+--- a/drivers/net/wireless/iwlwifi/mvm/time-event.c
++++ b/drivers/net/wireless/iwlwifi/mvm/time-event.c
+@@ -792,11 +792,9 @@ int iwl_mvm_start_p2p_roc(struct iwl_mvm
+ 	return iwl_mvm_time_event_send_add(mvm, vif, te_data, &time_cmd);
+ }
+ 
+-void iwl_mvm_stop_roc(struct iwl_mvm *mvm)
++static struct iwl_mvm_time_event_data *iwl_mvm_get_roc_te(struct iwl_mvm *mvm)
+ {
+-	struct iwl_mvm_vif *mvmvif = NULL;
+ 	struct iwl_mvm_time_event_data *te_data;
+-	bool is_p2p = false;
+ 
+ 	lockdep_assert_held(&mvm->mutex);
+ 
+@@ -810,11 +808,8 @@ void iwl_mvm_stop_roc(struct iwl_mvm *mv
+ 	 * request
+ 	 */
+ 	list_for_each_entry(te_data, &mvm->time_event_list, list) {
+-		if (te_data->vif->type == NL80211_IFTYPE_P2P_DEVICE) {
+-			mvmvif = iwl_mvm_vif_from_mac80211(te_data->vif);
+-			is_p2p = true;
+-			goto remove_te;
+-		}
++		if (te_data->vif->type == NL80211_IFTYPE_P2P_DEVICE)
++			goto out;
+ 	}
+ 
+ 	/* There can only be at most one AUX ROC time event, we just use the
+@@ -823,18 +818,35 @@ void iwl_mvm_stop_roc(struct iwl_mvm *mv
+ 	te_data = list_first_entry_or_null(&mvm->aux_roc_te_list,
+ 					   struct iwl_mvm_time_event_data,
+ 					   list);
++out:
++	spin_unlock_bh(&mvm->time_event_lock);
++	return te_data;
++}
++
++void iwl_mvm_cleanup_roc_te(struct iwl_mvm *mvm)
++{
++	struct iwl_mvm_time_event_data *te_data;
++	u32 uid;
++
++	te_data = iwl_mvm_get_roc_te(mvm);
+ 	if (te_data)
+-		mvmvif = iwl_mvm_vif_from_mac80211(te_data->vif);
++		__iwl_mvm_remove_time_event(mvm, te_data, &uid);
++}
+ 
+-remove_te:
+-	spin_unlock_bh(&mvm->time_event_lock);
++void iwl_mvm_stop_roc(struct iwl_mvm *mvm)
++{
++	struct iwl_mvm_vif *mvmvif;
++	struct iwl_mvm_time_event_data *te_data;
+ 
+-	if (!mvmvif) {
++	te_data = iwl_mvm_get_roc_te(mvm);
++	if (!te_data) {
+ 		IWL_WARN(mvm, "No remain on channel event\n");
+ 		return;
+ 	}
+ 
+-	if (is_p2p)
++	mvmvif = iwl_mvm_vif_from_mac80211(te_data->vif);
++
++	if (te_data->vif->type == NL80211_IFTYPE_P2P_DEVICE)
+ 		iwl_mvm_remove_time_event(mvm, mvmvif, te_data);
+ 	else
+ 		iwl_mvm_remove_aux_roc_te(mvm, mvmvif, te_data);
+--- a/drivers/net/wireless/iwlwifi/mvm/time-event.h
++++ b/drivers/net/wireless/iwlwifi/mvm/time-event.h
+@@ -215,6 +215,7 @@ void iwl_mvm_remove_time_event(struct iw
+ void iwl_mvm_te_clear_data(struct iwl_mvm *mvm,
+ 			   struct iwl_mvm_time_event_data *te_data);
+ 
++void iwl_mvm_cleanup_roc_te(struct iwl_mvm *mvm);
+ void iwl_mvm_roc_done_wk(struct work_struct *wk);
+ 
+ /**

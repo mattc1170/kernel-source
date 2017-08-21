@@ -1,0 +1,32 @@
+From 30d915c2ecbb60d222f49e8f249d04e208d11ebc Mon Sep 17 00:00:00 2001
+From: Sara Sharon <sara.sharon@intel.com>
+Date: Thu, 3 Mar 2016 16:49:05 +0200
+Subject: [PATCH] iwlwifi: mvm: set the correct amsdu enum values
+Git-commit: 30d915c2ecbb60d222f49e8f249d04e208d11ebc
+Patch-mainline: 4.6-rc1
+References: FATE#321353, FATE#323335
+
+The amsdu enum values are off by 1 bit. Fix it.
+
+Signed-off-by: Sara Sharon <sara.sharon@intel.com>
+Signed-off-by: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/iwlwifi/mvm/fw-api-rx.h |    5 ++---
+ 1 file changed, 2 insertions(+), 3 deletions(-)
+
+--- a/drivers/net/wireless/iwlwifi/mvm/fw-api-rx.h
++++ b/drivers/net/wireless/iwlwifi/mvm/fw-api-rx.h
+@@ -264,9 +264,8 @@ enum iwl_rx_mpdu_mac_flags2 {
+ };
+ 
+ enum iwl_rx_mpdu_amsdu_info {
+-	IWL_RX_MPDU_AMSDU_SUBFRAME_IDX_MASK	= 0x3f,
+-	IWL_RX_MPDU_AMSDU_LAST_SUBFRAME		= 0x40,
+-	/* 0x80 bit reserved for now */
++	IWL_RX_MPDU_AMSDU_SUBFRAME_IDX_MASK	= 0x7f,
++	IWL_RX_MPDU_AMSDU_LAST_SUBFRAME		= 0x80,
+ };
+ 
+ enum iwl_rx_l3l4_flags {

@@ -1,0 +1,56 @@
+From 5a51c03fa8f61b4c7554bad97426c87a93e4606b Mon Sep 17 00:00:00 2001
+From: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Date: Tue, 23 Feb 2016 21:53:12 +0200
+Subject: [PATCH] iwlwifi: mvm: bump firmware API to 21
+Git-commit: 5a51c03fa8f61b4c7554bad97426c87a93e4606b
+Patch-mainline: 4.6-rc1
+References: FATE#321353, FATE#323335
+
+The driver is now ready to handle this firmware.
+
+Signed-off-by: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/iwlwifi/iwl-7000.c |    4 ++--
+ drivers/net/wireless/iwlwifi/iwl-8000.c |    4 ++--
+ drivers/net/wireless/iwlwifi/iwl-9000.c |    2 +-
+ 3 files changed, 5 insertions(+), 5 deletions(-)
+
+--- a/drivers/net/wireless/iwlwifi/iwl-7000.c
++++ b/drivers/net/wireless/iwlwifi/iwl-7000.c
+@@ -73,8 +73,8 @@
+ /* Highest firmware API version supported */
+ #define IWL7260_UCODE_API_MAX	17
+ #define IWL7265_UCODE_API_MAX	17
+-#define IWL7265D_UCODE_API_MAX	20
+-#define IWL3168_UCODE_API_MAX	20
++#define IWL7265D_UCODE_API_MAX	21
++#define IWL3168_UCODE_API_MAX	21
+ 
+ /* Oldest version we won't warn about */
+ #define IWL7260_UCODE_API_OK	13
+--- a/drivers/net/wireless/iwlwifi/iwl-8000.c
++++ b/drivers/net/wireless/iwlwifi/iwl-8000.c
+@@ -70,8 +70,8 @@
+ #include "iwl-agn-hw.h"
+ 
+ /* Highest firmware API version supported */
+-#define IWL8000_UCODE_API_MAX	20
+-#define IWL8265_UCODE_API_MAX	20
++#define IWL8000_UCODE_API_MAX	21
++#define IWL8265_UCODE_API_MAX	21
+ 
+ /* Oldest version we won't warn about */
+ #define IWL8000_UCODE_API_OK	13
+--- a/drivers/net/wireless/iwlwifi/iwl-9000.c
++++ b/drivers/net/wireless/iwlwifi/iwl-9000.c
+@@ -55,7 +55,7 @@
+ #include "iwl-agn-hw.h"
+ 
+ /* Highest firmware API version supported */
+-#define IWL9000_UCODE_API_MAX	20
++#define IWL9000_UCODE_API_MAX	21
+ 
+ /* Oldest version we won't warn about */
+ #define IWL9000_UCODE_API_OK	13

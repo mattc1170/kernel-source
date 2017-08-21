@@ -1,0 +1,52 @@
+From 7f7adc5060a787b15587062274d2dec4912f3588 Mon Sep 17 00:00:00 2001
+From: Nathan Fontenot <nfont@linux.vnet.ibm.com>
+Date: Wed, 19 Apr 2017 13:45:16 -0400
+Subject: [PATCH] ibmvnic: Allocate zero-filled memory for sub crqs
+
+References: fate#322021, bsc#1031512
+Patch-mainline: v4.12-rc1
+Git-commit: 7f7adc5060a787b15587062274d2dec4912f3588
+
+Update the allocation of memory for the sub crq structs and their
+associated pages to allocate zero-filled memory.
+
+Signed-off-by: Nathan Fontenot <nfont@linux.vnet.ibm.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+Acked-by: Michal Suchanek <msuchanek@suse.de>
+---
+ drivers/net/ethernet/ibm/ibmvnic.c | 9 +++------
+ 1 file changed, 3 insertions(+), 6 deletions(-)
+
+diff --git a/drivers/net/ethernet/ibm/ibmvnic.c b/drivers/net/ethernet/ibm/ibmvnic.c
+index ce8b147..221d652 100644
+--- a/drivers/net/ethernet/ibm/ibmvnic.c
++++ b/drivers/net/ethernet/ibm/ibmvnic.c
+@@ -1360,12 +1360,12 @@ static struct ibmvnic_sub_crq_queue *init_sub_crq_queue(struct ibmvnic_adapter
+ 	struct ibmvnic_sub_crq_queue *scrq;
+ 	int rc;
+ 
+-	scrq = kmalloc(sizeof(*scrq), GFP_ATOMIC);
++	scrq = kzalloc(sizeof(*scrq), GFP_ATOMIC);
+ 	if (!scrq)
+ 		return NULL;
+ 
+-	scrq->msgs = (union sub_crq *)__get_free_pages(GFP_ATOMIC, 2);
+-	memset(scrq->msgs, 0, 4 * PAGE_SIZE);
++	scrq->msgs =
++		(union sub_crq *)__get_free_pages(GFP_ATOMIC | __GFP_ZERO, 2);
+ 	if (!scrq->msgs) {
+ 		dev_warn(dev, "Couldn't allocate crq queue messages page\n");
+ 		goto zero_page_failed;
+@@ -1393,9 +1393,6 @@ static struct ibmvnic_sub_crq_queue *init_sub_crq_queue(struct ibmvnic_adapter
+ 
+ 	scrq->adapter = adapter;
+ 	scrq->size = 4 * PAGE_SIZE / sizeof(*scrq->msgs);
+-	scrq->cur = 0;
+-	atomic_set(&scrq->used, 0);
+-	scrq->rx_skb_top = NULL;
+ 	spin_lock_init(&scrq->lock);
+ 
+ 	netdev_dbg(adapter->netdev,
+-- 
+2.10.2
+

@@ -1,0 +1,36 @@
+From 72a3356885d13c4dd0b41034b931e3d5a0f807cc Mon Sep 17 00:00:00 2001
+From: Luca Coelho <luciano.coelho@intel.com>
+Date: Fri, 6 Nov 2015 10:57:11 +0200
+Subject: [PATCH] iwlwifi: mvm: ignore LMAC scan notifications when running UMAC scans
+Git-commit: 72a3356885d13c4dd0b41034b931e3d5a0f807cc
+Patch-mainline: 4.5-rc1
+References: FATE#321353, FATE#323335
+
+If the firmware sends LMAC scan notifications while a UMAC scan is
+running, just WARN and ignore it, otherwise the scanning state gets
+messed up.
+
+Signed-off-by: Luca Coelho <luciano.coelho@intel.com>
+Signed-off-by: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/iwlwifi/mvm/scan.c |    7 +++++++
+ 1 file changed, 7 insertions(+)
+
+--- a/drivers/net/wireless/iwlwifi/mvm/scan.c
++++ b/drivers/net/wireless/iwlwifi/mvm/scan.c
+@@ -333,6 +333,13 @@ void iwl_mvm_rx_lmac_scan_complete_notif
+ 	struct iwl_periodic_scan_complete *scan_notif = (void *)pkt->data;
+ 	bool aborted = (scan_notif->status == IWL_SCAN_OFFLOAD_ABORTED);
+ 
++	/* If this happens, the firmware has mistakenly sent an LMAC
++	 * notification during UMAC scans -- warn and ignore it.
++	 */
++	if (WARN_ON_ONCE(fw_has_capa(&mvm->fw->ucode_capa,
++				     IWL_UCODE_TLV_CAPA_UMAC_SCAN)))
++		return;
++
+ 	/* scan status must be locked for proper checking */
+ 	lockdep_assert_held(&mvm->mutex);
+ 

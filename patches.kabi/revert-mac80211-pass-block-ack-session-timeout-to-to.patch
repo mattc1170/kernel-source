@@ -1,0 +1,901 @@
+From: Jiri Slaby <jslaby@suse.cz>
+Date: Mon, 22 May 2017 10:49:26 +0200
+Subject: Revert "mac80211: pass block ack session timeout to to driver"
+Patch-mainline: never, kabi
+References: kabi
+
+This reverts commit d13333edbcc7e931e63bd94feb7f81d7d990986a, upstream
+commit 50ea05efaf3bed7dd34bcc2635a8b3f53bd0ccc1. It breaks kABI. And we
+cannot change this interface, given it is exposed for every wireless
+driver.
+
+Signed-off-by: Jiri Slaby <jslaby@suse.cz>
+---
+ drivers/net/wireless/ath/ath10k/mac.c              |  7 ++-
+ drivers/net/wireless/ath/ath9k/htc_drv_main.c      |  7 ++-
+ drivers/net/wireless/ath/ath9k/main.c              |  8 ++--
+ drivers/net/wireless/ath/carl9170/main.c           |  8 ++--
+ drivers/net/wireless/ath/wcn36xx/main.c            |  8 ++--
+ .../net/wireless/brcm80211/brcmsmac/mac80211_if.c  |  8 ++--
+ drivers/net/wireless/cw1200/sta.c                  |  4 +-
+ drivers/net/wireless/cw1200/sta.h                  |  4 +-
+ drivers/net/wireless/iwlegacy/4965-mac.c           |  8 ++--
+ drivers/net/wireless/iwlegacy/4965.h               |  4 +-
+ drivers/net/wireless/iwlwifi/dvm/mac80211.c        |  9 ++--
+ drivers/net/wireless/iwlwifi/mvm/mac80211.c        |  9 ++--
+ drivers/net/wireless/mac80211_hwsim.c              |  8 ++--
+ drivers/net/wireless/mediatek/mt7601u/main.c       |  8 ++--
+ drivers/net/wireless/mwl8k.c                       | 10 ++--
+ drivers/net/wireless/realtek/rtl8xxxu/rtl8xxxu.c   |  6 +--
+ drivers/net/wireless/realtek/rtlwifi/core.c        |  8 ++--
+ drivers/net/wireless/rsi/rsi_91x_mac80211.c        | 19 +++++---
+ drivers/net/wireless/rt2x00/rt2800lib.c            |  7 ++-
+ drivers/net/wireless/rt2x00/rt2800lib.h            |  4 +-
+ drivers/net/wireless/ti/wlcore/main.c              | 10 ++--
+ include/net/mac80211.h                             | 44 ++++++------------
+ net/mac80211/agg-rx.c                              | 25 ++--------
+ net/mac80211/agg-tx.c                              | 53 ++++++++--------------
+ net/mac80211/driver-ops.c                          | 10 ++--
+ net/mac80211/driver-ops.h                          |  4 +-
+ net/mac80211/trace.h                               | 43 ++++++++----------
+ 27 files changed, 140 insertions(+), 203 deletions(-)
+
+diff --git a/drivers/net/wireless/ath/ath10k/mac.c b/drivers/net/wireless/ath/ath10k/mac.c
+index 6decf4a95ce1..1e1bef349487 100644
+--- a/drivers/net/wireless/ath/ath10k/mac.c
++++ b/drivers/net/wireless/ath/ath10k/mac.c
+@@ -6351,13 +6351,12 @@ static u64 ath10k_get_tsf(struct ieee80211_hw *hw, struct ieee80211_vif *vif)
+ 
+ static int ath10k_ampdu_action(struct ieee80211_hw *hw,
+ 			       struct ieee80211_vif *vif,
+-			       struct ieee80211_ampdu_params *params)
++			       enum ieee80211_ampdu_mlme_action action,
++			       struct ieee80211_sta *sta, u16 tid, u16 *ssn,
++			       u8 buf_size, bool amsdu)
+ {
+ 	struct ath10k *ar = hw->priv;
+ 	struct ath10k_vif *arvif = ath10k_vif_to_arvif(vif);
+-	struct ieee80211_sta *sta = params->sta;
+-	enum ieee80211_ampdu_mlme_action action = params->action;
+-	u16 tid = params->tid;
+ 
+ 	ath10k_dbg(ar, ATH10K_DBG_MAC, "mac ampdu vdev_id %i sta %pM tid %hu action %d\n",
+ 		   arvif->vdev_id, sta->addr, tid, action);
+diff --git a/drivers/net/wireless/ath/ath9k/htc_drv_main.c b/drivers/net/wireless/ath/ath9k/htc_drv_main.c
+index e4281438c04f..a680a970b7f7 100644
+--- a/drivers/net/wireless/ath/ath9k/htc_drv_main.c
++++ b/drivers/net/wireless/ath/ath9k/htc_drv_main.c
+@@ -1657,14 +1657,13 @@ static void ath9k_htc_reset_tsf(struct ieee80211_hw *hw,
+ 
+ static int ath9k_htc_ampdu_action(struct ieee80211_hw *hw,
+ 				  struct ieee80211_vif *vif,
+-				  struct ieee80211_ampdu_params *params)
++				  enum ieee80211_ampdu_mlme_action action,
++				  struct ieee80211_sta *sta,
++				  u16 tid, u16 *ssn, u8 buf_size, bool amsdu)
+ {
+ 	struct ath9k_htc_priv *priv = hw->priv;
+ 	struct ath9k_htc_sta *ista;
+ 	int ret = 0;
+-	struct ieee80211_sta *sta = params->sta;
+-	enum ieee80211_ampdu_mlme_action action = params->action;
+-	u16 tid = params->tid;
+ 
+ 	mutex_lock(&priv->mutex);
+ 	ath9k_htc_ps_wakeup(priv);
+diff --git a/drivers/net/wireless/ath/ath9k/main.c b/drivers/net/wireless/ath/ath9k/main.c
+index 3abc64574116..b114e57a823f 100644
+--- a/drivers/net/wireless/ath/ath9k/main.c
++++ b/drivers/net/wireless/ath/ath9k/main.c
+@@ -1855,16 +1855,14 @@ static void ath9k_reset_tsf(struct ieee80211_hw *hw, struct ieee80211_vif *vif)
+ 
+ static int ath9k_ampdu_action(struct ieee80211_hw *hw,
+ 			      struct ieee80211_vif *vif,
+-			      struct ieee80211_ampdu_params *params)
++			      enum ieee80211_ampdu_mlme_action action,
++			      struct ieee80211_sta *sta,
++			      u16 tid, u16 *ssn, u8 buf_size, bool amsdu)
+ {
+ 	struct ath_softc *sc = hw->priv;
+ 	struct ath_common *common = ath9k_hw_common(sc->sc_ah);
+ 	bool flush = false;
+ 	int ret = 0;
+-	struct ieee80211_sta *sta = params->sta;
+-	enum ieee80211_ampdu_mlme_action action = params->action;
+-	u16 tid = params->tid;
+-	u16 *ssn = &params->ssn;
+ 
+ 	mutex_lock(&sc->mutex);
+ 
+diff --git a/drivers/net/wireless/ath/carl9170/main.c b/drivers/net/wireless/ath/carl9170/main.c
+index 4d1527a2e292..19d3d64416bf 100644
+--- a/drivers/net/wireless/ath/carl9170/main.c
++++ b/drivers/net/wireless/ath/carl9170/main.c
+@@ -1413,12 +1413,10 @@ static void carl9170_ampdu_work(struct work_struct *work)
+ 
+ static int carl9170_op_ampdu_action(struct ieee80211_hw *hw,
+ 				    struct ieee80211_vif *vif,
+-				    struct ieee80211_ampdu_params *params)
++				    enum ieee80211_ampdu_mlme_action action,
++				    struct ieee80211_sta *sta,
++				    u16 tid, u16 *ssn, u8 buf_size, bool amsdu)
+ {
+-	struct ieee80211_sta *sta = params->sta;
+-	enum ieee80211_ampdu_mlme_action action = params->action;
+-	u16 tid = params->tid;
+-	u16 *ssn = &params->ssn;
+ 	struct ar9170 *ar = hw->priv;
+ 	struct carl9170_sta_info *sta_info = (void *) sta->drv_priv;
+ 	struct carl9170_sta_tid *tid_info;
+diff --git a/drivers/net/wireless/ath/wcn36xx/main.c b/drivers/net/wireless/ath/wcn36xx/main.c
+index a27279c2c695..7c169abdbafe 100644
+--- a/drivers/net/wireless/ath/wcn36xx/main.c
++++ b/drivers/net/wireless/ath/wcn36xx/main.c
+@@ -857,14 +857,12 @@ static int wcn36xx_resume(struct ieee80211_hw *hw)
+ 
+ static int wcn36xx_ampdu_action(struct ieee80211_hw *hw,
+ 		    struct ieee80211_vif *vif,
+-		    struct ieee80211_ampdu_params *params)
++		    enum ieee80211_ampdu_mlme_action action,
++		    struct ieee80211_sta *sta, u16 tid, u16 *ssn,
++		    u8 buf_size, bool amsdu)
+ {
+ 	struct wcn36xx *wcn = hw->priv;
+ 	struct wcn36xx_sta *sta_priv = NULL;
+-	struct ieee80211_sta *sta = params->sta;
+-	enum ieee80211_ampdu_mlme_action action = params->action;
+-	u16 tid = params->tid;
+-	u16 *ssn = &params->ssn;
+ 
+ 	wcn36xx_dbg(WCN36XX_DBG_MAC, "mac ampdu action action %d tid %d\n",
+ 		    action, tid);
+diff --git a/drivers/net/wireless/brcm80211/brcmsmac/mac80211_if.c b/drivers/net/wireless/brcm80211/brcmsmac/mac80211_if.c
+index 61ae2768132a..bec2dc1ca2e4 100644
+--- a/drivers/net/wireless/brcm80211/brcmsmac/mac80211_if.c
++++ b/drivers/net/wireless/brcm80211/brcmsmac/mac80211_if.c
+@@ -818,15 +818,13 @@ brcms_ops_sta_add(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
+ static int
+ brcms_ops_ampdu_action(struct ieee80211_hw *hw,
+ 		    struct ieee80211_vif *vif,
+-		    struct ieee80211_ampdu_params *params)
++		    enum ieee80211_ampdu_mlme_action action,
++		    struct ieee80211_sta *sta, u16 tid, u16 *ssn,
++		    u8 buf_size, bool amsdu)
+ {
+ 	struct brcms_info *wl = hw->priv;
+ 	struct scb *scb = &wl->wlc->pri_scb;
+ 	int status;
+-	struct ieee80211_sta *sta = params->sta;
+-	enum ieee80211_ampdu_mlme_action action = params->action;
+-	u16 tid = params->tid;
+-	u8 buf_size = params->buf_size;
+ 
+ 	if (WARN_ON(scb->magic != SCB_MAGIC))
+ 		return -EIDRM;
+diff --git a/drivers/net/wireless/cw1200/sta.c b/drivers/net/wireless/cw1200/sta.c
+index c602a1e674ca..95a7fdb3cc1c 100644
+--- a/drivers/net/wireless/cw1200/sta.c
++++ b/drivers/net/wireless/cw1200/sta.c
+@@ -2135,7 +2135,9 @@ void cw1200_mcast_timeout(unsigned long arg)
+ 
+ int cw1200_ampdu_action(struct ieee80211_hw *hw,
+ 			struct ieee80211_vif *vif,
+-			struct ieee80211_ampdu_params *params)
++			enum ieee80211_ampdu_mlme_action action,
++			struct ieee80211_sta *sta, u16 tid, u16 *ssn,
++			u8 buf_size, bool amsdu)
+ {
+ 	/* Aggregation is implemented fully in firmware,
+ 	 * including block ack negotiation. Do not allow
+diff --git a/drivers/net/wireless/cw1200/sta.h b/drivers/net/wireless/cw1200/sta.h
+index a0bacaa39b31..bebb3379017f 100644
+--- a/drivers/net/wireless/cw1200/sta.h
++++ b/drivers/net/wireless/cw1200/sta.h
+@@ -109,7 +109,9 @@ void cw1200_bss_info_changed(struct ieee80211_hw *dev,
+ 			     u32 changed);
+ int cw1200_ampdu_action(struct ieee80211_hw *hw,
+ 			struct ieee80211_vif *vif,
+-			struct ieee80211_ampdu_params *params);
++			enum ieee80211_ampdu_mlme_action action,
++			struct ieee80211_sta *sta, u16 tid, u16 *ssn,
++			u8 buf_size, bool amsdu);
+ 
+ void cw1200_suspend_resume(struct cw1200_common *priv,
+ 			  struct wsm_suspend_resume *arg);
+diff --git a/drivers/net/wireless/iwlegacy/4965-mac.c b/drivers/net/wireless/iwlegacy/4965-mac.c
+index 04b0349a6ad9..6656215a13a9 100644
+--- a/drivers/net/wireless/iwlegacy/4965-mac.c
++++ b/drivers/net/wireless/iwlegacy/4965-mac.c
+@@ -5982,14 +5982,12 @@ il4965_mac_set_key(struct ieee80211_hw *hw, enum set_key_cmd cmd,
+ 
+ int
+ il4965_mac_ampdu_action(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
+-			struct ieee80211_ampdu_params *params)
++			enum ieee80211_ampdu_mlme_action action,
++			struct ieee80211_sta *sta, u16 tid, u16 * ssn,
++			u8 buf_size, bool amsdu)
+ {
+ 	struct il_priv *il = hw->priv;
+ 	int ret = -EINVAL;
+-	struct ieee80211_sta *sta = params->sta;
+-	enum ieee80211_ampdu_mlme_action action = params->action;
+-	u16 tid = params->tid;
+-	u16 *ssn = &params->ssn;
+ 
+ 	D_HT("A-MPDU action on addr %pM tid %d\n", sta->addr, tid);
+ 
+diff --git a/drivers/net/wireless/iwlegacy/4965.h b/drivers/net/wireless/iwlegacy/4965.h
+index e432715e02d8..8ab8706f9422 100644
+--- a/drivers/net/wireless/iwlegacy/4965.h
++++ b/drivers/net/wireless/iwlegacy/4965.h
+@@ -182,7 +182,9 @@ void il4965_mac_update_tkip_key(struct ieee80211_hw *hw,
+ 				struct ieee80211_sta *sta, u32 iv32,
+ 				u16 *phase1key);
+ int il4965_mac_ampdu_action(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
+-			    struct ieee80211_ampdu_params *params);
++			    enum ieee80211_ampdu_mlme_action action,
++			    struct ieee80211_sta *sta, u16 tid, u16 * ssn,
++			    u8 buf_size, bool amsdu);
+ int il4965_mac_sta_add(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
+ 		       struct ieee80211_sta *sta);
+ void
+diff --git a/drivers/net/wireless/iwlwifi/dvm/mac80211.c b/drivers/net/wireless/iwlwifi/dvm/mac80211.c
+index 1eb1a823a111..b3ad34e8bf5a 100644
+--- a/drivers/net/wireless/iwlwifi/dvm/mac80211.c
++++ b/drivers/net/wireless/iwlwifi/dvm/mac80211.c
+@@ -729,15 +729,12 @@ static inline bool iwl_enable_tx_ampdu(const struct iwl_cfg *cfg)
+ 
+ static int iwlagn_mac_ampdu_action(struct ieee80211_hw *hw,
+ 				   struct ieee80211_vif *vif,
+-				   struct ieee80211_ampdu_params *params)
++				   enum ieee80211_ampdu_mlme_action action,
++				   struct ieee80211_sta *sta, u16 tid, u16 *ssn,
++				   u8 buf_size, bool amsdu)
+ {
+ 	struct iwl_priv *priv = IWL_MAC80211_GET_DVM(hw);
+ 	int ret = -EINVAL;
+-	struct ieee80211_sta *sta = params->sta;
+-	enum ieee80211_ampdu_mlme_action action = params->action;
+-	u16 tid = params->tid;
+-	u16 *ssn = &params->ssn;
+-	u8 buf_size = params->buf_size;
+ 	struct iwl_station_priv *sta_priv = (void *) sta->drv_priv;
+ 
+ 	IWL_DEBUG_HT(priv, "A-MPDU action on addr %pM tid %d\n",
+diff --git a/drivers/net/wireless/iwlwifi/mvm/mac80211.c b/drivers/net/wireless/iwlwifi/mvm/mac80211.c
+index 1a8ea775de08..ce12717e656a 100644
+--- a/drivers/net/wireless/iwlwifi/mvm/mac80211.c
++++ b/drivers/net/wireless/iwlwifi/mvm/mac80211.c
+@@ -826,16 +826,13 @@ iwl_mvm_ampdu_check_trigger(struct iwl_mvm *mvm, struct ieee80211_vif *vif,
+ 
+ static int iwl_mvm_mac_ampdu_action(struct ieee80211_hw *hw,
+ 				    struct ieee80211_vif *vif,
+-				    struct ieee80211_ampdu_params *params)
++				    enum ieee80211_ampdu_mlme_action action,
++				    struct ieee80211_sta *sta, u16 tid,
++				    u16 *ssn, u8 buf_size, bool amsdu)
+ {
+ 	struct iwl_mvm *mvm = IWL_MAC80211_GET_MVM(hw);
+ 	int ret;
+ 	bool tx_agg_ref = false;
+-	struct ieee80211_sta *sta = params->sta;
+-	enum ieee80211_ampdu_mlme_action action = params->action;
+-	u16 tid = params->tid;
+-	u16 *ssn = &params->ssn;
+-	u8 buf_size = params->buf_size;
+ 
+ 	IWL_DEBUG_HT(mvm, "A-MPDU action on addr %pM tid %d: action %d\n",
+ 		     sta->addr, tid, action);
+diff --git a/drivers/net/wireless/mac80211_hwsim.c b/drivers/net/wireless/mac80211_hwsim.c
+index d59769e858f4..0cd95120bc78 100644
+--- a/drivers/net/wireless/mac80211_hwsim.c
++++ b/drivers/net/wireless/mac80211_hwsim.c
+@@ -1817,12 +1817,10 @@ static int mac80211_hwsim_testmode_cmd(struct ieee80211_hw *hw,
+ 
+ static int mac80211_hwsim_ampdu_action(struct ieee80211_hw *hw,
+ 				       struct ieee80211_vif *vif,
+-				       struct ieee80211_ampdu_params *params)
++				       enum ieee80211_ampdu_mlme_action action,
++				       struct ieee80211_sta *sta, u16 tid, u16 *ssn,
++				       u8 buf_size, bool amsdu)
+ {
+-	struct ieee80211_sta *sta = params->sta;
+-	enum ieee80211_ampdu_mlme_action action = params->action;
+-	u16 tid = params->tid;
+-
+ 	switch (action) {
+ 	case IEEE80211_AMPDU_TX_START:
+ 		ieee80211_start_tx_ba_cb_irqsafe(vif, sta->addr, tid);
+diff --git a/drivers/net/wireless/mediatek/mt7601u/main.c b/drivers/net/wireless/mediatek/mt7601u/main.c
+index e70dd9523911..f715eee39851 100644
+--- a/drivers/net/wireless/mediatek/mt7601u/main.c
++++ b/drivers/net/wireless/mediatek/mt7601u/main.c
+@@ -334,13 +334,11 @@ static int mt7601u_set_rts_threshold(struct ieee80211_hw *hw, u32 value)
+ 
+ static int
+ mt76_ampdu_action(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
+-		  struct ieee80211_ampdu_params *params)
++		  enum ieee80211_ampdu_mlme_action action,
++		  struct ieee80211_sta *sta, u16 tid, u16 *ssn, u8 buf_size,
++		  bool amsdu)
+ {
+ 	struct mt7601u_dev *dev = hw->priv;
+-	struct ieee80211_sta *sta = params->sta;
+-	enum ieee80211_ampdu_mlme_action action = params->action;
+-	u16 tid = params->tid;
+-	u16 *ssn = &params->ssn;
+ 	struct mt76_sta *msta = (struct mt76_sta *) sta->drv_priv;
+ 
+ 	WARN_ON(msta->wcid.idx > GROUP_WCID(0));
+diff --git a/drivers/net/wireless/mwl8k.c b/drivers/net/wireless/mwl8k.c
+index 088429d0a634..30e3aaae32e2 100644
+--- a/drivers/net/wireless/mwl8k.c
++++ b/drivers/net/wireless/mwl8k.c
+@@ -5421,13 +5421,11 @@ static int mwl8k_get_survey(struct ieee80211_hw *hw, int idx,
+ 
+ static int
+ mwl8k_ampdu_action(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
+-		   struct ieee80211_ampdu_params *params)
++		   enum ieee80211_ampdu_mlme_action action,
++		   struct ieee80211_sta *sta, u16 tid, u16 *ssn,
++		   u8 buf_size, bool amsdu)
+ {
+-	struct ieee80211_sta *sta = params->sta;
+-	enum ieee80211_ampdu_mlme_action action = params->action;
+-	u16 tid = params->tid;
+-	u16 *ssn = &params->ssn;
+-	u8 buf_size = params->buf_size;
++
+ 	int i, rc = 0;
+ 	struct mwl8k_priv *priv = hw->priv;
+ 	struct mwl8k_ampdu_stream *stream;
+diff --git a/drivers/net/wireless/realtek/rtl8xxxu/rtl8xxxu.c b/drivers/net/wireless/realtek/rtl8xxxu/rtl8xxxu.c
+index 7d820c395375..6aed923a709a 100644
+--- a/drivers/net/wireless/realtek/rtl8xxxu/rtl8xxxu.c
++++ b/drivers/net/wireless/realtek/rtl8xxxu/rtl8xxxu.c
+@@ -5375,13 +5375,13 @@ static int rtl8xxxu_set_key(struct ieee80211_hw *hw, enum set_key_cmd cmd,
+ 
+ static int
+ rtl8xxxu_ampdu_action(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
+-		      struct ieee80211_ampdu_params *params)
++		      enum ieee80211_ampdu_mlme_action action,
++		      struct ieee80211_sta *sta, u16 tid, u16 *ssn, u8 buf_size,
++		      bool amsdu)
+ {
+ 	struct rtl8xxxu_priv *priv = hw->priv;
+ 	struct device *dev = &priv->udev->dev;
+ 	u8 ampdu_factor, ampdu_density;
+-	struct ieee80211_sta *sta = params->sta;
+-	enum ieee80211_ampdu_mlme_action action = params->action;
+ 
+ 	switch (action) {
+ 	case IEEE80211_AMPDU_TX_START:
+diff --git a/drivers/net/wireless/realtek/rtlwifi/core.c b/drivers/net/wireless/realtek/rtlwifi/core.c
+index 8b537a5a4b01..e36d8c456275 100644
+--- a/drivers/net/wireless/realtek/rtlwifi/core.c
++++ b/drivers/net/wireless/realtek/rtlwifi/core.c
+@@ -1369,13 +1369,11 @@ static void rtl_op_sta_notify(struct ieee80211_hw *hw,
+ 
+ static int rtl_op_ampdu_action(struct ieee80211_hw *hw,
+ 			       struct ieee80211_vif *vif,
+-			       struct ieee80211_ampdu_params *params)
++			       enum ieee80211_ampdu_mlme_action action,
++			       struct ieee80211_sta *sta, u16 tid, u16 *ssn,
++			       u8 buf_size, bool amsdu)
+ {
+ 	struct rtl_priv *rtlpriv = rtl_priv(hw);
+-	struct ieee80211_sta *sta = params->sta;
+-	enum ieee80211_ampdu_mlme_action action = params->action;
+-	u16 tid = params->tid;
+-	u16 *ssn = &params->ssn;
+ 
+ 	switch (action) {
+ 	case IEEE80211_AMPDU_TX_START:
+diff --git a/drivers/net/wireless/rsi/rsi_91x_mac80211.c b/drivers/net/wireless/rsi/rsi_91x_mac80211.c
+index 4df992de7d07..b5bcc933a2a6 100644
+--- a/drivers/net/wireless/rsi/rsi_91x_mac80211.c
++++ b/drivers/net/wireless/rsi/rsi_91x_mac80211.c
+@@ -659,24 +659,29 @@ static int rsi_mac80211_set_key(struct ieee80211_hw *hw,
+  *				 informs the f/w regarding this.
+  * @hw: Pointer to the ieee80211_hw structure.
+  * @vif: Pointer to the ieee80211_vif structure.
+- * @params: Pointer to A-MPDU action parameters
++ * @action: ieee80211_ampdu_mlme_action enum.
++ * @sta: Pointer to the ieee80211_sta structure.
++ * @tid: Traffic identifier.
++ * @ssn: Pointer to ssn value.
++ * @buf_size: Buffer size (for kernel version > 2.6.38).
++ * @amsdu: is AMSDU in AMPDU allowed
+  *
+  * Return: status: 0 on success, negative error code on failure.
+  */
+ static int rsi_mac80211_ampdu_action(struct ieee80211_hw *hw,
+ 				     struct ieee80211_vif *vif,
+-				     struct ieee80211_ampdu_params *params)
++				     enum ieee80211_ampdu_mlme_action action,
++				     struct ieee80211_sta *sta,
++				     unsigned short tid,
++				     unsigned short *ssn,
++				     unsigned char buf_size,
++				     bool amsdu)
+ {
+ 	int status = -EOPNOTSUPP;
+ 	struct rsi_hw *adapter = hw->priv;
+ 	struct rsi_common *common = adapter->priv;
+ 	u16 seq_no = 0;
+ 	u8 ii = 0;
+-	struct ieee80211_sta *sta = params->sta;
+-	enum ieee80211_ampdu_mlme_action action = params->action;
+-	u16 tid = params->tid;
+-	u16 *ssn = &params->ssn;
+-	u8 buf_size = params->buf_size;
+ 
+ 	for (ii = 0; ii < RSI_MAX_VIFS; ii++) {
+ 		if (vif == adapter->vifs[ii])
+diff --git a/drivers/net/wireless/rt2x00/rt2800lib.c b/drivers/net/wireless/rt2x00/rt2800lib.c
+index 69c1c09687a3..9733b31a780d 100644
+--- a/drivers/net/wireless/rt2x00/rt2800lib.c
++++ b/drivers/net/wireless/rt2x00/rt2800lib.c
+@@ -7935,11 +7935,10 @@ u64 rt2800_get_tsf(struct ieee80211_hw *hw, struct ieee80211_vif *vif)
+ EXPORT_SYMBOL_GPL(rt2800_get_tsf);
+ 
+ int rt2800_ampdu_action(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
+-			struct ieee80211_ampdu_params *params)
++			enum ieee80211_ampdu_mlme_action action,
++			struct ieee80211_sta *sta, u16 tid, u16 *ssn,
++			u8 buf_size, bool amsdu)
+ {
+-	struct ieee80211_sta *sta = params->sta;
+-	enum ieee80211_ampdu_mlme_action action = params->action;
+-	u16 tid = params->tid;
+ 	struct rt2x00_sta *sta_priv = (struct rt2x00_sta *)sta->drv_priv;
+ 	int ret = 0;
+ 
+diff --git a/drivers/net/wireless/rt2x00/rt2800lib.h b/drivers/net/wireless/rt2x00/rt2800lib.h
+index 83f1a44fb9b4..440790b92b19 100644
+--- a/drivers/net/wireless/rt2x00/rt2800lib.h
++++ b/drivers/net/wireless/rt2x00/rt2800lib.h
+@@ -218,7 +218,9 @@ int rt2800_conf_tx(struct ieee80211_hw *hw,
+ 		   const struct ieee80211_tx_queue_params *params);
+ u64 rt2800_get_tsf(struct ieee80211_hw *hw, struct ieee80211_vif *vif);
+ int rt2800_ampdu_action(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
+-			struct ieee80211_ampdu_params *params);
++			enum ieee80211_ampdu_mlme_action action,
++			struct ieee80211_sta *sta, u16 tid, u16 *ssn,
++			u8 buf_size, bool amsdu);
+ int rt2800_get_survey(struct ieee80211_hw *hw, int idx,
+ 		      struct survey_info *survey);
+ void rt2800_disable_wpdma(struct rt2x00_dev *rt2x00dev);
+diff --git a/drivers/net/wireless/ti/wlcore/main.c b/drivers/net/wireless/ti/wlcore/main.c
+index 7b27c7e23af2..6ebaf5754f52 100644
+--- a/drivers/net/wireless/ti/wlcore/main.c
++++ b/drivers/net/wireless/ti/wlcore/main.c
+@@ -5261,16 +5261,14 @@ out:
+ 
+ static int wl1271_op_ampdu_action(struct ieee80211_hw *hw,
+ 				  struct ieee80211_vif *vif,
+-				  struct ieee80211_ampdu_params *params)
++				  enum ieee80211_ampdu_mlme_action action,
++				  struct ieee80211_sta *sta, u16 tid, u16 *ssn,
++				  u8 buf_size, bool amsdu)
+ {
+ 	struct wl1271 *wl = hw->priv;
+ 	struct wl12xx_vif *wlvif = wl12xx_vif_to_data(vif);
+ 	int ret;
+ 	u8 hlid, *ba_bitmap;
+-	struct ieee80211_sta *sta = params->sta;
+-	enum ieee80211_ampdu_mlme_action action = params->action;
+-	u16 tid = params->tid;
+-	u16 *ssn = &params->ssn;
+ 
+ 	wl1271_debug(DEBUG_MAC80211, "mac80211 ampdu action %d tid %d", action,
+ 		     tid);
+@@ -5329,7 +5327,7 @@ static int wl1271_op_ampdu_action(struct ieee80211_hw *hw,
+ 
+ 		ret = wl12xx_acx_set_ba_receiver_session(wl, tid, *ssn, true,
+ 				hlid,
+-				params->buf_size);
++				buf_size);
+ 
+ 		if (!ret) {
+ 			*ba_bitmap |= BIT(tid);
+diff --git a/include/net/mac80211.h b/include/net/mac80211.h
+index ebd73169d53b..9867667243de 100644
+--- a/include/net/mac80211.h
++++ b/include/net/mac80211.h
+@@ -2674,33 +2674,6 @@ enum ieee80211_ampdu_mlme_action {
+ };
+ 
+ /**
+- * struct ieee80211_ampdu_params - AMPDU action parameters
+- *
+- * @action: the ampdu action, value from %ieee80211_ampdu_mlme_action.
+- * @sta: peer of this AMPDU session
+- * @tid: tid of the BA session
+- * @ssn: start sequence number of the session. TX/RX_STOP can pass 0. When
+- *	action is set to %IEEE80211_AMPDU_RX_START the driver passes back the
+- *	actual ssn value used to start the session and writes the value here.
+- * @buf_size: reorder buffer size  (number of subframes). Valid only when the
+- *	action is set to %IEEE80211_AMPDU_RX_START or
+- *	%IEEE80211_AMPDU_TX_OPERATIONAL
+- * @amsdu: indicates the peer's ability to receive A-MSDU within A-MPDU.
+- *	valid when the action is set to %IEEE80211_AMPDU_TX_OPERATIONAL
+- * @timeout: BA session timeout. Valid only when the action is set to
+- *	%IEEE80211_AMPDU_RX_START
+- */
+-struct ieee80211_ampdu_params {
+-	enum ieee80211_ampdu_mlme_action action;
+-	struct ieee80211_sta *sta;
+-	u16 tid;
+-	u16 ssn;
+-	u8 buf_size;
+-	bool amsdu;
+-	u16 timeout;
+-};
+-
+-/**
+  * enum ieee80211_frame_release_type - frame release reason
+  * @IEEE80211_FRAME_RELEASE_PSPOLL: frame released for PS-Poll
+  * @IEEE80211_FRAME_RELEASE_UAPSD: frame(s) released due to
+@@ -3044,9 +3017,15 @@ enum ieee80211_reconfig_type {
+  * @ampdu_action: Perform a certain A-MPDU action
+  * 	The RA/TID combination determines the destination and TID we want
+  * 	the ampdu action to be performed for. The action is defined through
+- *	ieee80211_ampdu_mlme_action.
++ * 	ieee80211_ampdu_mlme_action. Starting sequence number (@ssn)
++ * 	is the first frame we expect to perform the action on. Notice
++ * 	that TX/RX_STOP can pass NULL for this parameter.
++ *	The @buf_size parameter is valid only when the action is set to
++ *	%IEEE80211_AMPDU_RX_START or %IEEE80211_AMPDU_TX_OPERATIONAL and
++ *	indicates the reorder buffer size (number of subframes) for this
++ *	session.
+  *	When the action is set to %IEEE80211_AMPDU_TX_OPERATIONAL the driver
+- *	may neither send aggregates containing more subframes than @buf_size
++ *	may neither send aggregates containing more subframes than this
+  *	nor send aggregates in a way that lost frames would exceed the
+  *	buffer size. If just limiting the aggregate size, this would be
+  *	possible with a buf_size of 8:
+@@ -3057,6 +3036,9 @@ enum ieee80211_reconfig_type {
+  *	buffer size of 8. Correct ways to retransmit #1 would be:
+  *	 - TX:       1 or 18 or 81
+  *	Even "189" would be wrong since 1 could be lost again.
++ *	The @amsdu parameter is valid when the action is set to
++ *	%IEEE80211_AMPDU_TX_OPERATIONAL and indicates the peer's ability
++ *	to receive A-MSDU within A-MPDU.
+  *
+  *	Returns a negative error code on failure.
+  *	The callback can sleep.
+@@ -3398,7 +3380,9 @@ struct ieee80211_ops {
+ 	int (*tx_last_beacon)(struct ieee80211_hw *hw);
+ 	int (*ampdu_action)(struct ieee80211_hw *hw,
+ 			    struct ieee80211_vif *vif,
+-			    struct ieee80211_ampdu_params *params);
++			    enum ieee80211_ampdu_mlme_action action,
++			    struct ieee80211_sta *sta, u16 tid, u16 *ssn,
++			    u8 buf_size, bool amsdu);
+ 	int (*get_survey)(struct ieee80211_hw *hw, int idx,
+ 		struct survey_info *survey);
+ 	void (*rfkill_poll)(struct ieee80211_hw *hw);
+diff --git a/net/mac80211/agg-rx.c b/net/mac80211/agg-rx.c
+index f598ff80b30e..7def8b892d25 100644
+--- a/net/mac80211/agg-rx.c
++++ b/net/mac80211/agg-rx.c
+@@ -7,7 +7,6 @@
+  * Copyright 2006-2007	Jiri Benc <jbenc@suse.cz>
+  * Copyright 2007, Michael Wu <flamingice@sourmilk.net>
+  * Copyright 2007-2010, Intel Corporation
+- * Copyright(c) 2015 Intel Deutschland GmbH
+  *
+  * This program is free software; you can redistribute it and/or modify
+  * it under the terms of the GNU General Public License version 2 as
+@@ -62,14 +61,6 @@ void ___ieee80211_stop_rx_ba_session(struct sta_info *sta, u16 tid,
+ {
+ 	struct ieee80211_local *local = sta->local;
+ 	struct tid_ampdu_rx *tid_rx;
+-	struct ieee80211_ampdu_params params = {
+-		.sta = &sta->sta,
+-		.action = IEEE80211_AMPDU_RX_STOP,
+-		.tid = tid,
+-		.amsdu = false,
+-		.timeout = 0,
+-		.ssn = 0,
+-	};
+ 
+ 	lockdep_assert_held(&sta->ampdu_mlme.mtx);
+ 
+@@ -87,7 +78,8 @@ void ___ieee80211_stop_rx_ba_session(struct sta_info *sta, u16 tid,
+ 	       initiator == WLAN_BACK_RECIPIENT ? "recipient" : "inititator",
+ 	       (int)reason);
+ 
+-	if (drv_ampdu_action(local, sta->sdata, &params))
++	if (drv_ampdu_action(local, sta->sdata, IEEE80211_AMPDU_RX_STOP,
++			     &sta->sta, tid, NULL, 0, false))
+ 		sdata_info(sta->sdata,
+ 			   "HW problem - can not stop rx aggregation for %pM tid %d\n",
+ 			   sta->sta.addr, tid);
+@@ -245,15 +237,6 @@ void __ieee80211_start_rx_ba_session(struct sta_info *sta,
+ {
+ 	struct ieee80211_local *local = sta->sdata->local;
+ 	struct tid_ampdu_rx *tid_agg_rx;
+-	struct ieee80211_ampdu_params params = {
+-		.sta = &sta->sta,
+-		.action = IEEE80211_AMPDU_RX_START,
+-		.tid = tid,
+-		.amsdu = false,
+-		.timeout = timeout,
+-		.ssn = start_seq_num,
+-	};
+-
+ 	int i, ret = -EOPNOTSUPP;
+ 	u16 status = WLAN_STATUS_REQUEST_DECLINED;
+ 
+@@ -292,7 +275,6 @@ void __ieee80211_start_rx_ba_session(struct sta_info *sta,
+ 	/* make sure the size doesn't exceed the maximum supported by the hw */
+ 	if (buf_size > local->hw.max_rx_aggregation_subframes)
+ 		buf_size = local->hw.max_rx_aggregation_subframes;
+-	params.buf_size = buf_size;
+ 
+ 	/* examine state machine */
+ 	mutex_lock(&sta->ampdu_mlme.mtx);
+@@ -340,7 +322,8 @@ void __ieee80211_start_rx_ba_session(struct sta_info *sta,
+ 	for (i = 0; i < buf_size; i++)
+ 		__skb_queue_head_init(&tid_agg_rx->reorder_buf[i]);
+ 
+-	ret = drv_ampdu_action(local, sta->sdata, &params);
++	ret = drv_ampdu_action(local, sta->sdata, IEEE80211_AMPDU_RX_START,
++			       &sta->sta, tid, &start_seq_num, buf_size, false);
+ 	ht_dbg(sta->sdata, "Rx A-MPDU request on %pM tid %d result %d\n",
+ 	       sta->sta.addr, tid, ret);
+ 	if (ret) {
+diff --git a/net/mac80211/agg-tx.c b/net/mac80211/agg-tx.c
+index 4932e9f243a2..ff757181b0a8 100644
+--- a/net/mac80211/agg-tx.c
++++ b/net/mac80211/agg-tx.c
+@@ -7,7 +7,6 @@
+  * Copyright 2006-2007	Jiri Benc <jbenc@suse.cz>
+  * Copyright 2007, Michael Wu <flamingice@sourmilk.net>
+  * Copyright 2007-2010, Intel Corporation
+- * Copyright(c) 2015 Intel Deutschland GmbH
+  *
+  * This program is free software; you can redistribute it and/or modify
+  * it under the terms of the GNU General Public License version 2 as
+@@ -296,14 +295,7 @@ int ___ieee80211_stop_tx_ba_session(struct sta_info *sta, u16 tid,
+ {
+ 	struct ieee80211_local *local = sta->local;
+ 	struct tid_ampdu_tx *tid_tx;
+-	struct ieee80211_ampdu_params params = {
+-		.sta = &sta->sta,
+-		.tid = tid,
+-		.buf_size = 0,
+-		.amsdu = false,
+-		.timeout = 0,
+-		.ssn = 0,
+-	};
++	enum ieee80211_ampdu_mlme_action action;
+ 	int ret;
+ 
+ 	lockdep_assert_held(&sta->ampdu_mlme.mtx);
+@@ -312,10 +304,10 @@ int ___ieee80211_stop_tx_ba_session(struct sta_info *sta, u16 tid,
+ 	case AGG_STOP_DECLINED:
+ 	case AGG_STOP_LOCAL_REQUEST:
+ 	case AGG_STOP_PEER_REQUEST:
+-		params.action = IEEE80211_AMPDU_TX_STOP_CONT;
++		action = IEEE80211_AMPDU_TX_STOP_CONT;
+ 		break;
+ 	case AGG_STOP_DESTROY_STA:
+-		params.action = IEEE80211_AMPDU_TX_STOP_FLUSH;
++		action = IEEE80211_AMPDU_TX_STOP_FLUSH;
+ 		break;
+ 	default:
+ 		WARN_ON_ONCE(1);
+@@ -338,8 +330,9 @@ int ___ieee80211_stop_tx_ba_session(struct sta_info *sta, u16 tid,
+ 		spin_unlock_bh(&sta->lock);
+ 		if (reason != AGG_STOP_DESTROY_STA)
+ 			return -EALREADY;
+-		params.action = IEEE80211_AMPDU_TX_STOP_FLUSH_CONT;
+-		ret = drv_ampdu_action(local, sta->sdata, &params);
++		ret = drv_ampdu_action(local, sta->sdata,
++				       IEEE80211_AMPDU_TX_STOP_FLUSH_CONT,
++				       &sta->sta, tid, NULL, 0, false);
+ 		WARN_ON_ONCE(ret);
+ 		return 0;
+ 	}
+@@ -388,7 +381,8 @@ int ___ieee80211_stop_tx_ba_session(struct sta_info *sta, u16 tid,
+ 					WLAN_BACK_INITIATOR;
+ 	tid_tx->tx_stop = reason == AGG_STOP_LOCAL_REQUEST;
+ 
+-	ret = drv_ampdu_action(local, sta->sdata, &params);
++	ret = drv_ampdu_action(local, sta->sdata, action,
++			       &sta->sta, tid, NULL, 0, false);
+ 
+ 	/* HW shall not deny going back to legacy */
+ 	if (WARN_ON(ret)) {
+@@ -451,14 +445,7 @@ void ieee80211_tx_ba_session_handle_start(struct sta_info *sta, int tid)
+ 	struct tid_ampdu_tx *tid_tx;
+ 	struct ieee80211_local *local = sta->local;
+ 	struct ieee80211_sub_if_data *sdata = sta->sdata;
+-	struct ieee80211_ampdu_params params = {
+-		.sta = &sta->sta,
+-		.action = IEEE80211_AMPDU_TX_START,
+-		.tid = tid,
+-		.buf_size = 0,
+-		.amsdu = false,
+-		.timeout = 0,
+-	};
++	u16 start_seq_num;
+ 	int ret;
+ 
+ 	tid_tx = rcu_dereference_protected_tid_tx(sta, tid);
+@@ -480,8 +467,10 @@ void ieee80211_tx_ba_session_handle_start(struct sta_info *sta, int tid)
+ 	 */
+ 	synchronize_net();
+ 
+-	params.ssn = sta->tid_seq[tid] >> 4;
+-	ret = drv_ampdu_action(local, sdata, &params);
++	start_seq_num = sta->tid_seq[tid] >> 4;
++
++	ret = drv_ampdu_action(local, sdata, IEEE80211_AMPDU_TX_START,
++			       &sta->sta, tid, &start_seq_num, 0, false);
+ 	if (ret) {
+ 		ht_dbg(sdata,
+ 		       "BA request denied - HW unavailable for %pM tid %d\n",
+@@ -510,7 +499,7 @@ void ieee80211_tx_ba_session_handle_start(struct sta_info *sta, int tid)
+ 
+ 	/* send AddBA request */
+ 	ieee80211_send_addba_request(sdata, sta->sta.addr, tid,
+-				     tid_tx->dialog_token, params.ssn,
++				     tid_tx->dialog_token, start_seq_num,
+ 				     IEEE80211_MAX_AMPDU_BUF,
+ 				     tid_tx->timeout);
+ }
+@@ -695,24 +684,18 @@ static void ieee80211_agg_tx_operational(struct ieee80211_local *local,
+ 					 struct sta_info *sta, u16 tid)
+ {
+ 	struct tid_ampdu_tx *tid_tx;
+-	struct ieee80211_ampdu_params params = {
+-		.sta = &sta->sta,
+-		.action = IEEE80211_AMPDU_TX_OPERATIONAL,
+-		.tid = tid,
+-		.timeout = 0,
+-		.ssn = 0,
+-	};
+ 
+ 	lockdep_assert_held(&sta->ampdu_mlme.mtx);
+ 
+ 	tid_tx = rcu_dereference_protected_tid_tx(sta, tid);
+-	params.buf_size = tid_tx->buf_size;
+-	params.amsdu = tid_tx->amsdu;
+ 
+ 	ht_dbg(sta->sdata, "Aggregation is on for %pM tid %d\n",
+ 	       sta->sta.addr, tid);
+ 
+-	drv_ampdu_action(local, sta->sdata, &params);
++	drv_ampdu_action(local, sta->sdata,
++			 IEEE80211_AMPDU_TX_OPERATIONAL,
++			 &sta->sta, tid, NULL, tid_tx->buf_size,
++			 tid_tx->amsdu);
+ 
+ 	/*
+ 	 * synchronize with TX path, while splicing the TX path
+diff --git a/net/mac80211/driver-ops.c b/net/mac80211/driver-ops.c
+index c258f1041d33..ca1fe5576103 100644
+--- a/net/mac80211/driver-ops.c
++++ b/net/mac80211/driver-ops.c
+@@ -284,7 +284,9 @@ int drv_switch_vif_chanctx(struct ieee80211_local *local,
+ 
+ int drv_ampdu_action(struct ieee80211_local *local,
+ 		     struct ieee80211_sub_if_data *sdata,
+-		     struct ieee80211_ampdu_params *params)
++		     enum ieee80211_ampdu_mlme_action action,
++		     struct ieee80211_sta *sta, u16 tid,
++		     u16 *ssn, u8 buf_size, bool amsdu)
+ {
+ 	int ret = -EOPNOTSUPP;
+ 
+@@ -294,10 +296,12 @@ int drv_ampdu_action(struct ieee80211_local *local,
+ 	if (!check_sdata_in_driver(sdata))
+ 		return -EIO;
+ 
+-	trace_drv_ampdu_action(local, sdata, params);
++	trace_drv_ampdu_action(local, sdata, action, sta, tid,
++			       ssn, buf_size, amsdu);
+ 
+ 	if (local->ops->ampdu_action)
+-		ret = local->ops->ampdu_action(&local->hw, &sdata->vif, params);
++		ret = local->ops->ampdu_action(&local->hw, &sdata->vif, action,
++					       sta, tid, ssn, buf_size, amsdu);
+ 
+ 	trace_drv_return_int(local, ret);
+ 
+diff --git a/net/mac80211/driver-ops.h b/net/mac80211/driver-ops.h
+index 18b0d65baff0..154ce4b13406 100644
+--- a/net/mac80211/driver-ops.h
++++ b/net/mac80211/driver-ops.h
+@@ -585,7 +585,9 @@ static inline int drv_tx_last_beacon(struct ieee80211_local *local)
+ 
+ int drv_ampdu_action(struct ieee80211_local *local,
+ 		     struct ieee80211_sub_if_data *sdata,
+-		     struct ieee80211_ampdu_params *params);
++		     enum ieee80211_ampdu_mlme_action action,
++		     struct ieee80211_sta *sta, u16 tid,
++		     u16 *ssn, u8 buf_size, bool amsdu);
+ 
+ static inline int drv_get_survey(struct ieee80211_local *local, int idx,
+ 				struct survey_info *survey)
+diff --git a/net/mac80211/trace.h b/net/mac80211/trace.h
+index 913e959b03cf..56c6d6cfa5a1 100644
+--- a/net/mac80211/trace.h
++++ b/net/mac80211/trace.h
+@@ -80,23 +80,7 @@
+ #define KEY_PR_FMT	" cipher:0x%x, flags=%#x, keyidx=%d, hw_key_idx=%d"
+ #define KEY_PR_ARG	__entry->cipher, __entry->flags, __entry->keyidx, __entry->hw_key_idx
+ 
+-#define AMPDU_ACTION_ENTRY	__field(enum ieee80211_ampdu_mlme_action,		\
+-					ieee80211_ampdu_mlme_action)			\
+-				STA_ENTRY						\
+-				__field(u16, tid)					\
+-				__field(u16, ssn)					\
+-				__field(u8, buf_size)					\
+-				__field(bool, amsdu)					\
+-				__field(u16, timeout)
+-#define AMPDU_ACTION_ASSIGN	STA_NAMED_ASSIGN(params->sta);				\
+-				__entry->tid = params->tid;				\
+-				__entry->ssn = params->ssn;				\
+-				__entry->buf_size = params->buf_size;			\
+-				__entry->amsdu = params->amsdu;				\
+-				__entry->timeout = params->timeout;
+-#define AMPDU_ACTION_PR_FMT	STA_PR_FMT " tid %d, ssn %d, buf_size %u, amsdu %d, timeout %d"
+-#define AMPDU_ACTION_PR_ARG	STA_PR_ARG, __entry->tid, __entry->ssn,			\
+-				__entry->buf_size, __entry->amsdu, __entry->timeout
++
+ 
+ /*
+  * Tracing for driver callbacks.
+@@ -986,25 +970,38 @@ DEFINE_EVENT(local_only_evt, drv_tx_last_beacon,
+ TRACE_EVENT(drv_ampdu_action,
+ 	TP_PROTO(struct ieee80211_local *local,
+ 		 struct ieee80211_sub_if_data *sdata,
+-		 struct ieee80211_ampdu_params *params),
++		 enum ieee80211_ampdu_mlme_action action,
++		 struct ieee80211_sta *sta, u16 tid,
++		 u16 *ssn, u8 buf_size, bool amsdu),
+ 
+-	TP_ARGS(local, sdata, params),
++	TP_ARGS(local, sdata, action, sta, tid, ssn, buf_size, amsdu),
+ 
+ 	TP_STRUCT__entry(
+ 		LOCAL_ENTRY
++		STA_ENTRY
++		__field(u32, action)
++		__field(u16, tid)
++		__field(u16, ssn)
++		__field(u8, buf_size)
++		__field(bool, amsdu)
+ 		VIF_ENTRY
+-		AMPDU_ACTION_ENTRY
+ 	),
+ 
+ 	TP_fast_assign(
+ 		LOCAL_ASSIGN;
+ 		VIF_ASSIGN;
+-		AMPDU_ACTION_ASSIGN;
++		STA_ASSIGN;
++		__entry->action = action;
++		__entry->tid = tid;
++		__entry->ssn = ssn ? *ssn : 0;
++		__entry->buf_size = buf_size;
++		__entry->amsdu = amsdu;
+ 	),
+ 
+ 	TP_printk(
+-		LOCAL_PR_FMT VIF_PR_FMT AMPDU_ACTION_PR_FMT,
+-		LOCAL_PR_ARG, VIF_PR_ARG, AMPDU_ACTION_PR_ARG
++		LOCAL_PR_FMT VIF_PR_FMT STA_PR_FMT " action:%d tid:%d buf:%d amsdu:%d",
++		LOCAL_PR_ARG, VIF_PR_ARG, STA_PR_ARG, __entry->action,
++		__entry->tid, __entry->buf_size, __entry->amsdu
+ 	)
+ );
+ 
+-- 
+2.13.0
+

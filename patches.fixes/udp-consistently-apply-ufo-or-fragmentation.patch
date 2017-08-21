@@ -1,0 +1,78 @@
+From: Willem de Bruijn <willemb@google.com>
+Date: Fri, 14 Jul 2017 10:19:00 +0200
+Subject: udp: consistently apply ufo or fragmentation
+Patch-mainline: Not yet, embargo
+References: CVE-2017-1000112 bsc#1052311
+
+When iteratively building a UDP datagram with MSG_MORE and that
+datagram exceeds MTU, consistently choose UFO or fragmentation.
+
+Once skb_is_gso, always apply ufo. Conversely, once a datagram is
+split across multiple skbs, do not consider ufo.
+
+Sendpage already maintains the first invariant, only add the second.
+IPv6 does not have a sendpage implementation to modify.
+
+Fixes: e89e9cf539a2 ("[IPv4/IPv6]: UFO Scatter-gather approach")
+Reported-by: Andrey Konovalov <andreyknvl@google.com>
+Signed-off-by: Willem de Bruijn <willemb@google.com>
+Acked-by: Michal Kubecek <mkubecek@suse.cz>
+---
+ net/ipv4/ip_output.c  | 11 +++++++----
+ net/ipv6/ip6_output.c | 11 ++++++-----
+ 2 files changed, 13 insertions(+), 9 deletions(-)
+
+diff --git a/net/ipv4/ip_output.c b/net/ipv4/ip_output.c
+index cd0b17f35513..a0574661e7e2 100644
+--- a/net/ipv4/ip_output.c
++++ b/net/ipv4/ip_output.c
+@@ -922,10 +922,12 @@ static int __ip_append_data(struct sock *sk,
+ 		csummode = CHECKSUM_PARTIAL;
+ 
+ 	cork->length += length;
+-	if (((length > mtu) || (skb && skb_is_gso(skb))) &&
+-	    (sk->sk_protocol == IPPROTO_UDP) &&
+-	    (rt->dst.dev->features & NETIF_F_UFO) && !dst_xfrm(&rt->dst) &&
+-	    (sk->sk_type == SOCK_DGRAM) && !sk->sk_no_check_tx) {
++	if ((skb && skb_is_gso(skb)) ||
++	    ((length > mtu) &&
++	     (skb_queue_len(queue) <= 1) &&
++	     (sk->sk_protocol == IPPROTO_UDP) &&
++	     (rt->dst.dev->features & NETIF_F_UFO) && !dst_xfrm(&rt->dst) &&
++	     (sk->sk_type == SOCK_DGRAM) && !sk->sk_no_check_tx)) {
+ 		err = ip_ufo_append_data(sk, queue, getfrag, from, length,
+ 					 hh_len, fragheaderlen, transhdrlen,
+ 					 maxfraglen, flags);
+@@ -1242,6 +1244,7 @@ ssize_t	ip_append_page(struct sock *sk, struct flowi4 *fl4, struct page *page,
+ 
+ 	if ((size + skb->len > mtu) &&
+ 	    (sk->sk_protocol == IPPROTO_UDP) &&
++	    (skb_queue_len(&sk->sk_write_queue) == 1) &&
+ 	    (rt->dst.dev->features & NETIF_F_UFO)) {
+ 		if (skb->ip_summed != CHECKSUM_PARTIAL)
+ 			return -EOPNOTSUPP;
+diff --git a/net/ipv6/ip6_output.c b/net/ipv6/ip6_output.c
+index cd37f1f06871..1897ceab0b48 100644
+--- a/net/ipv6/ip6_output.c
++++ b/net/ipv6/ip6_output.c
+@@ -1361,11 +1361,12 @@ emsgsize:
+ 	 */
+ 
+ 	cork->length += length;
+-	if (((length > mtu) ||
+-	     (skb && skb_is_gso(skb))) &&
+-	    (sk->sk_protocol == IPPROTO_UDP) &&
+-	    (rt->dst.dev->features & NETIF_F_UFO) && !dst_xfrm(&rt->dst) &&
+-	    (sk->sk_type == SOCK_DGRAM) && !udp_get_no_check6_tx(sk)) {
++	if ((skb && skb_is_gso(skb)) ||
++	    ((length > mtu) &&
++	     (skb_queue_len(queue) <= 1) &&
++	     (sk->sk_protocol == IPPROTO_UDP) &&
++	     (rt->dst.dev->features & NETIF_F_UFO) && !dst_xfrm(&rt->dst) &&
++	     (sk->sk_type == SOCK_DGRAM) && !udp_get_no_check6_tx(sk))) {
+ 		err = ip6_ufo_append_data(sk, queue, getfrag, from, length,
+ 					  hh_len, fragheaderlen, exthdrlen,
+ 					  transhdrlen, mtu, flags, fl6);
+-- 
+2.13.4
+

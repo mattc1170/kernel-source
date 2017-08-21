@@ -1,0 +1,38 @@
+From cd74da957ba2d03787ede1c22bbb183d9c728aad Mon Sep 17 00:00:00 2001
+From: Florian Fainelli <f.fainelli@gmail.com>
+Date: Tue, 29 Nov 2016 17:21:05 -0800
+Subject: [PATCH] drivers: base: dma-mapping: Fix typo in dmam_alloc_non_coherent comments
+Git-commit: cd74da957ba2d03787ede1c22bbb183d9c728aad
+Patch-mainline: 4.10-rc1
+References: bsc#1031717
+
+The function we are wrapping is named dma_alloc_noncoherent, and
+not dma_alloc_non_coherent.
+
+Fixes: 9ac7849e35f70 ("devres: device resource management")
+Signed-off-by: Florian Fainelli <f.fainelli@gmail.com>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/base/dma-mapping.c |    4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+--- a/drivers/base/dma-mapping.c
++++ b/drivers/base/dma-mapping.c
+@@ -109,13 +109,13 @@ void dmam_free_coherent(struct device *d
+ EXPORT_SYMBOL(dmam_free_coherent);
+ 
+ /**
+- * dmam_alloc_non_coherent - Managed dma_alloc_non_coherent()
++ * dmam_alloc_non_coherent - Managed dma_alloc_noncoherent()
+  * @dev: Device to allocate non_coherent memory for
+  * @size: Size of allocation
+  * @dma_handle: Out argument for allocated DMA handle
+  * @gfp: Allocation flags
+  *
+- * Managed dma_alloc_non_coherent().  Memory allocated using this
++ * Managed dma_alloc_noncoherent().  Memory allocated using this
+  * function will be automatically released on driver detach.
+  *
+  * RETURNS:

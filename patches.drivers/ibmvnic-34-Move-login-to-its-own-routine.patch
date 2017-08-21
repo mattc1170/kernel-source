@@ -4,8 +4,7 @@ Date: Fri, 17 Mar 2017 17:13:41 -0500
 Subject: [PATCH] ibmvnic: Move login to its own routine
 
 References: fate#322021, bsc#1031512
-Patch-mainline: queued, next-20170328
-Git-repo: https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git
+Patch-mainline: v4.12-rc1
 Git-commit: a57a5d25a56bd9625722d17fecacf21cbe9818d8
 
 Move the code that handles login and renegotiation of ibmvnic

@@ -1,0 +1,30 @@
+From: David Sterba <dsterba@suse.com>
+Date: Thu, 12 May 2016 11:05:03 +0200
+Patch-mainline: 4.7
+Git-commit: 2c1984f244838477aab4e5882f4479491ae1084a
+References: bsc#1012452
+Subject: [PATCH] btrfs: build fixup for qgroup_account_snapshot
+
+The macro btrfs_std_error got renamed to btrfs_handle_fs_error in an
+independent branch for the same merge target (4.7). To make the code
+compilable for bisectability reasons, add a temporary stub.
+
+Signed-off-by: David Sterba <dsterba@suse.com>
+---
+ fs/btrfs/transaction.c |    5 +++++
+ 1 file changed, 5 insertions(+)
+
+--- a/fs/btrfs/transaction.c
++++ b/fs/btrfs/transaction.c
+@@ -1306,6 +1306,11 @@ int btrfs_defrag_root(struct btrfs_root
+ 	return ret;
+ }
+ 
++/* Bisesctability fixup, remove in 4.8 */
++#ifndef btrfs_std_error
++#define btrfs_std_error btrfs_handle_fs_error
++#endif
++
+ /*
+  * Do all special snapshot related qgroup dirty hack.
+  *

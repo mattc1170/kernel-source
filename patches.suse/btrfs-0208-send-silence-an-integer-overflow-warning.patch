@@ -1,0 +1,34 @@
+From: Dan Carpenter <dan.carpenter@oracle.com>
+Date: Wed, 13 Apr 2016 09:40:59 +0300
+Patch-mainline: 4.7
+Git-commit: f5ecec3ce21f706e9e7a330b2e8e5a2941927b46
+References: bsc#1012452
+Subject: [PATCH] btrfs: send: silence an integer overflow warning
+
+The "sizeof(*arg->clone_sources) * arg->clone_sources_count" expression
+can overflow.  It causes several static checker warnings.  It's all
+under CAP_SYS_ADMIN so it's not that serious but lets silence the
+warnings.
+
+Signed-off-by: Dan Carpenter <dan.carpenter@oracle.com>
+Reviewed-by: David Sterba <dsterba@suse.com>
+Signed-off-by: David Sterba <dsterba@suse.com>
+---
+ fs/btrfs/send.c |    6 ++++++
+ 1 file changed, 6 insertions(+)
+
+--- a/fs/btrfs/send.c
++++ b/fs/btrfs/send.c
+@@ -5977,6 +5977,12 @@ long btrfs_ioctl_send(struct file *mnt_f
+ 		goto out;
+ 	}
+ 
++	if (arg->clone_sources_count >
++	    ULLONG_MAX / sizeof(*arg->clone_sources)) {
++		ret = -EINVAL;
++		goto out;
++	}
++
+ 	if (!access_ok(VERIFY_READ, arg->clone_sources,
+ 			sizeof(*arg->clone_sources) *
+ 			arg->clone_sources_count)) {

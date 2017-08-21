@@ -1,0 +1,68 @@
+From 156f92f2b4711a0e8478c596557a1bd5ca69b02d Mon Sep 17 00:00:00 2001
+From: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Date: Tue, 24 Nov 2015 14:55:18 +0200
+Subject: [PATCH] iwlwifi: block the queues when we send ADD_STA for uAPSD
+Git-commit: 156f92f2b4711a0e8478c596557a1bd5ca69b02d
+Patch-mainline: 4.5-rc1
+References: FATE#321353, FATE#323335
+
+We send an ADD_STA to instruct the firmware to release
+frames despite the peer being in PS.
+Since the ADD_STA command and the Tx frame that comes
+immediately afterwards can be reordered by the DMA engine,
+we need to block the Tx queues until the firmware replies
+with the ADD_STA response.
+
+Signed-off-by: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/iwlwifi/mvm/ops.c |   13 +++++++++++++
+ drivers/net/wireless/iwlwifi/mvm/sta.c |    7 ++++++-
+ 2 files changed, 19 insertions(+), 1 deletion(-)
+
+--- a/drivers/net/wireless/iwlwifi/mvm/ops.c
++++ b/drivers/net/wireless/iwlwifi/mvm/ops.c
+@@ -839,6 +839,18 @@ static void iwl_mvm_stop_sw_queue(struct
+ 	}
+ }
+ 
++static void iwl_mvm_async_cb(struct iwl_op_mode *op_mode,
++			     const struct iwl_device_cmd *cmd)
++{
++	struct iwl_mvm *mvm = IWL_OP_MODE_GET_MVM(op_mode);
++
++	/*
++	 * For now, we only set the CMD_WANT_ASYNC_CALLBACK for ADD_STA
++	 * commands that need to block the Tx queues.
++	 */
++	iwl_trans_block_txq_ptrs(mvm->trans, false);
++}
++
+ static void iwl_mvm_wake_sw_queue(struct iwl_op_mode *op_mode, int queue)
+ {
+ 	struct iwl_mvm *mvm = IWL_OP_MODE_GET_MVM(op_mode);
+@@ -1414,6 +1426,7 @@ int iwl_mvm_exit_d0i3(struct iwl_op_mode
+ 
+ #define IWL_MVM_COMMON_OPS					\
+ 	/* these could be differentiated */			\
++	.async_cb = iwl_mvm_async_cb,				\
+ 	.queue_full = iwl_mvm_stop_sw_queue,			\
+ 	.queue_not_full = iwl_mvm_wake_sw_queue,		\
+ 	.hw_rf_kill = iwl_mvm_set_hw_rfkill_state,		\
+--- a/drivers/net/wireless/iwlwifi/mvm/sta.c
++++ b/drivers/net/wireless/iwlwifi/mvm/sta.c
+@@ -1711,7 +1711,12 @@ void iwl_mvm_sta_modify_sleep_tx_count(s
+ 		cmd.sleep_state_flags |= cpu_to_le16(STA_SLEEP_STATE_UAPSD);
+ 	}
+ 
+-	ret = iwl_mvm_send_cmd_pdu(mvm, ADD_STA, CMD_ASYNC, sizeof(cmd), &cmd);
++	/* block the Tx queues until the FW updated the sleep Tx count */
++	iwl_trans_block_txq_ptrs(mvm->trans, true);
++
++	ret = iwl_mvm_send_cmd_pdu(mvm, ADD_STA,
++				   CMD_ASYNC | CMD_WANT_ASYNC_CALLBACK,
++				   sizeof(cmd), &cmd);
+ 	if (ret)
+ 		IWL_ERR(mvm, "Failed to send ADD_STA command (%d)\n", ret);
+ }

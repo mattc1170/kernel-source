@@ -1,0 +1,76 @@
+From: Michael Ellerman <mpe@ellerman.id.au>
+Subject: powerpc: Create a helper for getting the kernel toc value
+Git-commit: a5cab83cd3d2d75d3893276cb5f27e163484ef04
+Patch-mainline: v4.6
+References: FATE#322421
+
+ powerpc: Create a helper for getting the kernel toc value
+
+Move the logic to work out the kernel toc pointer into a header. This is
+a good cleanup, and also means we can use it elsewhere in future.
+
+Reviewed-by: Kamalesh Babulal <kamalesh@linux.vnet.ibm.com>
+Reviewed-by: Torsten Duwe <duwe@suse.de>
+Reviewed-by: Balbir Singh <bsingharora@gmail.com>
+Signed-off-by: Michael Ellerman <mpe@ellerman.id.au>
+Tested-by: Kamalesh Babulal <kamalesh@linux.vnet.ibm.com>
+
+diff --git a/arch/powerpc/include/asm/sections.h b/arch/powerpc/include/asm/sections.h
+index a5e930a..abf5866 100644
+--- a/arch/powerpc/include/asm/sections.h
++++ b/arch/powerpc/include/asm/sections.h
+@@ -22,6 +22,18 @@ static inline int in_kernel_text(unsigned long addr)
+ 	return 0;
+ }
+ 
++static inline unsigned long kernel_toc_addr(void)
++{
++	/* Defined by the linker, see vmlinux.lds.S */
++	extern unsigned long __toc_start;
++
++	/*
++	 * The TOC register (r2) points 32kB into the TOC, so that 64kB of
++	 * the TOC can be addressed using a single machine instruction.
++	 */
++	return (unsigned long)(&__toc_start) + 0x8000UL;
++}
++
+ static inline int overlaps_interrupt_vector_text(unsigned long start,
+ 							unsigned long end)
+ {
+diff --git a/arch/powerpc/kernel/paca.c b/arch/powerpc/kernel/paca.c
+index 01ea0ed..93dae29 100644
+--- a/arch/powerpc/kernel/paca.c
++++ b/arch/powerpc/kernel/paca.c
+@@ -17,10 +17,6 @@
+ #include <asm/pgtable.h>
+ #include <asm/kexec.h>
+ 
+-/* This symbol is provided by the linker - let it fill in the paca
+- * field correctly */
+-extern unsigned long __toc_start;
+-
+ #ifdef CONFIG_PPC_BOOK3S
+ 
+ /*
+@@ -149,11 +145,6 @@ EXPORT_SYMBOL(paca);
+ 
+ void __init initialise_paca(struct paca_struct *new_paca, int cpu)
+ {
+-       /* The TOC register (GPR2) points 32kB into the TOC, so that 64kB
+-	* of the TOC can be addressed using a single machine instruction.
+-	*/
+-	unsigned long kernel_toc = (unsigned long)(&__toc_start) + 0x8000UL;
+-
+ #ifdef CONFIG_PPC_BOOK3S
+ 	new_paca->lppaca_ptr = new_lppaca(cpu);
+ #else
+@@ -161,7 +152,7 @@ void __init initialise_paca(struct paca_struct *new_paca, int cpu)
+ #endif
+ 	new_paca->lock_token = 0x8000;
+ 	new_paca->paca_index = cpu;
+-	new_paca->kernel_toc = kernel_toc;
++	new_paca->kernel_toc = kernel_toc_addr();
+ 	new_paca->kernelbase = (unsigned long) _stext;
+ 	/* Only set MSR:IR/DR when MMU is initialized */
+ 	new_paca->kernel_msr = MSR_KERNEL & ~(MSR_IR | MSR_DR);

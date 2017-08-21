@@ -1,0 +1,41 @@
+From: Josef Bacik <jbacik@fb.com>
+Date: Fri, 25 Mar 2016 13:25:51 -0400
+Patch-mainline: 4.8
+Git-commit: d555b6c380c644af63dbdaa7cc14bba041a4e4dd
+References: bsc#1012452
+Subject: [PATCH] Btrfs: warn_on for unaccounted spaces
+
+These were hidden behind enospc_debug, which isn't helpful as they indicate
+actual bugs, unlike the rest of the enospc_debug stuff which is really debug
+information.  Thanks,
+
+Signed-off-by: Josef Bacik <jbacik@fb.com>
+Signed-off-by: David Sterba <dsterba@suse.com>
+---
+ fs/btrfs/extent-tree.c |   14 ++++++++------
+ 1 file changed, 8 insertions(+), 6 deletions(-)
+
+--- a/fs/btrfs/extent-tree.c
++++ b/fs/btrfs/extent-tree.c
+@@ -9765,13 +9765,15 @@ int btrfs_free_block_groups(struct btrfs
+ 		space_info = list_entry(info->space_info.next,
+ 					struct btrfs_space_info,
+ 					list);
+-		if (btrfs_test_opt(info->tree_root, ENOSPC_DEBUG)) {
+-			if (WARN_ON(space_info->bytes_pinned > 0 ||
++
++		/*
++		 * Do not hide this behind enospc_debug, this is actually
++		 * important and indicates a real bug if this happens.
++		 */
++		if (WARN_ON(space_info->bytes_pinned > 0 ||
+ 			    space_info->bytes_reserved > 0 ||
+-			    space_info->bytes_may_use > 0)) {
+-				dump_space_info(space_info, 0, 0);
+-			}
+-		}
++			    space_info->bytes_may_use > 0))
++			dump_space_info(space_info, 0, 0);
+ 		list_del(&space_info->list);
+ 		for (i = 0; i < BTRFS_NR_RAID_TYPES; i++) {
+ 			struct kobject *kobj;

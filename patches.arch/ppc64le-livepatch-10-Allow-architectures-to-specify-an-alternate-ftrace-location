@@ -1,0 +1,115 @@
+From: Michael Ellerman <mpe@ellerman.id.au>
+Subject: livepatch: Allow architectures to specify an alternate ftrace location
+Git-commit: 28e7cbd3e0f5fefec892842d1391ebd508fdb5ce
+Patch-mainline: v4.7
+References: FATE#322421
+
+ livepatch: Allow architectures to specify an alternate ftrace location
+
+When livepatch tries to patch a function it takes the function address
+and asks ftrace to install the livepatch handler at that location.
+ftrace will look for an mcount call site at that exact address.
+
+On powerpc the mcount location is not the first instruction of the
+function, and in fact it's not at a constant offset from the start of
+the function. To accommodate this add a hook which arch code can
+override to customise the behaviour.
+
+Signed-off-by: Torsten Duwe <duwe@suse.de>
+Signed-off-by: Balbir Singh <bsingharora@gmail.com>
+Signed-off-by: Petr Mladek <pmladek@suse.com>
+Signed-off-by: Michael Ellerman <mpe@ellerman.id.au>
+
+[backport to SLE12SP1 kgraft:]
+Signed-off-by: Miroslav Benes <mbenes@suse.cz>
+
+---
+ kernel/kgraft.c | 45 +++++++++++++++++++++++++++++++++++++--------
+ 1 file changed, 37 insertions(+), 8 deletions(-)
+
+diff --git a/kernel/kgraft.c b/kernel/kgraft.c
+index 1241d8eee4f1..0e87cb9f38f3 100644
+--- a/kernel/kgraft.c
++++ b/kernel/kgraft.c
+@@ -114,17 +114,43 @@ static void kgr_refs_dec(void)
+ 		p->refs--;
+ }
+ 
++/*
++ * Convert a function address into the appropriate ftrace location.
++ *
++ * Usually this is just the address of the function, but on some architectures
++ * it's more complicated so allow them to provide a custom behaviour.
++ */
++#ifndef klp_get_ftrace_location
++static unsigned long klp_get_ftrace_location(unsigned long faddr)
++{
++	return faddr;
++}
++#endif
++
++static const char *kgr_get_objname(const struct kgr_patch_fun *pf)
++{
++	return pf->objname ? pf->objname : "vmlinux";
++}
++
+ static int kgr_ftrace_enable(struct kgr_patch_fun *pf, struct ftrace_ops *fops)
+ {
+ 	int ret;
++	unsigned long ftrace_loc;
++
++	ftrace_loc = klp_get_ftrace_location(pf->loc_name);
++	if (!ftrace_loc) {
++		pr_err("failed to find location for function %s:%s,%lu\n",
++			kgr_get_objname(pf), pf->name, pf->sympos);
++		return -EINVAL;
++	}
+ 
+-	ret = ftrace_set_filter_ip(fops, pf->loc_name, 0, 0);
++	ret = ftrace_set_filter_ip(fops, ftrace_loc, 0, 0);
+ 	if (ret)
+ 		return ret;
+ 
+ 	ret = register_ftrace_function(fops);
+ 	if (ret)
+-		ftrace_set_filter_ip(fops, pf->loc_name, 1, 0);
++		ftrace_set_filter_ip(fops, ftrace_loc, 1, 0);
+ 
+ 	return ret;
+ }
+@@ -132,12 +158,20 @@ static int kgr_ftrace_enable(struct kgr_patch_fun *pf, struct ftrace_ops *fops)
+ static int kgr_ftrace_disable(struct kgr_patch_fun *pf, struct ftrace_ops *fops)
+ {
+ 	int ret;
++	unsigned long ftrace_loc;
++
++	ftrace_loc = klp_get_ftrace_location(pf->loc_name);
++	if (!ftrace_loc) {
++		pr_err("failed to find location for function %s:%s,%lu\n",
++			kgr_get_objname(pf), pf->name, pf->sympos);
++		return -EINVAL;
++	}
+ 
+ 	ret = unregister_ftrace_function(fops);
+ 	if (ret)
+ 		return ret;
+ 
+-	ret = ftrace_set_filter_ip(fops, pf->loc_name, 1, 0);
++	ret = ftrace_set_filter_ip(fops, ftrace_loc, 1, 0);
+ 	if (ret)
+ 		register_ftrace_function(fops);
+ 
+@@ -183,11 +217,6 @@ static void kgr_remove_patches_fast(void)
+ 	}
+ }
+ 
+-static const char *kgr_get_objname(const struct kgr_patch_fun *pf)
+-{
+-	return pf->objname ? pf->objname : "vmlinux";
+-}
+-
+ /*
+  * In case of replace_all patch we need to finalize also reverted functions in
+  * all previous patches. All previous patches contain only functions either in
+-- 
+2.12.0

@@ -29,5 +29,5 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
 +		return;
 +
  	mlx4_stop_catas_poll(dev);
- 	mutex_lock(&intf_mutex);
- 
+ 	if (dev->persist->interface_state & MLX4_INTERFACE_STATE_DELETION &&
+ 	    mlx4_is_slave(dev)) {

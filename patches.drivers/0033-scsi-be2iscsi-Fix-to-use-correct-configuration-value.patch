@@ -1,0 +1,54 @@
+From: Jitendra Bhivare <jitendra.bhivare@broadcom.com>
+Date: Fri, 19 Aug 2016 15:19:58 +0530
+Subject: scsi: be2iscsi: Fix to use correct configuration values
+References: bsc#1038458
+Git-commit: ea89604f3d8dc49e9b28020bd25880aabd84c6cd
+Patch-Mainline: v4.9-rc1
+
+Following configuration is created with what driver exports:
+iface.vlan_id = 65535
+iface.vlan_priority = 255
+iface.vlan_state = <empty>
+
+vlan_state is empty as iscsiadm doesn't process "Disabled".
+When applying this configuration, iscsiadm checks for if vlan_state is
+"disable" if not it enables with value in vlan_id. 65535 not being valid
+value, 0 is applied.
+
+Use "enable" or "disable" for ISCSI_NET_PARAM.
+
+Signed-off-by: Jitendra Bhivare <jitendra.bhivare@broadcom.com>
+Reviewed-by: Hannes Reinecke <hare@suse.com>
+Signed-off-by: Martin K. Petersen <martin.petersen@oracle.com>
+Signed-off-by: Hannes Reinecke <hare@suse.de>
+---
+ drivers/scsi/be2iscsi/be_iscsi.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/scsi/be2iscsi/be_iscsi.c b/drivers/scsi/be2iscsi/be_iscsi.c
+index 09f89a3..ab696ec 100644
+--- a/drivers/scsi/be2iscsi/be_iscsi.c
++++ b/drivers/scsi/be2iscsi/be_iscsi.c
+@@ -567,8 +567,8 @@ static int be2iscsi_get_if_param(struct beiscsi_hba *phba,
+ 		break;
+ 	case ISCSI_NET_PARAM_VLAN_ENABLED:
+ 		len = sprintf(buf, "%s\n",
+-			     (if_info->vlan_priority == BEISCSI_VLAN_DISABLE)
+-			     ? "Disabled\n" : "Enabled\n");
++			      (if_info->vlan_priority == BEISCSI_VLAN_DISABLE) ?
++			      "disable" : "enable");
+ 		break;
+ 	case ISCSI_NET_PARAM_VLAN_ID:
+ 		if (if_info->vlan_priority == BEISCSI_VLAN_DISABLE)
+@@ -620,7 +620,7 @@ int be2iscsi_iface_get_param(struct iscsi_iface *iface,
+ 		len = be2iscsi_get_if_param(phba, iface, param, buf);
+ 		break;
+ 	case ISCSI_NET_PARAM_IFACE_ENABLE:
+-		len = sprintf(buf, "enabled\n");
++		len = sprintf(buf, "enable\n");
+ 		break;
+ 	case ISCSI_NET_PARAM_IPV4_GW:
+ 		memset(&gateway, 0, sizeof(gateway));
+-- 
+1.8.5.6
+

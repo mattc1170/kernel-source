@@ -1,0 +1,931 @@
+From 39bdb17ebb5bd7a5c8a231d7cac4a4d5ccc58149 Mon Sep 17 00:00:00 2001
+From: Sharon Dvir <sharon.dvir@intel.com>
+Date: Thu, 15 Oct 2015 18:18:09 +0300
+Subject: [PATCH] iwlwifi: update host command messages to new format
+Git-commit: 39bdb17ebb5bd7a5c8a231d7cac4a4d5ccc58149
+Patch-mainline: 4.5-rc1
+References: FATE#321353, FATE#323335
+
+Host commands now have a group id, express this in printed messages.
+
+Signed-off-by: Sharon Dvir <sharon.dvir@intel.com>
+Signed-off-by: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/iwlwifi/dvm/agn.h       |    9 -
+ drivers/net/wireless/iwlwifi/dvm/debugfs.c   |    4 
+ drivers/net/wireless/iwlwifi/dvm/lib.c       |    2 
+ drivers/net/wireless/iwlwifi/dvm/main.c      |   94 +++++++++++
+ drivers/net/wireless/iwlwifi/dvm/rx.c        |   87 ----------
+ drivers/net/wireless/iwlwifi/iwl-trans.c     |   60 +++++++
+ drivers/net/wireless/iwlwifi/iwl-trans.h     |   34 +++-
+ drivers/net/wireless/iwlwifi/mvm/fw-api.h    |    5 
+ drivers/net/wireless/iwlwifi/mvm/ops.c       |  220 +++++++++++++++------------
+ drivers/net/wireless/iwlwifi/pcie/internal.h |   10 -
+ drivers/net/wireless/iwlwifi/pcie/rx.c       |    5 
+ drivers/net/wireless/iwlwifi/pcie/trans.c    |    4 
+ drivers/net/wireless/iwlwifi/pcie/tx.c       |   31 ++-
+ 13 files changed, 344 insertions(+), 221 deletions(-)
+
+--- a/drivers/net/wireless/iwlwifi/dvm/agn.h
++++ b/drivers/net/wireless/iwlwifi/dvm/agn.h
+@@ -473,13 +473,4 @@ do {									\
+ } while (0)
+ #endif				/* CONFIG_IWLWIFI_DEBUG */
+ 
+-extern const char *const iwl_dvm_cmd_strings[REPLY_MAX + 1];
+-
+-static inline const char *iwl_dvm_get_cmd_string(u8 cmd)
+-{
+-	const char *s = iwl_dvm_cmd_strings[cmd];
+-	if (s)
+-		return s;
+-	return "UNKNOWN";
+-}
+ #endif /* __iwl_agn_h__ */
+--- a/drivers/net/wireless/iwlwifi/dvm/debugfs.c
++++ b/drivers/net/wireless/iwlwifi/dvm/debugfs.c
+@@ -32,7 +32,9 @@
+ #include <linux/debugfs.h>
+ #include <linux/ieee80211.h>
+ #include <net/mac80211.h>
++
+ #include "iwl-debug.h"
++#include "iwl-trans.h"
+ #include "iwl-io.h"
+ #include "dev.h"
+ #include "agn.h"
+@@ -438,7 +440,7 @@ static ssize_t iwl_dbgfs_rx_handlers_rea
+ 		if (priv->rx_handlers_stats[cnt] > 0)
+ 			pos += scnprintf(buf + pos, bufsz - pos,
+ 				"\tRx handler[%36s]:\t\t %u\n",
+-				iwl_dvm_get_cmd_string(cnt),
++				iwl_get_cmd_string(priv->trans, (u32)cnt),
+ 				priv->rx_handlers_stats[cnt]);
+ 	}
+ 
+--- a/drivers/net/wireless/iwlwifi/dvm/lib.c
++++ b/drivers/net/wireless/iwlwifi/dvm/lib.c
+@@ -1265,7 +1265,7 @@ int iwl_dvm_send_cmd(struct iwl_priv *pr
+ 
+ 	if (test_bit(STATUS_FW_ERROR, &priv->status)) {
+ 		IWL_ERR(priv, "Command %s failed: FW Error\n",
+-			iwl_dvm_get_cmd_string(cmd->id));
++			iwl_get_cmd_string(priv->trans, cmd->id));
+ 		return -EIO;
+ 	}
+ 
+--- a/drivers/net/wireless/iwlwifi/dvm/main.c
++++ b/drivers/net/wireless/iwlwifi/dvm/main.c
+@@ -1,6 +1,7 @@
+ /******************************************************************************
+  *
+  * Copyright(c) 2003 - 2014 Intel Corporation. All rights reserved.
++ * Copyright(c) 2015 Intel Deutschland GmbH
+  *
+  * Portions of this file are derived from the ipw3945 project, as well
+  * as portions of the ieee80211 subsystem header files.
+@@ -69,6 +70,93 @@ MODULE_DESCRIPTION(DRV_DESCRIPTION);
+ MODULE_AUTHOR(DRV_COPYRIGHT " " DRV_AUTHOR);
+ MODULE_LICENSE("GPL");
+ 
++/* Please keep this array *SORTED* by hex value.
++ * Access is done through binary search.
++ * A warning will be triggered on violation.
++ */
++static const struct iwl_hcmd_names iwl_dvm_cmd_names[] = {
++	HCMD_NAME(REPLY_ALIVE),
++	HCMD_NAME(REPLY_ERROR),
++	HCMD_NAME(REPLY_ECHO),
++	HCMD_NAME(REPLY_RXON),
++	HCMD_NAME(REPLY_RXON_ASSOC),
++	HCMD_NAME(REPLY_QOS_PARAM),
++	HCMD_NAME(REPLY_RXON_TIMING),
++	HCMD_NAME(REPLY_ADD_STA),
++	HCMD_NAME(REPLY_REMOVE_STA),
++	HCMD_NAME(REPLY_REMOVE_ALL_STA),
++	HCMD_NAME(REPLY_TX),
++	HCMD_NAME(REPLY_TXFIFO_FLUSH),
++	HCMD_NAME(REPLY_WEPKEY),
++	HCMD_NAME(REPLY_LEDS_CMD),
++	HCMD_NAME(REPLY_TX_LINK_QUALITY_CMD),
++	HCMD_NAME(COEX_PRIORITY_TABLE_CMD),
++	HCMD_NAME(COEX_MEDIUM_NOTIFICATION),
++	HCMD_NAME(COEX_EVENT_CMD),
++	HCMD_NAME(TEMPERATURE_NOTIFICATION),
++	HCMD_NAME(CALIBRATION_CFG_CMD),
++	HCMD_NAME(CALIBRATION_RES_NOTIFICATION),
++	HCMD_NAME(CALIBRATION_COMPLETE_NOTIFICATION),
++	HCMD_NAME(REPLY_QUIET_CMD),
++	HCMD_NAME(REPLY_CHANNEL_SWITCH),
++	HCMD_NAME(CHANNEL_SWITCH_NOTIFICATION),
++	HCMD_NAME(REPLY_SPECTRUM_MEASUREMENT_CMD),
++	HCMD_NAME(SPECTRUM_MEASURE_NOTIFICATION),
++	HCMD_NAME(POWER_TABLE_CMD),
++	HCMD_NAME(PM_SLEEP_NOTIFICATION),
++	HCMD_NAME(PM_DEBUG_STATISTIC_NOTIFIC),
++	HCMD_NAME(REPLY_SCAN_CMD),
++	HCMD_NAME(REPLY_SCAN_ABORT_CMD),
++	HCMD_NAME(SCAN_START_NOTIFICATION),
++	HCMD_NAME(SCAN_RESULTS_NOTIFICATION),
++	HCMD_NAME(SCAN_COMPLETE_NOTIFICATION),
++	HCMD_NAME(BEACON_NOTIFICATION),
++	HCMD_NAME(REPLY_TX_BEACON),
++	HCMD_NAME(WHO_IS_AWAKE_NOTIFICATION),
++	HCMD_NAME(REPLY_TX_POWER_DBM_CMD),
++	HCMD_NAME(QUIET_NOTIFICATION),
++	HCMD_NAME(REPLY_TX_PWR_TABLE_CMD),
++	HCMD_NAME(REPLY_TX_POWER_DBM_CMD_V1),
++	HCMD_NAME(TX_ANT_CONFIGURATION_CMD),
++	HCMD_NAME(MEASURE_ABORT_NOTIFICATION),
++	HCMD_NAME(REPLY_BT_CONFIG),
++	HCMD_NAME(REPLY_STATISTICS_CMD),
++	HCMD_NAME(STATISTICS_NOTIFICATION),
++	HCMD_NAME(REPLY_CARD_STATE_CMD),
++	HCMD_NAME(CARD_STATE_NOTIFICATION),
++	HCMD_NAME(MISSED_BEACONS_NOTIFICATION),
++	HCMD_NAME(REPLY_CT_KILL_CONFIG_CMD),
++	HCMD_NAME(SENSITIVITY_CMD),
++	HCMD_NAME(REPLY_PHY_CALIBRATION_CMD),
++	HCMD_NAME(REPLY_WIPAN_PARAMS),
++	HCMD_NAME(REPLY_WIPAN_RXON),
++	HCMD_NAME(REPLY_WIPAN_RXON_TIMING),
++	HCMD_NAME(REPLY_WIPAN_RXON_ASSOC),
++	HCMD_NAME(REPLY_WIPAN_QOS_PARAM),
++	HCMD_NAME(REPLY_WIPAN_WEPKEY),
++	HCMD_NAME(REPLY_WIPAN_P2P_CHANNEL_SWITCH),
++	HCMD_NAME(REPLY_WIPAN_NOA_NOTIFICATION),
++	HCMD_NAME(REPLY_WIPAN_DEACTIVATION_COMPLETE),
++	HCMD_NAME(REPLY_RX_PHY_CMD),
++	HCMD_NAME(REPLY_RX_MPDU_CMD),
++	HCMD_NAME(REPLY_RX),
++	HCMD_NAME(REPLY_COMPRESSED_BA),
++	HCMD_NAME(REPLY_BT_COEX_PRIO_TABLE),
++	HCMD_NAME(REPLY_BT_COEX_PROT_ENV),
++	HCMD_NAME(REPLY_BT_COEX_PROFILE_NOTIF),
++	HCMD_NAME(REPLY_D3_CONFIG),
++	HCMD_NAME(REPLY_WOWLAN_PATTERNS),
++	HCMD_NAME(REPLY_WOWLAN_WAKEUP_FILTER),
++	HCMD_NAME(REPLY_WOWLAN_TSC_RSC_PARAMS),
++	HCMD_NAME(REPLY_WOWLAN_TKIP_PARAMS),
++	HCMD_NAME(REPLY_WOWLAN_KEK_KCK_MATERIAL),
++	HCMD_NAME(REPLY_WOWLAN_GET_STATUS),
++};
++
++static const struct iwl_hcmd_arr iwl_dvm_groups[] = {
++	[0x0] = HCMD_ARR(iwl_dvm_cmd_names),
++};
++
+ static const struct iwl_op_mode_ops iwl_dvm_ops;
+ 
+ void iwl_update_chain_flags(struct iwl_priv *priv)
+@@ -1244,7 +1332,9 @@ static struct iwl_op_mode *iwl_op_mode_d
+ 
+ 	trans_cfg.cmd_q_wdg_timeout = IWL_WATCHDOG_DISABLED;
+ 
+-	trans_cfg.command_names = iwl_dvm_cmd_strings;
++	trans_cfg.command_groups = iwl_dvm_groups;
++	trans_cfg.command_groups_size = ARRAY_SIZE(iwl_dvm_groups);
++
+ 	trans_cfg.cmd_fifo = IWLAGN_CMD_FIFO_NUM;
+ 
+ 	WARN_ON(sizeof(priv->transport_queue_stop) * BITS_PER_BYTE <
+@@ -1265,6 +1355,8 @@ static struct iwl_op_mode *iwl_op_mode_d
+ 
+ 	trans->rx_mpdu_cmd = REPLY_RX_MPDU_CMD;
+ 	trans->rx_mpdu_cmd_hdr_size = sizeof(struct iwl_rx_mpdu_res_start);
++	trans->command_groups = trans_cfg.command_groups;
++	trans->command_groups_size = trans_cfg.command_groups_size;
+ 
+ 	/* At this point both hw and priv are allocated. */
+ 
+--- a/drivers/net/wireless/iwlwifi/dvm/rx.c
++++ b/drivers/net/wireless/iwlwifi/dvm/rx.c
+@@ -1,6 +1,7 @@
+ /******************************************************************************
+  *
+  * Copyright(c) 2003 - 2014 Intel Corporation. All rights reserved.
++ * Copyright(c) 2015 Intel Deutschland GmbH
+  *
+  * Portions of this file are derived from the ipw3945 project, as well
+  * as portionhelp of the ieee80211 subsystem header files.
+@@ -32,91 +33,13 @@
+ #include <linux/sched.h>
+ #include <net/mac80211.h>
+ #include <asm/unaligned.h>
++
++#include "iwl-trans.h"
+ #include "iwl-io.h"
+ #include "dev.h"
+ #include "calib.h"
+ #include "agn.h"
+ 
+-#define IWL_CMD_ENTRY(x) [x] = #x
+-
+-const char *const iwl_dvm_cmd_strings[REPLY_MAX + 1] = {
+-	IWL_CMD_ENTRY(REPLY_ALIVE),
+-	IWL_CMD_ENTRY(REPLY_ERROR),
+-	IWL_CMD_ENTRY(REPLY_ECHO),
+-	IWL_CMD_ENTRY(REPLY_RXON),
+-	IWL_CMD_ENTRY(REPLY_RXON_ASSOC),
+-	IWL_CMD_ENTRY(REPLY_QOS_PARAM),
+-	IWL_CMD_ENTRY(REPLY_RXON_TIMING),
+-	IWL_CMD_ENTRY(REPLY_ADD_STA),
+-	IWL_CMD_ENTRY(REPLY_REMOVE_STA),
+-	IWL_CMD_ENTRY(REPLY_REMOVE_ALL_STA),
+-	IWL_CMD_ENTRY(REPLY_TXFIFO_FLUSH),
+-	IWL_CMD_ENTRY(REPLY_WEPKEY),
+-	IWL_CMD_ENTRY(REPLY_TX),
+-	IWL_CMD_ENTRY(REPLY_LEDS_CMD),
+-	IWL_CMD_ENTRY(REPLY_TX_LINK_QUALITY_CMD),
+-	IWL_CMD_ENTRY(COEX_PRIORITY_TABLE_CMD),
+-	IWL_CMD_ENTRY(COEX_MEDIUM_NOTIFICATION),
+-	IWL_CMD_ENTRY(COEX_EVENT_CMD),
+-	IWL_CMD_ENTRY(REPLY_QUIET_CMD),
+-	IWL_CMD_ENTRY(REPLY_CHANNEL_SWITCH),
+-	IWL_CMD_ENTRY(CHANNEL_SWITCH_NOTIFICATION),
+-	IWL_CMD_ENTRY(REPLY_SPECTRUM_MEASUREMENT_CMD),
+-	IWL_CMD_ENTRY(SPECTRUM_MEASURE_NOTIFICATION),
+-	IWL_CMD_ENTRY(POWER_TABLE_CMD),
+-	IWL_CMD_ENTRY(PM_SLEEP_NOTIFICATION),
+-	IWL_CMD_ENTRY(PM_DEBUG_STATISTIC_NOTIFIC),
+-	IWL_CMD_ENTRY(REPLY_SCAN_CMD),
+-	IWL_CMD_ENTRY(REPLY_SCAN_ABORT_CMD),
+-	IWL_CMD_ENTRY(SCAN_START_NOTIFICATION),
+-	IWL_CMD_ENTRY(SCAN_RESULTS_NOTIFICATION),
+-	IWL_CMD_ENTRY(SCAN_COMPLETE_NOTIFICATION),
+-	IWL_CMD_ENTRY(BEACON_NOTIFICATION),
+-	IWL_CMD_ENTRY(REPLY_TX_BEACON),
+-	IWL_CMD_ENTRY(WHO_IS_AWAKE_NOTIFICATION),
+-	IWL_CMD_ENTRY(QUIET_NOTIFICATION),
+-	IWL_CMD_ENTRY(REPLY_TX_PWR_TABLE_CMD),
+-	IWL_CMD_ENTRY(MEASURE_ABORT_NOTIFICATION),
+-	IWL_CMD_ENTRY(REPLY_BT_CONFIG),
+-	IWL_CMD_ENTRY(REPLY_STATISTICS_CMD),
+-	IWL_CMD_ENTRY(STATISTICS_NOTIFICATION),
+-	IWL_CMD_ENTRY(REPLY_CARD_STATE_CMD),
+-	IWL_CMD_ENTRY(CARD_STATE_NOTIFICATION),
+-	IWL_CMD_ENTRY(MISSED_BEACONS_NOTIFICATION),
+-	IWL_CMD_ENTRY(REPLY_CT_KILL_CONFIG_CMD),
+-	IWL_CMD_ENTRY(SENSITIVITY_CMD),
+-	IWL_CMD_ENTRY(REPLY_PHY_CALIBRATION_CMD),
+-	IWL_CMD_ENTRY(REPLY_RX_PHY_CMD),
+-	IWL_CMD_ENTRY(REPLY_RX_MPDU_CMD),
+-	IWL_CMD_ENTRY(REPLY_COMPRESSED_BA),
+-	IWL_CMD_ENTRY(CALIBRATION_CFG_CMD),
+-	IWL_CMD_ENTRY(CALIBRATION_RES_NOTIFICATION),
+-	IWL_CMD_ENTRY(CALIBRATION_COMPLETE_NOTIFICATION),
+-	IWL_CMD_ENTRY(REPLY_TX_POWER_DBM_CMD),
+-	IWL_CMD_ENTRY(TEMPERATURE_NOTIFICATION),
+-	IWL_CMD_ENTRY(TX_ANT_CONFIGURATION_CMD),
+-	IWL_CMD_ENTRY(REPLY_BT_COEX_PROFILE_NOTIF),
+-	IWL_CMD_ENTRY(REPLY_BT_COEX_PRIO_TABLE),
+-	IWL_CMD_ENTRY(REPLY_BT_COEX_PROT_ENV),
+-	IWL_CMD_ENTRY(REPLY_WIPAN_PARAMS),
+-	IWL_CMD_ENTRY(REPLY_WIPAN_RXON),
+-	IWL_CMD_ENTRY(REPLY_WIPAN_RXON_TIMING),
+-	IWL_CMD_ENTRY(REPLY_WIPAN_RXON_ASSOC),
+-	IWL_CMD_ENTRY(REPLY_WIPAN_QOS_PARAM),
+-	IWL_CMD_ENTRY(REPLY_WIPAN_WEPKEY),
+-	IWL_CMD_ENTRY(REPLY_WIPAN_P2P_CHANNEL_SWITCH),
+-	IWL_CMD_ENTRY(REPLY_WIPAN_NOA_NOTIFICATION),
+-	IWL_CMD_ENTRY(REPLY_WIPAN_DEACTIVATION_COMPLETE),
+-	IWL_CMD_ENTRY(REPLY_WOWLAN_PATTERNS),
+-	IWL_CMD_ENTRY(REPLY_WOWLAN_WAKEUP_FILTER),
+-	IWL_CMD_ENTRY(REPLY_WOWLAN_TSC_RSC_PARAMS),
+-	IWL_CMD_ENTRY(REPLY_WOWLAN_TKIP_PARAMS),
+-	IWL_CMD_ENTRY(REPLY_WOWLAN_KEK_KCK_MATERIAL),
+-	IWL_CMD_ENTRY(REPLY_WOWLAN_GET_STATUS),
+-	IWL_CMD_ENTRY(REPLY_D3_CONFIG),
+-};
+-#undef IWL_CMD_ENTRY
+-
+ /******************************************************************************
+  *
+  * Generic RX handler implementations
+@@ -1095,7 +1018,9 @@ void iwl_rx_dispatch(struct iwl_op_mode
+ 	} else {
+ 		/* No handling needed */
+ 		IWL_DEBUG_RX(priv, "No handler needed for %s, 0x%02x\n",
+-			     iwl_dvm_get_cmd_string(pkt->hdr.cmd),
++			     iwl_get_cmd_string(priv->trans,
++						iwl_cmd_id(pkt->hdr.cmd,
++							   0, 0)),
+ 			     pkt->hdr.cmd);
+ 	}
+ }
+--- a/drivers/net/wireless/iwlwifi/iwl-trans.c
++++ b/drivers/net/wireless/iwlwifi/iwl-trans.c
+@@ -61,8 +61,10 @@
+  *
+  *****************************************************************************/
+ #include <linux/kernel.h>
+-#include "iwl-drv.h"
++#include <linux/bsearch.h>
++
+ #include "iwl-trans.h"
++#include "iwl-drv.h"
+ 
+ struct iwl_trans *iwl_trans_alloc(unsigned int priv_size,
+ 				  struct device *dev,
+@@ -145,3 +147,59 @@ int iwl_trans_send_cmd(struct iwl_trans
+ 	return ret;
+ }
+ IWL_EXPORT_SYMBOL(iwl_trans_send_cmd);
++
++/* Comparator for struct iwl_hcmd_names.
++ * Used in the binary search over a list of host commands.
++ *
++ * @key: command_id that we're looking for.
++ * @elt: struct iwl_hcmd_names candidate for match.
++ *
++ * @return 0 iff equal.
++ */
++static int iwl_hcmd_names_cmp(const void *key, const void *elt)
++{
++	const struct iwl_hcmd_names *name = elt;
++	u8 cmd1 = *(u8 *)key;
++	u8 cmd2 = name->cmd_id;
++
++	return (cmd1 - cmd2);
++}
++
++const char *iwl_get_cmd_string(struct iwl_trans *trans, u32 id)
++{
++	u8 grp, cmd;
++	struct iwl_hcmd_names *ret;
++	const struct iwl_hcmd_arr *arr;
++	size_t size = sizeof(struct iwl_hcmd_names);
++
++	grp = iwl_cmd_groupid(id);
++	cmd = iwl_cmd_opcode(id);
++
++	if (!trans->command_groups || grp >= trans->command_groups_size ||
++	    !trans->command_groups[grp].arr)
++		return "UNKNOWN";
++
++	arr = &trans->command_groups[grp];
++	ret = bsearch(&cmd, arr->arr, arr->size, size, iwl_hcmd_names_cmp);
++	if (!ret)
++		return "UNKNOWN";
++	return ret->cmd_name;
++}
++IWL_EXPORT_SYMBOL(iwl_get_cmd_string);
++
++int iwl_cmd_groups_verify_sorted(const struct iwl_trans_config *trans)
++{
++	int i, j;
++	const struct iwl_hcmd_arr *arr;
++
++	for (i = 0; i < trans->command_groups_size; i++) {
++		arr = &trans->command_groups[i];
++		if (!arr->arr)
++			continue;
++		for (j = 0; j < arr->size - 1; j++)
++			if (arr->arr[j].cmd_id > arr->arr[j + 1].cmd_id)
++				return -1;
++	}
++	return 0;
++}
++IWL_EXPORT_SYMBOL(iwl_cmd_groups_verify_sorted);
+--- a/drivers/net/wireless/iwlwifi/iwl-trans.h
++++ b/drivers/net/wireless/iwlwifi/iwl-trans.h
+@@ -68,6 +68,7 @@
+ #include <linux/ieee80211.h>
+ #include <linux/mm.h> /* for page_address */
+ #include <linux/lockdep.h>
++#include <linux/kernel.h>
+ 
+ #include "iwl-debug.h"
+ #include "iwl-config.h"
+@@ -442,6 +443,22 @@ iwl_trans_get_rb_size_order(enum iwl_ams
+ 	}
+ }
+ 
++struct iwl_hcmd_names {
++	u8 cmd_id;
++	const char *const cmd_name;
++};
++
++#define HCMD_NAME(x)	\
++	{ .cmd_id = x, .cmd_name = #x }
++
++struct iwl_hcmd_arr {
++	const struct iwl_hcmd_names *arr;
++	int size;
++};
++
++#define HCMD_ARR(x)	\
++	{ .arr = x, .size = ARRAY_SIZE(x) }
++
+ /**
+  * struct iwl_trans_config - transport configuration
+  *
+@@ -461,8 +478,9 @@ iwl_trans_get_rb_size_order(enum iwl_ams
+  *	in DWORD (as opposed to bytes)
+  * @scd_set_active: should the transport configure the SCD for HCMD queue
+  * @wide_cmd_header: firmware supports wide host command header
+- * @command_names: array of command names, must be 256 entries
+- *	(one for each command); for debugging only
++ * @command_groups: array of command groups, each member is an array of the
++ *	commands in the group; for debugging only
++ * @command_groups_size: number of command groups, to avoid illegal access
+  * @sdio_adma_addr: the default address to set for the ADMA in SDIO mode until
+  *	we get the ALIVE from the uCode
+  */
+@@ -479,8 +497,9 @@ struct iwl_trans_config {
+ 	bool bc_table_dword;
+ 	bool scd_set_active;
+ 	bool wide_cmd_header;
+-	const char *const *command_names;
+-
++	const struct iwl_hcmd_arr *command_groups;
++	int command_groups_size;
++ 
+ 	u32 sdio_adma_addr;
+ };
+ 
+@@ -720,6 +739,9 @@ struct iwl_trans {
+ 	bool pm_support;
+ 	bool ltr_enabled;
+ 
++	const struct iwl_hcmd_arr *command_groups;
++	int command_groups_size;
++
+ 	u8 num_rx_queues;
+ 
+ 	/* The following fields are internal only */
+@@ -757,12 +779,16 @@ struct iwl_trans {
+ 	char trans_specific[0] __aligned(sizeof(void *));
+ };
+ 
++const char *iwl_get_cmd_string(struct iwl_trans *trans, u32 id);
++int iwl_cmd_groups_verify_sorted(const struct iwl_trans_config *trans);
++
+ static inline void iwl_trans_configure(struct iwl_trans *trans,
+ 				       const struct iwl_trans_config *trans_cfg)
+ {
+ 	trans->op_mode = trans_cfg->op_mode;
+ 
+ 	trans->ops->configure(trans, trans_cfg);
++	WARN_ON(iwl_cmd_groups_verify_sorted(trans_cfg));
+ }
+ 
+ static inline int _iwl_trans_start_hw(struct iwl_trans *trans, bool low_power)
+--- a/drivers/net/wireless/iwlwifi/mvm/fw-api.h
++++ b/drivers/net/wireless/iwlwifi/mvm/fw-api.h
+@@ -270,6 +270,9 @@ enum {
+ 	REPLY_MAX = 0xff,
+ };
+ 
++/* Please keep this enum *SORTED* by hex value.
++ * Needed for binary search, otherwise a warning will be triggered.
++ */
+ enum iwl_phy_ops_subcmd_ids {
+ 	CMD_DTS_MEASUREMENT_TRIGGER_WIDE = 0x0,
+ 	DTS_MEASUREMENT_NOTIF_WIDE = 0xFF,
+@@ -277,6 +280,8 @@ enum iwl_phy_ops_subcmd_ids {
+ 
+ /* command groups */
+ enum {
++	LEGACY_GROUP = 0x0,
++	LONG_GROUP = 0x1,
+ 	PHY_OPS_GROUP = 0x4,
+ };
+ 
+--- a/drivers/net/wireless/iwlwifi/mvm/ops.c
++++ b/drivers/net/wireless/iwlwifi/mvm/ops.c
+@@ -83,6 +83,8 @@
+ #include "fw-api-scan.h"
+ #include "time-event.h"
+ #include "fw-dbg.h"
++#include "fw-api.h"
++#include "fw-api-scan.h"
+ 
+ #define DRV_DESCRIPTION	"The new Intel(R) wireless AGN driver for Linux"
+ MODULE_DESCRIPTION(DRV_DESCRIPTION);
+@@ -269,104 +271,127 @@ static const struct iwl_rx_handlers iwl_
+ };
+ #undef RX_HANDLER
+ #undef RX_HANDLER_GRP
+-#define CMD(x) [x] = #x
+ 
+-static const char *const iwl_mvm_cmd_strings[REPLY_MAX + 1] = {
+-	CMD(MVM_ALIVE),
+-	CMD(REPLY_ERROR),
+-	CMD(ECHO_CMD),
+-	CMD(INIT_COMPLETE_NOTIF),
+-	CMD(PHY_CONTEXT_CMD),
+-	CMD(MGMT_MCAST_KEY),
+-	CMD(TX_CMD),
+-	CMD(TXPATH_FLUSH),
+-	CMD(SHARED_MEM_CFG),
+-	CMD(MAC_CONTEXT_CMD),
+-	CMD(TIME_EVENT_CMD),
+-	CMD(TIME_EVENT_NOTIFICATION),
+-	CMD(BINDING_CONTEXT_CMD),
+-	CMD(TIME_QUOTA_CMD),
+-	CMD(NON_QOS_TX_COUNTER_CMD),
+-	CMD(DC2DC_CONFIG_CMD),
+-	CMD(NVM_ACCESS_CMD),
+-	CMD(PHY_CONFIGURATION_CMD),
+-	CMD(CALIB_RES_NOTIF_PHY_DB),
+-	CMD(SET_CALIB_DEFAULT_CMD),
+-	CMD(FW_PAGING_BLOCK_CMD),
+-	CMD(ADD_STA_KEY),
+-	CMD(ADD_STA),
+-	CMD(FW_GET_ITEM_CMD),
+-	CMD(REMOVE_STA),
+-	CMD(LQ_CMD),
+-	CMD(SCAN_OFFLOAD_CONFIG_CMD),
+-	CMD(MATCH_FOUND_NOTIFICATION),
+-	CMD(SCAN_OFFLOAD_REQUEST_CMD),
+-	CMD(SCAN_OFFLOAD_ABORT_CMD),
+-	CMD(HOT_SPOT_CMD),
+-	CMD(SCAN_OFFLOAD_COMPLETE),
+-	CMD(SCAN_OFFLOAD_UPDATE_PROFILES_CMD),
+-	CMD(SCAN_ITERATION_COMPLETE),
+-	CMD(POWER_TABLE_CMD),
+-	CMD(WEP_KEY),
+-	CMD(REPLY_RX_PHY_CMD),
+-	CMD(REPLY_RX_MPDU_CMD),
+-	CMD(FRAME_RELEASE),
+-	CMD(BEACON_NOTIFICATION),
+-	CMD(BEACON_TEMPLATE_CMD),
+-	CMD(STATISTICS_CMD),
+-	CMD(STATISTICS_NOTIFICATION),
+-	CMD(EOSP_NOTIFICATION),
+-	CMD(REDUCE_TX_POWER_CMD),
+-	CMD(TX_ANT_CONFIGURATION_CMD),
+-	CMD(D3_CONFIG_CMD),
+-	CMD(D0I3_END_CMD),
+-	CMD(PROT_OFFLOAD_CONFIG_CMD),
+-	CMD(OFFLOADS_QUERY_CMD),
+-	CMD(REMOTE_WAKE_CONFIG_CMD),
+-	CMD(WOWLAN_PATTERNS),
+-	CMD(WOWLAN_CONFIGURATION),
+-	CMD(WOWLAN_TSC_RSC_PARAM),
+-	CMD(WOWLAN_TKIP_PARAM),
+-	CMD(WOWLAN_KEK_KCK_MATERIAL),
+-	CMD(WOWLAN_GET_STATUSES),
+-	CMD(WOWLAN_TX_POWER_PER_DB),
+-	CMD(SCAN_OFFLOAD_PROFILES_QUERY_CMD),
+-	CMD(SCAN_OFFLOAD_HOTSPOTS_CONFIG_CMD),
+-	CMD(SCAN_OFFLOAD_HOTSPOTS_QUERY_CMD),
+-	CMD(CARD_STATE_NOTIFICATION),
+-	CMD(MISSED_BEACONS_NOTIFICATION),
+-	CMD(BT_COEX_PRIO_TABLE),
+-	CMD(BT_COEX_PROT_ENV),
+-	CMD(BT_PROFILE_NOTIFICATION),
+-	CMD(BT_CONFIG),
+-	CMD(MCAST_FILTER_CMD),
+-	CMD(BCAST_FILTER_CMD),
+-	CMD(REPLY_SF_CFG_CMD),
+-	CMD(REPLY_BEACON_FILTERING_CMD),
+-	CMD(CMD_DTS_MEASUREMENT_TRIGGER),
+-	CMD(DTS_MEASUREMENT_NOTIFICATION),
+-	CMD(REPLY_THERMAL_MNG_BACKOFF),
+-	CMD(MAC_PM_POWER_TABLE),
+-	CMD(LTR_CONFIG),
+-	CMD(BT_COEX_CI),
+-	CMD(BT_COEX_UPDATE_SW_BOOST),
+-	CMD(BT_COEX_UPDATE_CORUN_LUT),
+-	CMD(BT_COEX_UPDATE_REDUCED_TXP),
+-	CMD(PSM_UAPSD_AP_MISBEHAVING_NOTIFICATION),
+-	CMD(ANTENNA_COUPLING_NOTIFICATION),
+-	CMD(SCD_QUEUE_CFG),
+-	CMD(SCAN_CFG_CMD),
+-	CMD(SCAN_REQ_UMAC),
+-	CMD(SCAN_ABORT_UMAC),
+-	CMD(SCAN_COMPLETE_UMAC),
+-	CMD(TDLS_CHANNEL_SWITCH_CMD),
+-	CMD(TDLS_CHANNEL_SWITCH_NOTIFICATION),
+-	CMD(TDLS_CONFIG_CMD),
+-	CMD(MCC_UPDATE_CMD),
+-	CMD(SCAN_ITERATION_COMPLETE_UMAC),
+-	CMD(LDBG_CONFIG_CMD),
++/* Please keep this array *SORTED* by hex value.
++ * Access is done through binary search
++ */
++static const struct iwl_hcmd_names iwl_mvm_legacy_names[] = {
++	HCMD_NAME(MVM_ALIVE),
++	HCMD_NAME(REPLY_ERROR),
++	HCMD_NAME(ECHO_CMD),
++	HCMD_NAME(INIT_COMPLETE_NOTIF),
++	HCMD_NAME(PHY_CONTEXT_CMD),
++	HCMD_NAME(DBG_CFG),
++	HCMD_NAME(ANTENNA_COUPLING_NOTIFICATION),
++	HCMD_NAME(SCAN_CFG_CMD),
++	HCMD_NAME(SCAN_REQ_UMAC),
++	HCMD_NAME(SCAN_ABORT_UMAC),
++	HCMD_NAME(SCAN_COMPLETE_UMAC),
++	HCMD_NAME(TOF_CMD),
++	HCMD_NAME(TOF_NOTIFICATION),
++	HCMD_NAME(ADD_STA_KEY),
++	HCMD_NAME(ADD_STA),
++	HCMD_NAME(REMOVE_STA),
++	HCMD_NAME(FW_GET_ITEM_CMD),
++	HCMD_NAME(TX_CMD),
++	HCMD_NAME(SCD_QUEUE_CFG),
++	HCMD_NAME(TXPATH_FLUSH),
++	HCMD_NAME(MGMT_MCAST_KEY),
++	HCMD_NAME(WEP_KEY),
++	HCMD_NAME(SHARED_MEM_CFG),
++	HCMD_NAME(TDLS_CHANNEL_SWITCH_CMD),
++	HCMD_NAME(MAC_CONTEXT_CMD),
++	HCMD_NAME(TIME_EVENT_CMD),
++	HCMD_NAME(TIME_EVENT_NOTIFICATION),
++	HCMD_NAME(BINDING_CONTEXT_CMD),
++	HCMD_NAME(TIME_QUOTA_CMD),
++	HCMD_NAME(NON_QOS_TX_COUNTER_CMD),
++	HCMD_NAME(LQ_CMD),
++	HCMD_NAME(FW_PAGING_BLOCK_CMD),
++	HCMD_NAME(SCAN_OFFLOAD_REQUEST_CMD),
++	HCMD_NAME(SCAN_OFFLOAD_ABORT_CMD),
++	HCMD_NAME(HOT_SPOT_CMD),
++	HCMD_NAME(SCAN_OFFLOAD_PROFILES_QUERY_CMD),
++	HCMD_NAME(SCAN_OFFLOAD_HOTSPOTS_CONFIG_CMD),
++	HCMD_NAME(SCAN_OFFLOAD_HOTSPOTS_QUERY_CMD),
++	HCMD_NAME(BT_COEX_UPDATE_SW_BOOST),
++	HCMD_NAME(BT_COEX_UPDATE_CORUN_LUT),
++	HCMD_NAME(BT_COEX_UPDATE_REDUCED_TXP),
++	HCMD_NAME(BT_COEX_CI),
++	HCMD_NAME(PHY_CONFIGURATION_CMD),
++	HCMD_NAME(CALIB_RES_NOTIF_PHY_DB),
++	HCMD_NAME(SCAN_OFFLOAD_COMPLETE),
++	HCMD_NAME(SCAN_OFFLOAD_UPDATE_PROFILES_CMD),
++	HCMD_NAME(SCAN_OFFLOAD_CONFIG_CMD),
++	HCMD_NAME(POWER_TABLE_CMD),
++	HCMD_NAME(PSM_UAPSD_AP_MISBEHAVING_NOTIFICATION),
++	HCMD_NAME(REPLY_THERMAL_MNG_BACKOFF),
++	HCMD_NAME(DC2DC_CONFIG_CMD),
++	HCMD_NAME(NVM_ACCESS_CMD),
++	HCMD_NAME(SET_CALIB_DEFAULT_CMD),
++	HCMD_NAME(BEACON_NOTIFICATION),
++	HCMD_NAME(BEACON_TEMPLATE_CMD),
++	HCMD_NAME(TX_ANT_CONFIGURATION_CMD),
++	HCMD_NAME(BT_CONFIG),
++	HCMD_NAME(STATISTICS_CMD),
++	HCMD_NAME(STATISTICS_NOTIFICATION),
++	HCMD_NAME(EOSP_NOTIFICATION),
++	HCMD_NAME(REDUCE_TX_POWER_CMD),
++	HCMD_NAME(CARD_STATE_CMD),
++	HCMD_NAME(CARD_STATE_NOTIFICATION),
++	HCMD_NAME(MISSED_BEACONS_NOTIFICATION),
++	HCMD_NAME(TDLS_CONFIG_CMD),
++	HCMD_NAME(MAC_PM_POWER_TABLE),
++	HCMD_NAME(TDLS_CHANNEL_SWITCH_NOTIFICATION),
++	HCMD_NAME(MFUART_LOAD_NOTIFICATION),
++	HCMD_NAME(SCAN_ITERATION_COMPLETE_UMAC),
++	HCMD_NAME(REPLY_RX_PHY_CMD),
++	HCMD_NAME(REPLY_RX_MPDU_CMD),
++	HCMD_NAME(BA_NOTIF),
++	HCMD_NAME(MCC_UPDATE_CMD),
++	HCMD_NAME(MCC_CHUB_UPDATE_CMD),
++	HCMD_NAME(MARKER_CMD),
++	HCMD_NAME(BT_COEX_PRIO_TABLE),
++	HCMD_NAME(BT_COEX_PROT_ENV),
++	HCMD_NAME(BT_PROFILE_NOTIFICATION),
++	HCMD_NAME(BCAST_FILTER_CMD),
++	HCMD_NAME(MCAST_FILTER_CMD),
++	HCMD_NAME(REPLY_SF_CFG_CMD),
++	HCMD_NAME(REPLY_BEACON_FILTERING_CMD),
++	HCMD_NAME(D3_CONFIG_CMD),
++	HCMD_NAME(PROT_OFFLOAD_CONFIG_CMD),
++	HCMD_NAME(OFFLOADS_QUERY_CMD),
++	HCMD_NAME(REMOTE_WAKE_CONFIG_CMD),
++	HCMD_NAME(MATCH_FOUND_NOTIFICATION),
++	HCMD_NAME(CMD_DTS_MEASUREMENT_TRIGGER),
++	HCMD_NAME(DTS_MEASUREMENT_NOTIFICATION),
++	HCMD_NAME(WOWLAN_PATTERNS),
++	HCMD_NAME(WOWLAN_CONFIGURATION),
++	HCMD_NAME(WOWLAN_TSC_RSC_PARAM),
++	HCMD_NAME(WOWLAN_TKIP_PARAM),
++	HCMD_NAME(WOWLAN_KEK_KCK_MATERIAL),
++	HCMD_NAME(WOWLAN_GET_STATUSES),
++	HCMD_NAME(WOWLAN_TX_POWER_PER_DB),
++	HCMD_NAME(SCAN_ITERATION_COMPLETE),
++	HCMD_NAME(D0I3_END_CMD),
++	HCMD_NAME(LTR_CONFIG),
++	HCMD_NAME(REPLY_DEBUG_CMD),
++};
++
++/* Please keep this array *SORTED* by hex value.
++ * Access is done through binary search
++ */
++static const struct iwl_hcmd_names iwl_mvm_phy_names[] = {
++	HCMD_NAME(CMD_DTS_MEASUREMENT_TRIGGER_WIDE),
++	HCMD_NAME(DTS_MEASUREMENT_NOTIF_WIDE),
++};
++
++static const struct iwl_hcmd_arr iwl_mvm_groups[] = {
++	[LEGACY_GROUP] = HCMD_ARR(iwl_mvm_legacy_names),
++	[LONG_GROUP] = HCMD_ARR(iwl_mvm_legacy_names),
++	[PHY_OPS_GROUP] = HCMD_ARR(iwl_mvm_phy_names),
+ };
+-#undef CMD
++
+ 
+ /* this forward declaration can avoid to export the function */
+ static void iwl_mvm_async_handlers_wk(struct work_struct *wk);
+@@ -508,7 +533,8 @@ iwl_op_mode_mvm_start(struct iwl_trans *
+ 	if (mvm->fw->ucode_capa.flags & IWL_UCODE_TLV_FLAGS_DW_BC_TABLE)
+ 		trans_cfg.bc_table_dword = true;
+ 
+-	trans_cfg.command_names = iwl_mvm_cmd_strings;
++	trans_cfg.command_groups = iwl_mvm_groups;
++	trans_cfg.command_groups_size = ARRAY_SIZE(iwl_mvm_groups);
+ 
+ 	trans_cfg.cmd_queue = IWL_MVM_CMD_QUEUE;
+ 	trans_cfg.cmd_fifo = IWL_MVM_TX_FIFO_CMD;
+--- a/drivers/net/wireless/iwlwifi/pcie/internal.h
++++ b/drivers/net/wireless/iwlwifi/pcie/internal.h
+@@ -363,8 +363,6 @@ struct iwl_trans_pcie {
+ 	bool wide_cmd_header;
+ 	u32 rx_page_order;
+ 
+-	const char *const *command_names;
+-
+ 	/*protect hw register */
+ 	spinlock_t reg_lock;
+ 	bool cmd_hold_nic_awake;
+@@ -527,14 +525,6 @@ static inline u8 get_cmd_index(struct iw
+ 	return index & (q->n_window - 1);
+ }
+ 
+-static inline const char *get_cmd_string(struct iwl_trans_pcie *trans_pcie,
+-					 u8 cmd)
+-{
+-	if (!trans_pcie->command_names || !trans_pcie->command_names[cmd])
+-		return "UNKNOWN";
+-	return trans_pcie->command_names[cmd];
+-}
+-
+ static inline bool iwl_is_rfkill_set(struct iwl_trans *trans)
+ {
+ 	return !(iwl_read32(trans, CSR_GP_CNTRL) &
+--- a/drivers/net/wireless/iwlwifi/pcie/rx.c
++++ b/drivers/net/wireless/iwlwifi/pcie/rx.c
+@@ -877,7 +877,10 @@ static void iwl_pcie_rx_handle_rb(struct
+ 		IWL_DEBUG_RX(trans,
+ 			     "cmd at offset %d: %s (0x%.2x, seq 0x%x)\n",
+ 			     rxcb._offset,
+-			     get_cmd_string(trans_pcie, pkt->hdr.cmd),
++			     iwl_get_cmd_string(trans,
++						iwl_cmd_id(pkt->hdr.cmd,
++							   pkt->hdr.group_id,
++							   0)),
+ 			     pkt->hdr.cmd, le16_to_cpu(pkt->hdr.sequence));
+ 
+ 		len = iwl_rx_packet_len(pkt);
+--- a/drivers/net/wireless/iwlwifi/pcie/trans.c
++++ b/drivers/net/wireless/iwlwifi/pcie/trans.c
+@@ -1449,10 +1449,12 @@ static void iwl_trans_pcie_configure(str
+ 		iwl_trans_get_rb_size_order(trans_pcie->rx_buf_size);
+ 
+ 	trans_pcie->wide_cmd_header = trans_cfg->wide_cmd_header;
+-	trans_pcie->command_names = trans_cfg->command_names;
+ 	trans_pcie->bc_table_dword = trans_cfg->bc_table_dword;
+ 	trans_pcie->scd_set_active = trans_cfg->scd_set_active;
+ 
++	trans->command_groups = trans_cfg->command_groups;
++	trans->command_groups_size = trans_cfg->command_groups_size;
++
+ 	/* init ref_count to 1 (should be cleared when ucode is loaded) */
+ 	trans_pcie->ref_count = 1;
+ 
+--- a/drivers/net/wireless/iwlwifi/pcie/tx.c
++++ b/drivers/net/wireless/iwlwifi/pcie/tx.c
+@@ -1413,7 +1413,8 @@ static int iwl_pcie_enqueue_hcmd(struct
+ 	 */
+ 	if (WARN(copy_size > TFD_MAX_PAYLOAD_SIZE,
+ 		 "Command %s (%#x) is too large (%d bytes)\n",
+-		 get_cmd_string(trans_pcie, cmd->id), cmd->id, copy_size)) {
++		 iwl_get_cmd_string(trans, cmd->id),
++		 cmd->id, copy_size)) {
+ 		idx = -EINVAL;
+ 		goto free_dup_buf;
+ 	}
+@@ -1503,7 +1504,7 @@ static int iwl_pcie_enqueue_hcmd(struct
+ 
+ 	IWL_DEBUG_HC(trans,
+ 		     "Sending command %s (%.2x.%.2x), seq: 0x%04X, %d bytes at %d[%d]:%d\n",
+-		     get_cmd_string(trans_pcie, out_cmd->hdr.cmd),
++		     iwl_get_cmd_string(trans, cmd->id),
+ 		     group_id, out_cmd->hdr.cmd,
+ 		     le16_to_cpu(out_cmd->hdr.sequence),
+ 		     cmd_size, q->write_ptr, idx, trans_pcie->cmd_queue);
+@@ -1599,6 +1600,8 @@ void iwl_pcie_hcmd_complete(struct iwl_t
+ {
+ 	struct iwl_rx_packet *pkt = rxb_addr(rxb);
+ 	u16 sequence = le16_to_cpu(pkt->hdr.sequence);
++	u8 group_id = iwl_cmd_groupid(pkt->hdr.group_id);
++	u32 cmd_id;
+ 	int txq_id = SEQ_TO_QUEUE(sequence);
+ 	int index = SEQ_TO_INDEX(sequence);
+ 	int cmd_index;
+@@ -1624,6 +1627,7 @@ void iwl_pcie_hcmd_complete(struct iwl_t
+ 	cmd_index = get_cmd_index(&txq->q, index);
+ 	cmd = txq->entries[cmd_index].cmd;
+ 	meta = &txq->entries[cmd_index].meta;
++	cmd_id = iwl_cmd_id(cmd->hdr.cmd, group_id, 0);
+ 
+ 	iwl_pcie_tfd_unmap(trans, meta, &txq->tfds[index]);
+ 
+@@ -1645,11 +1649,11 @@ void iwl_pcie_hcmd_complete(struct iwl_t
+ 		if (!test_bit(STATUS_SYNC_HCMD_ACTIVE, &trans->status)) {
+ 			IWL_WARN(trans,
+ 				 "HCMD_ACTIVE already clear for command %s\n",
+-				 get_cmd_string(trans_pcie, cmd->hdr.cmd));
++				 iwl_get_cmd_string(trans, cmd_id));
+ 		}
+ 		clear_bit(STATUS_SYNC_HCMD_ACTIVE, &trans->status);
+ 		IWL_DEBUG_INFO(trans, "Clearing HCMD_ACTIVE for command %s\n",
+-			       get_cmd_string(trans_pcie, cmd->hdr.cmd));
++			       iwl_get_cmd_string(trans, cmd_id));
+ 		wake_up(&trans_pcie->wait_command_queue);
+ 	}
+ 
+@@ -1663,7 +1667,6 @@ void iwl_pcie_hcmd_complete(struct iwl_t
+ static int iwl_pcie_send_hcmd_async(struct iwl_trans *trans,
+ 				    struct iwl_host_cmd *cmd)
+ {
+-	struct iwl_trans_pcie *trans_pcie = IWL_TRANS_GET_PCIE_TRANS(trans);
+ 	int ret;
+ 
+ 	/* An asynchronous command can not expect an SKB to be set. */
+@@ -1674,7 +1677,7 @@ static int iwl_pcie_send_hcmd_async(stru
+ 	if (ret < 0) {
+ 		IWL_ERR(trans,
+ 			"Error sending %s: enqueue_hcmd failed: %d\n",
+-			get_cmd_string(trans_pcie, cmd->id), ret);
++			iwl_get_cmd_string(trans, cmd->id), ret);
+ 		return ret;
+ 	}
+ 	return 0;
+@@ -1688,16 +1691,16 @@ static int iwl_pcie_send_hcmd_sync(struc
+ 	int ret;
+ 
+ 	IWL_DEBUG_INFO(trans, "Attempting to send sync command %s\n",
+-		       get_cmd_string(trans_pcie, cmd->id));
++		       iwl_get_cmd_string(trans, cmd->id));
+ 
+ 	if (WARN(test_and_set_bit(STATUS_SYNC_HCMD_ACTIVE,
+ 				  &trans->status),
+ 		 "Command %s: a command is already active!\n",
+-		 get_cmd_string(trans_pcie, cmd->id)))
++		 iwl_get_cmd_string(trans, cmd->id)))
+ 		return -EIO;
+ 
+ 	IWL_DEBUG_INFO(trans, "Setting HCMD_ACTIVE for command %s\n",
+-		       get_cmd_string(trans_pcie, cmd->id));
++		       iwl_get_cmd_string(trans, cmd->id));
+ 
+ 	cmd_idx = iwl_pcie_enqueue_hcmd(trans, cmd);
+ 	if (cmd_idx < 0) {
+@@ -1705,7 +1708,7 @@ static int iwl_pcie_send_hcmd_sync(struc
+ 		clear_bit(STATUS_SYNC_HCMD_ACTIVE, &trans->status);
+ 		IWL_ERR(trans,
+ 			"Error sending %s: enqueue_hcmd failed: %d\n",
+-			get_cmd_string(trans_pcie, cmd->id), ret);
++			iwl_get_cmd_string(trans, cmd->id), ret);
+ 		return ret;
+ 	}
+ 
+@@ -1718,7 +1721,7 @@ static int iwl_pcie_send_hcmd_sync(struc
+ 		struct iwl_queue *q = &txq->q;
+ 
+ 		IWL_ERR(trans, "Error sending %s: time out after %dms.\n",
+-			get_cmd_string(trans_pcie, cmd->id),
++			iwl_get_cmd_string(trans, cmd->id),
+ 			jiffies_to_msecs(HOST_COMPLETE_TIMEOUT));
+ 
+ 		IWL_ERR(trans, "Current CMD queue read_ptr %d write_ptr %d\n",
+@@ -1726,7 +1729,7 @@ static int iwl_pcie_send_hcmd_sync(struc
+ 
+ 		clear_bit(STATUS_SYNC_HCMD_ACTIVE, &trans->status);
+ 		IWL_DEBUG_INFO(trans, "Clearing HCMD_ACTIVE for command %s\n",
+-			       get_cmd_string(trans_pcie, cmd->id));
++			       iwl_get_cmd_string(trans, cmd->id));
+ 		ret = -ETIMEDOUT;
+ 
+ 		iwl_force_nmi(trans);
+@@ -1737,7 +1740,7 @@ static int iwl_pcie_send_hcmd_sync(struc
+ 
+ 	if (test_bit(STATUS_FW_ERROR, &trans->status)) {
+ 		IWL_ERR(trans, "FW error in SYNC CMD %s\n",
+-			get_cmd_string(trans_pcie, cmd->id));
++			iwl_get_cmd_string(trans, cmd->id));
+ 		dump_stack();
+ 		ret = -EIO;
+ 		goto cancel;
+@@ -1752,7 +1755,7 @@ static int iwl_pcie_send_hcmd_sync(struc
+ 
+ 	if ((cmd->flags & CMD_WANT_SKB) && !cmd->resp_pkt) {
+ 		IWL_ERR(trans, "Error: Response NULL in '%s'\n",
+-			get_cmd_string(trans_pcie, cmd->id));
++			iwl_get_cmd_string(trans, cmd->id));
+ 		ret = -EIO;
+ 		goto cancel;
+ 	}

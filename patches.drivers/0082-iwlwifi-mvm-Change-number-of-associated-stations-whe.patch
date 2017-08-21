@@ -1,0 +1,81 @@
+From 8be30c13ebafdf743ab638a83095715a01bc1071 Mon Sep 17 00:00:00 2001
+From: Ayala Beker <ayala.beker@intel.com>
+Date: Wed, 16 Dec 2015 00:32:07 +0200
+Subject: [PATCH] iwlwifi: mvm: Change number of associated stations when station becomes associated
+Git-commit: 8be30c13ebafdf743ab638a83095715a01bc1071
+Patch-mainline: 4.5-rc1
+References: FATE#321353, FATE#323335
+
+Currently, the number of associated stations gets updated when adding
+a new station or removing it. This is incorrect as it's possible that
+a station was inserted before it was associated
+Fix this by increasing/decreasing ap_assoc_sta_count whenever
+a station transitions in/out the associated state.
+
+Signed-off-by: Ayala Beker <ayala.beker@intel.com>
+Signed-off-by: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/iwlwifi/mvm/mac80211.c |   14 ++++++++------
+ drivers/net/wireless/iwlwifi/mvm/sta.c      |    5 -----
+ 2 files changed, 8 insertions(+), 11 deletions(-)
+
+--- a/drivers/net/wireless/iwlwifi/mvm/mac80211.c
++++ b/drivers/net/wireless/iwlwifi/mvm/mac80211.c
+@@ -2253,7 +2253,6 @@ static void iwl_mvm_sta_pre_rcu_remove(s
+ 				       struct ieee80211_sta *sta)
+ {
+ 	struct iwl_mvm *mvm = IWL_MAC80211_GET_MVM(hw);
+-	struct iwl_mvm_vif *mvmvif = iwl_mvm_vif_from_mac80211(vif);
+ 	struct iwl_mvm_sta *mvm_sta = iwl_mvm_sta_from_mac80211(sta);
+ 
+ 	/*
+@@ -2269,11 +2268,6 @@ static void iwl_mvm_sta_pre_rcu_remove(s
+ 		rcu_assign_pointer(mvm->fw_id_to_mac_id[mvm_sta->sta_id],
+ 				   ERR_PTR(-ENOENT));
+ 
+-	if (mvm_sta->vif->type == NL80211_IFTYPE_AP) {
+-		mvmvif->ap_assoc_sta_count--;
+-		iwl_mvm_mac_ctxt_changed(mvm, vif, false, NULL);
+-	}
+-
+ 	mutex_unlock(&mvm->mutex);
+ }
+ 
+@@ -2385,6 +2379,10 @@ static int iwl_mvm_mac_sta_state(struct
+ 		ret = 0;
+ 	} else if (old_state == IEEE80211_STA_AUTH &&
+ 		   new_state == IEEE80211_STA_ASSOC) {
++		if (vif->type == NL80211_IFTYPE_AP) {
++			mvmvif->ap_assoc_sta_count++;
++			iwl_mvm_mac_ctxt_changed(mvm, vif, false, NULL);
++		}
+ 		ret = iwl_mvm_update_sta(mvm, vif, sta);
+ 		if (ret == 0)
+ 			iwl_mvm_rs_rate_init(mvm, sta,
+@@ -2411,6 +2409,10 @@ static int iwl_mvm_mac_sta_state(struct
+ 		ret = 0;
+ 	} else if (old_state == IEEE80211_STA_ASSOC &&
+ 		   new_state == IEEE80211_STA_AUTH) {
++		if (vif->type == NL80211_IFTYPE_AP) {
++			mvmvif->ap_assoc_sta_count--;
++			iwl_mvm_mac_ctxt_changed(mvm, vif, false, NULL);
++		}
+ 		ret = 0;
+ 	} else if (old_state == IEEE80211_STA_AUTH &&
+ 		   new_state == IEEE80211_STA_NONE) {
+--- a/drivers/net/wireless/iwlwifi/mvm/sta.c
++++ b/drivers/net/wireless/iwlwifi/mvm/sta.c
+@@ -278,11 +278,6 @@ int iwl_mvm_add_sta(struct iwl_mvm *mvm,
+ 	if (sta_id == IWL_MVM_STATION_COUNT)
+ 		return -ENOSPC;
+ 
+-	if (vif->type == NL80211_IFTYPE_AP) {
+-		mvmvif->ap_assoc_sta_count++;
+-		iwl_mvm_mac_ctxt_changed(mvm, vif, false, NULL);
+-	}
+-
+ 	spin_lock_init(&mvm_sta->lock);
+ 
+ 	mvm_sta->sta_id = sta_id;

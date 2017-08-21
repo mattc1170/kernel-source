@@ -5,8 +5,7 @@ Subject: [PATCH] net: ibmvnic: Remove unused net_stats member from struct
  ibmvnic_adapter
 
 References: fate#322021, bsc#1031512
-Patch-mainline: queued, next-20170328
-Git-repo: https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git
+Patch-mainline: v4.12-rc1
 Git-commit: 656455bf19f6a58e3fc5441a4cdcc8f598979329
 
 The ibmvnic driver keeps its statistics in net_device->stats, so the

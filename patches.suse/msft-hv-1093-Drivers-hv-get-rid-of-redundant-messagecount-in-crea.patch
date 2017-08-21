@@ -14,14 +14,12 @@ Signed-off-by: K. Y. Srinivasan <kys@microsoft.com>
 Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
 Acked-by: <ohering@suse.de>
 ---
- drivers/hv/channel.c | 38 ++++++++++++++++----------------------
- 1 file changed, 16 insertions(+), 22 deletions(-)
+ drivers/hv/channel.c |   51 +++++++++++++++++++++------------------------------
+ 1 file changed, 21 insertions(+), 30 deletions(-)
 
-diff --git a/drivers/hv/channel.c b/drivers/hv/channel.c
-index 56dd261..2b109e8 100644
 --- a/drivers/hv/channel.c
 +++ b/drivers/hv/channel.c
-@@ -238,8 +238,7 @@ EXPORT_SYMBOL_GPL(vmbus_send_tl_connect_request);
+@@ -233,8 +233,7 @@ EXPORT_SYMBOL_GPL(vmbus_send_tl_connect_
   * create_gpadl_header - Creates a gpadl for the specified buffer
   */
  static int create_gpadl_header(void *kbuffer, u32 size,
@@ -31,7 +29,7 @@ index 56dd261..2b109e8 100644
  {
  	int i;
  	int pagecount;
-@@ -283,7 +282,6 @@ static int create_gpadl_header(void *kbuffer, u32 size,
+@@ -278,7 +277,6 @@ static int create_gpadl_header(void *kbu
  			gpadl_header->range[0].pfn_array[i] = slow_virt_to_phys(
  				kbuffer + PAGE_SIZE * i) >> PAGE_SHIFT;
  		*msginfo = msgheader;
@@ -39,7 +37,7 @@ index 56dd261..2b109e8 100644
  
  		pfnsum = pfncount;
  		pfnleft = pagecount - pfncount;
-@@ -323,7 +321,6 @@ static int create_gpadl_header(void *kbuffer, u32 size,
+@@ -318,7 +316,6 @@ static int create_gpadl_header(void *kbu
  			}
  
  			msgbody->msgsize = msgsize;
@@ -47,7 +45,7 @@ index 56dd261..2b109e8 100644
  			gpadl_body =
  				(struct vmbus_channel_gpadl_body *)msgbody->msg;
  
-@@ -352,6 +349,8 @@ static int create_gpadl_header(void *kbuffer, u32 size,
+@@ -347,6 +344,8 @@ static int create_gpadl_header(void *kbu
  		msgheader = kzalloc(msgsize, GFP_KERNEL);
  		if (msgheader == NULL)
  			goto nomem;
@@ -56,7 +54,7 @@ index 56dd261..2b109e8 100644
  		msgheader->msgsize = msgsize;
  
  		gpadl_header = (struct vmbus_channel_gpadl_header *)
-@@ -366,7 +365,6 @@ static int create_gpadl_header(void *kbuffer, u32 size,
+@@ -361,7 +360,6 @@ static int create_gpadl_header(void *kbu
  				kbuffer + PAGE_SIZE * i) >> PAGE_SHIFT;
  
  		*msginfo = msgheader;
@@ -64,15 +62,15 @@ index 56dd261..2b109e8 100644
  	}
  
  	return 0;
-@@ -391,7 +389,6 @@ int vmbus_establish_gpadl(struct vmbus_channel *channel, void *kbuffer,
+@@ -386,7 +384,6 @@ int vmbus_establish_gpadl(struct vmbus_c
  	struct vmbus_channel_gpadl_body *gpadl_body;
  	struct vmbus_channel_msginfo *msginfo = NULL;
- 	struct vmbus_channel_msginfo *submsginfo;
+ 	struct vmbus_channel_msginfo *submsginfo, *tmp;
 -	u32 msgcount;
  	struct list_head *curr;
  	u32 next_gpadl_handle;
  	unsigned long flags;
-@@ -400,7 +397,7 @@ int vmbus_establish_gpadl(struct vmbus_channel *channel, void *kbuffer,
+@@ -395,7 +392,7 @@ int vmbus_establish_gpadl(struct vmbus_c
  	next_gpadl_handle =
  		(atomic_inc_return(&vmbus_connection.next_gpadl_handle) - 1);
  
@@ -81,40 +79,58 @@ index 56dd261..2b109e8 100644
  	if (ret)
  		return ret;
  
-@@ -423,24 +420,21 @@ int vmbus_establish_gpadl(struct vmbus_channel *channel, void *kbuffer,
+@@ -418,24 +415,21 @@ int vmbus_establish_gpadl(struct vmbus_c
  	if (ret != 0)
  		goto cleanup;
  
 -	if (msgcount > 1) {
 -		list_for_each(curr, &msginfo->submsglist) {
+-
+-			submsginfo = (struct vmbus_channel_msginfo *)curr;
+-			gpadl_body =
+-			     (struct vmbus_channel_gpadl_body *)submsginfo->msg;
+-
+-			gpadl_body->header.msgtype =
+-				CHANNELMSG_GPADL_BODY;
+-			gpadl_body->gpadl = next_gpadl_handle;
+-
+-			ret = vmbus_post_msg(gpadl_body,
+-					       submsginfo->msgsize -
+-					       sizeof(*submsginfo));
+-			if (ret != 0)
+-				goto cleanup;
 +	list_for_each(curr, &msginfo->submsglist) {
 +		submsginfo = (struct vmbus_channel_msginfo *)curr;
 +		gpadl_body =
 +			(struct vmbus_channel_gpadl_body *)submsginfo->msg;
- 
--			submsginfo = (struct vmbus_channel_msginfo *)curr;
--			gpadl_body =
--			     (struct vmbus_channel_gpadl_body *)submsginfo->msg;
++
 +		gpadl_body->header.msgtype =
 +			CHANNELMSG_GPADL_BODY;
 +		gpadl_body->gpadl = next_gpadl_handle;
- 
--			gpadl_body->header.msgtype =
--				CHANNELMSG_GPADL_BODY;
--			gpadl_body->gpadl = next_gpadl_handle;
++
 +		ret = vmbus_post_msg(gpadl_body,
 +				     submsginfo->msgsize -
 +				     sizeof(*submsginfo));
 +		if (ret != 0)
 +			goto cleanup;
  
--			ret = vmbus_post_msg(gpadl_body,
--					       submsginfo->msgsize -
--					       sizeof(*submsginfo));
--			if (ret != 0)
--				goto cleanup;
--
 -		}
  	}
  	wait_for_completion(&msginfo->waitevent);
  
+@@ -446,12 +440,9 @@ cleanup:
+ 	spin_lock_irqsave(&vmbus_connection.channelmsg_lock, flags);
+ 	list_del(&msginfo->msglistentry);
+ 	spin_unlock_irqrestore(&vmbus_connection.channelmsg_lock, flags);
+-
+-	if (msgcount > 1) {
+-		list_for_each_entry_safe(submsginfo, tmp, &msginfo->submsglist,
+-			 msglistentry) {
+-			kfree(submsginfo);
+-		}
++	list_for_each_entry_safe(submsginfo, tmp, &msginfo->submsglist,
++		 msglistentry) {
++		kfree(submsginfo);
+ 	}
+ 
+ 	kfree(msginfo);

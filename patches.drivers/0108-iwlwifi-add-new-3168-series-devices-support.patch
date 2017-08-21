@@ -1,0 +1,32 @@
+From 7b08c67fa5ae66c2d07fd506de57de67b7a7e5d6 Mon Sep 17 00:00:00 2001
+From: Oren Givon <oren.givon@intel.com>
+Date: Thu, 21 Jan 2016 11:18:34 +0200
+Subject: [PATCH] iwlwifi: add new 3168 series devices support
+Git-commit: 7b08c67fa5ae66c2d07fd506de57de67b7a7e5d6
+Patch-mainline: 4.5-rc3
+References: FATE#321353, FATE#323335
+
+Add new sub-system PCI IDs to the 3168 series.
+Added 0x2010, 0x2050 and 0x2150 sub-system IDs.
+
+Signed-off-by: Oren Givon <oren.givon@intel.com>
+Signed-off-by: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/iwlwifi/pcie/drv.c |    3 +++
+ 1 file changed, 3 insertions(+)
+
+--- a/drivers/net/wireless/iwlwifi/pcie/drv.c
++++ b/drivers/net/wireless/iwlwifi/pcie/drv.c
+@@ -378,7 +378,10 @@ static const struct pci_device_id iwl_hw
+ 	{IWL_PCI_DEVICE(0x3165, 0x8110, iwl3165_2ac_cfg)},
+ 
+ /* 3168 Series */
++	{IWL_PCI_DEVICE(0x24FB, 0x2010, iwl3168_2ac_cfg)},
+ 	{IWL_PCI_DEVICE(0x24FB, 0x2110, iwl3168_2ac_cfg)},
++	{IWL_PCI_DEVICE(0x24FB, 0x2050, iwl3168_2ac_cfg)},
++	{IWL_PCI_DEVICE(0x24FB, 0x2150, iwl3168_2ac_cfg)},
+ 	{IWL_PCI_DEVICE(0x24FB, 0x0000, iwl3168_2ac_cfg)},
+ 
+ /* 7265 Series */

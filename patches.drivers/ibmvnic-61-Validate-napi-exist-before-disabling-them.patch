@@ -1,0 +1,39 @@
+From 3ca1993264503957f81f3846598b16601b1e9457 Mon Sep 17 00:00:00 2001
+From: Nathan Fontenot <nfont@linux.vnet.ibm.com>
+Date: Fri, 21 Apr 2017 15:39:10 -0400
+Subject: [PATCH] ibmvnic: Validate napi exist before disabling them
+
+References: fate#322021, bsc#1031512
+Patch-mainline: v4.12-rc1
+Git-commit: 3ca1993264503957f81f3846598b16601b1e9457
+
+Validate that the napi structs exist before trying to disable them
+at driver close.
+
+Signed-off-by: Nathan Fontenot <nfont@linux.vnet.ibm.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+Acked-by: Michal Suchanek <msuchanek@suse.de>
+---
+ drivers/net/ethernet/ibm/ibmvnic.c | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/net/ethernet/ibm/ibmvnic.c b/drivers/net/ethernet/ibm/ibmvnic.c
+index 115f216..5a916a2 100644
+--- a/drivers/net/ethernet/ibm/ibmvnic.c
++++ b/drivers/net/ethernet/ibm/ibmvnic.c
+@@ -729,8 +729,10 @@ static int ibmvnic_close(struct net_device *netdev)
+ 	adapter->closing = true;
+ 	disable_sub_crqs(adapter);
+ 
+-	for (i = 0; i < adapter->req_rx_queues; i++)
+-		napi_disable(&adapter->napi[i]);
++	if (adapter->napi) {
++		for (i = 0; i < adapter->req_rx_queues; i++)
++			napi_disable(&adapter->napi[i]);
++	}
+ 
+ 	if (!adapter->failover)
+ 		netif_tx_stop_all_queues(netdev);
+-- 
+2.10.2
+

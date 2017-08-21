@@ -1,0 +1,121 @@
+From 4cc6851b9c7e83f5635b22bda6cc63ed6ec619d9 Mon Sep 17 00:00:00 2001
+From: Brian Foster <bfoster@redhat.com>
+Date: Mon, 26 Sep 2016 08:34:52 +1000
+Subject: [PATCH 6/6] xfs: log recovery tracepoints to track current lsn and
+ buffer submission
+Git-commit: 5cd9cee98b256d94443d93a31efc36212a2bd634
+Patch-mainline: v4.9-rc1
+References: bsc#1043598
+
+Log recovery has particular rules around buffer submission along with
+tricky corner cases where independent transactions can share an LSN. As
+such, it can be difficult to follow when/why buffers are submitted
+during recovery.
+
+Add a couple tracepoints to post the current LSN of a record when a new
+record is being processed and when a buffer is being skipped due to LSN
+ordering. Also, update the recover item class to include the LSN of the
+current transaction for the item being processed.
+
+Signed-off-by: Brian Foster <bfoster@redhat.com>
+Reviewed-by: Dave Chinner <dchinner@redhat.com>
+Signed-off-by: Dave Chinner <david@fromorbit.com>
+Acked-by: Nikolay Borisov <nborisov@suse.com>
+---
+ fs/xfs/xfs_log_recover.c |  2 ++
+ fs/xfs/xfs_trace.h       | 31 +++++++++++++++++++++++++++++--
+ 2 files changed, 31 insertions(+), 2 deletions(-)
+
+diff --git a/fs/xfs/xfs_log_recover.c b/fs/xfs/xfs_log_recover.c
+index 4abf18463d63..229f4a7a18fb 100644
+--- a/fs/xfs/xfs_log_recover.c
++++ b/fs/xfs/xfs_log_recover.c
+@@ -2409,6 +2409,7 @@ xlog_recover_buffer_pass2(
+ 	 */
+ 	lsn = xlog_recover_get_buf_lsn(mp, bp);
+ 	if (lsn && lsn != -1 && XFS_LSN_CMP(lsn, current_lsn) >= 0) {
++		trace_xfs_log_recover_buf_skip(log, buf_f);
+ 		xlog_recover_validate_buf_type(mp, bp, buf_f, NULLCOMMITLSN);
+ 		goto out_release;
+ 	}
+@@ -3823,6 +3824,7 @@ xlog_recover_process_data(
+ 	if (xlog_header_check_recover(log->l_mp, rhead))
+ 		return -EIO;
+ 
++	trace_xfs_log_recover_record(log, rhead, pass);
+ 	while ((dp < end) && num_logops) {
+ 
+ 		ohead = (struct xlog_op_header *)dp;
+diff --git a/fs/xfs/xfs_trace.h b/fs/xfs/xfs_trace.h
+index 09292e573e27..8c449642a42a 100644
+--- a/fs/xfs/xfs_trace.h
++++ b/fs/xfs/xfs_trace.h
+@@ -1959,6 +1959,29 @@ DEFINE_EVENT(xfs_swap_extent_class, name, \
+ DEFINE_SWAPEXT_EVENT(xfs_swap_extent_before);
+ DEFINE_SWAPEXT_EVENT(xfs_swap_extent_after);
+ 
++TRACE_EVENT(xfs_log_recover_record,
++	TP_PROTO(struct xlog *log, struct xlog_rec_header *rhead, int pass),
++	TP_ARGS(log, rhead, pass),
++	TP_STRUCT__entry(
++		__field(dev_t, dev)
++		__field(xfs_lsn_t, lsn)
++		__field(int, len)
++		__field(int, num_logops)
++		__field(int, pass)
++	),
++	TP_fast_assign(
++		__entry->dev = log->l_mp->m_super->s_dev;
++		__entry->lsn = be64_to_cpu(rhead->h_lsn);
++		__entry->len = be32_to_cpu(rhead->h_len);
++		__entry->num_logops = be32_to_cpu(rhead->h_num_logops);
++		__entry->pass = pass;
++	),
++	TP_printk("dev %d:%d lsn 0x%llx len 0x%x num_logops 0x%x pass %d",
++		  MAJOR(__entry->dev), MINOR(__entry->dev),
++		  __entry->lsn, __entry->len, __entry->num_logops,
++		   __entry->pass)
++)
++
+ DECLARE_EVENT_CLASS(xfs_log_recover_item_class,
+ 	TP_PROTO(struct xlog *log, struct xlog_recover *trans,
+ 		struct xlog_recover_item *item, int pass),
+@@ -1967,6 +1990,7 @@ DECLARE_EVENT_CLASS(xfs_log_recover_item_class,
+ 		__field(dev_t, dev)
+ 		__field(unsigned long, item)
+ 		__field(xlog_tid_t, tid)
++		__field(xfs_lsn_t, lsn)
+ 		__field(int, type)
+ 		__field(int, pass)
+ 		__field(int, count)
+@@ -1976,15 +2000,17 @@ DECLARE_EVENT_CLASS(xfs_log_recover_item_class,
+ 		__entry->dev = log->l_mp->m_super->s_dev;
+ 		__entry->item = (unsigned long)item;
+ 		__entry->tid = trans->r_log_tid;
++		__entry->lsn = trans->r_lsn;
+ 		__entry->type = ITEM_TYPE(item);
+ 		__entry->pass = pass;
+ 		__entry->count = item->ri_cnt;
+ 		__entry->total = item->ri_total;
+ 	),
+-	TP_printk("dev %d:%d trans 0x%x, pass %d, item 0x%p, item type %s "
+-		  "item region count/total %d/%d",
++	TP_printk("dev %d:%d tid 0x%x lsn 0x%llx, pass %d, item 0x%p, "
++		  "item type %s item region count/total %d/%d",
+ 		  MAJOR(__entry->dev), MINOR(__entry->dev),
+ 		  __entry->tid,
++		  __entry->lsn,
+ 		  __entry->pass,
+ 		  (void *)__entry->item,
+ 		  __print_symbolic(__entry->type, XFS_LI_TYPE_DESC),
+@@ -2043,6 +2069,7 @@ DEFINE_LOG_RECOVER_BUF_ITEM(xfs_log_recover_buf_cancel);
+ DEFINE_LOG_RECOVER_BUF_ITEM(xfs_log_recover_buf_cancel_add);
+ DEFINE_LOG_RECOVER_BUF_ITEM(xfs_log_recover_buf_cancel_ref_inc);
+ DEFINE_LOG_RECOVER_BUF_ITEM(xfs_log_recover_buf_recover);
++DEFINE_LOG_RECOVER_BUF_ITEM(xfs_log_recover_buf_skip);
+ DEFINE_LOG_RECOVER_BUF_ITEM(xfs_log_recover_buf_inode_buf);
+ DEFINE_LOG_RECOVER_BUF_ITEM(xfs_log_recover_buf_reg_buf);
+ DEFINE_LOG_RECOVER_BUF_ITEM(xfs_log_recover_buf_dquot_buf);
+-- 
+2.7.4
+

@@ -1,0 +1,31 @@
+From 6ad6c01fa74f649722eeca7308dc1fc4e43235cd Mon Sep 17 00:00:00 2001
+From: Gregory Greenman <gregory.greenman@intel.com>
+Date: Wed, 27 Jan 2016 00:10:15 +0200
+Subject: [PATCH] iwlwifi: mvm: rs: fix TPC action decision algorithm
+Git-commit: 6ad6c01fa74f649722eeca7308dc1fc4e43235cd
+Patch-mainline: 4.6-rc1
+References: FATE#321353, FATE#323335
+
+Decreasing Tx power is allowed only when success ratio is
+above the threshold defined in the algorithm. Add this condition.
+
+Signed-off-by: Gregory Greenman <gregory.greenman@intel.com>
+Signed-off-by: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/iwlwifi/mvm/rs.c |    3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+--- a/drivers/net/wireless/iwlwifi/mvm/rs.c
++++ b/drivers/net/wireless/iwlwifi/mvm/rs.c
+@@ -2062,7 +2062,8 @@ static enum tpc_action rs_get_tpc_action
+ 	}
+ 
+ 	/* try decreasing first if applicable */
+-	if (weak != TPC_INVALID) {
++	if (sr >= RS_PERCENT(IWL_MVM_RS_TPC_SR_NO_INCREASE) &&
++	    weak != TPC_INVALID) {
+ 		if (weak_tpt == IWL_INVALID_VALUE &&
+ 		    (strong_tpt == IWL_INVALID_VALUE ||
+ 		     current_tpt >= strong_tpt)) {

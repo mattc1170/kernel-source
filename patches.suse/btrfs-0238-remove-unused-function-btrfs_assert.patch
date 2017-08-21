@@ -1,0 +1,27 @@
+From: Anand Jain <anand.jain@oracle.com>
+Date: Wed, 16 Mar 2016 16:43:07 +0800
+Patch-mainline: 4.7
+Git-commit: 2351d743f6b69d289f04246127c9d92516621974
+References: bsc#1012452
+Subject: [PATCH] btrfs: remove unused function btrfs_assert()
+
+Apparently looks like ASSERT does the same intended job,
+as intended btrfs_assert().
+
+Signed-off-by: Anand Jain <anand.jain@oracle.com>
+Reviewed-by: David Sterba <dsterba@suse.com>
+Signed-off-by: David Sterba <dsterba@suse.com>
+---
+ fs/btrfs/ctree.h |    1 -
+ 1 file changed, 1 deletion(-)
+
+--- a/fs/btrfs/ctree.h
++++ b/fs/btrfs/ctree.h
+@@ -4224,7 +4224,6 @@ static inline void assfail(char *expr, c
+ #define ASSERT(expr)	((void)0)
+ #endif
+ 
+-#define btrfs_assert()
+ __printf(5, 6)
+ __cold
+ void __btrfs_handle_fs_error(struct btrfs_fs_info *fs_info, const char *function,

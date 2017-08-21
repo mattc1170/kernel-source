@@ -1,0 +1,38 @@
+From 0224d617ee28c02a26963de87fb1489ad665f485 Mon Sep 17 00:00:00 2001
+From: Amir Goldstein <amir73il@gmail.com>
+Date: Tue, 17 Jan 2017 11:41:42 -0800
+Subject: [PATCH 3/5] xfs: add missing include dependencies to xfs_dir2.h
+Git-commit: b597dd5373a1ccc08218665dc8417433b1c09550
+Patch-mainline: v4.10-rc5
+References: bsc#1042421
+
+xfs_dir2.h dereferences some data types in inline functions
+and fails to include those type definitions, e.g.:
+xfs_dir2_data_aoff_t, struct xfs_da_geometry.
+
+Signed-off-by: Amir Goldstein <amir73il@gmail.com>
+Reviewed-by: Christoph Hellwig <hch@lst.de>
+Reviewed-by: Darrick J. Wong <darrick.wong@oracle.com>
+Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+Acked-by: Nikolay Borisov <nborisov@suse.com>
+---
+ fs/xfs/libxfs/xfs_dir2.h | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/fs/xfs/libxfs/xfs_dir2.h b/fs/xfs/libxfs/xfs_dir2.h
+index e55353651f5b..3bdbb0d82a29 100644
+--- a/fs/xfs/libxfs/xfs_dir2.h
++++ b/fs/xfs/libxfs/xfs_dir2.h
+@@ -19,6 +19,9 @@
+ #define __XFS_DIR2_H__
+ 
+ struct xfs_bmap_free;
++#include "xfs_da_format.h"
++#include "xfs_da_btree.h"
++
+ struct xfs_da_args;
+ struct xfs_inode;
+ struct xfs_mount;
+-- 
+2.7.4
+

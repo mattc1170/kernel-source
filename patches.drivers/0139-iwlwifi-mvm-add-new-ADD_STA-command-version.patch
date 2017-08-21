@@ -1,0 +1,288 @@
+From 854c57057390e45041a56c3d3228eb805e980c99 Mon Sep 17 00:00:00 2001
+From: Sara Sharon <sara.sharon@intel.com>
+Date: Tue, 26 Jan 2016 13:17:47 +0200
+Subject: [PATCH] iwlwifi: mvm: add new ADD_STA command version
+Git-commit: 854c57057390e45041a56c3d3228eb805e980c99
+Patch-mainline: 4.6-rc1
+References: FATE#321353, FATE#323335
+
+The 9000 hardware introduces the frame releaser, which
+keeps track of the aggregation window and notifies host
+of the window status. This requires in turn updating
+the hardware with the RX BA session window size.
+Firmware API was changed to enable that, update the driver
+accordingly.
+
+Signed-off-by: Sara Sharon <sara.sharon@intel.com>
+Signed-off-by: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/iwlwifi/mvm/fw-api-sta.h |   66 +++++++++++++++++++++++++-
+ drivers/net/wireless/iwlwifi/mvm/mac80211.c   |    4 -
+ drivers/net/wireless/iwlwifi/mvm/sta.c        |   40 ++++++++++++---
+ drivers/net/wireless/iwlwifi/mvm/sta.h        |    2 
+ 4 files changed, 99 insertions(+), 13 deletions(-)
+
+--- a/drivers/net/wireless/iwlwifi/mvm/fw-api-sta.h
++++ b/drivers/net/wireless/iwlwifi/mvm/fw-api-sta.h
+@@ -7,6 +7,7 @@
+  *
+  * Copyright(c) 2012 - 2014 Intel Corporation. All rights reserved.
+  * Copyright(c) 2013 - 2014 Intel Mobile Communications GmbH
++ * Copyright(c) 2016 Intel Deutschland GmbH
+  *
+  * This program is free software; you can redistribute it and/or modify
+  * it under the terms of version 2 of the GNU General Public License as
+@@ -33,6 +34,7 @@
+  *
+  * Copyright(c) 2012 - 2014 Intel Corporation. All rights reserved.
+  * Copyright(c) 2013 - 2014 Intel Mobile Communications GmbH
++ * Copyright(c) 2016 Intel Deutschland GmbH
+  * All rights reserved.
+  *
+  * Redistribution and use in source and binary forms, with or without
+@@ -257,6 +259,65 @@ struct iwl_mvm_keyinfo {
+ #define IWL_ADD_STA_BAID_MASK	0xFF00
+ 
+ /**
++ * struct iwl_mvm_add_sta_cmd_v7 - Add/modify a station in the fw's sta table.
++ * ( REPLY_ADD_STA = 0x18 )
++ * @add_modify: 1: modify existing, 0: add new station
++ * @awake_acs:
++ * @tid_disable_tx: is tid BIT(tid) enabled for Tx. Clear BIT(x) to enable
++ *	AMPDU for tid x. Set %STA_MODIFY_TID_DISABLE_TX to change this field.
++ * @mac_id_n_color: the Mac context this station belongs to
++ * @addr[ETH_ALEN]: station's MAC address
++ * @sta_id: index of station in uCode's station table
++ * @modify_mask: STA_MODIFY_*, selects which parameters to modify vs. leave
++ *	alone. 1 - modify, 0 - don't change.
++ * @station_flags: look at %iwl_sta_flags
++ * @station_flags_msk: what of %station_flags have changed
++ * @add_immediate_ba_tid: tid for which to add block-ack support (Rx)
++ *	Set %STA_MODIFY_ADD_BA_TID to use this field, and also set
++ *	add_immediate_ba_ssn.
++ * @remove_immediate_ba_tid: tid for which to remove block-ack support (Rx)
++ *	Set %STA_MODIFY_REMOVE_BA_TID to use this field
++ * @add_immediate_ba_ssn: ssn for the Rx block-ack session. Used together with
++ *	add_immediate_ba_tid.
++ * @sleep_tx_count: number of packets to transmit to station even though it is
++ *	asleep. Used to synchronise PS-poll and u-APSD responses while ucode
++ *	keeps track of STA sleep state.
++ * @sleep_state_flags: Look at %iwl_sta_sleep_flag.
++ * @assoc_id: assoc_id to be sent in VHT PLCP (9-bit), for grp use 0, for AP
++ *	mac-addr.
++ * @beamform_flags: beam forming controls
++ * @tfd_queue_msk: tfd queues used by this station
++ *
++ * The device contains an internal table of per-station information, with info
++ * on security keys, aggregation parameters, and Tx rates for initial Tx
++ * attempt and any retries (set by REPLY_TX_LINK_QUALITY_CMD).
++ *
++ * ADD_STA sets up the table entry for one station, either creating a new
++ * entry, or modifying a pre-existing one.
++ */
++struct iwl_mvm_add_sta_cmd_v7 {
++	u8 add_modify;
++	u8 awake_acs;
++	__le16 tid_disable_tx;
++	__le32 mac_id_n_color;
++	u8 addr[ETH_ALEN];	/* _STA_ID_MODIFY_INFO_API_S_VER_1 */
++	__le16 reserved2;
++	u8 sta_id;
++	u8 modify_mask;
++	__le16 reserved3;
++	__le32 station_flags;
++	__le32 station_flags_msk;
++	u8 add_immediate_ba_tid;
++	u8 remove_immediate_ba_tid;
++	__le16 add_immediate_ba_ssn;
++	__le16 sleep_tx_count;
++	__le16 sleep_state_flags;
++	__le16 assoc_id;
++	__le16 beamform_flags;
++	__le32 tfd_queue_msk;
++} __packed; /* ADD_STA_CMD_API_S_VER_7 */
++
++/**
+  * struct iwl_mvm_add_sta_cmd - Add/modify a station in the fw's sta table.
+  * ( REPLY_ADD_STA = 0x18 )
+  * @add_modify: 1: modify existing, 0: add new station
+@@ -285,6 +346,7 @@ struct iwl_mvm_keyinfo {
+  *	mac-addr.
+  * @beamform_flags: beam forming controls
+  * @tfd_queue_msk: tfd queues used by this station
++ * @rx_ba_window: aggregation window size
+  *
+  * The device contains an internal table of per-station information, with info
+  * on security keys, aggregation parameters, and Tx rates for initial Tx
+@@ -313,7 +375,9 @@ struct iwl_mvm_add_sta_cmd {
+ 	__le16 assoc_id;
+ 	__le16 beamform_flags;
+ 	__le32 tfd_queue_msk;
+-} __packed; /* ADD_STA_CMD_API_S_VER_7 */
++	__le16 rx_ba_window;
++	__le16 reserved;
++} __packed; /* ADD_STA_CMD_API_S_VER_8 */
+ 
+ /**
+  * struct iwl_mvm_add_sta_key_cmd - add/modify sta key
+--- a/drivers/net/wireless/iwlwifi/mvm/mac80211.c
++++ b/drivers/net/wireless/iwlwifi/mvm/mac80211.c
+@@ -886,10 +886,10 @@ static int iwl_mvm_mac_ampdu_action(stru
+ 			ret = -EINVAL;
+ 			break;
+ 		}
+-		ret = iwl_mvm_sta_rx_agg(mvm, sta, tid, *ssn, true);
++		ret = iwl_mvm_sta_rx_agg(mvm, sta, tid, *ssn, true, buf_size);
+ 		break;
+ 	case IEEE80211_AMPDU_RX_STOP:
+-		ret = iwl_mvm_sta_rx_agg(mvm, sta, tid, 0, false);
++		ret = iwl_mvm_sta_rx_agg(mvm, sta, tid, 0, false, buf_size);
+ 		break;
+ 	case IEEE80211_AMPDU_TX_START:
+ 		if (!iwl_enable_tx_ampdu(mvm->cfg)) {
+--- a/drivers/net/wireless/iwlwifi/mvm/sta.c
++++ b/drivers/net/wireless/iwlwifi/mvm/sta.c
+@@ -7,6 +7,7 @@
+  *
+  * Copyright(c) 2012 - 2015 Intel Corporation. All rights reserved.
+  * Copyright(c) 2013 - 2015 Intel Mobile Communications GmbH
++ * Copyright(c) 2016 Intel Deutschland GmbH
+  *
+  * This program is free software; you can redistribute it and/or modify
+  * it under the terms of version 2 of the GNU General Public License as
+@@ -33,6 +34,7 @@
+  *
+  * Copyright(c) 2012 - 2015 Intel Corporation. All rights reserved.
+  * Copyright(c) 2013 - 2015 Intel Mobile Communications GmbH
++ * Copyright(c) 2016 Intel Deutschland GmbH
+  * All rights reserved.
+  *
+  * Redistribution and use in source and binary forms, with or without
+@@ -68,6 +70,18 @@
+ #include "sta.h"
+ #include "rs.h"
+ 
++/*
++ * New version of ADD_STA_sta command added new fields at the end of the
++ * structure, so sending the size of the relevant API's structure is enough to
++ * support both API versions.
++ */
++static inline int iwl_mvm_add_sta_cmd_size(struct iwl_mvm *mvm)
++{
++	return iwl_mvm_has_new_rx_api(mvm) ?
++		sizeof(struct iwl_mvm_add_sta_cmd) :
++		sizeof(struct iwl_mvm_add_sta_cmd_v7);
++}
++
+ static int iwl_mvm_find_free_sta_id(struct iwl_mvm *mvm,
+ 				    enum nl80211_iftype iftype)
+ {
+@@ -187,7 +201,8 @@ int iwl_mvm_sta_send_to_fw(struct iwl_mv
+ 		cpu_to_le32(mpdu_dens << STA_FLG_AGG_MPDU_DENS_SHIFT);
+ 
+ 	status = ADD_STA_SUCCESS;
+-	ret = iwl_mvm_send_cmd_pdu_status(mvm, ADD_STA, sizeof(add_sta_cmd),
++	ret = iwl_mvm_send_cmd_pdu_status(mvm, ADD_STA,
++					  iwl_mvm_add_sta_cmd_size(mvm),
+ 					  &add_sta_cmd, &status);
+ 	if (ret)
+ 		return ret;
+@@ -357,7 +372,8 @@ int iwl_mvm_drain_sta(struct iwl_mvm *mv
+ 	cmd.station_flags_msk = cpu_to_le32(STA_FLG_DRAIN_FLOW);
+ 
+ 	status = ADD_STA_SUCCESS;
+-	ret = iwl_mvm_send_cmd_pdu_status(mvm, ADD_STA, sizeof(cmd),
++	ret = iwl_mvm_send_cmd_pdu_status(mvm, ADD_STA,
++					  iwl_mvm_add_sta_cmd_size(mvm),
+ 					  &cmd, &status);
+ 	if (ret)
+ 		return ret;
+@@ -623,7 +639,8 @@ static int iwl_mvm_add_int_sta_common(st
+ 	if (addr)
+ 		memcpy(cmd.addr, addr, ETH_ALEN);
+ 
+-	ret = iwl_mvm_send_cmd_pdu_status(mvm, ADD_STA, sizeof(cmd),
++	ret = iwl_mvm_send_cmd_pdu_status(mvm, ADD_STA,
++					  iwl_mvm_add_sta_cmd_size(mvm),
+ 					  &cmd, &status);
+ 	if (ret)
+ 		return ret;
+@@ -819,7 +836,7 @@ int iwl_mvm_rm_bcast_sta(struct iwl_mvm
+ #define IWL_MAX_RX_BA_SESSIONS 16
+ 
+ int iwl_mvm_sta_rx_agg(struct iwl_mvm *mvm, struct ieee80211_sta *sta,
+-		       int tid, u16 ssn, bool start)
++		       int tid, u16 ssn, bool start, u8 buf_size)
+ {
+ 	struct iwl_mvm_sta *mvm_sta = iwl_mvm_sta_from_mac80211(sta);
+ 	struct iwl_mvm_add_sta_cmd cmd = {};
+@@ -839,6 +856,7 @@ int iwl_mvm_sta_rx_agg(struct iwl_mvm *m
+ 	if (start) {
+ 		cmd.add_immediate_ba_tid = (u8) tid;
+ 		cmd.add_immediate_ba_ssn = cpu_to_le16(ssn);
++		cmd.rx_ba_window = cpu_to_le16((u16)buf_size);
+ 	} else {
+ 		cmd.remove_immediate_ba_tid = (u8) tid;
+ 	}
+@@ -846,7 +864,8 @@ int iwl_mvm_sta_rx_agg(struct iwl_mvm *m
+ 				  STA_MODIFY_REMOVE_BA_TID;
+ 
+ 	status = ADD_STA_SUCCESS;
+-	ret = iwl_mvm_send_cmd_pdu_status(mvm, ADD_STA, sizeof(cmd),
++	ret = iwl_mvm_send_cmd_pdu_status(mvm, ADD_STA,
++					  iwl_mvm_add_sta_cmd_size(mvm),
+ 					  &cmd, &status);
+ 	if (ret)
+ 		return ret;
+@@ -904,7 +923,8 @@ static int iwl_mvm_sta_tx_agg(struct iwl
+ 	cmd.tid_disable_tx = cpu_to_le16(mvm_sta->tid_disable_agg);
+ 
+ 	status = ADD_STA_SUCCESS;
+-	ret = iwl_mvm_send_cmd_pdu_status(mvm, ADD_STA, sizeof(cmd),
++	ret = iwl_mvm_send_cmd_pdu_status(mvm, ADD_STA,
++					  iwl_mvm_add_sta_cmd_size(mvm),
+ 					  &cmd, &status);
+ 	if (ret)
+ 		return ret;
+@@ -1640,7 +1660,8 @@ void iwl_mvm_sta_modify_ps_wake(struct i
+ 	};
+ 	int ret;
+ 
+-	ret = iwl_mvm_send_cmd_pdu(mvm, ADD_STA, CMD_ASYNC, sizeof(cmd), &cmd);
++	ret = iwl_mvm_send_cmd_pdu(mvm, ADD_STA, CMD_ASYNC,
++				   iwl_mvm_add_sta_cmd_size(mvm), &cmd);
+ 	if (ret)
+ 		IWL_ERR(mvm, "Failed to send ADD_STA command (%d)\n", ret);
+ }
+@@ -1727,7 +1748,7 @@ void iwl_mvm_sta_modify_sleep_tx_count(s
+ 
+ 	ret = iwl_mvm_send_cmd_pdu(mvm, ADD_STA,
+ 				   CMD_ASYNC | CMD_WANT_ASYNC_CALLBACK,
+-				   sizeof(cmd), &cmd);
++				   iwl_mvm_add_sta_cmd_size(mvm), &cmd);
+ 	if (ret)
+ 		IWL_ERR(mvm, "Failed to send ADD_STA command (%d)\n", ret);
+ }
+@@ -1762,7 +1783,8 @@ void iwl_mvm_sta_modify_disable_tx(struc
+ 	};
+ 	int ret;
+ 
+-	ret = iwl_mvm_send_cmd_pdu(mvm, ADD_STA, CMD_ASYNC, sizeof(cmd), &cmd);
++	ret = iwl_mvm_send_cmd_pdu(mvm, ADD_STA, CMD_ASYNC,
++				   iwl_mvm_add_sta_cmd_size(mvm), &cmd);
+ 	if (ret)
+ 		IWL_ERR(mvm, "Failed to send ADD_STA command (%d)\n", ret);
+ }
+--- a/drivers/net/wireless/iwlwifi/mvm/sta.h
++++ b/drivers/net/wireless/iwlwifi/mvm/sta.h
+@@ -383,7 +383,7 @@ void iwl_mvm_rx_eosp_notif(struct iwl_mv
+ 
+ /* AMPDU */
+ int iwl_mvm_sta_rx_agg(struct iwl_mvm *mvm, struct ieee80211_sta *sta,
+-		       int tid, u16 ssn, bool start);
++		       int tid, u16 ssn, bool start, u8 buf_size);
+ int iwl_mvm_sta_tx_agg_start(struct iwl_mvm *mvm, struct ieee80211_vif *vif,
+ 			struct ieee80211_sta *sta, u16 tid, u16 *ssn);
+ int iwl_mvm_sta_tx_agg_oper(struct iwl_mvm *mvm, struct ieee80211_vif *vif,

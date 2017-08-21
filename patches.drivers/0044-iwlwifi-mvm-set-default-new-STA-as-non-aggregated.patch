@@ -1,0 +1,46 @@
+From cf0cda191074fba464999ef29eb654cdab909e66 Mon Sep 17 00:00:00 2001
+From: Liad Kaufman <liad.kaufman@intel.com>
+Date: Thu, 24 Sep 2015 10:44:12 +0200
+Subject: [PATCH] iwlwifi: mvm: set default new STA as non-aggregated
+Git-commit: cf0cda191074fba464999ef29eb654cdab909e66
+Patch-mainline: 4.5-rc1
+References: FATE#321353, FATE#323335
+
+When sending the first ADD_STA HCMD for a STA, the %add_modify
+field indicates an addition of a STA and not a modification
+of one. In such a case, all fields of the HCMD are used to
+initialize the corresponding fields in the FW, regardless of
+what bits are set in %modify_mask.
+
+Set the %tid_disable_tx field to mvm_sta->tid_disable_agg in
+iwl_mvm_sta_send_to_fw(). If the STA is only updated this will
+have no effect, but if it is added - it will make sure the
+STA starts with the correct queues - if any - configured as
+non-aggregated by default (until told otherwise).
+
+Signed-off-by: Liad Kaufman <liad.kaufman@intel.com>
+Signed-off-by: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/iwlwifi/mvm/sta.c |    2 ++
+ 1 file changed, 2 insertions(+)
+
+--- a/drivers/net/wireless/iwlwifi/mvm/sta.c
++++ b/drivers/net/wireless/iwlwifi/mvm/sta.c
+@@ -106,6 +106,7 @@ int iwl_mvm_sta_send_to_fw(struct iwl_mv
+ 		.add_modify = update ? 1 : 0,
+ 		.station_flags_msk = cpu_to_le32(STA_FLG_FAT_EN_MSK |
+ 						 STA_FLG_MIMO_EN_MSK),
++		.tid_disable_tx = cpu_to_le16(mvm_sta->tid_disable_agg),
+ 	};
+ 	int ret;
+ 	u32 status;
+@@ -622,6 +623,7 @@ static int iwl_mvm_add_int_sta_common(st
+ 							     color));
+ 
+ 	cmd.tfd_queue_msk = cpu_to_le32(sta->tfd_queue_msk);
++	cmd.tid_disable_tx = cpu_to_le16(0xffff);
+ 
+ 	if (addr)
+ 		memcpy(cmd.addr, addr, ETH_ALEN);

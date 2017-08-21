@@ -1,0 +1,119 @@
+From: Andrew Banman <abanman@sgi.com>
+Date: Wed, 21 Sep 2016 11:09:17 -0500
+Subject: x86/platform/uv/BAU: Use generic function pointers
+Git-commit: 21e3f12fc0e12181102ad0400bcb50bc7a027106
+Patch-mainline: v4.9-rc1
+References: bsc#1035024
+
+Convert the use of UV version-specific functions to their abstracted
+counterparts.
+
+Signed-off-by: Andrew Banman <abanman@sgi.com>
+Acked-by: Thomas Gleixner <tglx@linutronix.de>
+Acked-by: Mike Travis <travis@sgi.com>
+Acked-by: Dimitri Sivanich <sivanich@sgi.com>
+Acked-by: Thomas Gleixner <tglx@linutronix.de>
+Cc: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: Peter Zijlstra <peterz@infradead.org>
+Cc: akpm@linux-foundation.org
+Cc: rja@sgi.com
+Link: http://lkml.kernel.org/r/1474474161-265604-7-git-send-email-abanman@sgi.com
+Signed-off-by: Ingo Molnar <mingo@kernel.org>
+Acked-by: Joerg Roedel <jroedel@suse.de>
+---
+ arch/x86/platform/uv/tlb_uv.c | 26 +++++++++++++-------------
+ 1 file changed, 13 insertions(+), 13 deletions(-)
+
+--- a/arch/x86/platform/uv/tlb_uv.c
++++ b/arch/x86/platform/uv/tlb_uv.c
+@@ -228,7 +228,7 @@ static void reply_to_message(struct msg_
+ 	msg = mdp->msg;
+ 	if (!msg->canceled && do_acknowledge) {
+ 		dw = (msg->swack_vec << UV_SW_ACK_NPENDING) | msg->swack_vec;
+-		write_mmr_sw_ack(dw);
++		ops.write_l_sw_ack(dw);
+ 	}
+ 	msg->replied_to = 1;
+ 	msg->swack_vec = 0;
+@@ -264,7 +264,7 @@ static void bau_process_retry_msg(struct
+ 			msg->swack_vec) == 0) &&
+ 		    (msg2->sending_cpu == msg->sending_cpu) &&
+ 		    (msg2->msg_type != MSG_NOOP)) {
+-			mmr = read_mmr_sw_ack();
++			mmr = ops.read_l_sw_ack();
+ 			msg_res = msg2->swack_vec;
+ 			/*
+ 			 * This is a message retry; clear the resources held
+@@ -282,7 +282,7 @@ static void bau_process_retry_msg(struct
+ 				stat->d_canceled++;
+ 				cancel_count++;
+ 				mr = (msg_res << UV_SW_ACK_NPENDING) | msg_res;
+-				write_mmr_sw_ack(mr);
++				ops.write_l_sw_ack(mr);
+ 			}
+ 		}
+ 	}
+@@ -415,12 +415,12 @@ static void do_reset(void *ptr)
+ 			/*
+ 			 * only reset the resource if it is still pending
+ 			 */
+-			mmr = read_mmr_sw_ack();
++			mmr = ops.read_l_sw_ack();
+ 			msg_res = msg->swack_vec;
+ 			mr = (msg_res << UV_SW_ACK_NPENDING) | msg_res;
+ 			if (mmr & msg_res) {
+ 				stat->d_rcanceled++;
+-				write_mmr_sw_ack(mr);
++				ops.write_l_sw_ack(mr);
+ 			}
+ 		}
+ 	}
+@@ -1214,7 +1214,7 @@ void process_uv2_message(struct msg_desc
+ 	struct bau_pq_entry *msg = mdp->msg;
+ 	struct bau_pq_entry *other_msg;
+ 
+-	mmr_image = read_mmr_sw_ack();
++	mmr_image = ops.read_l_sw_ack();
+ 	swack_vec = msg->swack_vec;
+ 
+ 	if ((swack_vec & mmr_image) == 0) {
+@@ -1443,7 +1443,7 @@ static int ptc_seq_show(struct seq_file
+ 		/* destination side statistics */
+ 		seq_printf(file,
+ 			"%lx %ld %ld %ld %ld %ld %ld %ld %ld %ld %ld %ld\n",
+-			   read_gmmr_sw_ack(uv_cpu_to_pnode(cpu)),
++			   ops.read_g_sw_ack(uv_cpu_to_pnode(cpu)),
+ 			   stat->d_requestee, cycles_2_us(stat->d_time),
+ 			   stat->d_alltlb, stat->d_onetlb, stat->d_multmsg,
+ 			   stat->d_nomsg, stat->d_retries, stat->d_canceled,
+@@ -1737,7 +1737,7 @@ static void activation_descriptor_init(i
+ 
+ 	gpa = uv_gpa(bau_desc);
+ 	n = uv_gpa_to_gnode(gpa);
+-	m = uv_gpa_to_offset(gpa);
++	m = ops.bau_gpa_to_offset(gpa);
+ 	if (is_uv1_hub())
+ 		uv1 = 1;
+ 
+@@ -1824,16 +1824,16 @@ static void pq_init(int node, int pnode)
+ 		bcp->queue_last		= pqp + (DEST_Q_SIZE - 1);
+ 	}
+ 
+-	first = uv_gpa_to_offset(uv_gpa(pqp));
+-	last = uv_gpa_to_offset(uv_gpa(pqp + (DEST_Q_SIZE - 1)));
++	first = ops.bau_gpa_to_offset(uv_gpa(pqp));
++	last = ops.bau_gpa_to_offset(uv_gpa(pqp + (DEST_Q_SIZE - 1)));
+ 	tail = first;
+ 	gnode = uv_gpa_to_gnode(uv_gpa(pqp));
+ 	first = (gnode << UV_PAYLOADQ_GNODE_SHIFT) | tail;
+ 
+-	write_mmr_payload_first(pnode, first);
+-	write_mmr_payload_last(pnode, last);
+ 	write_mmr_payload_tail(pnode, tail);
+-	write_gmmr_sw_ack(pnode, 0xffffUL);
++	ops.write_payload_first(pnode, first);
++	ops.write_payload_last(pnode, last);
++	ops.write_g_sw_ack(pnode, 0xffffUL);
+ 
+ 	/* in effect, all msg_type's are set to MSG_NOOP */
+ 	memset(pqp, 0, sizeof(struct bau_pq_entry) * DEST_Q_SIZE);

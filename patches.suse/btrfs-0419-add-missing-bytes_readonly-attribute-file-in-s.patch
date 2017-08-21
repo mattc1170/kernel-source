@@ -1,0 +1,32 @@
+From: Wang Xiaoguang <wangxg.fnst@cn.fujitsu.com>
+Date: Tue, 21 Jun 2016 11:12:56 +0800
+Patch-mainline: 4.8
+Git-commit: c1fd5c30d1328e0a0c3aafc3768b9cea94d7b28f
+References: bsc#1012452
+Subject: [PATCH] btrfs: add missing bytes_readonly attribute file in
+ sysfs
+
+Signed-off-by: Wang Xiaoguang <wangxg.fnst@cn.fujitsu.com>
+Signed-off-by: David Sterba <dsterba@suse.com>
+---
+ fs/btrfs/sysfs.c |    2 ++
+ 1 file changed, 2 insertions(+)
+
+--- a/fs/btrfs/sysfs.c
++++ b/fs/btrfs/sysfs.c
+@@ -324,6 +324,7 @@ SPACE_INFO_ATTR(bytes_used);
+ SPACE_INFO_ATTR(bytes_pinned);
+ SPACE_INFO_ATTR(bytes_reserved);
+ SPACE_INFO_ATTR(bytes_may_use);
++SPACE_INFO_ATTR(bytes_readonly);
+ SPACE_INFO_ATTR(disk_used);
+ SPACE_INFO_ATTR(disk_total);
+ BTRFS_ATTR(total_bytes_pinned, btrfs_space_info_show_total_bytes_pinned);
+@@ -335,6 +336,7 @@ static struct attribute *space_info_attr
+ 	BTRFS_ATTR_PTR(bytes_pinned),
+ 	BTRFS_ATTR_PTR(bytes_reserved),
+ 	BTRFS_ATTR_PTR(bytes_may_use),
++	BTRFS_ATTR_PTR(bytes_readonly),
+ 	BTRFS_ATTR_PTR(disk_used),
+ 	BTRFS_ATTR_PTR(disk_total),
+ 	BTRFS_ATTR_PTR(total_bytes_pinned),

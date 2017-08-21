@@ -1,0 +1,81 @@
+From 08f0d23d97dcb49ca7ba65a3fc714a5d28a91d0c Mon Sep 17 00:00:00 2001
+From: Eliad Peller <eliad@wizery.com>
+Date: Thu, 10 Dec 2015 15:47:11 +0200
+Subject: [PATCH] iwlwifi: avoid d0i3 commands when no/init ucode is loaded
+Git-commit: 08f0d23d97dcb49ca7ba65a3fc714a5d28a91d0c
+Patch-mainline: 4.5-rc1
+References: FATE#321353, FATE#323335
+
+d0i3 commands are not supported in the init image, so take
+a reference to ensure we don't enter d0i3 during init image,
+and additional checks to prevent d0i3 commands when no
+fw image is loaded.
+
+Add a few WARN_ON_ONCE to the d0i3 enter/exit commands
+to ensure we send d0i3 commands only when the normal
+ucode is loaded.
+
+Signed-off-by: Eliad Peller <eliadx.peller@intel.com>
+Signed-off-by: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/iwlwifi/mvm/debugfs.c |    1 +
+ drivers/net/wireless/iwlwifi/mvm/mvm.h     |    1 +
+ drivers/net/wireless/iwlwifi/mvm/ops.c     |    8 ++++++++
+ 3 files changed, 10 insertions(+)
+
+--- a/drivers/net/wireless/iwlwifi/mvm/debugfs.c
++++ b/drivers/net/wireless/iwlwifi/mvm/debugfs.c
+@@ -1316,6 +1316,7 @@ static ssize_t iwl_dbgfs_d0i3_refs_read(
+ 	PRINT_MVM_REF(IWL_MVM_REF_EXIT_WORK);
+ 	PRINT_MVM_REF(IWL_MVM_REF_PROTECT_CSA);
+ 	PRINT_MVM_REF(IWL_MVM_REF_FW_DBG_COLLECT);
++	PRINT_MVM_REF(IWL_MVM_REF_INIT_UCODE);
+ 
+ 	return simple_read_from_buffer(user_buf, count, ppos, buf, pos);
+ }
+--- a/drivers/net/wireless/iwlwifi/mvm/mvm.h
++++ b/drivers/net/wireless/iwlwifi/mvm/mvm.h
+@@ -294,6 +294,7 @@ enum iwl_mvm_ref_type {
+ 	IWL_MVM_REF_EXIT_WORK,
+ 	IWL_MVM_REF_PROTECT_CSA,
+ 	IWL_MVM_REF_FW_DBG_COLLECT,
++	IWL_MVM_REF_INIT_UCODE,
+ 
+ 	/* update debugfs.c when changing this */
+ 
+--- a/drivers/net/wireless/iwlwifi/mvm/ops.c
++++ b/drivers/net/wireless/iwlwifi/mvm/ops.c
+@@ -603,9 +603,11 @@ iwl_op_mode_mvm_start(struct iwl_trans *
+ 			goto out_free;
+ 
+ 		mutex_lock(&mvm->mutex);
++		iwl_mvm_ref(mvm, IWL_MVM_REF_INIT_UCODE);
+ 		err = iwl_run_init_mvm_ucode(mvm, true);
+ 		if (!err || !iwlmvm_mod_params.init_dbg)
+ 			iwl_trans_stop_device(trans);
++		iwl_mvm_unref(mvm, IWL_MVM_REF_INIT_UCODE);
+ 		mutex_unlock(&mvm->mutex);
+ 		/* returns 0 if successful, 1 if success but in rfkill */
+ 		if (err < 0 && !iwlmvm_mod_params.init_dbg) {
+@@ -1213,6 +1215,9 @@ int iwl_mvm_enter_d0i3(struct iwl_op_mod
+ 
+ 	IWL_DEBUG_RPM(mvm, "MVM entering D0i3\n");
+ 
++	if (WARN_ON_ONCE(mvm->cur_ucode != IWL_UCODE_REGULAR))
++		return -EINVAL;
++
+ 	set_bit(IWL_MVM_STATUS_IN_D0I3, &mvm->status);
+ 
+ 	/*
+@@ -1420,6 +1425,9 @@ int _iwl_mvm_exit_d0i3(struct iwl_mvm *m
+ 
+ 	IWL_DEBUG_RPM(mvm, "MVM exiting D0i3\n");
+ 
++	if (WARN_ON_ONCE(mvm->cur_ucode != IWL_UCODE_REGULAR))
++		return -EINVAL;
++
+ 	mutex_lock(&mvm->d0i3_suspend_mutex);
+ 	if (test_bit(D0I3_DEFER_WAKEUP, &mvm->d0i3_suspend_flags)) {
+ 		IWL_DEBUG_RPM(mvm, "Deferring d0i3 exit until resume\n");

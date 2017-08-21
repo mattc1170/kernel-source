@@ -1,0 +1,70 @@
+From: David Sterba <dsterba@suse.com>
+Date: Mon, 15 Feb 2016 18:15:21 +0100
+Patch-mainline: 4.7
+Git-commit: 735654ea91a06a30bfe05fdfd09c8895abf6c1bf
+References: bsc#1012452
+Subject: [PATCH] btrfs: rename flags for vol args v2
+
+Rename BTRFS_DEVICE_BY_ID so it's more descriptive that we specify the
+device by id, it'll be part of the public API. The mask of supported
+flags is also renamed, only for internal use.
+
+The error code for unknown flags is EOPNOTSUPP, fixed.
+
+Reviewed-by: Anand Jain <anand.jain@oracle.com>
+Signed-off-by: David Sterba <dsterba@suse.com>
+---
+ fs/btrfs/ioctl.c           |    8 ++++----
+ include/uapi/linux/btrfs.h |    7 ++++---
+ 2 files changed, 8 insertions(+), 7 deletions(-)
+
+--- a/fs/btrfs/ioctl.c
++++ b/fs/btrfs/ioctl.c
+@@ -2708,8 +2708,8 @@ static long btrfs_ioctl_rm_dev_v2(struct
+ 	}
+ 
+ 	/* Check for compatibility reject unknown flags */
+-	if (vol_args->flags & ~BTRFS_VOL_ARG_V2_FLAGS)
+-		return -ENOTTY;
++	if (vol_args->flags & ~BTRFS_VOL_ARG_V2_FLAGS_SUPPORTED)
++		return -EOPNOTSUPP;
+ 
+ 	if (atomic_xchg(&root->fs_info->mutually_exclusive_operation_running,
+ 			1)) {
+@@ -2718,7 +2718,7 @@ static long btrfs_ioctl_rm_dev_v2(struct
+ 	}
+ 
+ 	mutex_lock(&root->fs_info->volume_mutex);
+-	if (vol_args->flags & BTRFS_DEVICE_BY_ID) {
++	if (vol_args->flags & BTRFS_DEVICE_SPEC_BY_ID) {
+ 		ret = btrfs_rm_device(root, NULL, vol_args->devid);
+ 	} else {
+ 		vol_args->name[BTRFS_SUBVOL_NAME_MAX] = '\0';
+@@ -2728,7 +2728,7 @@ static long btrfs_ioctl_rm_dev_v2(struct
+ 	atomic_set(&root->fs_info->mutually_exclusive_operation_running, 0);
+ 
+ 	if (!ret) {
+-		if (vol_args->flags & BTRFS_DEVICE_BY_ID)
++		if (vol_args->flags & BTRFS_DEVICE_SPEC_BY_ID)
+ 			btrfs_info(root->fs_info, "device deleted: id %llu",
+ 					vol_args->devid);
+ 		else
+--- a/include/uapi/linux/btrfs.h
++++ b/include/uapi/linux/btrfs.h
+@@ -36,12 +36,13 @@ struct btrfs_ioctl_vol_args {
+ #define BTRFS_SUBVOL_CREATE_ASYNC	(1ULL << 0)
+ #define BTRFS_SUBVOL_RDONLY		(1ULL << 1)
+ #define BTRFS_SUBVOL_QGROUP_INHERIT	(1ULL << 2)
+-#define BTRFS_DEVICE_BY_ID		(1ULL << 3)
+-#define BTRFS_VOL_ARG_V2_FLAGS				\
++#define BTRFS_DEVICE_SPEC_BY_ID		(1ULL << 3)
++
++#define BTRFS_VOL_ARG_V2_FLAGS_SUPPORTED		\
+ 			(BTRFS_SUBVOL_CREATE_ASYNC |	\
+ 			BTRFS_SUBVOL_RDONLY |		\
+ 			BTRFS_SUBVOL_QGROUP_INHERIT |	\
+-			BTRFS_DEVICE_BY_ID)
++			BTRFS_DEVICE_SPEC_BY_ID)
+ 
+ #define BTRFS_FSID_SIZE 16
+ #define BTRFS_UUID_SIZE 16

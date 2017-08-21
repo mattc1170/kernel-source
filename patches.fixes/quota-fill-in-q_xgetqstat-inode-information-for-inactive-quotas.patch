@@ -1,0 +1,95 @@
+From: Eric Sandeen <sandeen@redhat.com>
+Date: Fri, 12 Aug 2016 17:40:09 -0500
+Subject: quota: fill in Q_XGETQSTAT inode information for inactive quotas
+Git-commit: 3cd0126dca82ecba8b2a6bf5aca91454da0a0776
+Patch-mainline: v4.9-rc1
+References: bsc#1042356
+
+The manpage for quotactl says that the Q_XGETQSTAT command is
+"useful in finding out how much space is spent to store quota
+information," but the current implementation does not report this
+info if the inode is allocated, but its quota type is not enabled.
+
+This is a change from the earlier XFS implementation, which
+reported information about allocated quota inodes even if their
+quota type was not currently active.
+
+Change quota_getstate() and quota_getstatev() to copy out the inode
+information if the filesystem has provided it, even if the quota
+type for that inode is not currently active.
+
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+Reviewed-by: Bill O'Donnell <billodo@redhat.com>
+Signed-off-by: Jan Kara <jack@suse.cz>
+Acked-by: Nikolay Borisov <nborisov@suse.com>
+---
+ fs/quota/quota.c | 18 ++++++++++++------
+ 1 file changed, 12 insertions(+), 6 deletions(-)
+
+diff --git a/fs/quota/quota.c b/fs/quota/quota.c
+index 35df08ee9c97..2d445425aad7 100644
+--- a/fs/quota/quota.c
++++ b/fs/quota/quota.c
+@@ -341,6 +341,7 @@ static int quota_getstate(struct super_block *sb, struct fs_quota_stat *fqs)
+ 	struct qc_state state;
+ 	int ret;
+ 
++	memset(&state, 0, sizeof (struct qc_state));
+ 	ret = sb->s_qcop->get_state(sb, &state);
+ 	if (ret < 0)
+ 		return ret;
+@@ -365,17 +366,19 @@ static int quota_getstate(struct super_block *sb, struct fs_quota_stat *fqs)
+ 	fqs->qs_rtbtimelimit = state.s_state[type].rt_spc_timelimit;
+ 	fqs->qs_bwarnlimit = state.s_state[type].spc_warnlimit;
+ 	fqs->qs_iwarnlimit = state.s_state[type].ino_warnlimit;
+-	if (state.s_state[USRQUOTA].flags & QCI_ACCT_ENABLED) {
++
++	/* Inodes may be allocated even if inactive; copy out if present */
++	if (state.s_state[USRQUOTA].ino) {
+ 		fqs->qs_uquota.qfs_ino = state.s_state[USRQUOTA].ino;
+ 		fqs->qs_uquota.qfs_nblks = state.s_state[USRQUOTA].blocks;
+ 		fqs->qs_uquota.qfs_nextents = state.s_state[USRQUOTA].nextents;
+ 	}
+-	if (state.s_state[GRPQUOTA].flags & QCI_ACCT_ENABLED) {
++	if (state.s_state[GRPQUOTA].ino) {
+ 		fqs->qs_gquota.qfs_ino = state.s_state[GRPQUOTA].ino;
+ 		fqs->qs_gquota.qfs_nblks = state.s_state[GRPQUOTA].blocks;
+ 		fqs->qs_gquota.qfs_nextents = state.s_state[GRPQUOTA].nextents;
+ 	}
+-	if (state.s_state[PRJQUOTA].flags & QCI_ACCT_ENABLED) {
++	if (state.s_state[PRJQUOTA].ino) {
+ 		/*
+ 		 * Q_XGETQSTAT doesn't have room for both group and project
+ 		 * quotas.  So, allow the project quota values to be copied out
+@@ -411,6 +414,7 @@ static int quota_getstatev(struct super_block *sb, struct fs_quota_statv *fqs)
+ 	struct qc_state state;
+ 	int ret;
+ 
++	memset(&state, 0, sizeof (struct qc_state));
+ 	ret = sb->s_qcop->get_state(sb, &state);
+ 	if (ret < 0)
+ 		return ret;
+@@ -435,17 +439,19 @@ static int quota_getstatev(struct super_block *sb, struct fs_quota_statv *fqs)
+ 	fqs->qs_rtbtimelimit = state.s_state[type].rt_spc_timelimit;
+ 	fqs->qs_bwarnlimit = state.s_state[type].spc_warnlimit;
+ 	fqs->qs_iwarnlimit = state.s_state[type].ino_warnlimit;
+-	if (state.s_state[USRQUOTA].flags & QCI_ACCT_ENABLED) {
++
++	/* Inodes may be allocated even if inactive; copy out if present */
++	if (state.s_state[USRQUOTA].ino) {
+ 		fqs->qs_uquota.qfs_ino = state.s_state[USRQUOTA].ino;
+ 		fqs->qs_uquota.qfs_nblks = state.s_state[USRQUOTA].blocks;
+ 		fqs->qs_uquota.qfs_nextents = state.s_state[USRQUOTA].nextents;
+ 	}
+-	if (state.s_state[GRPQUOTA].flags & QCI_ACCT_ENABLED) {
++	if (state.s_state[GRPQUOTA].ino) {
+ 		fqs->qs_gquota.qfs_ino = state.s_state[GRPQUOTA].ino;
+ 		fqs->qs_gquota.qfs_nblks = state.s_state[GRPQUOTA].blocks;
+ 		fqs->qs_gquota.qfs_nextents = state.s_state[GRPQUOTA].nextents;
+ 	}
+-	if (state.s_state[PRJQUOTA].flags & QCI_ACCT_ENABLED) {
++	if (state.s_state[PRJQUOTA].ino) {
+ 		fqs->qs_pquota.qfs_ino = state.s_state[PRJQUOTA].ino;
+ 		fqs->qs_pquota.qfs_nblks = state.s_state[PRJQUOTA].blocks;
+ 		fqs->qs_pquota.qfs_nextents = state.s_state[PRJQUOTA].nextents;
+

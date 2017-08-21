@@ -1,0 +1,60 @@
+From 34672bb390fa73f1e201cc376291a5624dafab64 Mon Sep 17 00:00:00 2001
+From: Eliad Peller <eliad@wizery.com>
+Date: Thu, 3 Dec 2015 16:10:07 +0200
+Subject: [PATCH] iwlwifi: mvm: remove the vif parameter of iwl_mvm_configure_bcast_filter()
+Git-commit: 34672bb390fa73f1e201cc376291a5624dafab64
+Patch-mainline: 4.5-rc1
+References: FATE#321353, FATE#323335
+
+Remove the vif parameter of iwl_mvm_configure_bcast_filter()
+as it's not being used.
+
+Signed-off-by: Eliad Peller <eliadx.peller@intel.com>
+Signed-off-by: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/iwlwifi/mvm/mac80211.c |   11 +++++------
+ 1 file changed, 5 insertions(+), 6 deletions(-)
+
+--- a/drivers/net/wireless/iwlwifi/mvm/mac80211.c
++++ b/drivers/net/wireless/iwlwifi/mvm/mac80211.c
+@@ -1739,8 +1739,8 @@ bool iwl_mvm_bcast_filter_build_cmd(stru
+ 
+ 	return true;
+ }
+-static int iwl_mvm_configure_bcast_filter(struct iwl_mvm *mvm,
+-					  struct ieee80211_vif *vif)
++
++static int iwl_mvm_configure_bcast_filter(struct iwl_mvm *mvm)
+ {
+ 	struct iwl_bcast_filter_cmd cmd;
+ 
+@@ -1754,8 +1754,7 @@ static int iwl_mvm_configure_bcast_filte
+ 				    sizeof(cmd), &cmd);
+ }
+ #else
+-static inline int iwl_mvm_configure_bcast_filter(struct iwl_mvm *mvm,
+-						 struct ieee80211_vif *vif)
++static inline int iwl_mvm_configure_bcast_filter(struct iwl_mvm *mvm)
+ {
+ 	return 0;
+ }
+@@ -1870,7 +1869,7 @@ static void iwl_mvm_bss_info_changed_sta
+ 		}
+ 
+ 		iwl_mvm_recalc_multicast(mvm);
+-		iwl_mvm_configure_bcast_filter(mvm, vif);
++		iwl_mvm_configure_bcast_filter(mvm);
+ 
+ 		/* reset rssi values */
+ 		mvmvif->bf_data.ave_beacon_signal = 0;
+@@ -1921,7 +1920,7 @@ static void iwl_mvm_bss_info_changed_sta
+ 
+ 	if (changes & BSS_CHANGED_ARP_FILTER) {
+ 		IWL_DEBUG_MAC80211(mvm, "arp filter changed\n");
+-		iwl_mvm_configure_bcast_filter(mvm, vif);
++		iwl_mvm_configure_bcast_filter(mvm);
+ 	}
+ }
+ 

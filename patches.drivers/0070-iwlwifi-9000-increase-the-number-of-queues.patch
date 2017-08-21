@@ -1,0 +1,28 @@
+From 6ae57b293be8588f9523ae39a5475940772c31d0 Mon Sep 17 00:00:00 2001
+From: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Date: Wed, 16 Dec 2015 10:50:03 +0200
+Subject: [PATCH] iwlwifi: 9000: increase the number of queues
+Git-commit: 6ae57b293be8588f9523ae39a5475940772c31d0
+Patch-mainline: 4.5-rc1
+References: FATE#321353, FATE#323335
+
+9000 family devices have 31 queues.
+
+Signed-off-by: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/iwlwifi/iwl-9000.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+--- a/drivers/net/wireless/iwlwifi/iwl-9000.c
++++ b/drivers/net/wireless/iwlwifi/iwl-9000.c
+@@ -83,7 +83,7 @@
+ 
+ static const struct iwl_base_params iwl9000_base_params = {
+ 	.eeprom_size = OTP_LOW_IMAGE_SIZE_FAMILY_9000,
+-	.num_of_queues = IWLAGN_NUM_QUEUES,
++	.num_of_queues = 31,
+ 	.pll_cfg_val = 0,
+ 	.shadow_ram_support = true,
+ 	.led_compensation = 57,

@@ -1,0 +1,220 @@
+From: Filipe Manana <fdmanana@suse.com>
+Date: Tue, 26 Apr 2016 15:36:38 +0100
+Patch-mainline: 4.7
+Git-commit: 578def7c50f236432ba140d35bb7ca4ef0a1b20b
+References: bsc#1012452
+Subject: [PATCH] Btrfs: don't wait for unrelated IO to finish before
+ relocation
+
+Before the relocation process of a block group starts, it sets the block
+group to readonly mode, then flushes all delalloc writes and then finally
+it waits for all ordered extents to complete. This last step includes
+waiting for ordered extents destinated at extents allocated in other block
+groups, making us waste unecessary time.
+
+So improve this by waiting only for ordered extents that fall into the
+block group's range.
+
+Signed-off-by: Filipe Manana <fdmanana@suse.com>
+Reviewed-by: Josef Bacik <jbacik@fb.com>
+Reviewed-by: Liu Bo <bo.li.liu@oracle.com>
+Signed-off-by: David Sterba <dsterba@suse.cz>
+---
+ fs/btrfs/dev-replace.c  |    4 ++--
+ fs/btrfs/extent-tree.c  |   11 +++++++----
+ fs/btrfs/ioctl.c        |    2 +-
+ fs/btrfs/ordered-data.c |   26 +++++++++++++++++++-------
+ fs/btrfs/ordered-data.h |    6 ++++--
+ fs/btrfs/relocation.c   |    4 +++-
+ fs/btrfs/super.c        |    2 +-
+ fs/btrfs/transaction.c  |    2 +-
+ 8 files changed, 38 insertions(+), 19 deletions(-)
+
+--- a/fs/btrfs/dev-replace.c
++++ b/fs/btrfs/dev-replace.c
+@@ -385,7 +385,7 @@ int btrfs_dev_replace_start(struct btrfs
+ 	if (ret)
+ 		btrfs_err(fs_info, "kobj add dev failed %d\n", ret);
+ 
+-	btrfs_wait_ordered_roots(fs_info, -1);
++	btrfs_wait_ordered_roots(fs_info, -1, 0, (u64)-1);
+ 
+ 	/* force writing the updated state information to disk */
+ 	trans = btrfs_start_transaction(root, 0);
+@@ -504,7 +504,7 @@ static int btrfs_dev_replace_finishing(s
+ 		mutex_unlock(&dev_replace->lock_finishing_cancel_unmount);
+ 		return ret;
+ 	}
+-	btrfs_wait_ordered_roots(root->fs_info, -1);
++	btrfs_wait_ordered_roots(root->fs_info, -1, 0, (u64)-1);
+ 
+ 	trans = btrfs_start_transaction(root, 0);
+ 	if (IS_ERR(trans)) {
+--- a/fs/btrfs/extent-tree.c
++++ b/fs/btrfs/extent-tree.c
+@@ -4125,7 +4125,7 @@ commit_trans:
+ 
+ 			if (need_commit > 0) {
+ 				btrfs_start_delalloc_roots(fs_info, 0, -1);
+-				btrfs_wait_ordered_roots(fs_info, -1);
++				btrfs_wait_ordered_roots(fs_info, -1, 0, (u64)-1);
+ 			}
+ 
+ 			trans = btrfs_join_transaction(root);
+@@ -4568,7 +4568,8 @@ static void btrfs_writeback_inodes_sb_nr
+ 		 */
+ 		btrfs_start_delalloc_roots(root->fs_info, 0, nr_items);
+ 		if (!current->journal_info)
+-			btrfs_wait_ordered_roots(root->fs_info, nr_items);
++			btrfs_wait_ordered_roots(root->fs_info, nr_items,
++						 0, (u64)-1);
+ 	}
+ }
+ 
+@@ -4617,7 +4618,8 @@ static void shrink_delalloc(struct btrfs
+ 		if (trans)
+ 			return;
+ 		if (wait_ordered)
+-			btrfs_wait_ordered_roots(root->fs_info, items);
++			btrfs_wait_ordered_roots(root->fs_info, items,
++						 0, (u64)-1);
+ 		return;
+ 	}
+ 
+@@ -4656,7 +4658,8 @@ skip_async:
+ 
+ 		loops++;
+ 		if (wait_ordered && !trans) {
+-			btrfs_wait_ordered_roots(root->fs_info, items);
++			btrfs_wait_ordered_roots(root->fs_info, items,
++						 0, (u64)-1);
+ 		} else {
+ 			time_left = schedule_timeout_killable(1);
+ 			if (time_left)
+--- a/fs/btrfs/ioctl.c
++++ b/fs/btrfs/ioctl.c
+@@ -689,7 +689,7 @@ static int create_snapshot(struct btrfs_
+ 	if (ret)
+ 		goto dec_and_free;
+ 
+-	btrfs_wait_ordered_extents(root, -1);
++	btrfs_wait_ordered_extents(root, -1, 0, (u64)-1);
+ 
+ 	btrfs_init_block_rsv(&pending_snapshot->block_rsv,
+ 			     BTRFS_BLOCK_RSV_TEMP);
+--- a/fs/btrfs/ordered-data.c
++++ b/fs/btrfs/ordered-data.c
+@@ -660,14 +660,15 @@ static void btrfs_run_ordered_extent_wor
+  * wait for all the ordered extents in a root.  This is done when balancing
+  * space between drives.
+  */
+-int btrfs_wait_ordered_extents(struct btrfs_root *root, int nr)
++int btrfs_wait_ordered_extents(struct btrfs_root *root, int nr,
++			       const u64 range_start, const u64 range_len)
+ {
+-	struct list_head splice, works;
++	LIST_HEAD(splice);
++	LIST_HEAD(skipped);
++	LIST_HEAD(works);
+ 	struct btrfs_ordered_extent *ordered, *next;
+ 	int count = 0;
+-
+-	INIT_LIST_HEAD(&splice);
+-	INIT_LIST_HEAD(&works);
++	const u64 range_end = range_start + range_len;
+ 
+ 	mutex_lock(&root->ordered_extent_mutex);
+ 	spin_lock(&root->ordered_extent_lock);
+@@ -675,6 +676,14 @@ int btrfs_wait_ordered_extents(struct bt
+ 	while (!list_empty(&splice) && nr) {
+ 		ordered = list_first_entry(&splice, struct btrfs_ordered_extent,
+ 					   root_extent_list);
++
++		if (range_end <= ordered->start ||
++		    ordered->start + ordered->disk_len <= range_start) {
++			list_move_tail(&ordered->root_extent_list, &skipped);
++			cond_resched_lock(&root->ordered_extent_lock);
++			continue;
++		}
++
+ 		list_move_tail(&ordered->root_extent_list,
+ 			       &root->ordered_extents);
+ 		atomic_inc(&ordered->refs);
+@@ -693,6 +702,7 @@ int btrfs_wait_ordered_extents(struct bt
+ 			nr--;
+ 		count++;
+ 	}
++	list_splice_tail(&skipped, &root->ordered_extents);
+ 	list_splice_tail(&splice, &root->ordered_extents);
+ 	spin_unlock(&root->ordered_extent_lock);
+ 
+@@ -707,7 +717,8 @@ int btrfs_wait_ordered_extents(struct bt
+ 	return count;
+ }
+ 
+-void btrfs_wait_ordered_roots(struct btrfs_fs_info *fs_info, int nr)
++void btrfs_wait_ordered_roots(struct btrfs_fs_info *fs_info, int nr,
++			      const u64 range_start, const u64 range_len)
+ {
+ 	struct btrfs_root *root;
+ 	struct list_head splice;
+@@ -727,7 +738,8 @@ void btrfs_wait_ordered_roots(struct btr
+ 			       &fs_info->ordered_roots);
+ 		spin_unlock(&fs_info->ordered_root_lock);
+ 
+-		done = btrfs_wait_ordered_extents(root, nr);
++		done = btrfs_wait_ordered_extents(root, nr,
++						  range_start, range_len);
+ 		btrfs_put_fs_root(root);
+ 
+ 		spin_lock(&fs_info->ordered_root_lock);
+--- a/fs/btrfs/ordered-data.h
++++ b/fs/btrfs/ordered-data.h
+@@ -197,8 +197,10 @@ int btrfs_ordered_update_i_size(struct i
+ 				struct btrfs_ordered_extent *ordered);
+ int btrfs_find_ordered_sum(struct inode *inode, u64 offset, u64 disk_bytenr,
+ 			   u32 *sum, int len);
+-int btrfs_wait_ordered_extents(struct btrfs_root *root, int nr);
+-void btrfs_wait_ordered_roots(struct btrfs_fs_info *fs_info, int nr);
++int btrfs_wait_ordered_extents(struct btrfs_root *root, int nr,
++			       const u64 range_start, const u64 range_len);
++void btrfs_wait_ordered_roots(struct btrfs_fs_info *fs_info, int nr,
++			      const u64 range_start, const u64 range_len);
+ void btrfs_get_logged_extents(struct inode *inode,
+ 			      struct list_head *logged_list,
+ 			      const loff_t start,
+--- a/fs/btrfs/relocation.c
++++ b/fs/btrfs/relocation.c
+@@ -4273,7 +4273,9 @@ int btrfs_relocate_block_group(struct bt
+ 		err = ret;
+ 		goto out;
+ 	}
+-	btrfs_wait_ordered_roots(fs_info, -1);
++	btrfs_wait_ordered_roots(fs_info, -1,
++				 rc->block_group->key.objectid,
++				 rc->block_group->key.offset);
+ 
+ 	while (1) {
+ 		mutex_lock(&fs_info->cleaner_mutex);
+--- a/fs/btrfs/super.c
++++ b/fs/btrfs/super.c
+@@ -1096,7 +1096,7 @@ int btrfs_sync_fs(struct super_block *sb
+ 		return 0;
+ 	}
+ 
+-	btrfs_wait_ordered_roots(fs_info, -1);
++	btrfs_wait_ordered_roots(fs_info, -1, 0, (u64)-1);
+ 
+ 	trans = btrfs_attach_transaction_barrier(root);
+ 	if (IS_ERR(trans)) {
+--- a/fs/btrfs/transaction.c
++++ b/fs/btrfs/transaction.c
+@@ -1899,7 +1899,7 @@ static inline int btrfs_start_delalloc_f
+ static inline void btrfs_wait_delalloc_flush(struct btrfs_fs_info *fs_info)
+ {
+ 	if (btrfs_test_opt(fs_info->tree_root, FLUSHONCOMMIT))
+-		btrfs_wait_ordered_roots(fs_info, -1);
++		btrfs_wait_ordered_roots(fs_info, -1, 0, (u64)-1);
+ }
+ 
+ static inline void

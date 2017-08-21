@@ -1,7 +1,7 @@
 From: Michael Neuling <mikey@neuling.org>
 Subject: powerpc/tm: Fix stack pointer corruption in __tm_recheckpoint()
-Git-commit: eb584b3ee4d317cf7e0068bec0b5c62842e40e76
-Patch-mainline: v4.7
+Git-commit: 6bcb80143e792becfd2b9cc6a339ce523e4e2219
+Patch-mainline: v4.8-rc1
 References: bsc#986925
 
  powerpc/tm: Fix stack pointer corruption in __tm_recheckpoint()

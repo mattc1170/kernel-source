@@ -1,0 +1,44 @@
+From cd49727e1a2bccc4ff008dde24c2f8430dd9e368 Mon Sep 17 00:00:00 2001
+From: Ayala Beker <ayala.beker@intel.com>
+Date: Wed, 3 Feb 2016 15:36:52 +0200
+Subject: [PATCH] iwlwifi: mvm: avoid to WARN about gscan capabilities
+Git-commit: cd49727e1a2bccc4ff008dde24c2f8430dd9e368
+Patch-mainline: 4.6-rc7
+References: FATE#321353, FATE#323335
+
+Gscan capabilities were updated with new capabilities supported
+by the device. Update GSCAN capabilities TLV and avoid to WARN
+if the firmware does not have the new capabilities.
+
+Signed-off-by: Ayala Beker <ayala.beker@intel.com>
+Signed-off-by: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/iwlwifi/iwl-drv.c |   13 ++++++++++---
+ 1 file changed, 10 insertions(+), 3 deletions(-)
+
+--- a/drivers/net/wireless/iwlwifi/iwl-drv.c
++++ b/drivers/net/wireless/iwlwifi/iwl-drv.c
+@@ -1060,11 +1060,18 @@ static int iwl_parse_tlv_firmware(struct
+ 		return -EINVAL;
+ 	}
+ 
+-	if (WARN(fw_has_capa(capa, IWL_UCODE_TLV_CAPA_GSCAN_SUPPORT) &&
+-		 !gscan_capa,
+-		 "GSCAN is supported but capabilities TLV is unavailable\n"))
++	/*
++	 * If ucode advertises that it supports GSCAN but GSCAN
++	 * capabilities TLV is not present, or if it has an old format,
++	 * warn and continue without GSCAN.
++	 */
++	if (fw_has_capa(capa, IWL_UCODE_TLV_CAPA_GSCAN_SUPPORT) &&
++	    !gscan_capa) {
++		IWL_DEBUG_INFO(drv,
++			       "GSCAN is supported but capabilities TLV is unavailable\n");
+ 		__clear_bit((__force long)IWL_UCODE_TLV_CAPA_GSCAN_SUPPORT,
+ 			    capa->_capa);
++	}
+ 
+ 	return 0;
+ 

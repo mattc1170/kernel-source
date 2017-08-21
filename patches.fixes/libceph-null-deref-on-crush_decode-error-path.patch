@@ -1,0 +1,34 @@
+From: Dan Carpenter <dan.carpenter@oracle.com>
+Date: Tue, 23 May 2017 17:25:10 +0300
+Subject: libceph: NULL deref on crush_decode() error path
+Git-commit: 293dffaad8d500e1a5336eeb90d544cf40d4fbd8
+Patch-mainline: v4.12-rc3
+References: bsc#1044015
+
+If there is not enough space then ceph_decode_32_safe() does a goto bad.
+We need to return an error code in that situation.  The current code
+returns ERR_PTR(0) which is NULL.  The callers are not expecting that
+and it results in a NULL dereference.
+
+Fixes: f24e9980eb86 ("ceph: OSD client")
+Signed-off-by: Dan Carpenter <dan.carpenter@oracle.com>
+Reviewed-by: Ilya Dryomov <idryomov@gmail.com>
+Signed-off-by: Ilya Dryomov <idryomov@gmail.com>
+Acked-by: Luis Henriques <lhenriques@suse.com>
+---
+ net/ceph/osdmap.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/net/ceph/osdmap.c b/net/ceph/osdmap.c
+index ffe9e904d4d1..55e3a477f92d 100644
+--- a/net/ceph/osdmap.c
++++ b/net/ceph/osdmap.c
+@@ -317,6 +317,7 @@ static struct crush_map *crush_decode(void *pbyval, void *end)
+ 		u32 yes;
+ 		struct crush_rule *r;
+ 
++		err = -EINVAL;
+ 		ceph_decode_32_safe(p, end, yes, bad);
+ 		if (!yes) {
+ 			dout("crush_decode NO rule %d off %x %p to %p\n",
+

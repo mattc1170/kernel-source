@@ -1,0 +1,52 @@
+From: Wang Xiaoguang <wangxg.fnst@cn.fujitsu.com>
+Date: Wed, 31 Aug 2016 19:46:16 +0800
+Patch-mainline: 4.8
+Git-commit: e0af24849efb0eea572cf22d22bb65d164cb8a6f
+References: bsc#1012452
+Subject: [PATCH] btrfs: fix one bug that process may endlessly wait
+ for ticket in wait_reserve_ticket()
+
+If can_overcommit() in btrfs_calc_reclaim_metadata_size() returns true,
+btrfs_async_reclaim_metadata_space() will not reclaim metadata space, just
+return directly and also forget to wake up process which are waiting for
+their tickets, so these processes will wait endlessly.
+
+Fstests case generic/172 with mount option "-o compress=lzo" have revealed
+this bug in my test machine. Here if we have tickets to handle, we must
+handle them first.
+
+Signed-off-by: Wang Xiaoguang <wangxg.fnst@cn.fujitsu.com>
+Reviewed-by: Josef Bacik <jbacik@fb.com>
+Signed-off-by: David Sterba <dsterba@suse.com>
+---
+ fs/btrfs/extent-tree.c |   12 ++++++------
+ 1 file changed, 6 insertions(+), 6 deletions(-)
+
+--- a/fs/btrfs/extent-tree.c
++++ b/fs/btrfs/extent-tree.c
+@@ -4886,12 +4886,6 @@ btrfs_calc_reclaim_metadata_size(struct
+ 	u64 expected;
+ 	u64 to_reclaim = 0;
+ 
+-	to_reclaim = min_t(u64, num_online_cpus() * 1024 * 1024,
+-				16 * 1024 * 1024);
+-	if (can_overcommit(root, space_info, to_reclaim,
+-			   BTRFS_RESERVE_FLUSH_ALL))
+-		return 0;
+-
+ 	list_for_each_entry(ticket, &space_info->tickets, list)
+ 		to_reclaim += ticket->bytes;
+ 	list_for_each_entry(ticket, &space_info->priority_tickets, list)
+@@ -4899,6 +4893,12 @@ btrfs_calc_reclaim_metadata_size(struct
+ 	if (to_reclaim)
+ 		return to_reclaim;
+ 
++	to_reclaim = min_t(u64, num_online_cpus() * 1024 * 1024,
++			16 * 1024 * 1024);
++	if (can_overcommit(root, space_info, to_reclaim,
++			   BTRFS_RESERVE_FLUSH_ALL))
++		return 0;
++
+ 	used = space_info->bytes_used + space_info->bytes_reserved +
+ 	       space_info->bytes_pinned + space_info->bytes_readonly +
+ 	       space_info->bytes_may_use;

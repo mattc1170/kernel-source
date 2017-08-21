@@ -1,0 +1,45 @@
+From 4ca87a5f58454711cc8cc550a7844efebd9bc001 Mon Sep 17 00:00:00 2001
+From: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Date: Sun, 3 Jan 2016 22:23:40 +0200
+Subject: [PATCH] iwlwifi: mvm: reset mvm->scan_type when firmware is started
+Git-commit: 4ca87a5f58454711cc8cc550a7844efebd9bc001
+Patch-mainline: 4.5-rc1
+References: FATE#321353, FATE#323335
+
+If we don't reset the scan type when the firmware is
+started, we will think the firmware is still configured
+after the interface has been brought down. When we will
+bring it up again, we will not configure the scan type
+in firmware and it will crash with the following assert:
+
+0x0000100A | ADVANCED_SYSASSERT
+
+Fixes: 355346ba3050 ("iwlwifi: mvm: configure scheduled scan according to traffic conditions")
+Signed-off-by: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/iwlwifi/mvm/fw.c       |    1 +
+ drivers/net/wireless/iwlwifi/mvm/mac80211.c |    1 -
+ 2 files changed, 1 insertion(+), 1 deletion(-)
+
+--- a/drivers/net/wireless/iwlwifi/mvm/fw.c
++++ b/drivers/net/wireless/iwlwifi/mvm/fw.c
+@@ -945,6 +945,7 @@ int iwl_mvm_up(struct iwl_mvm *mvm)
+ 	}
+ 
+ 	if (fw_has_capa(&mvm->fw->ucode_capa, IWL_UCODE_TLV_CAPA_UMAC_SCAN)) {
++		mvm->scan_type = IWL_SCAN_TYPE_NOT_SET;
+ 		ret = iwl_mvm_config_scan(mvm);
+ 		if (ret)
+ 			goto error;
+--- a/drivers/net/wireless/iwlwifi/mvm/mac80211.c
++++ b/drivers/net/wireless/iwlwifi/mvm/mac80211.c
+@@ -1005,7 +1005,6 @@ static void iwl_mvm_restart_cleanup(stru
+ 	mvm->vif_count = 0;
+ 	mvm->rx_ba_sessions = 0;
+ 	mvm->fw_dbg_conf = FW_DBG_INVALID;
+-	mvm->scan_type = IWL_SCAN_TYPE_NOT_SET;
+ 
+ 	/* keep statistics ticking */
+ 	iwl_mvm_accu_radio_stats(mvm);

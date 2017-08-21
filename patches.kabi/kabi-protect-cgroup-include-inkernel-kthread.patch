@@ -1,0 +1,31 @@
+From: Jiri Slaby <jslaby@suse.cz>
+Subject: kABI: protect cgroup include in kernel/kthread
+Patch-mainline: never, kabi
+References: kabi
+
+In 4.4.63, commit 3144d81a77352a3934ff0f60dccb38dbf462da39 (cgroup,
+kthread: close race window where new kthreads can be migrated to
+non-root cgroups), upstream commit
+77f88796cee819b9c4562b0b6b44691b3b7755b1
+added cgroup.h include to kernel/kthread.c and it made some of the
+symbols defined.
+
+Protect the include by __GENKSYMS__ to hide it from the kABI checker.
+
+Signed-off-by: Jiri Slaby <jslaby@suse.cz>
+---
+ kernel/kthread.c |    2 ++
+ 1 file changed, 2 insertions(+)
+
+--- a/kernel/kthread.c
++++ b/kernel/kthread.c
+@@ -18,7 +18,9 @@
+ #include <linux/freezer.h>
+ #include <linux/ptrace.h>
+ #include <linux/uaccess.h>
++#ifndef __GENKSYMS__
+ #include <linux/cgroup.h>
++#endif
+ #include <trace/events/sched.h>
+ 
+ static DEFINE_SPINLOCK(kthread_create_lock);

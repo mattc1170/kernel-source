@@ -1,0 +1,30 @@
+From: Jeff Mahoney <jeffm@suse.com>
+Date: Fri, 24 Jun 2016 16:37:38 -0400
+Patch-mainline: 4.8
+Git-commit: 05f9a780129c81dfd70ae827a9abb15c7e6321a8
+References: bsc#1012452
+Subject: [PATCH] btrfs: btrfs_relocate_chunk pass extent_root to
+ btrfs_end_transaction
+
+In btrfs_relocate_chunk, we get a transaction handle via
+btrfs_start_trans_remove_block_group, which starts the transaction
+using the extent root.  When we call btrfs_end_transaction, we're calling
+it using the chunk root.
+
+Signed-off-by: Jeff Mahoney <jeffm@suse.com>
+Signed-off-by: David Sterba <dsterba@suse.com>
+---
+ fs/btrfs/volumes.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+--- a/fs/btrfs/volumes.c
++++ b/fs/btrfs/volumes.c
+@@ -2942,7 +2942,7 @@ static int btrfs_relocate_chunk(struct b
+ 	 * chunk tree entries
+ 	 */
+ 	ret = btrfs_remove_chunk(trans, root, chunk_offset);
+-	btrfs_end_transaction(trans, root);
++	btrfs_end_transaction(trans, extent_root);
+ 	return ret;
+ }
+ 

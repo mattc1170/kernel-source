@@ -1,0 +1,37 @@
+From: Sami Tolvanen <samitolvanen@google.com>
+Date: Tue, 21 Jun 2016 11:02:42 -0700
+Subject: dm verity fec: fix block calculation
+Git-commit: 602d1657c603eedd7379a8bcde1ad3a2972ecc5f
+Patch-Mainline: v4.8
+References: bsc#1040125
+
+do_div was replaced with div64_u64 at some point, causing a bug with
+block calculation due to incompatible semantics of the two functions.
+
+Signed-off-by: Sami Tolvanen <samitolvanen@google.com>
+Fixes: a739ff3f543a ("dm verity: add support for forward error correction")
+Cc: stable@vger.kernel.org # v4.5+
+Signed-off-by: Mike Snitzer <snitzer@redhat.com>
+Signed-off-by: Hannes Reinecke <hare@suse.de>
+---
+ drivers/md/dm-verity-fec.c | 4 +---
+ 1 file changed, 1 insertion(+), 3 deletions(-)
+
+diff --git a/drivers/md/dm-verity-fec.c b/drivers/md/dm-verity-fec.c
+index 459a9f8..0f0eb8a 100644
+--- a/drivers/md/dm-verity-fec.c
++++ b/drivers/md/dm-verity-fec.c
+@@ -453,9 +453,7 @@ int verity_fec_decode(struct dm_verity *v, struct dm_verity_io *io,
+ 	 */
+ 
+ 	offset = block << v->data_dev_block_bits;
+-
+-	res = offset;
+-	div64_u64(res, v->fec->rounds << v->data_dev_block_bits);
++	res = div64_u64(offset, v->fec->rounds << v->data_dev_block_bits);
+ 
+ 	/*
+ 	 * The base RS block we can feed to the interleaver to find out all
+-- 
+1.8.5.6
+

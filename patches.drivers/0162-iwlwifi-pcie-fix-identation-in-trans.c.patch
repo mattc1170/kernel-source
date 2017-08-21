@@ -1,0 +1,28 @@
+From 60c0a88f2ded5947bdfebbd6d5e9b3925b90984e Mon Sep 17 00:00:00 2001
+From: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Date: Sun, 7 Feb 2016 10:28:13 +0200
+Subject: [PATCH] iwlwifi: pcie: fix identation in trans.c
+Git-commit: 60c0a88f2ded5947bdfebbd6d5e9b3925b90984e
+Patch-mainline: 4.6-rc1
+References: FATE#321353, FATE#323335
+
+A curly brace was misplaced, fix this.
+
+Signed-off-by: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/iwlwifi/pcie/trans.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+--- a/drivers/net/wireless/iwlwifi/pcie/trans.c
++++ b/drivers/net/wireless/iwlwifi/pcie/trans.c
+@@ -2239,7 +2239,7 @@ static ssize_t iwl_dbgfs_rx_queue_read(s
+ 		} else {
+ 			pos += scnprintf(buf + pos, bufsz - pos,
+ 					 "\tclosed_rb_num: Not Allocated\n");
+-	}
++		}
+ 	}
+ 	ret = simple_read_from_buffer(user_buf, count, ppos, buf, pos);
+ 	kfree(buf);

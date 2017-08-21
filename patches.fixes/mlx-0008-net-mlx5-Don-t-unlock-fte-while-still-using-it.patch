@@ -1,0 +1,54 @@
+From: Mark Bloch <markb@mellanox.com>
+Date: Mon, 5 Sep 2016 10:58:04 +0000
+Subject: net/mlx5: Don't unlock fte while still using it
+Patch-mainline: v4.10-rc1
+Git-commit: 0fd758d6112f867b2cc6df0f6a856048ff99b211
+References: bsc#966170 bsc#966172 bsc#966191
+
+When adding a new rule to an fte, we need to hold the fte lock
+until we add that rule to the fte and increase the fte ref count.
+
+Fixes: 0c56b97503fd ("net/mlx5_core: Introduce flow steering API")
+Signed-off-by: Mark Bloch <markb@mellanox.com>
+Signed-off-by: Saeed Mahameed <saeedm@mellanox.com>
+Signed-off-by: Leon Romanovsky <leon@kernel.org>
+Acked-by: Thomas Bogendoerfer <tbogendoerfer@suse.de>
+---
+ drivers/net/ethernet/mellanox/mlx5/core/fs_core.c | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/net/ethernet/mellanox/mlx5/core/fs_core.c b/drivers/net/ethernet/mellanox/mlx5/core/fs_core.c
+index e0107edbc0fd..00562de91e1c 100644
+--- a/drivers/net/ethernet/mellanox/mlx5/core/fs_core.c
++++ b/drivers/net/ethernet/mellanox/mlx5/core/fs_core.c
+@@ -1031,9 +1031,8 @@ static struct mlx5_flow_rule *add_rule_fg(struct mlx5_flow_group *fg,
+ 				return rule;
+ 			}
+ 			rule = add_rule_fte(fte, fg, dest);
+-			unlock_ref_node(&fte->node);
+ 			if (IS_ERR(rule))
+-				goto unlock_fg;
++				goto unlock_fte;
+ 			else
+ 				goto add_rule;
+ 		}
+@@ -1051,6 +1050,7 @@ static struct mlx5_flow_rule *add_rule_fg(struct mlx5_flow_group *fg,
+ 		goto unlock_fg;
+ 	}
+ 	tree_init_node(&fte->node, 0, del_fte);
++	nested_lock_ref_node(&fte->node, FS_MUTEX_CHILD);
+ 	rule = add_rule_fte(fte, fg, dest);
+ 	if (IS_ERR(rule)) {
+ 		kfree(fte);
+@@ -1063,6 +1063,8 @@ static struct mlx5_flow_rule *add_rule_fg(struct mlx5_flow_group *fg,
+ 	list_add(&fte->node.list, prev);
+ add_rule:
+ 	tree_add_node(&rule->node, &fte->node);
++unlock_fte:
++	unlock_ref_node(&fte->node);
+ unlock_fg:
+ 	unlock_ref_node(&fg->node);
+ 	return rule;
+-- 
+2.12.3
+

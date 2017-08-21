@@ -1,0 +1,69 @@
+From: Jeff Mahoney <jeffm@suse.com>
+Date: Wed, 16 Sep 2015 15:34:53 +0200
+Subject: [PATCH] btrfs: advertise which crc32c implementation is being
+ used at module load
+References: bsc#946057
+Patch-mainline: 4.7
+Git-commit: 5f9e1059d9347191b271bf7d13bd83db57594d2a
+
+Since several architectures support hardware-accelerated crc32c
+calculation, it would be nice to confirm that btrfs is actually using it.
+
+We can see an elevated use count for the module, but it doesn't actually
+show who the users are.  This patch simply prints the name of the driver
+after successfully initializing the shash.
+
+Signed-off-by: Jeff Mahoney <jeffm@suse.com>
+[ added a helper and used in module load-time message ]
+Signed-off-by: David Sterba <dsterba@suse.com>
+---
+ fs/btrfs/hash.c  |    5 +++++
+ fs/btrfs/hash.h  |    1 +
+ fs/btrfs/super.c |    5 +++--
+ 3 files changed, 9 insertions(+), 2 deletions(-)
+
+--- a/fs/btrfs/hash.c
++++ b/fs/btrfs/hash.c
+@@ -24,6 +24,11 @@ int __init btrfs_hash_init(void)
+ 	return PTR_ERR_OR_ZERO(tfm);
+ }
+ 
++const char* btrfs_crc32c_impl(void)
++{
++	return crypto_tfm_alg_driver_name(crypto_shash_tfm(tfm));
++}
++
+ void btrfs_hash_exit(void)
+ {
+ 	crypto_free_shash(tfm);
+--- a/fs/btrfs/hash.h
++++ b/fs/btrfs/hash.h
+@@ -22,6 +22,7 @@
+ int __init btrfs_hash_init(void);
+ 
+ void btrfs_hash_exit(void);
++const char* btrfs_crc32c_impl(void);
+ 
+ u32 btrfs_crc32c(u32 crc, const void *address, unsigned int length);
+ 
+--- a/fs/btrfs/super.c
++++ b/fs/btrfs/super.c
+@@ -2230,7 +2230,7 @@ static void btrfs_interface_exit(void)
+ 
+ static void btrfs_print_info(void)
+ {
+-	printk(KERN_INFO "Btrfs loaded"
++	printk(KERN_INFO "Btrfs loaded, crc32c=%s"
+ #ifdef CONFIG_BTRFS_DEBUG
+ 			", debug=on"
+ #endif
+@@ -2240,7 +2240,8 @@ static void btrfs_print_info(void)
+ #ifdef CONFIG_BTRFS_FS_CHECK_INTEGRITY
+ 			", integrity-checker=on"
+ #endif
+-			"\n");
++			"\n",
++			btrfs_crc32c_impl());
+ }
+ 
+ static int btrfs_run_sanity_tests(void)

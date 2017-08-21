@@ -1,0 +1,29 @@
+From b6c7d7209dc1f128fb5b9e07ee0bb2f808f86bab Mon Sep 17 00:00:00 2001
+From: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Date: Thu, 24 Dec 2015 08:48:46 +0200
+Subject: [PATCH] iwlwifi: mvm: remove useless WARN_ON and rely on cfg80211's combination
+Git-commit: b6c7d7209dc1f128fb5b9e07ee0bb2f808f86bab
+Patch-mainline: 4.5-rc1
+References: FATE#321353, FATE#323335
+
+We advertise one STATION vif only, so this just can't
+happen. Remove this useless WARN_ON.
+
+Signed-off-by: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/iwlwifi/mvm/power.c |    2 --
+ 1 file changed, 2 deletions(-)
+
+--- a/drivers/net/wireless/iwlwifi/mvm/power.c
++++ b/drivers/net/wireless/iwlwifi/mvm/power.c
+@@ -613,8 +613,6 @@ static void iwl_mvm_power_get_vifs_itera
+ 		break;
+ 
+ 	case NL80211_IFTYPE_STATION:
+-		/* only a single MAC of the same type */
+-		WARN_ON(power_iterator->bss_vif);
+ 		power_iterator->bss_vif = vif;
+ 		if (mvmvif->phy_ctxt)
+ 			if (mvmvif->phy_ctxt->id < MAX_PHYS)

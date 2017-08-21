@@ -1,0 +1,42 @@
+From: David Sterba <dsterba@suse.com>
+Date: Tue, 26 Apr 2016 23:54:39 +0200
+Patch-mainline: 4.7
+Git-commit: 018ed4f788870fdf6e625d04aa287080bdc8a54f
+References: bsc#1012452
+Subject: [PATCH] btrfs: sink gfp parameter to set_extent_defrag
+
+Single caller passes GFP_NOFS.
+
+Signed-off-by: David Sterba <dsterba@suse.com>
+---
+ fs/btrfs/extent_io.h |    4 ++--
+ fs/btrfs/ioctl.c     |    2 +-
+ 2 files changed, 3 insertions(+), 3 deletions(-)
+
+--- a/fs/btrfs/extent_io.h
++++ b/fs/btrfs/extent_io.h
+@@ -298,11 +298,11 @@ static inline int set_extent_delalloc(st
+ }
+ 
+ static inline int set_extent_defrag(struct extent_io_tree *tree, u64 start,
+-		u64 end, struct extent_state **cached_state, gfp_t mask)
++		u64 end, struct extent_state **cached_state)
+ {
+ 	return set_extent_bit(tree, start, end,
+ 			      EXTENT_DELALLOC | EXTENT_UPTODATE | EXTENT_DEFRAG,
+-			      NULL, cached_state, mask);
++			      NULL, cached_state, GFP_NOFS);
+ }
+ 
+ static inline int set_extent_new(struct extent_io_tree *tree, u64 start,
+--- a/fs/btrfs/ioctl.c
++++ b/fs/btrfs/ioctl.c
+@@ -1236,7 +1236,7 @@ again:
+ 
+ 
+ 	set_extent_defrag(&BTRFS_I(inode)->io_tree, page_start, page_end - 1,
+-			  &cached_state, GFP_NOFS);
++			  &cached_state);
+ 
+ 	unlock_extent_cached(&BTRFS_I(inode)->io_tree,
+ 			     page_start, page_end - 1, &cached_state,

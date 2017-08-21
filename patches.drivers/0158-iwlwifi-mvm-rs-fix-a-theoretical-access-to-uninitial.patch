@@ -1,0 +1,32 @@
+From 4494541c0c918688dfbbaf760548846a9c1bcf3f Mon Sep 17 00:00:00 2001
+From: Eyal Shapira <eyal@wizery.com>
+Date: Mon, 1 Feb 2016 09:07:05 +0200
+Subject: [PATCH] iwlwifi: mvm: rs: fix a theoretical access to uninitialized array elements
+Git-commit: 4494541c0c918688dfbbaf760548846a9c1bcf3f
+Patch-mainline: 4.6-rc1
+References: FATE#321353, FATE#323335
+
+Klocwork is unhappy as ht_vht_rates might be accessed with
+rate->index being set to values between 0 and 3 which will
+lead to accessing uninitialized array elements. Effectively this
+doesn't happen as in HT/VHT we're not using these rate indices.
+Still fix this.
+
+Signed-off-by: Eyal Shapira <eyalx.shapira@intel.com>
+Signed-off-by: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/iwlwifi/mvm/rs.c |    1 +
+ 1 file changed, 1 insertion(+)
+
+--- a/drivers/net/wireless/iwlwifi/mvm/rs.c
++++ b/drivers/net/wireless/iwlwifi/mvm/rs.c
+@@ -556,6 +556,7 @@ static char *rs_pretty_rate(const struct
+ 	if (is_type_legacy(rate->type) && (rate->index <= IWL_RATE_54M_INDEX))
+ 		rate_str = legacy_rates[rate->index];
+ 	else if ((is_type_ht(rate->type) || is_type_vht(rate->type)) &&
++		 (rate->index >= IWL_RATE_MCS_0_INDEX) &&
+ 		 (rate->index <= IWL_RATE_MCS_9_INDEX))
+ 		rate_str = ht_vht_rates[rate->index];
+ 	else

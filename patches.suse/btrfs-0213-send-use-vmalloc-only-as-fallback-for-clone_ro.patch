@@ -1,0 +1,41 @@
+From: David Sterba <dsterba@suse.com>
+Date: Mon, 11 Apr 2016 18:40:08 +0200
+Patch-mainline: 4.7
+Git-commit: c03d01f3404282712b9fd280297f133860c91c93
+References: bsc#1012452
+Subject: [PATCH] btrfs: send: use vmalloc only as fallback for
+ clone_roots
+
+Signed-off-by: David Sterba <dsterba@suse.com>
+---
+ fs/btrfs/send.c |   11 +++++++----
+ 1 file changed, 7 insertions(+), 4 deletions(-)
+
+--- a/fs/btrfs/send.c
++++ b/fs/btrfs/send.c
+@@ -6052,10 +6052,13 @@ long btrfs_ioctl_send(struct file *mnt_f
+ 
+ 	alloc_size = sizeof(struct clone_root) * (arg->clone_sources_count + 1);
+ 
+-	sctx->clone_roots = vzalloc(alloc_size);
++	sctx->clone_roots = kzalloc(alloc_size, GFP_KERNEL | __GFP_NOWARN);
+ 	if (!sctx->clone_roots) {
+-		ret = -ENOMEM;
+-		goto out;
++		sctx->clone_roots = vzalloc(alloc_size);
++		if (!sctx->clone_roots) {
++			ret = -ENOMEM;
++			goto out;
++		}
+ 	}
+ 
+ 	alloc_size = arg->clone_sources_count * sizeof(*arg->clone_sources);
+@@ -6226,7 +6229,7 @@ out:
+ 		if (sctx->send_filp)
+ 			fput(sctx->send_filp);
+ 
+-		vfree(sctx->clone_roots);
++		kvfree(sctx->clone_roots);
+ 		kvfree(sctx->send_buf);
+ 		kvfree(sctx->read_buf);
+ 

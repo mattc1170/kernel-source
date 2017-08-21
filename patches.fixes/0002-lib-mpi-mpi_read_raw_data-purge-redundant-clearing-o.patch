@@ -1,0 +1,46 @@
+From dfd90510672f69206942546e8df4f63cfa91eae6 Mon Sep 17 00:00:00 2001
+From: Nicolai Stange <nicstange@gmail.com>
+Date: Thu, 26 May 2016 13:05:31 +0200
+Subject: [PATCH 2/3] lib/mpi: mpi_read_raw_data(): purge redundant clearing of
+ nbits
+Git-commit: dfd90510672f69206942546e8df4f63cfa91eae6
+Patch-mainline: v4.8-rc1
+References: bsc#1003581
+
+In mpi_read_raw_data(), unsigned nbits is calculated as follows:
+
+ nbits = nbytes * 8;
+
+and redundantly cleared later on if nbytes == 0:
+
+  if (nbytes > 0)
+    ...
+  else
+    nbits = 0;
+
+Purge this redundant clearing for the sake of clarity.
+
+Signed-off-by: Nicolai Stange <nicstange@gmail.com>
+Signed-off-by: Herbert Xu <herbert@gondor.apana.org.au>
+Acked-by: Michal Marek <mmarek@suse.com>
+
+---
+ lib/mpi/mpicoder.c | 2 --
+ 1 file changed, 2 deletions(-)
+
+diff --git a/lib/mpi/mpicoder.c b/lib/mpi/mpicoder.c
+index c7420335a5bb..37d6a4edb33c 100644
+--- a/lib/mpi/mpicoder.c
++++ b/lib/mpi/mpicoder.c
+@@ -51,8 +51,6 @@ MPI mpi_read_raw_data(const void *xbuffer, size_t nbytes)
+ 	}
+ 	if (nbytes > 0)
+ 		nbits -= count_leading_zeros(buffer[0]);
+-	else
+-		nbits = 0;
+ 
+ 	nlimbs = DIV_ROUND_UP(nbytes, BYTES_PER_MPI_LIMB);
+ 	val = mpi_alloc(nlimbs);
+-- 
+2.10.2
+

@@ -1,0 +1,31 @@
+From f02d2ccd61638756b3b48db771ee419f6be7d011 Mon Sep 17 00:00:00 2001
+From: Johannes Berg <johannes.berg@intel.com>
+Date: Fri, 6 Nov 2015 11:27:23 +0100
+Subject: [PATCH] iwlwifi: pcie: remove pointer from debug message
+Git-commit: f02d2ccd61638756b3b48db771ee419f6be7d011
+Patch-mainline: 4.5-rc1
+References: FATE#321353, FATE#323335
+
+Since this pointer is not shown anywhere else, it's useless.
+Remove it, just keeping the indexes.
+
+Signed-off-by: Johannes Berg <johannes.berg@intel.com>
+Signed-off-by: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/iwlwifi/pcie/rx.c |    3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
+
+--- a/drivers/net/wireless/iwlwifi/pcie/rx.c
++++ b/drivers/net/wireless/iwlwifi/pcie/rx.c
+@@ -996,8 +996,7 @@ restart:
+ 		rxb = rxq->queue[i];
+ 		rxq->queue[i] = NULL;
+ 
+-		IWL_DEBUG_RX(trans, "rxbuf: HW = %d, SW = %d (%p)\n",
+-			     r, i, rxb);
++		IWL_DEBUG_RX(trans, "rxbuf: HW = %d, SW = %d\n", r, i);
+ 		iwl_pcie_rx_handle_rb(trans, rxb, emergency);
+ 
+ 		i = (i + 1) & RX_QUEUE_MASK;

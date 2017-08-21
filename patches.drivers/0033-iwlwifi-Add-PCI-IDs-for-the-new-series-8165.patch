@@ -1,0 +1,61 @@
+From abf10f868f70e8e7c62ac4bc61ff4ab94a09eda1 Mon Sep 17 00:00:00 2001
+From: Oren Givon <oren.givon@intel.com>
+Date: Sun, 1 Nov 2015 15:27:58 +0200
+Subject: [PATCH] iwlwifi: Add PCI IDs for the new series 8165
+Git-commit: abf10f868f70e8e7c62ac4bc61ff4ab94a09eda1
+Patch-mainline: 4.5-rc1
+References: FATE#321353, FATE#323335
+
+Add a new struct for the 8165 series and a few new
+PCI ID entries.
+
+Signed-off-by: Oren Givon <oren.givon@intel.com>
+Signed-off-by: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/iwlwifi/iwl-8000.c   |   10 ++++++++++
+ drivers/net/wireless/iwlwifi/iwl-config.h |    1 +
+ drivers/net/wireless/iwlwifi/pcie/drv.c   |    2 ++
+ 3 files changed, 13 insertions(+)
+
+--- a/drivers/net/wireless/iwlwifi/iwl-8000.c
++++ b/drivers/net/wireless/iwlwifi/iwl-8000.c
+@@ -186,6 +186,16 @@ const struct iwl_cfg iwl8260_2ac_cfg = {
+ 	.max_ht_ampdu_exponent = IEEE80211_HT_MAX_AMPDU_64K,
+ };
+ 
++const struct iwl_cfg iwl8265_2ac_cfg = {
++	.name = "Intel(R) Dual Band Wireless AC 8265",
++	.fw_name_pre = IWL8000_FW_PRE,
++	IWL_DEVICE_8000,
++	.ht_params = &iwl8000_ht_params,
++	.nvm_ver = IWL8000_NVM_VERSION,
++	.nvm_calib_ver = IWL8000_TX_POWER_VERSION,
++	.max_ht_ampdu_exponent = IEEE80211_HT_MAX_AMPDU_64K,
++};
++
+ const struct iwl_cfg iwl4165_2ac_cfg = {
+ 	.name = "Intel(R) Dual Band Wireless AC 4165",
+ 	.fw_name_pre = IWL8000_FW_PRE,
+--- a/drivers/net/wireless/iwlwifi/iwl-config.h
++++ b/drivers/net/wireless/iwlwifi/iwl-config.h
+@@ -429,6 +429,7 @@ extern const struct iwl_cfg iwl7265d_2n_
+ extern const struct iwl_cfg iwl7265d_n_cfg;
+ extern const struct iwl_cfg iwl8260_2n_cfg;
+ extern const struct iwl_cfg iwl8260_2ac_cfg;
++extern const struct iwl_cfg iwl8265_2ac_cfg;
+ extern const struct iwl_cfg iwl4165_2ac_cfg;
+ extern const struct iwl_cfg iwl8260_2ac_sdio_cfg;
+ extern const struct iwl_cfg iwl4165_2ac_sdio_cfg;
+--- a/drivers/net/wireless/iwlwifi/pcie/drv.c
++++ b/drivers/net/wireless/iwlwifi/pcie/drv.c
+@@ -472,6 +472,8 @@ static const struct pci_device_id iwl_hw
+ 	{IWL_PCI_DEVICE(0x24F3, 0x0850, iwl8260_2ac_cfg)},
+ 	{IWL_PCI_DEVICE(0x24F3, 0x0950, iwl8260_2ac_cfg)},
+ 	{IWL_PCI_DEVICE(0x24F3, 0x0930, iwl8260_2ac_cfg)},
++	{IWL_PCI_DEVICE(0x24FD, 0x0000, iwl8265_2ac_cfg)},
++	{IWL_PCI_DEVICE(0x24FD, 0x0010, iwl8265_2ac_cfg)},
+ 
+ /* 9000 Series */
+ 	{IWL_PCI_DEVICE(0x9DF0, 0x2A10, iwl5165_2ac_cfg)},

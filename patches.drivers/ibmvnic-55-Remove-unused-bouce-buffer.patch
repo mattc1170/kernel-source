@@ -1,0 +1,151 @@
+From d76e0fec7e03ab29f0dd68a89364225c98bd5568 Mon Sep 17 00:00:00 2001
+From: Nathan Fontenot <nfont@linux.vnet.ibm.com>
+Date: Wed, 19 Apr 2017 13:45:22 -0400
+Subject: [PATCH] ibmvnic: Remove unused bouce buffer
+
+References: fate#322021, bsc#1031512
+Patch-mainline: v4.12-rc1
+Git-commit: d76e0fec7e03ab29f0dd68a89364225c98bd5568
+
+The bounce buffer is not used in the ibmvnic driver, just
+get rid of it.
+
+Signed-off-by: Nathan Fontenot <nfont@linux.vnet.ibm.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+Acked-by: Michal Suchanek <msuchanek@suse.de>
+---
+ drivers/net/ethernet/ibm/ibmvnic.c | 53 --------------------------------------
+ drivers/net/ethernet/ibm/ibmvnic.h |  4 ---
+ 2 files changed, 57 deletions(-)
+
+diff --git a/drivers/net/ethernet/ibm/ibmvnic.c b/drivers/net/ethernet/ibm/ibmvnic.c
+index 221d652..e8c72ab 100644
+--- a/drivers/net/ethernet/ibm/ibmvnic.c
++++ b/drivers/net/ethernet/ibm/ibmvnic.c
+@@ -502,50 +502,6 @@ static int init_tx_pools(struct net_device *netdev)
+ 	return 0;
+ }
+ 
+-static void release_bounce_buffer(struct ibmvnic_adapter *adapter)
+-{
+-	struct device *dev = &adapter->vdev->dev;
+-
+-	if (!adapter->bounce_buffer)
+-		return;
+-
+-	if (!dma_mapping_error(dev, adapter->bounce_buffer_dma)) {
+-		dma_unmap_single(dev, adapter->bounce_buffer_dma,
+-				 adapter->bounce_buffer_size,
+-				 DMA_BIDIRECTIONAL);
+-		adapter->bounce_buffer_dma = DMA_ERROR_CODE;
+-	}
+-
+-	kfree(adapter->bounce_buffer);
+-	adapter->bounce_buffer = NULL;
+-}
+-
+-static int init_bounce_buffer(struct net_device *netdev)
+-{
+-	struct ibmvnic_adapter *adapter = netdev_priv(netdev);
+-	struct device *dev = &adapter->vdev->dev;
+-	char *buf;
+-	int buf_sz;
+-	dma_addr_t map_addr;
+-
+-	buf_sz = (netdev->mtu + ETH_HLEN - 1) / PAGE_SIZE + 1;
+-	buf = kmalloc(adapter->bounce_buffer_size, GFP_KERNEL);
+-	if (!buf)
+-		return -1;
+-
+-	map_addr = dma_map_single(dev, buf, buf_sz, DMA_TO_DEVICE);
+-	if (dma_mapping_error(dev, map_addr)) {
+-		dev_err(dev, "Couldn't map bounce buffer\n");
+-		kfree(buf);
+-		return -1;
+-	}
+-
+-	adapter->bounce_buffer = buf;
+-	adapter->bounce_buffer_size = buf_sz;
+-	adapter->bounce_buffer_dma = map_addr;
+-	return 0;
+-}
+-
+ static void release_error_buffers(struct ibmvnic_adapter *adapter)
+ {
+ 	struct device *dev = &adapter->vdev->dev;
+@@ -597,7 +553,6 @@ static int ibmvnic_login(struct net_device *netdev)
+ 
+ static void release_resources(struct ibmvnic_adapter *adapter)
+ {
+-	release_bounce_buffer(adapter);
+ 	release_tx_pools(adapter);
+ 	release_rx_pools(adapter);
+ 
+@@ -656,10 +611,6 @@ static int ibmvnic_open(struct net_device *netdev)
+ 	if (rc)
+ 		goto ibmvnic_open_fail;
+ 
+-	rc = init_bounce_buffer(netdev);
+-	if (rc)
+-		goto ibmvnic_open_fail;
+-
+ 	replenish_pools(adapter);
+ 
+ 	/* We're ready to receive frames, enable the sub-crq interrupts and
+@@ -880,7 +831,6 @@ static int ibmvnic_xmit(struct sk_buff *skb, struct net_device *netdev)
+ 	unsigned int tx_bytes = 0;
+ 	dma_addr_t data_dma_addr;
+ 	struct netdev_queue *txq;
+-	bool used_bounce = false;
+ 	unsigned long lpar_rc;
+ 	union sub_crq tx_crq;
+ 	unsigned int offset;
+@@ -921,7 +871,6 @@ static int ibmvnic_xmit(struct sk_buff *skb, struct net_device *netdev)
+ 	tx_buff->index = index;
+ 	tx_buff->pool_index = queue_num;
+ 	tx_buff->last_frag = true;
+-	tx_buff->used_bounce = used_bounce;
+ 
+ 	memset(&tx_crq, 0, sizeof(tx_crq));
+ 	tx_crq.v1.first = IBMVNIC_CRQ_CMD;
+@@ -1517,7 +1466,6 @@ restart_loop:
+ 					continue;
+ 
+ 				txbuff->data_dma[j] = 0;
+-				txbuff->used_bounce = false;
+ 			}
+ 			/* if sub_crq was sent indirectly */
+ 			first = txbuff->indir_arr[0].generic.first;
+@@ -3343,7 +3291,6 @@ static unsigned long ibmvnic_get_desired_dma(struct vio_dev *vdev)
+ 	adapter = netdev_priv(netdev);
+ 
+ 	ret += PAGE_SIZE; /* the crq message queue */
+-	ret += adapter->bounce_buffer_size;
+ 	ret += IOMMU_PAGE_ALIGN(sizeof(struct ibmvnic_statistics), tbl);
+ 
+ 	for (i = 0; i < adapter->req_tx_queues + adapter->req_rx_queues; i++)
+diff --git a/drivers/net/ethernet/ibm/ibmvnic.h b/drivers/net/ethernet/ibm/ibmvnic.h
+index 8fbe05d..355225c 100644
+--- a/drivers/net/ethernet/ibm/ibmvnic.h
++++ b/drivers/net/ethernet/ibm/ibmvnic.h
+@@ -868,7 +868,6 @@ struct ibmvnic_tx_buff {
+ 	int index;
+ 	int pool_index;
+ 	bool last_frag;
+-	bool used_bounce;
+ 	union sub_crq indir_arr[6];
+ 	u8 hdr_data[140];
+ 	dma_addr_t indir_dma;
+@@ -924,9 +923,6 @@ struct ibmvnic_adapter {
+ 	dma_addr_t ip_offload_ctrl_tok;
+ 	bool migrated;
+ 	u32 msg_enable;
+-	void *bounce_buffer;
+-	int bounce_buffer_size;
+-	dma_addr_t bounce_buffer_dma;
+ 
+ 	/* Statistics */
+ 	struct ibmvnic_statistics stats;
+-- 
+2.10.2
+

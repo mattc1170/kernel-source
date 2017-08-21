@@ -1,0 +1,31 @@
+From: Chandan Rajendra <chandan@linux.vnet.ibm.com>
+Date: Mon, 4 Jul 2016 10:04:39 +0530
+Patch-mainline: 4.8
+Git-commit: 751bebbe0ad261b3ac5d9e75eaec4d5fe9e23160
+References: bsc#1012452
+Subject: [PATCH] Btrfs: subpage-blocksize: Rate limit scrub error
+ message
+
+btrfs/073 invokes scrub ioctl in a tight loop. In subpage-blocksize
+scenario this results in a lot of "scrub: size assumption sectorsize !=
+PAGE_SIZE " messages being printed on the console. To reduce the number
+of such messages this commit uses btrfs_err_rl() instead of
+btrfs_err().
+
+Signed-off-by: Chandan Rajendra <chandan@linux.vnet.ibm.com>
+Signed-off-by: David Sterba <dsterba@suse.com>
+---
+ fs/btrfs/scrub.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+--- a/fs/btrfs/scrub.c
++++ b/fs/btrfs/scrub.c
+@@ -3858,7 +3858,7 @@ int btrfs_scrub_dev(struct btrfs_fs_info
+ 
+ 	if (fs_info->chunk_root->sectorsize != PAGE_SIZE) {
+ 		/* not supported for data w/o checksums */
+-		btrfs_err(fs_info,
++		btrfs_err_rl(fs_info,
+ 			   "scrub: size assumption sectorsize != PAGE_SIZE "
+ 			   "(%d != %lu) fails",
+ 		       fs_info->chunk_root->sectorsize, PAGE_SIZE);

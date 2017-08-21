@@ -1,0 +1,30 @@
+From 0ad4ece5bbd4d2104564c7dbd477ae0c729d4fcc Mon Sep 17 00:00:00 2001
+From: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Date: Wed, 10 Feb 2016 18:13:30 +0200
+Subject: [PATCH] iwlwifi: dvm: remove a wrong dependency on m
+Git-commit: 0ad4ece5bbd4d2104564c7dbd477ae0c729d4fcc
+Patch-mainline: 4.5-rc6
+References: FATE#321353, FATE#323335
+
+This was wronly added when the dependency on IWLWIFI was
+removed.
+
+This fixes https://bugzilla.kernel.org/show_bug.cgi?id=112201
+
+Signed-off-by: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/iwlwifi/Kconfig |    1 -
+ 1 file changed, 1 deletion(-)
+
+--- a/drivers/net/wireless/iwlwifi/Kconfig
++++ b/drivers/net/wireless/iwlwifi/Kconfig
+@@ -53,7 +53,6 @@ config IWLWIFI_LEDS
+ 
+ config IWLDVM
+ 	tristate "Intel Wireless WiFi DVM Firmware support"
+-	depends on m
+ 	help
+ 	  This is the driver that supports the DVM firmware. The list
+ 	  of the devices that use this firmware is available here:

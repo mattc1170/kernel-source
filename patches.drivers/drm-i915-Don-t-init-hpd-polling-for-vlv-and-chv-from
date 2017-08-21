@@ -6,6 +6,7 @@ Mime-version: 1.0
 Content-type: text/plain; charset=UTF-8
 Content-transfer-encoding: 8bit
 Git-commit: 21d6e0bde50713922a6520ef84e5fd245b05d468
+No-fix: 04313b00b79405f86d815100f85c47a2ee5b8ca0
 Patch-mainline: 4.10-rc6
 References: bsc#1014120
 

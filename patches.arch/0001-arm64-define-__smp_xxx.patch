@@ -21,11 +21,9 @@ Acked-by: Peter Zijlstra (Intel) <peterz@infradead.org>
 Signed-off-by: Davidlohr Bueso <dbueso@suse.de>
 
 ---
- arch/arm64/include/asm/barrier.h | 10 +++++-----
+ arch/arm64/include/asm/barrier.h |   10 +++++-----
  1 file changed, 5 insertions(+), 5 deletions(-)
 
-diff --git a/arch/arm64/include/asm/barrier.h b/arch/arm64/include/asm/barrier.h
-index 91a43f48914d..dae5c49618db 100644
 --- a/arch/arm64/include/asm/barrier.h
 +++ b/arch/arm64/include/asm/barrier.h
 @@ -35,11 +35,11 @@
@@ -42,9 +40,9 @@ index 91a43f48914d..dae5c49618db 100644
 -#define smp_store_release(p, v)						\
 +#define __smp_store_release(p, v)						\
  do {									\
- 	compiletime_assert_atomic_type(*p);				\
- 	switch (sizeof(*p)) {						\
-@@ -62,7 +62,7 @@ do {									\
+ 	union { typeof(*p) __val; char __c[1]; } __u =			\
+ 		{ .__val = (__force typeof(*p)) (v) }; 			\
+@@ -72,7 +72,7 @@ do {									\
  	}								\
  } while (0)
  
@@ -53,6 +51,3 @@ index 91a43f48914d..dae5c49618db 100644
  ({									\
  	union { typeof(*p) __val; char __c[1]; } __u;			\
  	compiletime_assert_atomic_type(*p);				\
--- 
-2.6.6
-

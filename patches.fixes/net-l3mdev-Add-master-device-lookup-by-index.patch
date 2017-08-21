@@ -1,0 +1,55 @@
+From: David Ahern <dsa@cumulusnetworks.com>
+Date: Wed, 16 Dec 2015 13:20:43 -0800
+Subject: net: l3mdev: Add master device lookup by index
+Patch-mainline: v4.5-rc1
+Git-commit: 1a8524794fc7c70f44ac28e3a6e8fd637bc41f14
+References: bsc#1042286
+
+Add helper to lookup l3mdev master index given a device index.
+
+Signed-off-by: David Ahern <dsa@cumulusnetworks.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+Acked-by: Benjamin Poirier <bpoirier@suse.com>
+---
+ include/net/l3mdev.h |   23 +++++++++++++++++++++++
+ 1 file changed, 23 insertions(+)
+
+--- a/include/net/l3mdev.h
++++ b/include/net/l3mdev.h
+@@ -51,6 +51,24 @@ static inline int l3mdev_master_ifindex(
+ 	return ifindex;
+ }
+ 
++static inline int l3mdev_master_ifindex_by_index(struct net *net, int ifindex)
++{
++	struct net_device *dev;
++	int rc = 0;
++
++	if (likely(ifindex)) {
++		rcu_read_lock();
++
++		dev = dev_get_by_index_rcu(net, ifindex);
++		if (dev)
++			rc = l3mdev_master_ifindex_rcu(dev);
++
++		rcu_read_unlock();
++	}
++
++	return rc;
++}
++
+ /* get index of an interface to use for FIB lookups. For devices
+  * enslaved to an L3 master device FIB lookups are based on the
+  * master index
+@@ -169,6 +187,11 @@ static inline int l3mdev_master_ifindex(
+ {
+ 	return 0;
+ }
++
++static inline int l3mdev_master_ifindex_by_index(struct net *net, int ifindex)
++{
++	return 0;
++}
+ 
+ static inline int l3mdev_fib_oif_rcu(struct net_device *dev)
+ {

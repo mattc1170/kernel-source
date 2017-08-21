@@ -1,0 +1,31 @@
+From 488c28e110e18466c99ffb1e2342498b42d3344e Mon Sep 17 00:00:00 2001
+From: Oren Givon <oren.givon@intel.com>
+Date: Wed, 25 Nov 2015 11:17:41 +0200
+Subject: [PATCH] iwlwifi: nvm: fix loading default NVM file
+Git-commit: 488c28e110e18466c99ffb1e2342498b42d3344e
+Patch-mainline: 4.5-rc1
+References: FATE#321353, FATE#323335
+
+Fix loading the default NVM file, in the case where the
+requested NVM file isn't found in the file system.
+
+Signed-off-by: Oren Givon <oren.givon@intel.com>
+Signed-off-by: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/iwlwifi/mvm/nvm.c |    3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+--- a/drivers/net/wireless/iwlwifi/mvm/nvm.c
++++ b/drivers/net/wireless/iwlwifi/mvm/nvm.c
+@@ -642,7 +642,8 @@ int iwl_nvm_init(struct iwl_mvm *mvm, bo
+ 			else
+ 				mvm->nvm_file_name = nvm_file_C;
+ 
+-			if (ret == -EFAULT && mvm->nvm_file_name) {
++			if ((ret == -EFAULT || ret == -ENOENT) &&
++			    mvm->nvm_file_name) {
+ 				/* in case nvm file was failed try again */
+ 				ret = iwl_mvm_read_external_nvm(mvm);
+ 				if (ret)

@@ -348,7 +348,7 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
 +	rc = nd_desc->ndctl(nd_desc, nvdimm, cmd, buf, buf_len, NULL);
  	if (rc < 0)
  		goto out_unlock;
- 	if (copy_to_user(p, buf, buf_len))
+ 	nvdimm_bus_unlock(&nvdimm_bus->dev);
 --- a/drivers/nvdimm/dimm_devs.c
 +++ b/drivers/nvdimm/dimm_devs.c
 @@ -75,7 +75,7 @@ int nvdimm_init_nsarea(struct nvdimm_drv

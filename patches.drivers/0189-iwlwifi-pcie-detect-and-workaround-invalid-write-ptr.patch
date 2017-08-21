@@ -1,0 +1,80 @@
+From 5eae443eb5e2b3777582ea37c6a002171ec134d5 Mon Sep 17 00:00:00 2001
+From: Sara Sharon <sara.sharon@intel.com>
+Date: Wed, 24 Feb 2016 14:56:21 +0200
+Subject: [PATCH] iwlwifi: pcie: detect and workaround invalid write ptr behavior
+Git-commit: 5eae443eb5e2b3777582ea37c6a002171ec134d5
+Patch-mainline: 4.6-rc1
+References: FATE#321353, FATE#323335
+
+In 9000 series A0 step the closed_rb_num is not wrapping around
+properly. The queue is wrapping around as it should, so we can
+W/A it by wrapping the closed_rb_num in the driver.
+While at it, extend RX logging and add error handling of other
+cases HW values may cause us to access invalid memory locations.
+Add also a proper masking of vid value read from HW - this should
+not have actual affect, but better to be on the safe side.
+
+Signed-off-by: Sara Sharon <sara.sharon@intel.com>
+Signed-off-by: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/iwlwifi/pcie/rx.c |   17 +++++++++++++----
+ 1 file changed, 13 insertions(+), 4 deletions(-)
+
+--- a/drivers/net/wireless/iwlwifi/pcie/rx.c
++++ b/drivers/net/wireless/iwlwifi/pcie/rx.c
+@@ -1159,9 +1159,12 @@ restart:
+ 	r = le16_to_cpu(ACCESS_ONCE(rxq->rb_stts->closed_rb_num)) & 0x0FFF;
+ 	i = rxq->read;
+ 
++	/* W/A 9000 device step A0 wrap-around bug */
++	r &= (rxq->queue_size - 1);
++
+ 	/* Rx interrupt, but nothing sent from uCode */
+ 	if (i == r)
+-		IWL_DEBUG_RX(trans, "HW = SW = %d\n", r);
++		IWL_DEBUG_RX(trans, "Q %d: HW = SW = %d\n", rxq->id, r);
+ 
+ 	while (i != r) {
+ 		struct iwl_rx_mem_buffer *rxb;
+@@ -1174,15 +1177,18 @@ restart:
+ 			 * used_bd is a 32 bit but only 12 are used to retrieve
+ 			 * the vid
+ 			 */
+-			u16 vid = (u16)le32_to_cpu(rxq->used_bd[i]);
++			u16 vid = le32_to_cpu(rxq->used_bd[i]) & 0x0FFF;
+ 
++			if (WARN(vid >= ARRAY_SIZE(trans_pcie->global_table),
++				 "Invalid rxb index from HW %u\n", (u32)vid))
++				goto out;
+ 			rxb = trans_pcie->global_table[vid];
+ 		} else {
+ 			rxb = rxq->queue[i];
+ 			rxq->queue[i] = NULL;
+ 		}
+ 
+-		IWL_DEBUG_RX(trans, "rxbuf: HW = %d, SW = %d\n", r, i);
++		IWL_DEBUG_RX(trans, "Q %d: HW = %d, SW = %d\n", rxq->id, r, i);
+ 		iwl_pcie_rx_handle_rb(trans, rxq, rxb, emergency);
+ 
+ 		i = (i + 1) & (rxq->queue_size - 1);
+@@ -1245,7 +1251,7 @@ restart:
+ 			goto restart;
+ 		}
+ 	}
+-
++out:
+ 	/* Backtrack one entry */
+ 	rxq->read = i;
+ 	spin_unlock(&rxq->lock);
+@@ -1301,6 +1307,9 @@ irqreturn_t iwl_pcie_irq_rx_msix_handler
+ 	struct iwl_trans_pcie *trans_pcie = iwl_pcie_get_trans_pcie(entry);
+ 	struct iwl_trans *trans = trans_pcie->trans;
+ 
++	if (WARN_ON(entry->entry >= trans->num_rx_queues))
++		return IRQ_NONE;
++
+ 	lock_map_acquire(&trans->sync_cmd_lockdep_map);
+ 
+ 	local_bh_disable();

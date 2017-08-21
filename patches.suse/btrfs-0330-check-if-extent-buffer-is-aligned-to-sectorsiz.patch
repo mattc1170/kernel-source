@@ -1,0 +1,167 @@
+From: Liu Bo <bo.li.liu@oracle.com>
+Date: Mon, 6 Jun 2016 12:01:23 -0700
+Patch-mainline: 4.7
+Git-commit: c871b0f2fd27e7f9097d507f47de5270f88003b9
+References: bsc#1012452
+Subject: [PATCH] Btrfs: check if extent buffer is aligned to
+ sectorsize
+
+Thanks to fuzz testing, we can pass an invalid bytenr to extent buffer
+via alloc_extent_buffer().  An unaligned eb can have more pages than it
+should have, which ends up extent buffer's leak or some corrupted content
+in extent buffer.
+
+This adds a warning to let us quickly know what was happening.
+
+Now that alloc_extent_buffer() no more returns NULL, this changes its
+caller and callers of its caller to match with the new error
+handling.
+
+Signed-off-by: Liu Bo <bo.li.liu@oracle.com>
+Reviewed-by: David Sterba <dsterba@suse.com>
+Signed-off-by: David Sterba <dsterba@suse.com>
+---
+ fs/btrfs/ctree.c       |    2 ++
+ fs/btrfs/disk-io.c     |    8 ++++----
+ fs/btrfs/extent-tree.c |   10 ++++++----
+ fs/btrfs/extent_io.c   |   15 ++++++++++++---
+ fs/btrfs/tree-log.c    |    4 ++--
+ fs/btrfs/volumes.c     |    4 ++--
+ 6 files changed, 28 insertions(+), 15 deletions(-)
+
+--- a/fs/btrfs/ctree.c
++++ b/fs/btrfs/ctree.c
+@@ -2511,6 +2511,8 @@ read_block_for_search(struct btrfs_trans
+ 		if (!btrfs_buffer_uptodate(tmp, 0, 0))
+ 			ret = -EIO;
+ 		free_extent_buffer(tmp);
++	} else {
++		ret = PTR_ERR(tmp);
+ 	}
+ 	return ret;
+ }
+--- a/fs/btrfs/disk-io.c
++++ b/fs/btrfs/disk-io.c
+@@ -1097,7 +1097,7 @@ void readahead_tree_block(struct btrfs_r
+ 	struct inode *btree_inode = root->fs_info->btree_inode;
+ 
+ 	buf = btrfs_find_create_tree_block(root, bytenr);
+-	if (!buf)
++	if (IS_ERR(buf))
+ 		return;
+ 	read_extent_buffer_pages(&BTRFS_I(btree_inode)->io_tree,
+ 				 buf, 0, WAIT_NONE, btree_get_extent, 0);
+@@ -1113,7 +1113,7 @@ int reada_tree_block_flagged(struct btrf
+ 	int ret;
+ 
+ 	buf = btrfs_find_create_tree_block(root, bytenr);
+-	if (!buf)
++	if (IS_ERR(buf))
+ 		return 0;
+ 
+ 	set_bit(EXTENT_BUFFER_READAHEAD, &buf->bflags);
+@@ -1170,8 +1170,8 @@ struct extent_buffer *read_tree_block(st
+ 	int ret;
+ 
+ 	buf = btrfs_find_create_tree_block(root, bytenr);
+-	if (!buf)
+-		return ERR_PTR(-ENOMEM);
++	if (IS_ERR(buf))
++		return buf;
+ 
+ 	ret = btree_read_extent_buffer_pages(root, buf, 0, parent_transid);
+ 	if (ret) {
+--- a/fs/btrfs/extent-tree.c
++++ b/fs/btrfs/extent-tree.c
+@@ -7986,8 +7986,9 @@ btrfs_init_new_buffer(struct btrfs_trans
+ 	struct extent_buffer *buf;
+ 
+ 	buf = btrfs_find_create_tree_block(root, bytenr);
+-	if (!buf)
+-		return ERR_PTR(-ENOMEM);
++	if (IS_ERR(buf))
++		return buf;
++
+ 	btrfs_set_header_generation(buf, trans->transid);
+ 	btrfs_set_buffer_lockdep_class(root->root_key.objectid, buf, level);
+ 	btrfs_tree_lock(buf);
+@@ -8629,8 +8630,9 @@ static noinline int do_walk_down(struct
+ 	next = btrfs_find_tree_block(root->fs_info, bytenr);
+ 	if (!next) {
+ 		next = btrfs_find_create_tree_block(root, bytenr);
+-		if (!next)
+-			return -ENOMEM;
++		if (IS_ERR(next))
++			return PTR_ERR(next);
++
+ 		btrfs_set_buffer_lockdep_class(root->root_key.objectid, next,
+ 					       level - 1);
+ 		reada = 1;
+--- a/fs/btrfs/extent_io.c
++++ b/fs/btrfs/extent_io.c
+@@ -4882,18 +4882,25 @@ struct extent_buffer *alloc_extent_buffe
+ 	int uptodate = 1;
+ 	int ret;
+ 
++	if (!IS_ALIGNED(start, fs_info->tree_root->sectorsize)) {
++		btrfs_err(fs_info, "bad tree block start %llu", start);
++		return ERR_PTR(-EINVAL);
++	}
++
+ 	eb = find_extent_buffer(fs_info, start);
+ 	if (eb)
+ 		return eb;
+ 
+ 	eb = __alloc_extent_buffer(fs_info, start, len);
+ 	if (!eb)
+-		return NULL;
++		return ERR_PTR(-ENOMEM);
+ 
+ 	for (i = 0; i < num_pages; i++, index++) {
+ 		p = find_or_create_page(mapping, index, GFP_NOFS|__GFP_NOFAIL);
+-		if (!p)
++		if (!p) {
++			exists = ERR_PTR(-ENOMEM);
+ 			goto free_eb;
++		}
+ 
+ 		spin_lock(&mapping->private_lock);
+ 		if (PagePrivate(p)) {
+@@ -4938,8 +4945,10 @@ struct extent_buffer *alloc_extent_buffe
+ 		set_bit(EXTENT_BUFFER_UPTODATE, &eb->bflags);
+ again:
+ 	ret = radix_tree_preload(GFP_NOFS);
+-	if (ret)
++	if (ret) {
++		exists = ERR_PTR(ret);
+ 		goto free_eb;
++	}
+ 
+ 	spin_lock(&fs_info->buffer_lock);
+ 	ret = radix_tree_insert(&fs_info->buffer_radix,
+--- a/fs/btrfs/tree-log.c
++++ b/fs/btrfs/tree-log.c
+@@ -2420,8 +2420,8 @@ static noinline int walk_down_log_tree(s
+ 		root_owner = btrfs_header_owner(parent);
+ 
+ 		next = btrfs_find_create_tree_block(root, bytenr);
+-		if (!next)
+-			return -ENOMEM;
++		if (IS_ERR(next))
++			return PTR_ERR(next);
+ 
+ 		if (*level == 1) {
+ 			ret = wc->process_func(root, next, wc, ptr_gen);
+--- a/fs/btrfs/volumes.c
++++ b/fs/btrfs/volumes.c
+@@ -6609,8 +6609,8 @@ int btrfs_read_sys_array(struct btrfs_ro
+ 	 * overallocate but we can keep it as-is, only the first page is used.
+ 	 */
+ 	sb = btrfs_find_create_tree_block(root, BTRFS_SUPER_INFO_OFFSET);
+-	if (!sb)
+-		return -ENOMEM;
++	if (IS_ERR(sb))
++		return PTR_ERR(sb);
+ 	set_extent_buffer_uptodate(sb);
+ 	btrfs_set_buffer_lockdep_class(root->root_key.objectid, sb, 0);
+ 	/*

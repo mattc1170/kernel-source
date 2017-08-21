@@ -1,0 +1,70 @@
+From: David Sterba <dsterba@suse.com>
+Date: Tue, 26 Apr 2016 23:54:39 +0200
+Patch-mainline: 4.7
+Git-commit: f734c44a1bfffd762f6f5829cb41224d267b80d9
+References: bsc#1012452
+Subject: [PATCH] btrfs: sink gfp parameter to clear_record_extent_bits
+
+Callers pass GFP_NOFS. No need to pass the flags around.
+
+Signed-off-by: David Sterba <dsterba@suse.com>
+---
+ fs/btrfs/extent_io.c |    5 ++---
+ fs/btrfs/extent_io.h |    3 +--
+ fs/btrfs/qgroup.c    |    5 ++---
+ 3 files changed, 5 insertions(+), 8 deletions(-)
+
+--- a/fs/btrfs/extent_io.c
++++ b/fs/btrfs/extent_io.c
+@@ -1310,8 +1310,7 @@ int clear_extent_bit(struct extent_io_tr
+ }
+ 
+ int clear_record_extent_bits(struct extent_io_tree *tree, u64 start, u64 end,
+-			     unsigned bits, gfp_t mask,
+-			     struct extent_changeset *changeset)
++		unsigned bits, struct extent_changeset *changeset)
+ {
+ 	/*
+ 	 * Don't support EXTENT_LOCKED case, same reason as
+@@ -1319,7 +1318,7 @@ int clear_record_extent_bits(struct exte
+ 	 */
+ 	BUG_ON(bits & EXTENT_LOCKED);
+ 
+-	return __clear_extent_bit(tree, start, end, bits, 0, 0, NULL, mask,
++	return __clear_extent_bit(tree, start, end, bits, 0, 0, NULL, GFP_NOFS,
+ 				  changeset);
+ }
+ 
+--- a/fs/btrfs/extent_io.h
++++ b/fs/btrfs/extent_io.h
+@@ -220,8 +220,7 @@ int test_range_bit(struct extent_io_tree
+ 		   unsigned bits, int filled,
+ 		   struct extent_state *cached_state);
+ int clear_record_extent_bits(struct extent_io_tree *tree, u64 start, u64 end,
+-			     unsigned bits, gfp_t mask,
+-			     struct extent_changeset *changeset);
++		unsigned bits, struct extent_changeset *changeset);
+ int clear_extent_bit(struct extent_io_tree *tree, u64 start, u64 end,
+ 		     unsigned bits, int wake, int delete,
+ 		     struct extent_state **cached, gfp_t mask);
+--- a/fs/btrfs/qgroup.c
++++ b/fs/btrfs/qgroup.c
+@@ -2590,8 +2590,7 @@ static int __btrfs_qgroup_release_data(s
+ 		return -ENOMEM;
+ 
+ 	ret = clear_record_extent_bits(&BTRFS_I(inode)->io_tree, start, 
+-			start + len -1, EXTENT_QGROUP_RESERVED, GFP_NOFS,
+-			&changeset);
++			start + len -1, EXTENT_QGROUP_RESERVED, &changeset);
+ 	if (ret < 0)
+ 		goto out;
+ 
+@@ -2698,7 +2697,7 @@ void btrfs_qgroup_check_reserved_leak(st
+ 		return;
+ 
+ 	ret = clear_record_extent_bits(&BTRFS_I(inode)->io_tree, 0, (u64)-1,
+-			EXTENT_QGROUP_RESERVED, GFP_NOFS, &changeset);
++			EXTENT_QGROUP_RESERVED, &changeset);
+ 
+ 	WARN_ON(ret < 0);
+ 	if (WARN_ON(changeset.bytes_changed)) {

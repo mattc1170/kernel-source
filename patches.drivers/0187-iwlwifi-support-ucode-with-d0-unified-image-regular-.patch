@@ -1,0 +1,71 @@
+From 3d2d442236b3f87cf9ff70c4252488ed7c6d5be8 Mon Sep 17 00:00:00 2001
+From: Golan Ben-Ami <golan.ben.ami@intel.com>
+Date: Tue, 23 Feb 2016 10:34:48 +0200
+Subject: [PATCH] iwlwifi: support ucode with d0 unified image - regular and usniffer
+Git-commit: 3d2d442236b3f87cf9ff70c4252488ed7c6d5be8
+Patch-mainline: 4.6-rc1
+References: FATE#321353, FATE#323335
+
+Till today, the ucode consisted of two d0 images - regular,
+in which the usniffer wasn't enabled, and usniffer, in which the
+usniffer logs were enabled.
+Lately, the two images were unified, so there is only one d0 image,
+in which the usniffer logs are enabled.
+
+Add new TLV capability for supporting the consolidated images
+(set 2, bit 13).
+
+Signed-off-by: Golan Ben-Ami <golan.ben.ami@intel.com>
+Signed-off-by: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/iwlwifi/iwl-drv.c     |    3 ++-
+ drivers/net/wireless/iwlwifi/iwl-fw-file.h |    3 +++
+ drivers/net/wireless/iwlwifi/mvm/fw.c      |    4 +++-
+ 3 files changed, 8 insertions(+), 2 deletions(-)
+
+--- a/drivers/net/wireless/iwlwifi/iwl-drv.c
++++ b/drivers/net/wireless/iwlwifi/iwl-drv.c
+@@ -1033,7 +1033,8 @@ static int iwl_parse_tlv_firmware(struct
+ 		}
+ 	}
+ 
+-	if (usniffer_req && !*usniffer_images) {
++	if (!fw_has_capa(capa, IWL_UCODE_TLV_CAPA_USNIFFER_UNIFIED) &&
++	    usniffer_req && !*usniffer_images) {
+ 		IWL_ERR(drv,
+ 			"user selected to work with usniffer but usniffer image isn't available in ucode package\n");
+ 		return -EINVAL;
+--- a/drivers/net/wireless/iwlwifi/iwl-fw-file.h
++++ b/drivers/net/wireless/iwlwifi/iwl-fw-file.h
+@@ -322,6 +322,8 @@ typedef unsigned int __bitwise__ iwl_uco
+  * @IWL_UCODE_TLV_CAPA_TEMP_THS_REPORT_SUPPORT: supports temperature
+  *	thresholds reporting
+  * @IWL_UCODE_TLV_CAPA_CTDP_SUPPORT: supports cTDP command
++ * @IWL_UCODE_TLV_CAPA_USNIFFER_UNIFIED: supports usniffer enabled in
++ *	regular image.
+  *
+  * @NUM_IWL_UCODE_TLV_CAPA: number of bits used
+  */
+@@ -358,6 +360,7 @@ enum iwl_ucode_tlv_capa {
+ 	IWL_UCODE_TLV_CAPA_CT_KILL_BY_FW		= (__force iwl_ucode_tlv_capa_t)74,
+ 	IWL_UCODE_TLV_CAPA_TEMP_THS_REPORT_SUPPORT	= (__force iwl_ucode_tlv_capa_t)75,
+ 	IWL_UCODE_TLV_CAPA_CTDP_SUPPORT			= (__force iwl_ucode_tlv_capa_t)76,
++	IWL_UCODE_TLV_CAPA_USNIFFER_UNIFIED		= (__force iwl_ucode_tlv_capa_t)77,
+ 
+ 	NUM_IWL_UCODE_TLV_CAPA
+ #ifdef __CHECKER__
+--- a/drivers/net/wireless/iwlwifi/mvm/fw.c
++++ b/drivers/net/wireless/iwlwifi/mvm/fw.c
+@@ -539,7 +539,9 @@ static int iwl_mvm_load_ucode_wait_alive
+ 	struct iwl_sf_region st_fwrd_space;
+ 
+ 	if (ucode_type == IWL_UCODE_REGULAR &&
+-	    iwl_fw_dbg_conf_usniffer(mvm->fw, FW_DBG_START_FROM_ALIVE))
++	    iwl_fw_dbg_conf_usniffer(mvm->fw, FW_DBG_START_FROM_ALIVE) &&
++	    !(fw_has_capa(&mvm->fw->ucode_capa,
++			  IWL_UCODE_TLV_CAPA_USNIFFER_UNIFIED)))
+ 		fw = iwl_get_ucode_image(mvm, IWL_UCODE_REGULAR_USNIFFER);
+ 	else
+ 		fw = iwl_get_ucode_image(mvm, ucode_type);

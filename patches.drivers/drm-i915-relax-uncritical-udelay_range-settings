@@ -1,0 +1,37 @@
+From 0a7b35ce2e7a8744ff2b7689f09bd4f5e00e77f1 Mon Sep 17 00:00:00 2001
+From: Nicholas Mc Guire <hofrat@osadl.org>
+Date: Fri, 16 Dec 2016 02:59:20 +0100
+Subject: [PATCH] drm/i915: relax uncritical udelay_range() settings
+Git-commit: 0a7b35ce2e7a8744ff2b7689f09bd4f5e00e77f1
+Patch-mainline: 4.11-rc1
+References: bsc#1031717
+
+udelay_range(2, 3) is inefficient and as discussions with Jani Nikula
+<jani.nikula@linux.intel.com> unnecessary here. This replaces this
+tight setting with a relaxed delay of min=20 and max=50. which helps
+the hrtimer subsystem optimize timer handling.
+
+Link: http://lkml.org/lkml/2016/12/15/127
+Fixes: commit 37ab0810c9b7 ("drm/i915/bxt: DSI enable for BXT")
+Signed-off-by: Nicholas Mc Guire <hofrat@osadl.org>
+Reviewed-by: Jani Nikula <jani.nikula@intel.com>
+Signed-off-by: Jani Nikula <jani.nikula@intel.com>
+Link: http://patchwork.freedesktop.org/patch/msgid/1481853560-19795-1-git-send-email-hofrat@osadl.org
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/gpu/drm/i915/intel_dsi.c |    3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+--- a/drivers/gpu/drm/i915/intel_dsi.c
++++ b/drivers/gpu/drm/i915/intel_dsi.c
+@@ -304,7 +304,8 @@ static void bxt_dsi_device_ready(struct
+ 		val &= ~ULPS_STATE_MASK;
+ 		val |= (ULPS_STATE_ENTER | DEVICE_READY);
+ 		I915_WRITE(MIPI_DEVICE_READY(port), val);
+-		usleep_range(2, 3);
++		/* at least 2us - relaxed for hrtimer subsystem optimization */
++		usleep_range(10, 50);
+ 
+ 		/* 3. Exit ULPS */
+ 		val = I915_READ(MIPI_DEVICE_READY(port));

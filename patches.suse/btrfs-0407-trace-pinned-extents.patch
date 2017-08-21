@@ -1,0 +1,46 @@
+From: Josef Bacik <jbacik@fb.com>
+Date: Fri, 25 Mar 2016 13:25:54 -0400
+Patch-mainline: 4.8
+Git-commit: c51e7bb1845079fda515a7acf0514e289aa6a07c
+References: bsc#1012452
+Subject: [PATCH] Btrfs: trace pinned extents
+
+Pinned extents are an important metric to keep track of for enospc.
+
+Signed-off-by: Josef Bacik <jbacik@fb.com>
+Signed-off-by: David Sterba <dsterba@suse.com>
+---
+ fs/btrfs/extent-tree.c |    8 ++++++++
+ 1 file changed, 8 insertions(+)
+
+--- a/fs/btrfs/extent-tree.c
++++ b/fs/btrfs/extent-tree.c
+@@ -6233,6 +6233,9 @@ static int update_block_group(struct btr
+ 			spin_unlock(&cache->lock);
+ 			spin_unlock(&cache->space_info->lock);
+ 
++			trace_btrfs_space_reservation(root->fs_info, "pinned",
++						      cache->space_info->flags,
++						      num_bytes, 1);
+ 			set_extent_dirty(info->pinned_extents,
+ 					 bytenr, bytenr + num_bytes - 1,
+ 					 GFP_NOFS | __GFP_NOFAIL);
+@@ -6307,6 +6310,8 @@ static int pin_down_extent(struct btrfs_
+ 	spin_unlock(&cache->lock);
+ 	spin_unlock(&cache->space_info->lock);
+ 
++	trace_btrfs_space_reservation(root->fs_info, "pinned",
++				      cache->space_info->flags, num_bytes, 1);
+ 	set_extent_dirty(root->fs_info->pinned_extents, bytenr,
+ 			 bytenr + num_bytes - 1, GFP_NOFS | __GFP_NOFAIL);
+ 	if (reserved)
+@@ -6665,6 +6670,9 @@ static int unpin_extent_range(struct btr
+ 		spin_lock(&cache->lock);
+ 		cache->pinned -= len;
+ 		space_info->bytes_pinned -= len;
++
++		trace_btrfs_space_reservation(fs_info, "pinned",
++					      space_info->flags, len, 0);
+ 		space_info->max_extent_size = 0;
+ 		percpu_counter_add(&space_info->total_bytes_pinned, -len);
+ 		if (cache->ro) {

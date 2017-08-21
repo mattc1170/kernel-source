@@ -1,0 +1,39 @@
+From 59af56c25bc34d4e98820c694d48fd5145fb6e4f Mon Sep 17 00:00:00 2001
+From: Brian King <brking@linux.vnet.ibm.com>
+Date: Wed, 19 Apr 2017 13:44:41 -0400
+Subject: [PATCH] ibmvnic: Unmap longer term buffer before free
+
+References: fate#322021, bsc#1031512
+Patch-mainline: v4.12-rc1
+Git-commit: 59af56c25bc34d4e98820c694d48fd5145fb6e4f
+
+Make sure we unregister long term buffers from the adapter
+prior to DMA unmapping it and freeing the buffer. Failure
+to do so could result in a DMA to a now invalid address.
+
+Signed-off-by: Brian King <brking@linux.vnet.ibm.com>
+Signed-off-by: Nathan Fontenot <nfont@linux.vnet.ibm.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+Acked-by: Michal Suchanek <msuchanek@suse.de>
+---
+ drivers/net/ethernet/ibm/ibmvnic.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/net/ethernet/ibm/ibmvnic.c b/drivers/net/ethernet/ibm/ibmvnic.c
+index 625896d..c10bae7 100644
+--- a/drivers/net/ethernet/ibm/ibmvnic.c
++++ b/drivers/net/ethernet/ibm/ibmvnic.c
+@@ -193,9 +193,9 @@ static void free_long_term_buff(struct ibmvnic_adapter *adapter,
+ 	if (!ltb->buff)
+ 		return;
+ 
+-	dma_free_coherent(dev, ltb->size, ltb->buff, ltb->addr);
+ 	if (!adapter->failover)
+ 		send_request_unmap(adapter, ltb->map_id);
++	dma_free_coherent(dev, ltb->size, ltb->buff, ltb->addr);
+ }
+ 
+ static void replenish_rx_pool(struct ibmvnic_adapter *adapter,
+-- 
+2.10.2
+

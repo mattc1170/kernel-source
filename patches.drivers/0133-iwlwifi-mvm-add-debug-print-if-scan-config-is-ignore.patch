@@ -1,0 +1,34 @@
+From 1c4e15a23d27e2efd56d2b9b7436bff060f126ef Mon Sep 17 00:00:00 2001
+From: Max Stepanov <Max.Stepanov@intel.com>
+Date: Mon, 4 Jan 2016 11:09:14 +0200
+Subject: [PATCH] iwlwifi: mvm: add debug print if scan config is ignored
+Git-commit: 1c4e15a23d27e2efd56d2b9b7436bff060f126ef
+Patch-mainline: 4.6-rc1
+References: FATE#321353, FATE#323335
+
+Print a debug message in iwl_mvm_config_scan() if a scan configuration
+data is decided not to be sent to FW.
+
+Signed-off-by: Max Stepanov <Max.Stepanov@intel.com>
+Signed-off-by: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/iwlwifi/mvm/scan.c |    5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+--- a/drivers/net/wireless/iwlwifi/mvm/scan.c
++++ b/drivers/net/wireless/iwlwifi/mvm/scan.c
+@@ -930,8 +930,11 @@ int iwl_mvm_config_scan(struct iwl_mvm *
+ 	if (WARN_ON(num_channels > mvm->fw->ucode_capa.n_scan_channels))
+ 		return -ENOBUFS;
+ 
+-	if (type == mvm->scan_type)
++	if (type == mvm->scan_type) {
++		IWL_DEBUG_SCAN(mvm,
++			       "Ignoring UMAC scan config of the same type\n");
+ 		return 0;
++	}
+ 
+ 	cmd_size = sizeof(*scan_config) + mvm->fw->ucode_capa.n_scan_channels;
+ 

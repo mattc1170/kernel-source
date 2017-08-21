@@ -1,0 +1,42 @@
+From 4a312c9c825adf74c0026c98fed4ab59ce190863 Mon Sep 17 00:00:00 2001
+From: Nicholas Mc Guire <hofrat@osadl.org>
+Date: Thu, 12 Jan 2017 13:09:41 +0100
+Subject: [PATCH] ASoC: rt5640: use msleep() for long delays
+Git-commit: 4a312c9c825adf74c0026c98fed4ab59ce190863
+Patch-mainline: 4.11-rc1
+References: bsc#1031717
+
+ulseep_range() uses hrtimers and provides no advantage over msleep()
+for larger delays. Fix up the 70/80ms delays here passing the "min"
+value to msleep(). This reduces the load on the hrtimer subsystem.
+
+Link: http://lkml.org/lkml/2017/1/11/377
+Fixes: commit 246693ba7b0b ("ASoC: rt5640: change widget sequence for depop")
+Signed-off-by: Nicholas Mc Guire <hofrat@osadl.org>
+Signed-off-by: Mark Brown <broonie@kernel.org>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ sound/soc/codecs/rt5640.c |    4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+--- a/sound/soc/codecs/rt5640.c
++++ b/sound/soc/codecs/rt5640.c
+@@ -993,7 +993,7 @@ static int rt5640_hp_event(struct snd_so
+ 
+ 	case SND_SOC_DAPM_PRE_PMD:
+ 		rt5640->hp_mute = 1;
+-		usleep_range(70000, 75000);
++		msleep(70);
+ 		break;
+ 
+ 	default:
+@@ -1057,7 +1057,7 @@ static int rt5640_hp_post_event(struct s
+ 	switch (event) {
+ 	case SND_SOC_DAPM_POST_PMU:
+ 		if (!rt5640->hp_mute)
+-			usleep_range(80000, 85000);
++			msleep(80);
+ 
+ 		break;
+ 

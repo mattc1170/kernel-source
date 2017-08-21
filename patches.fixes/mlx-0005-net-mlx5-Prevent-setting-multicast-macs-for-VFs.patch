@@ -1,0 +1,36 @@
+From: Mohamad Haj Yahia <mohamad@mellanox.com>
+Date: Wed, 28 Dec 2016 14:58:37 +0200
+Subject: net/mlx5: Prevent setting multicast macs for VFs
+Patch-mainline: v4.10-rc3
+Git-commit: ccce1700263d8b5b219359d04180492a726cea16
+References: bsc#966170 bsc#966172 bsc#966191
+
+Need to check that VF mac address entered by the admin user is either
+zero or unicast mac.
+Multicast mac addresses are prohibited.
+
+Fixes: 77256579c6b4 ('net/mlx5: E-Switch, Introduce Vport administration functions')
+Signed-off-by: Mohamad Haj Yahia <mohamad@mellanox.com>
+Signed-off-by: Saeed Mahameed <saeedm@mellanox.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+Acked-by: Thomas Bogendoerfer <tbogendoerfer@suse.de>
+---
+ drivers/net/ethernet/mellanox/mlx5/core/eswitch.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/net/ethernet/mellanox/mlx5/core/eswitch.c b/drivers/net/ethernet/mellanox/mlx5/core/eswitch.c
+index 716a82f498fb..af165d2f3b20 100644
+--- a/drivers/net/ethernet/mellanox/mlx5/core/eswitch.c
++++ b/drivers/net/ethernet/mellanox/mlx5/core/eswitch.c
+@@ -974,7 +974,7 @@ int mlx5_eswitch_set_vport_mac(struct mlx5_eswitch *esw,
+ 
+ 	if (!ESW_ALLOWED(esw))
+ 		return -EPERM;
+-	if (!LEGAL_VPORT(esw, vport))
++	if (!LEGAL_VPORT(esw, vport) || is_multicast_ether_addr(mac))
+ 		return -EINVAL;
+ 
+ 	err = mlx5_modify_nic_vport_mac_address(esw->dev, vport, mac);
+-- 
+2.12.3
+

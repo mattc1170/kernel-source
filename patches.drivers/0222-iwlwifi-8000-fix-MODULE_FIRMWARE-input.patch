@@ -1,0 +1,61 @@
+From e1ba684f762b9a8064de2c916bb60b1694dd8a17 Mon Sep 17 00:00:00 2001
+From: Sara Sharon <sara.sharon@intel.com>
+Date: Mon, 11 Apr 2016 15:01:46 +0300
+Subject: [PATCH] iwlwifi: 8000: fix MODULE_FIRMWARE input
+Git-commit: e1ba684f762b9a8064de2c916bb60b1694dd8a17
+Patch-mainline: 4.6-rc7
+References: FATE#321353, FATE#323335
+
+The firwmare name for 8000 is iwlwifi-8000C. The C is
+appended based on a value read from a register. This
+allows to load different firwmare versions based on
+the hardware step during development. Now that the
+hardware development is completed, we can hard code
+the 'C' and along the way, fix the input to
+MODULE_FIRMWARE.
+
+This fixes:
+https://bugzilla.kernel.org/show_bug.cgi?id=116041
+
+Signed-off-by: Sara Sharon <sara.sharon@intel.com>
+Signed-off-by: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/iwlwifi/iwl-8000.c |    2 +-
+ drivers/net/wireless/iwlwifi/iwl-drv.c  |   13 -------------
+ 2 files changed, 1 insertion(+), 14 deletions(-)
+
+--- a/drivers/net/wireless/iwlwifi/iwl-8000.c
++++ b/drivers/net/wireless/iwlwifi/iwl-8000.c
+@@ -93,7 +93,7 @@
+ #define IWL8260_SMEM_OFFSET		0x400000
+ #define IWL8260_SMEM_LEN		0x68000
+ 
+-#define IWL8000_FW_PRE "iwlwifi-8000"
++#define IWL8000_FW_PRE "iwlwifi-8000C-"
+ #define IWL8000_MODULE_FIRMWARE(api) \
+ 	IWL8000_FW_PRE "-" __stringify(api) ".ucode"
+ 
+--- a/drivers/net/wireless/iwlwifi/iwl-drv.c
++++ b/drivers/net/wireless/iwlwifi/iwl-drv.c
+@@ -238,19 +238,6 @@ static int iwl_request_firmware(struct i
+ 	snprintf(drv->firmware_name, sizeof(drv->firmware_name), "%s%s.ucode",
+ 		 name_pre, tag);
+ 
+-	/*
+-	 * Starting 8000B - FW name format has changed. This overwrites the
+-	 * previous name and uses the new format.
+-	 */
+-	if (drv->trans->cfg->device_family == IWL_DEVICE_FAMILY_8000) {
+-		char rev_step = 'A' + CSR_HW_REV_STEP(drv->trans->hw_rev);
+-
+-		if (rev_step != 'A')
+-			snprintf(drv->firmware_name,
+-				 sizeof(drv->firmware_name), "%s%c-%s.ucode",
+-				 name_pre, rev_step, tag);
+-	}
+-
+ 	IWL_DEBUG_INFO(drv, "attempting to load firmware %s'%s'\n",
+ 		       (drv->fw_index == UCODE_EXPERIMENTAL_INDEX)
+ 				? "EXPERIMENTAL " : "",

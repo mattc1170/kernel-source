@@ -1,0 +1,49 @@
+From c1efd3c84c58ba8e2bfa63b972c31dd5a8d19c5d Mon Sep 17 00:00:00 2001
+From: Hannes Reinecke <hare@suse.de>
+Date: Tue, 20 Dec 2016 14:15:35 +0100
+Subject: [PATCH] dm-mpath: fix race window in do_end_io()
+References: bsc#1011044
+Patch-Mainline: v4.12
+Git-commit: ca5beb76c32af33e5be4e01c85c8bd5a067c4543
+
+[Note: the references upstream commit is actually different,
+but fixes this issue, too. So the mentioned commit is a replacement,
+even though the actual patch is different.]
+
+When testing on an all-paths-down scenario we need to check
+several flags etc, so we need to take a lock to avoid a
+race condition with flags updates.
+
+Signed-off-by: Hannes Reinecke <hare@suse.com>
+---
+ drivers/md/dm-mpath.c | 9 +++++++--
+ 1 file changed, 7 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/md/dm-mpath.c b/drivers/md/dm-mpath.c
+index a9a8a3b..c426c0b 100644
+--- a/drivers/md/dm-mpath.c
++++ b/drivers/md/dm-mpath.c
+@@ -1407,13 +1407,18 @@ static int do_end_io(struct multipath *m, struct request *clone,
+ 		fail_path(mpio->pgpath);
+ 
+ 	if (!atomic_read(&m->nr_valid_paths)) {
+-		if (!test_bit(MPATHF_QUEUE_IF_NO_PATH, &m->flags)) {
+-			if (!must_push_back(m))
++		unsigned long flags;
++
++		spin_lock_irqsave(&m->lock, flags);
++		if (!test_bit(MPATHF_QUEUE_IF_NO_PATH, &m->flags) &&
++		    test_bit(MPATHF_SAVED_QUEUE_IF_NO_PATH, &m->flags) &&
++		    dm_noflush_suspending(m->ti)) {
+ 				r = -EIO;
+ 		} else {
+ 			if (error == -EBADE)
+ 				r = error;
+ 		}
++		spin_unlock_irqrestore(&m->lock, flags);
+ 	}
+ 
+ 	return r;
+-- 
+1.8.5.6
+

@@ -1,0 +1,44 @@
+From: Anand Jain <anand.jain@oracle.com>
+Date: Sat, 13 Feb 2016 10:01:37 +0800
+Patch-mainline: 4.7
+Git-commit: b3d1b1532ff9620ff5dba891a96f3e912005eb10
+References: bsc#1012452
+Subject: [PATCH] btrfs: enhance btrfs_find_device_by_user_input() to
+ check device path
+
+The operation of device replace and device delete follows same steps upto
+some depth with in btrfs kernel, however they don't share codes. This
+enhancement will help replace and delete to share codes.
+
+Signed-off-by: Anand Jain <anand.jain@oracle.com>
+Signed-off-by: David Sterba <dsterba@suse.com>
+---
+ fs/btrfs/dev-replace.c |    4 ----
+ fs/btrfs/volumes.c     |    3 +++
+ 2 files changed, 3 insertions(+), 4 deletions(-)
+
+--- a/fs/btrfs/dev-replace.c
++++ b/fs/btrfs/dev-replace.c
+@@ -320,10 +320,6 @@ int btrfs_dev_replace_start(struct btrfs
+ 		return -EINVAL;
+ 	}
+ 
+-	if ((args->start.srcdevid == 0 && args->start.srcdev_name[0] == '\0') ||
+-	    args->start.tgtdev_name[0] == '\0')
+-		return -EINVAL;
+-
+ 	/* the disk copy procedure reuses the scrub code */
+ 	mutex_lock(&fs_info->volume_mutex);
+ 	ret = btrfs_find_device_by_user_input(root, args->start.srcdevid,
+--- a/fs/btrfs/volumes.c
++++ b/fs/btrfs/volumes.c
+@@ -2122,6 +2122,9 @@ int btrfs_find_device_by_user_input(stru
+ 		if (!*device)
+ 			ret = -ENOENT;
+ 	} else {
++		if (!srcdev_name || !srcdev_name[0])
++			return -EINVAL;
++
+ 		ret = btrfs_find_device_missing_or_by_path(root, srcdev_name,
+ 							   device);
+ 	}

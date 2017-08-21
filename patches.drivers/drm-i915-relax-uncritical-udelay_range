@@ -1,0 +1,40 @@
+From 15a43cbf4736a3932e6259fa7d6e47558f6222b0 Mon Sep 17 00:00:00 2001
+From: Nicholas Mc Guire <hofrat@osadl.org>
+Date: Fri, 16 Dec 2016 02:59:38 +0100
+Subject: [PATCH] drm/i915: relax uncritical udelay_range()
+Git-commit: 15a43cbf4736a3932e6259fa7d6e47558f6222b0
+Patch-mainline: 4.11-rc1
+References: bsc#1031717
+
+udelay_range(1, 2) is inefficient and as discussions with Jani Nikula
+<jani.nikula@linux.intel.com> unnecessary here. This replaces this
+tight setting with a relaxed delay of min=20 and max=50 which helps
+the hrtimer subsystem optimize timer handling.
+
+Fixes: commit be4fc046bed3 ("drm/i915: add VLV DSI PLL Calculations")
+Link: http://lkml.org/lkml/2016/12/15/147
+Signed-off-by: Nicholas Mc Guire <hofrat@osadl.org>
+Reviewed-by: Jani Nikula <jani.nikula@intel.com>
+Signed-off-by: Jani Nikula <jani.nikula@intel.com>
+Link: http://patchwork.freedesktop.org/patch/msgid/1481853578-19834-1-git-send-email-hofrat@osadl.org
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/gpu/drm/i915/intel_dsi_pll.c |    6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+--- a/drivers/gpu/drm/i915/intel_dsi_pll.c
++++ b/drivers/gpu/drm/i915/intel_dsi_pll.c
+@@ -257,8 +257,10 @@ static void vlv_enable_dsi_pll(struct in
+ 
+ 	vlv_configure_dsi_pll(encoder);
+ 
+-	/* wait at least 0.5 us after ungating before enabling VCO */
+-	usleep_range(1, 10);
++	/* wait at least 0.5 us after ungating before enabling VCO,
++	 * allow hrtimer subsystem optimization by relaxing timing
++	 */
++	usleep_range(10, 50);
+ 
+ 	tmp = vlv_cck_read(dev_priv, CCK_REG_DSI_PLL_CONTROL);
+ 	tmp |= DSI_PLL_VCO_EN;

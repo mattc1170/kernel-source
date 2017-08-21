@@ -1,0 +1,39 @@
+From 95a451c5e2eff812d572ee289a92cc5d38cc7e1c Mon Sep 17 00:00:00 2001
+From: Dan Carpenter <dan.carpenter@oracle.com>
+Date: Wed, 9 Dec 2015 13:26:08 +0300
+Subject: [PATCH] iwlwifi: mvm: remove an extra tab
+Git-commit: 95a451c5e2eff812d572ee289a92cc5d38cc7e1c
+Patch-mainline: 4.5-rc1
+References: FATE#321353, FATE#323335
+
+Smatch prints a static checker warning here:
+
+    drivers/net/wireless/iwlwifi/mvm/fw-dbg.c:386 iwl_dump_prph()
+    warn: curly braces intended?
+
+Curly braces are NOT intended, the extra tab was added by mistake in
+commit 1a616dd2f171 ('iwlwifi: dump prph registers in a common place
+for all transports').
+
+type=cleanup
+
+Signed-off-by: Dan Carpenter <dan.carpenter@oracle.com>
+Signed-off-by: Johannes Berg <johannes.berg@intel.com>
+Signed-off-by: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/iwlwifi/mvm/fw-dbg.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+--- a/drivers/net/wireless/iwlwifi/mvm/fw-dbg.c
++++ b/drivers/net/wireless/iwlwifi/mvm/fw-dbg.c
+@@ -383,7 +383,7 @@ static u32 iwl_dump_prph(struct iwl_tran
+ 			*val++ = cpu_to_le32(iwl_read_prph_no_grab(trans,
+ 								   reg));
+ 
+-			*data = iwl_fw_error_next_data(*data);
++		*data = iwl_fw_error_next_data(*data);
+ 	}
+ 
+ 	iwl_trans_release_nic_access(trans, &flags);

@@ -1,0 +1,77 @@
+From: Liu Bo <bo.li.liu@oracle.com>
+Date: Fri, 17 Jun 2016 19:16:21 -0700
+Patch-mainline: 4.7
+Git-commit: 415b35a55b57a701afe7391d32a6bb0193b7d3da
+References: bsc#1012452
+Subject: [PATCH] Btrfs: fix error handling in
+ map_private_extent_buffer
+
+map_private_extent_buffer() can return -EINVAL in two different cases,
+1. when the requested contents span two pages if nodesize is larger
+   than pagesize,
+2. when it detects something insane.
+
+The 2nd one used to be only a WARN_ON(1), and we decided to return a error
+to callers, but we didn't fix up all its callers, which will be
+addressed by this patch.
+
+Without this, btrfs may end up with 'general protection', ie.
+reading invalid memory.
+
+Reported-by: Vegard Nossum <vegard.nossum@oracle.com>
+Signed-off-by: Liu Bo <bo.li.liu@oracle.com>
+Signed-off-by: David Sterba <dsterba@suse.com>
+Signed-off-by: Chris Mason <clm@fb.com>
+---
+ fs/btrfs/ctree.c     |    6 +++++-
+ fs/btrfs/extent_io.c |    7 ++++++-
+ 2 files changed, 11 insertions(+), 2 deletions(-)
+
+--- a/fs/btrfs/ctree.c
++++ b/fs/btrfs/ctree.c
+@@ -1784,10 +1784,12 @@ static noinline int generic_bin_search(s
+ 			if (!err) {
+ 				tmp = (struct btrfs_disk_key *)(kaddr + offset -
+ 							map_start);
+-			} else {
++			} else if (err == 1) {
+ 				read_extent_buffer(eb, &unaligned,
+ 						   offset, sizeof(unaligned));
+ 				tmp = &unaligned;
++			} else {
++				return err;
+ 			}
+ 
+ 		} else {
+@@ -2828,6 +2830,8 @@ cow_done:
+ 		}
+ 
+ 		ret = key_search(b, key, level, &prev_cmp, &slot);
++		if (ret < 0)
++			goto done;
+ 
+ 		if (level != 0) {
+ 			int dec = 0;
+--- a/fs/btrfs/extent_io.c
++++ b/fs/btrfs/extent_io.c
+@@ -5341,6 +5341,11 @@ int read_extent_buffer_to_user(struct ex
+ 	return ret;
+ }
+ 
++/*
++ * return 0 if the item is found within a page.
++ * return 1 if the item spans two pages.
++ * return -EINVAL otherwise.
++ */
+ int map_private_extent_buffer(struct extent_buffer *eb, unsigned long start,
+ 			       unsigned long min_len, char **map,
+ 			       unsigned long *map_start,
+@@ -5355,7 +5360,7 @@ int map_private_extent_buffer(struct ext
+ 		PAGE_CACHE_SHIFT;
+ 
+ 	if (i != end_i)
+-		return -EINVAL;
++		return 1;
+ 
+ 	if (i == 0) {
+ 		offset = start_offset;

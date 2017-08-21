@@ -6,6 +6,7 @@ Mime-version: 1.0
 Content-type: text/plain; charset=UTF-8
 Content-transfer-encoding: 8bit
 Git-commit: 35a3abfd198e6c69a6644784bb09a2d951fc6b21
+No-fix: 262fd485ac6b476479f41f00bb104f6a1766ae66
 Patch-mainline: 4.11-rc4
 References: bsc#1031717
 

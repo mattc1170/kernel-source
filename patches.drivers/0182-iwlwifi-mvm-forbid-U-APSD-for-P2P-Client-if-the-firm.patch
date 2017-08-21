@@ -1,0 +1,34 @@
+From cee5a882d0273aac0d622368885c9aac676cce33 Mon Sep 17 00:00:00 2001
+From: Avri Altman <avri.altman@intel.com>
+Date: Wed, 3 Feb 2016 16:28:25 +0200
+Subject: [PATCH] iwlwifi: mvm: forbid U-APSD for P2P Client if the firmware doesn't support it
+Git-commit: cee5a882d0273aac0d622368885c9aac676cce33
+Patch-mainline: 4.6-rc1
+References: FATE#321353, FATE#323335
+
+Older versions of the firmware don't support U-APSD for
+P2P Client. Forbid U-APSD for P2P Client when an old
+firmware is being used.
+
+Signed-off-by: Avri Altman <avri.altman@intel.com>
+Signed-off-by: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/iwlwifi/mvm/mac80211.c |    5 +++++
+ 1 file changed, 5 insertions(+)
+
+--- a/drivers/net/wireless/iwlwifi/mvm/mac80211.c
++++ b/drivers/net/wireless/iwlwifi/mvm/mac80211.c
+@@ -2274,6 +2274,11 @@ static void iwl_mvm_check_uapsd(struct i
+ 	if (!(mvm->fw->ucode_capa.flags & IWL_UCODE_TLV_FLAGS_UAPSD_SUPPORT))
+ 		return;
+ 
++	if (vif->p2p && !iwl_mvm_is_p2p_standalone_uapsd_supported(mvm)) {
++		vif->driver_flags &= ~IEEE80211_VIF_SUPPORTS_UAPSD;
++		return;
++	}
++
+ 	if (iwlwifi_mod_params.uapsd_disable) {
+ 		vif->driver_flags &= ~IEEE80211_VIF_SUPPORTS_UAPSD;
+ 		return;

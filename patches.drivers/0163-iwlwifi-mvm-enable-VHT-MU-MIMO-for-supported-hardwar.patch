@@ -1,0 +1,74 @@
+From e48c947f030d1f5c46c684a6cc2db332bc4af33f Mon Sep 17 00:00:00 2001
+From: Sara Sharon <sara.sharon@intel.com>
+Date: Wed, 27 Jan 2016 18:59:48 +0200
+Subject: [PATCH] iwlwifi: mvm: enable VHT MU-MIMO for supported hardware
+Git-commit: e48c947f030d1f5c46c684a6cc2db332bc4af33f
+Patch-mainline: 4.6-rc1
+References: FATE#321353, FATE#323335
+
+Incoming hardware will support VHT MU-MIMO. Declare this
+capability for relevant hardware.
+
+Signed-off-by: Sara Sharon <sara.sharon@intel.com>
+Signed-off-by: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/iwlwifi/iwl-8000.c      |    1 +
+ drivers/net/wireless/iwlwifi/iwl-9000.c      |    3 ++-
+ drivers/net/wireless/iwlwifi/iwl-config.h    |    2 ++
+ drivers/net/wireless/iwlwifi/iwl-nvm-parse.c |    3 +++
+ 4 files changed, 8 insertions(+), 1 deletion(-)
+
+--- a/drivers/net/wireless/iwlwifi/iwl-8000.c
++++ b/drivers/net/wireless/iwlwifi/iwl-8000.c
+@@ -217,6 +217,7 @@ const struct iwl_cfg iwl8265_2ac_cfg = {
+ 	.nvm_ver = IWL8000_NVM_VERSION,
+ 	.nvm_calib_ver = IWL8000_TX_POWER_VERSION,
+ 	.max_ht_ampdu_exponent = IEEE80211_HT_MAX_AMPDU_64K,
++	.vht_mu_mimo_supported = true,
+ };
+ 
+ const struct iwl_cfg iwl4165_2ac_cfg = {
+--- a/drivers/net/wireless/iwlwifi/iwl-9000.c
++++ b/drivers/net/wireless/iwlwifi/iwl-9000.c
+@@ -139,7 +139,8 @@ static const struct iwl_tt_params iwl900
+ 	.smem_len = IWL9000_SMEM_LEN,					\
+ 	.thermal_params = &iwl9000_tt_params,				\
+ 	.apmg_not_supported = true,					\
+-	.mq_rx_supported = true
++	.mq_rx_supported = true,					\
++	.vht_mu_mimo_supported = true
+ 
+ const struct iwl_cfg iwl9260_2ac_cfg = {
+ 		.name = "Intel(R) Dual Band Wireless AC 9260",
+--- a/drivers/net/wireless/iwlwifi/iwl-config.h
++++ b/drivers/net/wireless/iwlwifi/iwl-config.h
+@@ -312,6 +312,7 @@ struct iwl_pwr_tx_backoff {
+  * @smem_offset: offset from which the SMEM begins
+  * @smem_len: the length of SMEM
+  * @mq_rx_supported: multi-queue rx support
++ * @vht_mu_mimo_supported: VHT MU-MIMO support
+  *
+  * We enable the driver to be backward compatible wrt. hardware features.
+  * API differences in uCode shouldn't be handled here but through TLVs
+@@ -364,6 +365,7 @@ struct iwl_cfg {
+ 	const struct iwl_tt_params *thermal_params;
+ 	bool apmg_not_supported;
+ 	bool mq_rx_supported;
++	bool vht_mu_mimo_supported;
+ };
+ 
+ /*
+--- a/drivers/net/wireless/iwlwifi/iwl-nvm-parse.c
++++ b/drivers/net/wireless/iwlwifi/iwl-nvm-parse.c
+@@ -366,6 +366,9 @@ static void iwl_init_vht_hw_capab(const
+ 		       max_ampdu_exponent <<
+ 		       IEEE80211_VHT_CAP_MAX_A_MPDU_LENGTH_EXPONENT_SHIFT;
+ 
++	if (cfg->vht_mu_mimo_supported)
++		vht_cap->cap |= IEEE80211_VHT_CAP_MU_BEAMFORMEE_CAPABLE;
++
+ 	if (cfg->ht_params->ldpc)
+ 		vht_cap->cap |= IEEE80211_VHT_CAP_RXLDPC;
+ 

@@ -5,8 +5,7 @@ Subject: [PATCH] ibmvnic: Move ibmvnic adapter intialization to its own
  routine
 
 References: fate#322021, bsc#1031512
-Patch-mainline: queued, next-20170328
-Git-repo: https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git
+Patch-mainline: v4.12-rc1
 Git-commit: f6ef6408e840f6e1a7c016d6dd1b4341bc1023f6
 
 The intialization of the ibmvnic driver with respect to the virtual

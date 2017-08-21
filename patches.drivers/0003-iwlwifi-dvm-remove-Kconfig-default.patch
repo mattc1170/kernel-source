@@ -1,0 +1,33 @@
+From d29cb66463810614abf81dd80d75da59c1e4fd07 Mon Sep 17 00:00:00 2001
+From: Johannes Berg <johannes.berg@intel.com>
+Date: Fri, 13 Nov 2015 10:57:56 +0100
+Subject: [PATCH] iwlwifi: dvm: remove Kconfig default
+Git-commit: d29cb66463810614abf81dd80d75da59c1e4fd07
+Patch-mainline: 4.5-rc1
+References: FATE#321353, FATE#323335
+
+The split of iwlwifi into DVM and MVM was a long time ago now,
+so we can remove the "default IWLWIFI" that we had to keep all
+existing .config files with working defaults during the split.
+This is no longer necessary, practically nobody should now be
+upgrading a .config that's older than the split.
+
+Signed-off-by: Johannes Berg <johannes.berg@intel.com>
+Signed-off-by: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/iwlwifi/Kconfig |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+--- a/drivers/net/wireless/iwlwifi/Kconfig
++++ b/drivers/net/wireless/iwlwifi/Kconfig
+@@ -53,7 +53,7 @@ config IWLWIFI_LEDS
+ 
+ config IWLDVM
+ 	tristate "Intel Wireless WiFi DVM Firmware support"
+-	default IWLWIFI
++	depends on m
+ 	help
+ 	  This is the driver that supports the DVM firmware. The list
+ 	  of the devices that use this firmware is available here:

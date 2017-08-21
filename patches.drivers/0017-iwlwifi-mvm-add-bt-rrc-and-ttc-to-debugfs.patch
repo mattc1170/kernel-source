@@ -1,0 +1,43 @@
+From 48f0a038d0da461bc6030eef2d6cad316d36aba3 Mon Sep 17 00:00:00 2001
+From: Moshe Harel <moshe.harel@intel.com>
+Date: Mon, 26 Oct 2015 11:33:49 +0200
+Subject: [PATCH] iwlwifi: mvm: add bt rrc and ttc to debugfs
+Git-commit: 48f0a038d0da461bc6030eef2d6cad316d36aba3
+Patch-mainline: 4.5-rc1
+References: FATE#321353, FATE#323335
+
+As part of the bt_notif file add fields that are currently
+not represented
+
+Signed-off-by: Moshe Harel <moshe.harel@intel.com>
+Signed-off-by: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/iwlwifi/mvm/debugfs.c |    8 ++++++++
+ 1 file changed, 8 insertions(+)
+
+--- a/drivers/net/wireless/iwlwifi/mvm/debugfs.c
++++ b/drivers/net/wireless/iwlwifi/mvm/debugfs.c
+@@ -512,6 +512,10 @@ static ssize_t iwl_dbgfs_bt_notif_read(s
+ 		pos += scnprintf(buf+pos, bufsz-pos,
+ 				 "antenna isolation = %d CORUN LUT index = %d\n",
+ 				 mvm->last_ant_isol, mvm->last_corun_lut);
++		pos += scnprintf(buf + pos, bufsz - pos, "bt_rrc = %d\n",
++				 notif->rrc_enabled);
++		pos += scnprintf(buf + pos, bufsz - pos, "bt_ttc = %d\n",
++				 notif->ttc_enabled);
+ 	} else {
+ 		struct iwl_bt_coex_profile_notif *notif =
+ 			&mvm->last_bt_notif;
+@@ -530,6 +534,10 @@ static ssize_t iwl_dbgfs_bt_notif_read(s
+ 		pos += scnprintf(buf+pos, bufsz-pos,
+ 				 "antenna isolation = %d CORUN LUT index = %d\n",
+ 				 mvm->last_ant_isol, mvm->last_corun_lut);
++		pos += scnprintf(buf + pos, bufsz - pos, "bt_rrc = %d\n",
++				 (notif->ttc_rrc_status >> 4) & 0xF);
++		pos += scnprintf(buf + pos, bufsz - pos, "bt_ttc = %d\n",
++				 notif->ttc_rrc_status & 0xF);
+ 	}
+ 
+ 	pos += scnprintf(buf + pos, bufsz - pos, "sync_sco = %d\n",

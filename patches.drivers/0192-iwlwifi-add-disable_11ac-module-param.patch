@@ -1,0 +1,59 @@
+From 0d0985adf6519952e0d51b5272abc3ef28d833bc Mon Sep 17 00:00:00 2001
+From: Andrei Otcheretianski <andrei.otcheretianski@intel.com>
+Date: Mon, 29 Feb 2016 13:25:48 +0200
+Subject: [PATCH] iwlwifi: add disable_11ac module param
+Git-commit: 0d0985adf6519952e0d51b5272abc3ef28d833bc
+Patch-mainline: 4.6-rc1
+References: FATE#321353, FATE#323335
+
+Add module parameter that disables VHT capabilities.
+
+Signed-off-by: Andrei Otcheretianski <andrei.otcheretianski@intel.com>
+Signed-off-by: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/iwlwifi/iwl-drv.c       |    4 ++++
+ drivers/net/wireless/iwlwifi/iwl-modparams.h |    2 ++
+ drivers/net/wireless/iwlwifi/iwl-nvm-parse.c |    2 +-
+ 3 files changed, 7 insertions(+), 1 deletion(-)
+
+--- a/drivers/net/wireless/iwlwifi/iwl-drv.c
++++ b/drivers/net/wireless/iwlwifi/iwl-drv.c
+@@ -1719,3 +1719,7 @@ MODULE_PARM_DESC(fw_monitor,
+ module_param_named(d0i3_timeout, iwlwifi_mod_params.d0i3_entry_delay,
+ 		   uint, S_IRUGO);
+ MODULE_PARM_DESC(d0i3_timeout, "Timeout to D0i3 entry when idle (ms)");
++
++module_param_named(disable_11ac, iwlwifi_mod_params.disable_11ac, bool,
++		   S_IRUGO);
++MODULE_PARM_DESC(disable_11ac, "Disable VHT capabilities");
+--- a/drivers/net/wireless/iwlwifi/iwl-modparams.h
++++ b/drivers/net/wireless/iwlwifi/iwl-modparams.h
+@@ -115,6 +115,7 @@ enum iwl_amsdu_size {
+  *	entering D0i3 (in msecs)
+  * @lar_disable: disable LAR (regulatory), default = 0
+  * @fw_monitor: allow to use firmware monitor
++ * @disable_11ac: disable VHT capabilities, default = false.
+  */
+ struct iwl_mod_params {
+ 	int sw_crypto;
+@@ -135,6 +136,7 @@ struct iwl_mod_params {
+ 	unsigned int d0i3_entry_delay;
+ 	bool lar_disable;
+ 	bool fw_monitor;
++	bool disable_11ac;
+ };
+ 
+ #endif /* #__iwl_modparams_h__ */
+--- a/drivers/net/wireless/iwlwifi/iwl-nvm-parse.c
++++ b/drivers/net/wireless/iwlwifi/iwl-nvm-parse.c
+@@ -452,7 +452,7 @@ static void iwl_init_sbands(struct devic
+ 					  IEEE80211_BAND_5GHZ);
+ 	iwl_init_ht_hw_capab(cfg, data, &sband->ht_cap, IEEE80211_BAND_5GHZ,
+ 			     tx_chains, rx_chains);
+-	if (data->sku_cap_11ac_enable)
++	if (data->sku_cap_11ac_enable && !iwlwifi_mod_params.disable_11ac)
+ 		iwl_init_vht_hw_capab(cfg, data, &sband->vht_cap,
+ 				      tx_chains, rx_chains);
+ 

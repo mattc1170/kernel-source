@@ -1,0 +1,27 @@
+From: Josef Bacik <jbacik@fb.com>
+Date: Thu, 18 Aug 2016 15:30:06 -0400
+Patch-mainline: 4.8
+Git-commit: 187ee58c62c1d0d238d3dc4835869d33e1869906
+References: bsc#1012452
+Subject: [PATCH] Btrfs: fix em leak in find_first_block_group
+
+We need to call free_extent_map() on the em we look up.
+
+Signed-off-by: Josef Bacik <jbacik@fb.com>
+Reviewed-by: Omar Sandoval <osandov@fb.com>
+Signed-off-by: David Sterba <dsterba@suse.com>
+Signed-off-by: Chris Mason <clm@fb.com>
+---
+ fs/btrfs/extent-tree.c |    1 +
+ 1 file changed, 1 insertion(+)
+
+--- a/fs/btrfs/extent-tree.c
++++ b/fs/btrfs/extent-tree.c
+@@ -9874,6 +9874,7 @@ static int find_first_block_group(struct
+ 			} else {
+ 				ret = 0;
+ 			}
++			free_extent_map(em);
+ 			goto out;
+ 		}
+ 		path->slots[0]++;

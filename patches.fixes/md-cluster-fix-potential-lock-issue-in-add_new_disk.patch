@@ -1,0 +1,40 @@
+From ade324536d377a63428ab82dc796d6b5a78f8959 Mon Sep 17 00:00:00 2001
+From: Guoqing Jiang <gqjiang@suse.com>
+Date: Sat, 27 May 2017 11:37:42 +0800
+Subject: [PATCH] md-cluster: fix potential lock issue in add_new_disk
+Patch-mainline: Queued in subsystem maintainer repository
+Git-repo: git://git.kernel.org/pub/scm/linux/kernel/git/shli/md.git
+Git-commit: 2dffdc0724004f38f5e39907747b53e4b0d80e59
+References: bsc#1041087
+
+The add_new_disk returns with communication locked if
+__sendmsg returns failure, fix it with call unlock_comm
+before return.
+
+Reported-by: Dan Carpenter <dan.carpenter@oracle.com>
+CC: Goldwyn Rodrigues <rgoldwyn@suse.com>
+Signed-off-by: Guoqing Jiang <gqjiang@suse.com>
+Signed-off-by: Shaohua Li <shli@fb.com>
+---
+ drivers/md/md-cluster.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/md/md-cluster.c b/drivers/md/md-cluster.c
+index 1b43126..5be3abc 100644
+--- a/drivers/md/md-cluster.c
++++ b/drivers/md/md-cluster.c
+@@ -1115,8 +1115,10 @@ static int add_new_disk(struct mddev *mddev, struct md_rdev *rdev)
+ 	cmsg.raid_slot = cpu_to_le32(rdev->desc_nr);
+ 	lock_comm(cinfo);
+ 	ret = __sendmsg(cinfo, &cmsg);
+-	if (ret)
++	if (ret) {
++		unlock_comm(cinfo);
+ 		return ret;
++	}
+ 	cinfo->no_new_dev_lockres->flags |= DLM_LKF_NOQUEUE;
+ 	ret = dlm_lock_sync(cinfo->no_new_dev_lockres, DLM_LOCK_EX);
+ 	cinfo->no_new_dev_lockres->flags &= ~DLM_LKF_NOQUEUE;
+-- 
+2.10.0
+

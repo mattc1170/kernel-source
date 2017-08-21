@@ -20,28 +20,46 @@ device MTU values.
 Finally, it removes redundant min/max MTU assignments after device
 initialization.
 
+SP2: also remove ibmvnic_change_mtu to not conflict with subsequent patch
+
 Signed-off-by: Thomas Falcon <tlfalcon@linux.vnet.ibm.com>
 Signed-off-by: David S. Miller <davem@davemloft.net>
 Acked-by: Benjamin Poirier <bpoirier@suse.com>
 ---
- drivers/net/ethernet/ibm/ibmvnic.c | 9 +++++----
- 1 file changed, 5 insertions(+), 4 deletions(-)
+ drivers/net/ethernet/ibm/ibmvnic.c | 17 +++--------------
+ 1 file changed, 3 insertions(+), 14 deletions(-)
 
 diff --git a/drivers/net/ethernet/ibm/ibmvnic.c b/drivers/net/ethernet/ibm/ibmvnic.c
-index 07ff6e6..864a4b0 100644
+index 07ff6e652d73..6b346a368212 100644
 --- a/drivers/net/ethernet/ibm/ibmvnic.c
 +++ b/drivers/net/ethernet/ibm/ibmvnic.c
-@@ -905,7 +905,8 @@ static int ibmvnic_change_mtu(struct net_device *netdev, int new_mtu)
+@@ -901,17 +901,6 @@ static int ibmvnic_set_mac(struct net_device *netdev, void *p)
+ 	return 0;
+ }
+ 
+-static int ibmvnic_change_mtu(struct net_device *netdev, int new_mtu)
+-{
+-	struct ibmvnic_adapter *adapter = netdev_priv(netdev);
+-
+-	if (new_mtu > adapter->req_mtu || new_mtu < adapter->min_mtu)
+-		return -EINVAL;
+-
+-	netdev->mtu = new_mtu;
+-	return 0;
+-}
+-
+ static void ibmvnic_tx_timeout(struct net_device *dev)
  {
- 	struct ibmvnic_adapter *adapter = netdev_priv(netdev);
- 
--	if (new_mtu > adapter->max_mtu || new_mtu < adapter->min_mtu)
-+	if (new_mtu > adapter->max_mtu - ETH_HLEN ||
-+            new_mtu < adapter->min_mtu - ETH_HLEN)
- 		return -EINVAL;
- 
- 	netdev->mtu = new_mtu;
-@@ -1508,7 +1509,7 @@ static void init_sub_crqs(struct ibmvnic_adapter *adapter, int retry)
+ 	struct ibmvnic_adapter *adapter = netdev_priv(dev);
+@@ -1028,7 +1028,6 @@ static const struct net_device_ops ibmvnic_netdev_ops = {
+ 	.ndo_set_rx_mode	= ibmvnic_set_multi,
+ 	.ndo_set_mac_address	= ibmvnic_set_mac,
+ 	.ndo_validate_addr	= eth_validate_addr,
+-	.ndo_change_mtu		= ibmvnic_change_mtu,
+ 	.ndo_tx_timeout		= ibmvnic_tx_timeout,
+ #ifdef CONFIG_NET_POLL_CONTROLLER
+ 	.ndo_poll_controller	= ibmvnic_netpoll_controller,
+@@ -1508,7 +1497,7 @@ static void init_sub_crqs(struct ibmvnic_adapter *adapter, int retry)
  		adapter->req_rx_queues = adapter->opt_rx_comp_queues;
  		adapter->req_rx_add_queues = adapter->max_rx_add_queues;
  
@@ -50,7 +68,7 @@ index 07ff6e6..864a4b0 100644
  	}
  
  	total_queues = adapter->req_tx_queues + adapter->req_rx_queues;
-@@ -3666,7 +3667,7 @@ static void handle_crq_init_rsp(struct work_struct *work)
+@@ -3666,7 +3655,7 @@ static void handle_crq_init_rsp(struct work_struct *work)
  		goto task_failed;
  
  	netdev->real_num_tx_queues = adapter->req_tx_queues;
@@ -59,7 +77,7 @@ index 07ff6e6..864a4b0 100644
  
  	if (adapter->failover) {
  		adapter->failover = false;
-@@ -3806,7 +3807,7 @@ static int ibmvnic_probe(struct vio_dev *dev, const struct vio_device_id *id)
+@@ -3806,7 +3795,7 @@ static int ibmvnic_probe(struct vio_dev *dev, const struct vio_device_id *id)
  	}
  
  	netdev->real_num_tx_queues = adapter->req_tx_queues;
@@ -68,3 +86,6 @@ index 07ff6e6..864a4b0 100644
  
  	rc = register_netdev(netdev);
  	if (rc) {
+-- 
+2.10.2
+

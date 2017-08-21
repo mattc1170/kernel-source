@@ -34,15 +34,13 @@ Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 Signed-off-by: Linus Torvalds <torvalds@linux-foundation.org>
 Acked-by: Jeff Mahoney <jeffm@suse.com>
 ---
- arch/x86/include/asm/pmem.h | 11 ++++++-----
- include/linux/pmem.h        | 22 +++++++++++++++++++++-
- 2 files changed, 27 insertions(+), 6 deletions(-)
+ arch/x86/include/asm/pmem.h |   15 ++++++++-------
+ include/linux/pmem.h        |   22 +++++++++++++++++++++-
+ 2 files changed, 29 insertions(+), 8 deletions(-)
 
-diff --git a/arch/x86/include/asm/pmem.h b/arch/x86/include/asm/pmem.h
-index 1544fab..c57fd1e 100644
 --- a/arch/x86/include/asm/pmem.h
 +++ b/arch/x86/include/asm/pmem.h
-@@ -67,18 +67,19 @@ static inline void arch_wmb_pmem(void)
+@@ -67,7 +67,7 @@ static inline void arch_wmb_pmem(void)
  }
  
  /**
@@ -51,10 +49,9 @@ index 1544fab..c57fd1e 100644
   * @vaddr:	virtual start address
   * @size:	number of bytes to write back
   *
-  * Write back a cache range using the CLWB (cache line write back)
-  * instruction.  This function requires explicit ordering with an
-- * arch_wmb_pmem() call.  This API is internal to the x86 PMEM implementation.
-+ * arch_wmb_pmem() call.
+@@ -75,10 +75,11 @@ static inline void arch_wmb_pmem(void)
+  * instruction. Note that @size is internally rounded up to be cache
+  * line size aligned.
   */
 -static inline void __arch_wb_cache_pmem(void *vaddr, size_t size)
 +static inline void arch_wb_cache_pmem(void __pmem *addr, size_t size)
@@ -65,16 +62,31 @@ index 1544fab..c57fd1e 100644
  	void *vend = vaddr + size;
  	void *p;
  
-@@ -115,7 +116,7 @@ static inline size_t arch_copy_from_iter_pmem(void __pmem *addr, size_t bytes,
- 	len = copy_from_iter_nocache(vaddr, bytes, i);
+@@ -122,19 +123,19 @@ static inline size_t arch_copy_from_iter
  
- 	if (__iter_needs_pmem_wb(i))
--		__arch_wb_cache_pmem(vaddr, bytes);
+ 		if (bytes < 8) {
+ 			if (!IS_ALIGNED(dest, 4) || (bytes != 4))
+-				__arch_wb_cache_pmem(addr, bytes);
++				arch_wb_cache_pmem(addr, bytes);
+ 		} else {
+ 			if (!IS_ALIGNED(dest, 8)) {
+ 				dest = ALIGN(dest, boot_cpu_data.x86_clflush_size);
+-				__arch_wb_cache_pmem(addr, 1);
++				arch_wb_cache_pmem(addr, 1);
+ 			}
+ 
+ 			flushed = dest - (unsigned long) addr;
+ 			if (bytes > flushed && !IS_ALIGNED(bytes - flushed, 8))
+-				__arch_wb_cache_pmem(addr + bytes - 1, 1);
++				arch_wb_cache_pmem(addr + bytes - 1, 1);
+ 		}
+ 	} else
+-		__arch_wb_cache_pmem(addr, bytes);
 +		arch_wb_cache_pmem(addr, bytes);
  
  	return len;
  }
-@@ -133,7 +134,7 @@ static inline void arch_clear_pmem(void __pmem *addr, size_t size)
+@@ -152,7 +153,7 @@ static inline void arch_clear_pmem(void
  	void *vaddr = (void __force *)addr;
  
  	memset(vaddr, 0, size);
@@ -83,11 +95,9 @@ index 1544fab..c57fd1e 100644
  }
  
  static inline bool __arch_has_wmb_pmem(void)
-diff --git a/include/linux/pmem.h b/include/linux/pmem.h
-index acfea8c..7c3d11a 100644
 --- a/include/linux/pmem.h
 +++ b/include/linux/pmem.h
-@@ -53,12 +53,18 @@ static inline void arch_clear_pmem(void __pmem *addr, size_t size)
+@@ -53,12 +53,18 @@ static inline void arch_clear_pmem(void
  {
  	BUG();
  }
@@ -107,7 +117,7 @@ index acfea8c..7c3d11a 100644
   */
  static inline void memcpy_from_pmem(void *dst, void __pmem const *src, size_t size)
  {
-@@ -178,4 +184,18 @@ static inline void clear_pmem(void __pmem *addr, size_t size)
+@@ -178,4 +184,18 @@ static inline void clear_pmem(void __pme
  	else
  		default_clear_pmem(addr, size);
  }
@@ -126,5 +136,3 @@ index acfea8c..7c3d11a 100644
 +		arch_wb_cache_pmem(addr, size);
 +}
  #endif /* __PMEM_H__ */
-
-

@@ -1,0 +1,36 @@
+From: David Ahern <dsa@cumulusnetworks.com>
+Date: Wed, 15 Mar 2017 18:14:33 -0700
+Subject: net: ipv6: set route type for anycast routes
+Patch-mainline: v4.11-rc4
+Git-commit: 4ee39733fbecf04cf9f346de2d64788c35028079
+References: bsc#1042286
+
+Anycast routes have the RTF_ANYCAST flag set, but when dumping routes
+for userspace the route type is not set to RTN_ANYCAST. Make it so.
+
+Fixes: 58c4fb86eabcb ("[IPV6]: Flag RTF_ANYCAST for anycast routes")
+CC: Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>
+Signed-off-by: David Ahern <dsa@cumulusnetworks.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+Acked-by: Michal Kubecek <mkubecek@suse.cz>
+
+---
+ net/ipv6/route.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/net/ipv6/route.c b/net/ipv6/route.c
+index 8f4177a1d4f5..57dafe439cbb 100644
+--- a/net/ipv6/route.c
++++ b/net/ipv6/route.c
+@@ -3103,6 +3103,8 @@ static int rt6_fill_node(struct net *net,
+ 	}
+ 	else if (rt->rt6i_flags & RTF_LOCAL)
+ 		rtm->rtm_type = RTN_LOCAL;
++	else if (rt->rt6i_flags & RTF_ANYCAST)
++		rtm->rtm_type = RTN_ANYCAST;
+ 	else if (rt->dst.dev && (rt->dst.dev->flags & IFF_LOOPBACK))
+ 		rtm->rtm_type = RTN_LOCAL;
+ 	else
+-- 
+2.13.0
+

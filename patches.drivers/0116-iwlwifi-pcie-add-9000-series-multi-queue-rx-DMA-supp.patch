@@ -1,0 +1,805 @@
+From 96a6497bc3ed1c19d877e5f4f95f2cfa27448abe Mon Sep 17 00:00:00 2001
+From: Sara Sharon <sara.sharon@intel.com>
+Date: Wed, 23 Dec 2015 15:10:03 +0200
+Subject: [PATCH] iwlwifi: pcie: add 9000 series multi queue rx DMA support
+Git-commit: 96a6497bc3ed1c19d877e5f4f95f2cfa27448abe
+Patch-mainline: 4.6-rc1
+References: FATE#321353, FATE#323335
+
+The 9000 series introduces several changes in the device
+DMA operation.
+As the device now supports multi-queue rx, several DMA channels
+should be configured.
+The flows of providing the device with the allocated RBDs now
+changes as well - the device maintains a separate table of used
+and free table.
+
+The hardware may use the free table to feed RBDs to any queue.
+This requires maintaing a shared table to map returned RBDs to
+the original RXB - for that purpose the VID is introduced - an
+internal identifier of the RB placed in the lower 12 bits and
+returned by HW in the used data.
+
+Another change is the support of 64 bit DMA address.
+
+Signed-off-by: Sara Sharon <sara.sharon@intel.com>
+Signed-off-by: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/iwlwifi/iwl-9000.c      |    3 
+ drivers/net/wireless/iwlwifi/iwl-config.h    |    2 
+ drivers/net/wireless/iwlwifi/iwl-fh.h        |   77 +++++++
+ drivers/net/wireless/iwlwifi/pcie/internal.h |   28 ++
+ drivers/net/wireless/iwlwifi/pcie/rx.c       |  277 ++++++++++++++++++++-------
+ drivers/net/wireless/iwlwifi/pcie/trans.c    |   15 +
+ 6 files changed, 322 insertions(+), 80 deletions(-)
+
+--- a/drivers/net/wireless/iwlwifi/iwl-9000.c
++++ b/drivers/net/wireless/iwlwifi/iwl-9000.c
+@@ -138,7 +138,8 @@ static const struct iwl_tt_params iwl900
+ 	.smem_offset = IWL9000_SMEM_OFFSET,				\
+ 	.smem_len = IWL9000_SMEM_LEN,					\
+ 	.thermal_params = &iwl9000_tt_params,				\
+-	.apmg_not_supported = true
++	.apmg_not_supported = true,					\
++	.mq_rx_supported = true
+ 
+ const struct iwl_cfg iwl9260_2ac_cfg = {
+ 		.name = "Intel(R) Dual Band Wireless AC 9260",
+--- a/drivers/net/wireless/iwlwifi/iwl-config.h
++++ b/drivers/net/wireless/iwlwifi/iwl-config.h
+@@ -311,6 +311,7 @@ struct iwl_pwr_tx_backoff {
+  * @dccm2_len: length of the second DCCM
+  * @smem_offset: offset from which the SMEM begins
+  * @smem_len: the length of SMEM
++ * @mq_rx_supported: multi-queue rx support
+  *
+  * We enable the driver to be backward compatible wrt. hardware features.
+  * API differences in uCode shouldn't be handled here but through TLVs
+@@ -362,6 +363,7 @@ struct iwl_cfg {
+ 	const u32 smem_len;
+ 	const struct iwl_tt_params *thermal_params;
+ 	bool apmg_not_supported;
++	bool mq_rx_supported;
+ };
+ 
+ /*
+--- a/drivers/net/wireless/iwlwifi/iwl-fh.h
++++ b/drivers/net/wireless/iwlwifi/iwl-fh.h
+@@ -6,6 +6,7 @@
+  * GPL LICENSE SUMMARY
+  *
+  * Copyright(c) 2005 - 2014 Intel Corporation. All rights reserved.
++ * Copyright(c) 2015 Intel Deutschland GmbH
+  *
+  * This program is free software; you can redistribute it and/or modify
+  * it under the terms of version 2 of the GNU General Public License as
+@@ -31,6 +32,7 @@
+  * BSD LICENSE
+  *
+  * Copyright(c) 2005 - 2014 Intel Corporation. All rights reserved.
++ * Copyright(c) 2015 Intel Deutschland GmbH
+  * All rights reserved.
+  *
+  * Redistribution and use in source and binary forms, with or without
+@@ -312,6 +314,77 @@ static inline unsigned int FH_MEM_CBBC_Q
+ #define FH_MEM_TFDIB_REG1_ADDR_BITSHIFT	28
+ #define FH_MEM_TB_MAX_LENGTH			(0x00020000)
+ 
++/* 9000 rx series registers */
++
++#define RFH_Q0_FRBDCB_BA_LSB 0xA08000 /* 64 bit address */
++#define RFH_Q_FRBDCB_BA_LSB(q) (RFH_Q0_FRBDCB_BA_LSB + (q) * 8)
++/* Write index table */
++#define RFH_Q0_FRBDCB_WIDX 0xA08080
++#define RFH_Q_FRBDCB_WIDX(q) (RFH_Q0_FRBDCB_WIDX + (q) * 4)
++/* Read index table */
++#define RFH_Q0_FRBDCB_RIDX 0xA080C0
++#define RFH_Q_FRBDCB_RIDX(q) (RFH_Q0_FRBDCB_RIDX + (q) * 4)
++/* Used list table */
++#define RFH_Q0_URBDCB_BA_LSB 0xA08100 /* 64 bit address */
++#define RFH_Q_URBDCB_BA_LSB(q) (RFH_Q0_URBDCB_BA_LSB + (q) * 8)
++/* Write index table */
++#define RFH_Q0_URBDCB_WIDX 0xA08180
++#define RFH_Q_URBDCB_WIDX(q) (RFH_Q0_URBDCB_WIDX + (q) * 4)
++#define RFH_Q0_URBDCB_VAID 0xA081C0
++#define RFH_Q_URBDCB_VAID(q) (RFH_Q0_URBDCB_VAID + (q) * 4)
++/* stts */
++#define RFH_Q0_URBD_STTS_WPTR_LSB 0xA08200 /*64 bits address */
++#define RFH_Q_URBD_STTS_WPTR_LSB(q) (RFH_Q0_URBD_STTS_WPTR_LSB + (q) * 8)
++
++#define RFH_Q0_ORB_WPTR_LSB 0xA08280
++#define RFH_Q_ORB_WPTR_LSB(q) (RFH_Q0_ORB_WPTR_LSB + (q) * 8)
++#define RFH_RBDBUF_RBD0_LSB 0xA08300
++#define RFH_RBDBUF_RBD_LSB(q) (RFH_RBDBUF_RBD0_LSB + (q) * 8)
++
++/* DMA configuration */
++#define RFH_RXF_DMA_CFG 0xA09820
++/* RB size */
++#define RFH_RXF_DMA_RB_SIZE_MASK (0x000F0000) /* bits 16-19 */
++#define RFH_RXF_DMA_RB_SIZE_POS 16
++#define RFH_RXF_DMA_RB_SIZE_1K	(0x1 << RFH_RXF_DMA_RB_SIZE_POS)
++#define RFH_RXF_DMA_RB_SIZE_2K	(0x2 << RFH_RXF_DMA_RB_SIZE_POS)
++#define RFH_RXF_DMA_RB_SIZE_4K	(0x4 << RFH_RXF_DMA_RB_SIZE_POS)
++#define RFH_RXF_DMA_RB_SIZE_8K	(0x8 << RFH_RXF_DMA_RB_SIZE_POS)
++#define RFH_RXF_DMA_RB_SIZE_12K	(0x9 << RFH_RXF_DMA_RB_SIZE_POS)
++#define RFH_RXF_DMA_RB_SIZE_16K	(0xA << RFH_RXF_DMA_RB_SIZE_POS)
++#define RFH_RXF_DMA_RB_SIZE_20K	(0xB << RFH_RXF_DMA_RB_SIZE_POS)
++#define RFH_RXF_DMA_RB_SIZE_24K	(0xC << RFH_RXF_DMA_RB_SIZE_POS)
++#define RFH_RXF_DMA_RB_SIZE_28K	(0xD << RFH_RXF_DMA_RB_SIZE_POS)
++#define RFH_RXF_DMA_RB_SIZE_32K	(0xE << RFH_RXF_DMA_RB_SIZE_POS)
++/* RB Circular Buffer size:defines the table sizes in RBD units */
++#define RFH_RXF_DMA_RBDCB_SIZE_MASK (0x00F00000) /* bits 20-23 */
++#define RFH_RXF_DMA_RBDCB_SIZE_POS 20
++#define RFH_RXF_DMA_RBDCB_SIZE_8	(0x3 << RFH_RXF_DMA_RBDCB_SIZE_POS)
++#define RFH_RXF_DMA_RBDCB_SIZE_16	(0x4 << RFH_RXF_DMA_RBDCB_SIZE_POS)
++#define RFH_RXF_DMA_RBDCB_SIZE_32	(0x5 << RFH_RXF_DMA_RBDCB_SIZE_POS)
++#define RFH_RXF_DMA_RBDCB_SIZE_64	(0x7 << RFH_RXF_DMA_RBDCB_SIZE_POS)
++#define RFH_RXF_DMA_RBDCB_SIZE_128	(0x7 << RFH_RXF_DMA_RBDCB_SIZE_POS)
++#define RFH_RXF_DMA_RBDCB_SIZE_256	(0x8 << RFH_RXF_DMA_RBDCB_SIZE_POS)
++#define RFH_RXF_DMA_RBDCB_SIZE_512	(0x9 << RFH_RXF_DMA_RBDCB_SIZE_POS)
++#define RFH_RXF_DMA_RBDCB_SIZE_1024	(0xA << RFH_RXF_DMA_RBDCB_SIZE_POS)
++#define RFH_RXF_DMA_RBDCB_SIZE_2048	(0xB << RFH_RXF_DMA_RBDCB_SIZE_POS)
++#define RFH_RXF_DMA_MIN_RB_SIZE_MASK (0x03000000) /* bit 24-25 */
++#define RFH_RXF_DMA_MIN_RB_SIZE_POS	24
++#define RFH_RXF_DMA_MIN_RB_4_8	(3 << RFH_RXF_DMA_MIN_RB_SIZE_POS)
++#define RFH_RXF_DMA_SINGLE_FRAME_MASK (0x20000000) /* bit 29 */
++#define RFH_DMA_EN_MASK (0xC0000000) /* bits 30-31*/
++#define RFH_DMA_EN_ENABLE_VAL BIT(31)
++
++#define RFH_RXF_RXQ_ACTIVE 0xA0980C
++
++#define RFH_GEN_CFG	0xA09800
++#define RFH_GEN_CFG_DEFAULT_RXQ_NUM_MASK 0xF00
++#define RFH_GEN_CFG_SERVICE_DMA_SNOOP BIT(0)
++#define RFH_GEN_CFG_RFH_DMA_SNOOP BIT(1)
++#define DEFAULT_RXQ_NUM 8
++
++/* end of 9000 rx series registers */
++
+ /* TFDB  Area - TFDs buffer table */
+ #define FH_MEM_TFDIB_DRAM_ADDR_LSB_MSK      (0xFFFFFFFF)
+ #define FH_TFDIB_LOWER_BOUND       (FH_MEM_LOWER_BOUND + 0x900)
+@@ -434,6 +507,10 @@ static inline unsigned int FH_MEM_CBBC_Q
+  */
+ #define FH_TX_CHICKEN_BITS_SCD_AUTO_RETRY_EN	(0x00000002)
+ 
++#define MQ_RX_TABLE_SIZE		512
++#define MQ_RX_TABLE_MASK		(MQ_RX_TABLE_SIZE - 1)
++#define MQ_RX_POOL_SIZE			MQ_RX_TABLE_MASK
++
+ #define RX_QUEUE_SIZE                         256
+ #define RX_QUEUE_MASK                         255
+ #define RX_QUEUE_SIZE_LOG                     8
+--- a/drivers/net/wireless/iwlwifi/pcie/internal.h
++++ b/drivers/net/wireless/iwlwifi/pcie/internal.h
+@@ -56,7 +56,6 @@
+ #define RX_NUM_QUEUES 1
+ #define RX_POST_REQ_ALLOC 2
+ #define RX_CLAIM_REQ_ALLOC 8
+-#define RX_POOL_SIZE ((RX_CLAIM_REQ_ALLOC - RX_POST_REQ_ALLOC) * RX_NUM_QUEUES)
+ #define RX_PENDING_WATERMARK 16
+ 
+ struct iwl_host_cmd;
+@@ -64,9 +63,16 @@ struct iwl_host_cmd;
+ /*This file includes the declaration that are internal to the
+  * trans_pcie layer */
+ 
++/**
++ * struct iwl_rx_mem_buffer
++ * @page_dma: bus address of rxb page
++ * @page: driver's pointer to the rxb page
++ * @vid: index of this rxb in the global table
++ */
+ struct iwl_rx_mem_buffer {
+ 	dma_addr_t page_dma;
+ 	struct page *page;
++	u16 vid;
+ 	struct list_head list;
+ };
+ 
+@@ -90,8 +96,12 @@ struct isr_statistics {
+ 
+ /**
+  * struct iwl_rxq - Rx queue
+- * @bd: driver's pointer to buffer of receive buffer descriptors (rbd)
++ * @id: queue index
++ * @bd: driver's pointer to buffer of receive buffer descriptors (rbd).
++ *	Address size is 32 bit in pre-9000 devices and 64 bit in 9000 devices.
+  * @bd_dma: bus address of buffer of receive buffer descriptors (rbd)
++ * @ubd: driver's pointer to buffer of used receive buffer descriptors (rbd)
++ * @ubd_dma: physical address of buffer of used receive buffer descriptors (rbd)
+  * @read: Shared index to newest available Rx buffer
+  * @write: Shared index to oldest written Rx packet
+  * @free_count: Number of pre-allocated buffers in rx_free
+@@ -103,18 +113,22 @@ struct isr_statistics {
+  * @rb_stts: driver's pointer to receive buffer status
+  * @rb_stts_dma: bus address of receive buffer status
+  * @lock:
+- * @queue: actual rx queue
++ * @queue: actual rx queue. Not used for multi-rx queue.
+  *
+  * NOTE:  rx_free and rx_used are used as a FIFO for iwl_rx_mem_buffers
+  */
+ struct iwl_rxq {
+-	__le32 *bd;
++	int id;
++	void *bd;
+ 	dma_addr_t bd_dma;
++	__le32 *used_bd;
++	dma_addr_t used_bd_dma;
+ 	u32 read;
+ 	u32 write;
+ 	u32 free_count;
+ 	u32 used_count;
+ 	u32 write_actual;
++	u32 queue_size;
+ 	struct list_head rx_free;
+ 	struct list_head rx_used;
+ 	bool need_update;
+@@ -126,7 +140,6 @@ struct iwl_rxq {
+ 
+ /**
+  * struct iwl_rb_allocator - Rx allocator
+- * @pool: initial pool of allocator
+  * @req_pending: number of requests the allcator had not processed yet
+  * @req_ready: number of requests honored and ready for claiming
+  * @rbd_allocated: RBDs with pages allocated and ready to be handled to
+@@ -138,7 +151,6 @@ struct iwl_rxq {
+  * @rx_alloc: work struct for background calls
+  */
+ struct iwl_rb_allocator {
+-	struct iwl_rx_mem_buffer pool[RX_POOL_SIZE];
+ 	atomic_t req_pending;
+ 	atomic_t req_ready;
+ 	struct list_head rbd_allocated;
+@@ -297,6 +309,7 @@ struct iwl_tso_hdr_page {
+  * struct iwl_trans_pcie - PCIe transport specific data
+  * @rxq: all the RX queue data
+  * @rx_pool: initial pool of iwl_rx_mem_buffer for all the queues
++ * @global_table: table mapping received VID from hw to rxb
+  * @rba: allocator for RX replenishing
+  * @drv - pointer to iwl_drv
+  * @trans: pointer to the generic transport area
+@@ -324,7 +337,8 @@ struct iwl_tso_hdr_page {
+  */
+ struct iwl_trans_pcie {
+ 	struct iwl_rxq *rxq;
+-	struct iwl_rx_mem_buffer rx_pool[RX_QUEUE_SIZE];
++	struct iwl_rx_mem_buffer rx_pool[MQ_RX_POOL_SIZE];
++	struct iwl_rx_mem_buffer *global_table[MQ_RX_TABLE_SIZE];
+ 	struct iwl_rb_allocator rba;
+ 	struct iwl_trans *trans;
+ 	struct iwl_drv *drv;
+--- a/drivers/net/wireless/iwlwifi/pcie/rx.c
++++ b/drivers/net/wireless/iwlwifi/pcie/rx.c
+@@ -140,8 +140,8 @@
+  */
+ static int iwl_rxq_space(const struct iwl_rxq *rxq)
+ {
+-	/* Make sure RX_QUEUE_SIZE is a power of 2 */
+-	BUILD_BUG_ON(RX_QUEUE_SIZE & (RX_QUEUE_SIZE - 1));
++	/* Make sure rx queue size is a power of 2 */
++	WARN_ON(rxq->queue_size & (rxq->queue_size - 1));
+ 
+ 	/*
+ 	 * There can be up to (RX_QUEUE_SIZE - 1) free slots, to avoid ambiguity
+@@ -149,7 +149,7 @@ static int iwl_rxq_space(const struct iw
+ 	 * The following is equivalent to modulo by RX_QUEUE_SIZE and is well
+ 	 * defined for negative dividends.
+ 	 */
+-	return (rxq->read - rxq->write - 1) & (RX_QUEUE_SIZE - 1);
++	return (rxq->read - rxq->write - 1) & (rxq->queue_size - 1);
+ }
+ 
+ /*
+@@ -160,6 +160,12 @@ static inline __le32 iwl_pcie_dma_addr2r
+ 	return cpu_to_le32((u32)(dma_addr >> 8));
+ }
+ 
++static void iwl_pcie_write_prph_64(struct iwl_trans *trans, u64 ofs, u64 val)
++{
++	iwl_write_prph(trans, ofs, val & 0xffffffff);
++	iwl_write_prph(trans, ofs + 4, val >> 32);
++}
++
+ /*
+  * iwl_pcie_rx_stop - stops the Rx DMA
+  */
+@@ -200,7 +206,11 @@ static void iwl_pcie_rxq_inc_wr_ptr(stru
+ 	}
+ 
+ 	rxq->write_actual = round_down(rxq->write, 8);
+-	iwl_write32(trans, FH_RSCSR_CHNL0_WPTR, rxq->write_actual);
++	if (trans->cfg->mq_rx_supported)
++		iwl_write_prph(trans, RFH_Q_FRBDCB_WIDX(rxq->id),
++			       rxq->write_actual);
++	else
++		iwl_write32(trans, FH_RSCSR_CHNL0_WPTR, rxq->write_actual);
+ }
+ 
+ static void iwl_pcie_rxq_check_wrptr(struct iwl_trans *trans)
+@@ -220,6 +230,51 @@ static void iwl_pcie_rxq_check_wrptr(str
+ 	}
+ }
+ 
++static void iwl_pcie_rxq_mq_restock(struct iwl_trans *trans,
++				    struct iwl_rxq *rxq)
++{
++	struct iwl_rx_mem_buffer *rxb;
++
++	/*
++	 * If the device isn't enabled - no need to try to add buffers...
++	 * This can happen when we stop the device and still have an interrupt
++	 * pending. We stop the APM before we sync the interrupts because we
++	 * have to (see comment there). On the other hand, since the APM is
++	 * stopped, we cannot access the HW (in particular not prph).
++	 * So don't try to restock if the APM has been already stopped.
++	 */
++	if (!test_bit(STATUS_DEVICE_ENABLED, &trans->status))
++		return;
++
++	spin_lock(&rxq->lock);
++	while (rxq->free_count) {
++		__le64 *bd = (__le64 *)rxq->bd;
++
++		/* Get next free Rx buffer, remove from free list */
++		rxb = list_first_entry(&rxq->rx_free, struct iwl_rx_mem_buffer,
++				       list);
++		list_del(&rxb->list);
++
++		/* 12 first bits are expected to be empty */
++		WARN_ON(rxb->page_dma & DMA_BIT_MASK(12));
++		/* Point to Rx buffer via next RBD in circular buffer */
++		bd[rxq->write] = cpu_to_le64(rxb->page_dma | rxb->vid);
++		rxq->write = (rxq->write + 1) & MQ_RX_TABLE_MASK;
++		rxq->free_count--;
++	}
++	spin_unlock(&rxq->lock);
++
++	/*
++	 * If we've added more space for the firmware to place data, tell it.
++	 * Increment device's write pointer in multiples of 8.
++	 */
++	if (rxq->write_actual != (rxq->write & ~0x7)) {
++		spin_lock(&rxq->lock);
++		iwl_pcie_rxq_inc_wr_ptr(trans, rxq);
++		spin_unlock(&rxq->lock);
++	}
++}
++
+ /*
+  * iwl_pcie_rxq_restock - refill RX queue from pre-allocated pool
+  *
+@@ -248,6 +303,7 @@ static void iwl_pcie_rxq_restock(struct
+ 
+ 	spin_lock(&rxq->lock);
+ 	while ((iwl_rxq_space(rxq) > 0) && (rxq->free_count)) {
++		__le32 *bd = (__le32 *)rxq->bd;
+ 		/* The overwritten rxb must be a used one */
+ 		rxb = rxq->queue[rxq->write];
+ 		BUG_ON(rxb && rxb->page);
+@@ -258,7 +314,7 @@ static void iwl_pcie_rxq_restock(struct
+ 		list_del(&rxb->list);
+ 
+ 		/* Point to Rx buffer via next RBD in circular buffer */
+-		rxq->bd[rxq->write] = iwl_pcie_dma_addr2rbd_ptr(rxb->page_dma);
++		bd[rxq->write] = iwl_pcie_dma_addr2rbd_ptr(rxb->page_dma);
+ 		rxq->queue[rxq->write] = rxb;
+ 		rxq->write = (rxq->write + 1) & RX_QUEUE_MASK;
+ 		rxq->free_count--;
+@@ -362,10 +418,6 @@ static void iwl_pcie_rxq_alloc_rbs(struc
+ 			__free_pages(page, trans_pcie->rx_page_order);
+ 			return;
+ 		}
+-		/* dma address must be no more than 36 bits */
+-		BUG_ON(rxb->page_dma & ~DMA_BIT_MASK(36));
+-		/* and also 256 byte aligned! */
+-		BUG_ON(rxb->page_dma & DMA_BIT_MASK(8));
+ 
+ 		spin_lock(&rxq->lock);
+ 
+@@ -381,7 +433,7 @@ static void iwl_pcie_free_rbs_pool(struc
+ 	struct iwl_trans_pcie *trans_pcie = IWL_TRANS_GET_PCIE_TRANS(trans);
+ 	int i;
+ 
+-	for (i = 0; i < RX_QUEUE_SIZE; i++) {
++	for (i = 0; i < MQ_RX_POOL_SIZE; i++) {
+ 		if (!trans_pcie->rx_pool[i].page)
+ 			continue;
+ 		dma_unmap_page(trans->dev, trans_pcie->rx_pool[i].page_dma,
+@@ -455,10 +507,6 @@ static void iwl_pcie_rx_allocator(struct
+ 				__free_pages(page, trans_pcie->rx_page_order);
+ 				continue;
+ 			}
+-			/* dma address must be no more than 36 bits */
+-			BUG_ON(rxb->page_dma & ~DMA_BIT_MASK(36));
+-			/* and also 256 byte aligned! */
+-			BUG_ON(rxb->page_dma & DMA_BIT_MASK(8));
+ 
+ 			/* move the allocated entry to the out list */
+ 			list_move(&rxb->list, &local_allocated);
+@@ -542,6 +590,8 @@ static int iwl_pcie_rx_alloc(struct iwl_
+ 	struct iwl_rb_allocator *rba = &trans_pcie->rba;
+ 	struct device *dev = trans->dev;
+ 	int i;
++	int free_size = trans->cfg->mq_rx_supported ? sizeof(__le64) :
++						      sizeof(__le32);
+ 
+ 	if (WARN_ON(trans_pcie->rxq))
+ 		return -EINVAL;
+@@ -557,16 +607,30 @@ static int iwl_pcie_rx_alloc(struct iwl_
+ 		struct iwl_rxq *rxq = &trans_pcie->rxq[i];
+ 
+ 		spin_lock_init(&rxq->lock);
++		if (trans->cfg->mq_rx_supported)
++			rxq->queue_size = MQ_RX_TABLE_SIZE;
++		else
++			rxq->queue_size = RX_QUEUE_SIZE;
++
+ 		/*
+ 		 * Allocate the circular buffer of Read Buffer Descriptors
+ 		 * (RBDs)
+ 		 */
+ 		rxq->bd = dma_zalloc_coherent(dev,
+-				      sizeof(__le32) * RX_QUEUE_SIZE,
+-				      &rxq->bd_dma, GFP_KERNEL);
++					     free_size * rxq->queue_size,
++					     &rxq->bd_dma, GFP_KERNEL);
+ 		if (!rxq->bd)
+ 			goto err;
+ 
++		if (trans->cfg->mq_rx_supported) {
++			rxq->used_bd = dma_zalloc_coherent(dev,
++							   sizeof(__le32) *
++							   rxq->queue_size,
++							   &rxq->used_bd_dma,
++							   GFP_KERNEL);
++			if (!rxq->used_bd)
++				goto err;
++		}
+ 
+ 		/*Allocate the driver's pointer to receive buffer status */
+ 		rxq->rb_stts = dma_zalloc_coherent(dev, sizeof(*rxq->rb_stts),
+@@ -582,7 +646,7 @@ err:
+ 		struct iwl_rxq *rxq = &trans_pcie->rxq[i];
+ 
+ 		if (rxq->bd)
+-			dma_free_coherent(dev, sizeof(__le32) * RX_QUEUE_SIZE,
++			dma_free_coherent(dev, free_size * rxq->queue_size,
+ 					  rxq->bd, rxq->bd_dma);
+ 		rxq->bd_dma = 0;
+ 		rxq->bd = NULL;
+@@ -591,8 +655,15 @@ err:
+ 			dma_free_coherent(trans->dev,
+ 					  sizeof(struct iwl_rb_status),
+ 					  rxq->rb_stts, rxq->rb_stts_dma);
++
++		if (rxq->used_bd)
++			dma_free_coherent(dev, sizeof(__le32) * rxq->queue_size,
++					  rxq->used_bd, rxq->used_bd_dma);
++		rxq->used_bd_dma = 0;
++		rxq->used_bd = NULL;
+ 	}
+ 	kfree(trans_pcie->rxq);
++
+ 	return -ENOMEM;
+ }
+ 
+@@ -659,46 +730,82 @@ static void iwl_pcie_rx_hw_init(struct i
+ 		iwl_set_bit(trans, CSR_INT_COALESCING, IWL_HOST_INT_OPER_MODE);
+ }
+ 
+-static void iwl_pcie_rx_init_rxb_lists(struct iwl_rxq *rxq)
++static void iwl_pcie_rx_mq_hw_init(struct iwl_trans *trans, struct iwl_rxq *rxq)
+ {
+-	lockdep_assert_held(&rxq->lock);
++	struct iwl_trans_pcie *trans_pcie = IWL_TRANS_GET_PCIE_TRANS(trans);
++	u32 rb_size, enabled = 0;
++	int i;
+ 
+-	INIT_LIST_HEAD(&rxq->rx_free);
+-	INIT_LIST_HEAD(&rxq->rx_used);
+-	rxq->free_count = 0;
+-	rxq->used_count = 0;
+-}
++	switch (trans_pcie->rx_buf_size) {
++	case IWL_AMSDU_4K:
++		rb_size = RFH_RXF_DMA_RB_SIZE_4K;
++		break;
++	case IWL_AMSDU_8K:
++		rb_size = RFH_RXF_DMA_RB_SIZE_8K;
++		break;
++	case IWL_AMSDU_12K:
++		rb_size = RFH_RXF_DMA_RB_SIZE_12K;
++		break;
++	default:
++		WARN_ON(1);
++		rb_size = RFH_RXF_DMA_RB_SIZE_4K;
++	}
+ 
+-static void iwl_pcie_rx_init_rba(struct iwl_rb_allocator *rba)
+-{
+-	int i;
++	/* Stop Rx DMA */
++	iwl_write_prph(trans, RFH_RXF_DMA_CFG, 0);
++	/* disable free amd used rx queue operation */
++	iwl_write_prph(trans, RFH_RXF_RXQ_ACTIVE, 0);
+ 
+-	lockdep_assert_held(&rba->lock);
++	for (i = 0; i < trans->num_rx_queues; i++) {
++		/* Tell device where to find RBD free table in DRAM */
++		iwl_pcie_write_prph_64(trans, RFH_Q_FRBDCB_BA_LSB(i),
++				       (u64)(rxq->bd_dma));
++		/* Tell device where to find RBD used table in DRAM */
++		iwl_pcie_write_prph_64(trans, RFH_Q_URBDCB_BA_LSB(i),
++				       (u64)(rxq->used_bd_dma));
++		/* Tell device where in DRAM to update its Rx status */
++		iwl_pcie_write_prph_64(trans, RFH_Q_URBD_STTS_WPTR_LSB(i),
++				       rxq->rb_stts_dma);
++		/* Reset device indice tables */
++		iwl_write_prph(trans, RFH_Q_FRBDCB_WIDX(i), 0);
++		iwl_write_prph(trans, RFH_Q_FRBDCB_RIDX(i), 0);
++		iwl_write_prph(trans, RFH_Q_URBDCB_WIDX(i), 0);
+ 
+-	INIT_LIST_HEAD(&rba->rbd_allocated);
+-	INIT_LIST_HEAD(&rba->rbd_empty);
++		enabled |= BIT(i) | BIT(i + 16);
++	}
++
++	/* restock default queue */
++	iwl_pcie_rxq_mq_restock(trans, &trans_pcie->rxq[0]);
+ 
+-	for (i = 0; i < RX_POOL_SIZE; i++)
+-		list_add(&rba->pool[i].list, &rba->rbd_empty);
++	/*
++	 * Enable Rx DMA
++	 * Single frame mode
++	 * Rx buffer size 4 or 8k or 12k
++	 * Min RB size 4 or 8
++	 * 512 RBDs
++	 */
++	iwl_write_prph(trans, RFH_RXF_DMA_CFG,
++		       RFH_DMA_EN_ENABLE_VAL |
++		       rb_size | RFH_RXF_DMA_SINGLE_FRAME_MASK |
++		       RFH_RXF_DMA_MIN_RB_4_8 |
++		       RFH_RXF_DMA_RBDCB_SIZE_512);
++
++	iwl_write_prph(trans, RFH_GEN_CFG, RFH_GEN_CFG_RFH_DMA_SNOOP |
++					  RFH_GEN_CFG_SERVICE_DMA_SNOOP);
++	iwl_write_prph(trans, RFH_RXF_RXQ_ACTIVE, enabled);
++
++	/* Set interrupt coalescing timer to default (2048 usecs) */
++	iwl_write8(trans, CSR_INT_COALESCING, IWL_HOST_INT_TIMEOUT_DEF);
+ }
+ 
+-static void iwl_pcie_rx_free_rba(struct iwl_trans *trans)
++static void iwl_pcie_rx_init_rxb_lists(struct iwl_rxq *rxq)
+ {
+-	struct iwl_trans_pcie *trans_pcie = IWL_TRANS_GET_PCIE_TRANS(trans);
+-	struct iwl_rb_allocator *rba = &trans_pcie->rba;
+-	int i;
+-
+-	lockdep_assert_held(&rba->lock);
++	lockdep_assert_held(&rxq->lock);
+ 
+-	for (i = 0; i < RX_POOL_SIZE; i++) {
+-		if (!rba->pool[i].page)
+-			continue;
+-		dma_unmap_page(trans->dev, rba->pool[i].page_dma,
+-			       PAGE_SIZE << trans_pcie->rx_page_order,
+-			       DMA_FROM_DEVICE);
+-		__free_pages(rba->pool[i].page, trans_pcie->rx_page_order);
+-		rba->pool[i].page = NULL;
+-	}
++	INIT_LIST_HEAD(&rxq->rx_free);
++	INIT_LIST_HEAD(&rxq->rx_used);
++	rxq->free_count = 0;
++	rxq->used_count = 0;
+ }
+ 
+ int iwl_pcie_rx_init(struct iwl_trans *trans)
+@@ -706,7 +813,7 @@ int iwl_pcie_rx_init(struct iwl_trans *t
+ 	struct iwl_trans_pcie *trans_pcie = IWL_TRANS_GET_PCIE_TRANS(trans);
+ 	struct iwl_rxq *def_rxq;
+ 	struct iwl_rb_allocator *rba = &trans_pcie->rba;
+-	int i, err;
++	int i, err, num_rbds, allocator_pool_size;
+ 
+ 	if (!trans_pcie->rxq) {
+ 		err = iwl_pcie_rx_alloc(trans);
+@@ -722,9 +829,8 @@ int iwl_pcie_rx_init(struct iwl_trans *t
+ 	spin_lock(&rba->lock);
+ 	atomic_set(&rba->req_pending, 0);
+ 	atomic_set(&rba->req_ready, 0);
+-	/* free all first - we might be reconfigured for a different size */
+-	iwl_pcie_rx_free_rba(trans);
+-	iwl_pcie_rx_init_rba(rba);
++	INIT_LIST_HEAD(&rba->rbd_allocated);
++	INIT_LIST_HEAD(&rba->rbd_empty);
+ 	spin_unlock(&rba->lock);
+ 
+ 	/* free all first - we might be reconfigured for a different size */
+@@ -736,6 +842,8 @@ int iwl_pcie_rx_init(struct iwl_trans *t
+ 	for (i = 0; i < trans->num_rx_queues; i++) {
+ 		struct iwl_rxq *rxq = &trans_pcie->rxq[i];
+ 
++		rxq->id = i;
++
+ 		spin_lock(&rxq->lock);
+ 		/*
+ 		 * Set read write pointer to reflect that we have processed
+@@ -752,13 +860,29 @@ int iwl_pcie_rx_init(struct iwl_trans *t
+ 		spin_unlock(&rxq->lock);
+ 	}
+ 
+-	/* move the entire pool to the default queue ownership */
+-	for (i = 0; i < RX_QUEUE_SIZE; i++)
+-		list_add(&trans_pcie->rx_pool[i].list, &def_rxq->rx_used);
++	/* move the pool to the default queue and allocator ownerships */
++	num_rbds = trans->cfg->mq_rx_supported ?
++		     MQ_RX_POOL_SIZE : RX_QUEUE_SIZE;
++	allocator_pool_size = trans->num_rx_queues *
++		(RX_CLAIM_REQ_ALLOC - RX_POST_REQ_ALLOC);
++	for (i = 0; i < num_rbds; i++) {
++		struct iwl_rx_mem_buffer *rxb = &trans_pcie->rx_pool[i];
++
++		if (i < allocator_pool_size)
++			list_add(&rxb->list, &rba->rbd_empty);
++		else
++			list_add(&rxb->list, &def_rxq->rx_used);
++		trans_pcie->global_table[i] = rxb;
++		rxb->vid = (u16)i;
++	}
+ 
+ 	iwl_pcie_rxq_alloc_rbs(trans, GFP_KERNEL, def_rxq);
+-	iwl_pcie_rxq_restock(trans, def_rxq);
+-	iwl_pcie_rx_hw_init(trans, def_rxq);
++	if (trans->cfg->mq_rx_supported) {
++		iwl_pcie_rx_mq_hw_init(trans, def_rxq);
++	} else {
++		iwl_pcie_rxq_restock(trans, def_rxq);
++		iwl_pcie_rx_hw_init(trans, def_rxq);
++	}
+ 
+ 	spin_lock(&def_rxq->lock);
+ 	iwl_pcie_rxq_inc_wr_ptr(trans, def_rxq);
+@@ -771,6 +895,8 @@ void iwl_pcie_rx_free(struct iwl_trans *
+ {
+ 	struct iwl_trans_pcie *trans_pcie = IWL_TRANS_GET_PCIE_TRANS(trans);
+ 	struct iwl_rb_allocator *rba = &trans_pcie->rba;
++	int free_size = trans->cfg->mq_rx_supported ? sizeof(__le64) :
++					      sizeof(__le32);
+ 	int i;
+ 
+ 	/*
+@@ -788,10 +914,6 @@ void iwl_pcie_rx_free(struct iwl_trans *
+ 		rba->alloc_wq = NULL;
+ 	}
+ 
+-	spin_lock(&rba->lock);
+-	iwl_pcie_rx_free_rba(trans);
+-	spin_unlock(&rba->lock);
+-
+ 	iwl_pcie_free_rbs_pool(trans);
+ 
+ 	for (i = 0; i < trans->num_rx_queues; i++) {
+@@ -799,7 +921,7 @@ void iwl_pcie_rx_free(struct iwl_trans *
+ 
+ 		if (rxq->bd)
+ 			dma_free_coherent(trans->dev,
+-					  sizeof(__le32) * RX_QUEUE_SIZE,
++					  free_size * rxq->queue_size,
+ 					  rxq->bd, rxq->bd_dma);
+ 		rxq->bd_dma = 0;
+ 		rxq->bd = NULL;
+@@ -811,8 +933,14 @@ void iwl_pcie_rx_free(struct iwl_trans *
+ 		else
+ 			IWL_DEBUG_INFO(trans,
+ 				       "Free rxq->rb_stts which is NULL\n");
+-	}
+ 
++		if (rxq->used_bd)
++			dma_free_coherent(trans->dev,
++					  sizeof(__le32) * rxq->queue_size,
++					  rxq->used_bd, rxq->used_bd_dma);
++		rxq->used_bd_dma = 0;
++		rxq->used_bd = NULL;
++	}
+ 	kfree(trans_pcie->rxq);
+ }
+ 
+@@ -1009,16 +1137,26 @@ restart:
+ 	while (i != r) {
+ 		struct iwl_rx_mem_buffer *rxb;
+ 
+-		if (unlikely(rxq->used_count == RX_QUEUE_SIZE / 2))
++		if (unlikely(rxq->used_count == rxq->queue_size / 2))
+ 			emergency = true;
+ 
+-		rxb = rxq->queue[i];
+-		rxq->queue[i] = NULL;
++		if (trans->cfg->mq_rx_supported) {
++			/*
++			 * used_bd is a 32 bit but only 12 are used to retrieve
++			 * the vid
++			 */
++			u16 vid = (u16)le32_to_cpu(rxq->used_bd[i]);
++
++			rxb = trans_pcie->global_table[vid];
++		} else {
++			rxb = rxq->queue[i];
++			rxq->queue[i] = NULL;
++		}
+ 
+ 		IWL_DEBUG_RX(trans, "rxbuf: HW = %d, SW = %d\n", r, i);
+ 		iwl_pcie_rx_handle_rb(trans, rxq, rxb, emergency);
+ 
+-		i = (i + 1) & RX_QUEUE_MASK;
++		i = (i + 1) & (rxq->queue_size - 1);
+ 
+ 		/* If we have RX_CLAIM_REQ_ALLOC released rx buffers -
+ 		 * try to claim the pre-allocated buffers from the allocator */
+@@ -1056,7 +1194,7 @@ restart:
+ 			count++;
+ 			if (count == 8) {
+ 				count = 0;
+-				if (rxq->used_count < RX_QUEUE_SIZE / 3)
++				if (rxq->used_count < rxq->queue_size / 3)
+ 					emergency = false;
+ 				spin_unlock(&rxq->lock);
+ 				iwl_pcie_rxq_alloc_rbs(trans, GFP_ATOMIC, rxq);
+@@ -1071,7 +1209,10 @@ restart:
+ 		if (rxq->free_count >=  RX_CLAIM_REQ_ALLOC) {
+ 			rxq->read = i;
+ 			spin_unlock(&rxq->lock);
+-			iwl_pcie_rxq_restock(trans, rxq);
++			if (trans->cfg->mq_rx_supported)
++				iwl_pcie_rxq_mq_restock(trans, rxq);
++			else
++				iwl_pcie_rxq_restock(trans, rxq);
+ 			goto restart;
+ 		}
+ 	}
+--- a/drivers/net/wireless/iwlwifi/pcie/trans.c
++++ b/drivers/net/wireless/iwlwifi/pcie/trans.c
+@@ -2403,7 +2403,8 @@ static struct iwl_trans_dump_data
+ 	u32 len, num_rbs;
+ 	u32 monitor_len;
+ 	int i, ptr;
+-	bool dump_rbs = test_bit(STATUS_FW_ERROR, &trans->status);
++	bool dump_rbs = test_bit(STATUS_FW_ERROR, &trans->status) &&
++			!trans->cfg->mq_rx_supported;
+ 
+ 	/* transport dump header */
+ 	len = sizeof(*dump_data);
+@@ -2562,7 +2563,7 @@ struct iwl_trans *iwl_trans_pcie_alloc(s
+ 	struct iwl_trans_pcie *trans_pcie;
+ 	struct iwl_trans *trans;
+ 	u16 pci_cmd;
+-	int ret;
++	int ret, addr_size;
+ 
+ 	trans = iwl_trans_alloc(sizeof(struct iwl_trans_pcie),
+ 				&pdev->dev, cfg, &trans_ops_pcie, 0);
+@@ -2600,11 +2601,17 @@ struct iwl_trans *iwl_trans_pcie_alloc(s
+ 				       PCIE_LINK_STATE_CLKPM);
+ 	}
+ 
++	if (cfg->mq_rx_supported)
++		addr_size = 64;
++	else
++		addr_size = 36;
++
+ 	pci_set_master(pdev);
+ 
+-	ret = pci_set_dma_mask(pdev, DMA_BIT_MASK(36));
++	ret = pci_set_dma_mask(pdev, DMA_BIT_MASK(addr_size));
+ 	if (!ret)
+-		ret = pci_set_consistent_dma_mask(pdev, DMA_BIT_MASK(36));
++		ret = pci_set_consistent_dma_mask(pdev,
++						  DMA_BIT_MASK(addr_size));
+ 	if (ret) {
+ 		ret = pci_set_dma_mask(pdev, DMA_BIT_MASK(32));
+ 		if (!ret)

@@ -13,14 +13,14 @@ Signed-off-by: Filipe Manana <fdmanana@suse.com>
 fdmanana: fix for running qgroup sanity tests
 ---
  fs/btrfs/ctree.h   |    7 ++-----
- fs/btrfs/disk-io.c |    9 ++++-----
+ fs/btrfs/disk-io.c |    7 +++----
  fs/btrfs/inode.c   |    2 +-
  fs/btrfs/super.c   |    2 +-
- 4 files changed, 8 insertions(+), 12 deletions(-)
+ 4 files changed, 7 insertions(+), 11 deletions(-)
 
 --- a/fs/btrfs/ctree.h
 +++ b/fs/btrfs/ctree.h
-@@ -1936,11 +1936,8 @@ struct btrfs_root {
+@@ -1190,11 +1190,8 @@ struct btrfs_root {
  	 * protected by inode_lock
  	 */
  	struct radix_tree_root delayed_nodes_tree;
@@ -36,7 +36,7 @@ fdmanana: fix for running qgroup sanity tests
  	atomic_t refs;
 --- a/fs/btrfs/disk-io.c
 +++ b/fs/btrfs/disk-io.c
-@@ -1289,7 +1289,6 @@ static void __setup_root(u32 nodesize, u
+@@ -1297,7 +1297,6 @@ static void __setup_root(u32 nodesize, u
  	else
  		root->defrag_trans_start = 0;
  	root->root_key.objectid = objectid;
@@ -44,25 +44,16 @@ fdmanana: fix for running qgroup sanity tests
  
  	spin_lock_init(&root->root_item_lock);
  }
-@@ -1585,7 +1584,7 @@ int btrfs_init_fs_root(struct btrfs_root
+@@ -1594,7 +1593,7 @@ int btrfs_init_fs_root(struct btrfs_root
  	spin_lock_init(&root->ino_cache_lock);
  	init_waitqueue_head(&root->ino_cache_wait);
  
 -	ret = get_anon_bdev(&root->anon_dev);
 +	ret = insert_anon_sbdev(root->fs_info->sb, &root->sbdev);
  	if (ret)
- 		goto free_writers;
+ 		goto fail;
  
-@@ -1604,7 +1603,7 @@ int btrfs_init_fs_root(struct btrfs_root
- 	return 0;
- 
- free_root_dev:
--	free_anon_bdev(root->anon_dev);
-+	remove_anon_sbdev(&root->sbdev);
- free_writers:
- 	btrfs_free_subvolume_writers(root->subv_writers);
- fail:
-@@ -3691,8 +3690,8 @@ static void free_fs_root(struct btrfs_ro
+@@ -3711,8 +3710,8 @@ static void free_fs_root(struct btrfs_ro
  	WARN_ON(!RB_EMPTY_ROOT(&root->inode_tree));
  	btrfs_free_block_rsv(root, root->orphan_block_rsv);
  	root->orphan_block_rsv = NULL;
@@ -75,7 +66,7 @@ fdmanana: fix for running qgroup sanity tests
  	free_extent_buffer(root->node);
 --- a/fs/btrfs/inode.c
 +++ b/fs/btrfs/inode.c
-@@ -9371,7 +9371,7 @@ static int btrfs_getattr(struct vfsmount
+@@ -9411,7 +9411,7 @@ static int btrfs_getattr(struct vfsmount
  	u32 blocksize = inode->i_sb->s_blocksize;
  
  	generic_fillattr(inode, stat);
@@ -86,7 +77,7 @@ fdmanana: fix for running qgroup sanity tests
  	delalloc_bytes = BTRFS_I(inode)->delalloc_bytes;
 --- a/fs/btrfs/super.c
 +++ b/fs/btrfs/super.c
-@@ -2211,7 +2211,7 @@ static int btrfs_show_devname(struct seq
+@@ -2223,7 +2223,7 @@ static int btrfs_show_devname(struct seq
  
  static dev_t btrfs_get_inode_dev(const struct inode *inode)
  {

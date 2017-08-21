@@ -1,7 +1,8 @@
 From: NeilBrown <neilb@suse.com>
 Subject: avoid including "mountproto=" with no protocol in /proc/mounts
 References: bsc#1019260
-Patch-mainline: Not yet, upstream wants more
+Git-commit: 6f6e3c09c0dde7fbaf36f02ffa97bbb13fecd637
+Patch-mainline: v4.11
 
 When NFS detects a transition to a different filesystem on the server
 it creates an intervening mountpoint so local clients can see that it

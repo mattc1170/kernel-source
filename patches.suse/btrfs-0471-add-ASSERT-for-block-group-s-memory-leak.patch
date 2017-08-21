@@ -1,0 +1,38 @@
+From: Liu Bo <bo.li.liu@oracle.com>
+Date: Wed, 20 Jul 2016 17:33:44 -0700
+Patch-mainline: 4.8
+Git-commit: f3bca8028bd934e96257b8bd1143e6474fe98465
+References: bsc#1012452
+Subject: [PATCH] Btrfs: add ASSERT for block group's memory leak
+
+This adds several ASSERT()' s to report memory leak of block group cache.
+
+Signed-off-by: Liu Bo <bo.li.liu@oracle.com>
+Reviewed-by: David Sterba <dsterba@suse.com>
+Signed-off-by: David Sterba <dsterba@suse.com>
+Signed-off-by: Chris Mason <clm@fb.com>
+---
+ fs/btrfs/extent-tree.c |    5 +++++
+ 1 file changed, 5 insertions(+)
+
+--- a/fs/btrfs/extent-tree.c
++++ b/fs/btrfs/extent-tree.c
+@@ -9929,6 +9929,7 @@ void btrfs_put_block_group_cache(struct
+ 		block_group->iref = 0;
+ 		block_group->inode = NULL;
+ 		spin_unlock(&block_group->lock);
++		ASSERT(block_group->io_ctl.inode == NULL);
+ 		iput(inode);
+ 		last = block_group->key.objectid + block_group->key.offset;
+ 		btrfs_put_block_group(block_group);
+@@ -9986,6 +9987,10 @@ int btrfs_free_block_groups(struct btrfs
+ 			free_excluded_extents(info->extent_root, block_group);
+ 
+ 		btrfs_remove_free_space_cache(block_group);
++		ASSERT(list_empty(&block_group->dirty_list));
++		ASSERT(list_empty(&block_group->io_list));
++		ASSERT(list_empty(&block_group->bg_list));
++		ASSERT(atomic_read(&block_group->count) == 1);
+ 		btrfs_put_block_group(block_group);
+ 
+ 		spin_lock(&info->block_group_cache_lock);

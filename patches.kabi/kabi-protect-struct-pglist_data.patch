@@ -1,0 +1,38 @@
+From: Jiri Slaby <jslaby@suse.cz>
+Subject: kABI: protect struct pglist_data
+Patch-mainline: never, kabi
+References: kabi
+
+In 4.4.72, commit cb1fb15c8355eb8118fd9f223aea12574985aad3 (mm: consider
+memblock reservations for deferred memory initialization sizing),
+upstream commit 864b9a393dcb5aed09b8fd31b9bbda0fdda99374 added
+static_init_size to struct pglist_data.  This indeed changed the layout
+of the structure and the kABI checker now complains.
+
+Given the structure has suse_kabi_padding and the commit above added an
+unsigned long, let us use the padding and protect the change by
+__GENKSYMS__.
+
+Signed-off-by: Jiri Slaby <jslaby@suse.cz>
+---
+ include/linux/mmzone.h |    7 ++++++-
+ 1 file changed, 6 insertions(+), 1 deletion(-)
+
+--- a/include/linux/mmzone.h
++++ b/include/linux/mmzone.h
+@@ -701,9 +701,14 @@ typedef struct pglist_data {
+ 	 * is the first PFN that needs to be initialised.
+ 	 */
+ 	unsigned long first_deferred_pfn;
++#ifdef __GENKSYMS__
++	void *suse_kabi_padding;
++#else
+ 	unsigned long static_init_size;
+-#endif /* CONFIG_DEFERRED_STRUCT_PAGE_INIT */
++#endif
++#else /* CONFIG_DEFERRED_STRUCT_PAGE_INIT */
+ 	void *suse_kabi_padding;
++#endif /* CONFIG_DEFERRED_STRUCT_PAGE_INIT */
+ } pg_data_t;
+ 
+ #define node_present_pages(nid)	(NODE_DATA(nid)->node_present_pages)

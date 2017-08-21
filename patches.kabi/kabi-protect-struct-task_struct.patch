@@ -10,14 +10,37 @@ task_struct and it indeed changed kABI of literally everything.
 
 Use suse_kabi_padding to cover the newly added member.
 
+===
+
+In 4.4.63, commit 3144d81a77352a3934ff0f60dccb38dbf462da39 (cgroup,
+kthread: close race window where new kthreads can be migrated to
+non-root cgroups), upstream commit
+77f88796cee819b9c4562b0b6b44691b3b7755b1 added one bit to struct
+task_struct and it indeed changed kABI of literally everything.
+
+Protect the change by __GENKSYMS__ as the bit is folded into the
+previous bits and it changes task_struct struct in no way.
+
 Signed-off-by: Jiri Slaby <jslaby@suse.cz>
 ---
- include/linux/sched.h |    5 ++++-
- 1 file changed, 4 insertions(+), 1 deletion(-)
+ include/linux/sched.h |    7 ++++++-
+ 1 file changed, 6 insertions(+), 1 deletion(-)
 
 --- a/include/linux/sched.h
 +++ b/include/linux/sched.h
-@@ -1542,7 +1542,6 @@ struct task_struct {
+@@ -1478,9 +1478,11 @@ struct task_struct {
+ 	unsigned brk_randomized:1;
+ #endif
+ #ifdef CONFIG_CGROUPS
++#ifndef __GENKSYMS__
+ 	/* disallow userland-initiated cgroup migration */
+ 	unsigned no_cgroup_migration:1;
+ #endif
++#endif
+ 
+ 	unsigned long atomic_flags; /* Flags needing atomic access. */
+ 
+@@ -1546,7 +1548,6 @@ struct task_struct {
  	struct list_head cpu_timers[3];
  
  /* process credentials */
@@ -25,7 +48,7 @@ Signed-off-by: Jiri Slaby <jslaby@suse.cz>
  	const struct cred __rcu *real_cred; /* objective and real subjective task
  					 * credentials (COW) */
  	const struct cred __rcu *cred;	/* effective (overridable) subjective task
-@@ -1819,7 +1818,11 @@ struct task_struct {
+@@ -1823,7 +1824,11 @@ struct task_struct {
  #endif
  	int pagefault_disabled;
  

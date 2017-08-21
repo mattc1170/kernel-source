@@ -1,0 +1,48 @@
+From 4133828c76c3f358f05818ddfec1506274159256 Mon Sep 17 00:00:00 2001
+From: Kirtika Ruchandani <kirtika.ruchandani@gmail.com>
+Date: Wed, 23 Nov 2016 17:27:10 -0800
+Subject: [PATCH] mwifiex: Remove unused 'bcd_usb' variable
+Mime-version: 1.0
+Content-type: text/plain; charset=UTF-8
+Content-transfer-encoding: 8bit
+Git-commit: 4133828c76c3f358f05818ddfec1506274159256
+Patch-mainline: 4.10-rc1
+References: bsc#1031717
+
+mwifiex_usb_probe() defines and sets bcd_usb but does not use it,
+Compiling with W=1 gives the following warning, fix it.
+Mwifiex/usb.c: In function ‘mwifiex_usb_probe’:
+mwifiex/usb.c:383:41: warning: variable ‘bcd_usb’ set but not used [-Wunused-but-set-variable]
+
+The unused variable seems to be present since 4daffe354366 which introduced
+mwifiex_usb_probe().
+
+Fixes: 4daffe354366 ("mwifiex: add support for Marvell USB8797 chipset")
+Cc: Amitkumar Karwar <akarwar@marvell.com>
+Signed-off-by: Kirtika Ruchandani <kirtika@google.com>
+Signed-off-by: Kalle Valo <kvalo@codeaurora.org>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/mwifiex/usb.c |    3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
+
+--- a/drivers/net/wireless/mwifiex/usb.c
++++ b/drivers/net/wireless/mwifiex/usb.c
+@@ -380,7 +380,7 @@ static int mwifiex_usb_probe(struct usb_
+ 	struct usb_endpoint_descriptor *epd;
+ 	int ret, i;
+ 	struct usb_card_rec *card;
+-	u16 id_vendor, id_product, bcd_device, bcd_usb;
++	u16 id_vendor, id_product, bcd_device;
+ 
+ 	card = kzalloc(sizeof(struct usb_card_rec), GFP_KERNEL);
+ 	if (!card)
+@@ -389,7 +389,6 @@ static int mwifiex_usb_probe(struct usb_
+ 	id_vendor = le16_to_cpu(udev->descriptor.idVendor);
+ 	id_product = le16_to_cpu(udev->descriptor.idProduct);
+ 	bcd_device = le16_to_cpu(udev->descriptor.bcdDevice);
+-	bcd_usb = le16_to_cpu(udev->descriptor.bcdUSB);
+ 	pr_debug("info: VID/PID = %X/%X, Boot2 version = %X\n",
+ 		 id_vendor, id_product, bcd_device);
+ 

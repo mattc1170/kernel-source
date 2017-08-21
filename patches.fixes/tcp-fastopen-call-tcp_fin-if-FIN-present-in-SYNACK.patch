@@ -1,0 +1,70 @@
+From: Eric Dumazet <edumazet@google.com>
+Date: Sat, 6 Feb 2016 11:16:28 -0800
+Subject: tcp: fastopen: call tcp_fin() if FIN present in SYNACK
+Patch-mainline: v4.6-rc1
+Git-commit: e3e17b773bfe45462b7f3fae20c550025975cb13
+References: bsc#1042286
+
+When we acknowledge a FIN, it is not enough to ack the sequence number
+and queue the skb into receive queue. We also have to call tcp_fin()
+to properly update socket state and send proper poll() notifications.
+
+It seems we also had the problem if we received a SYN packet with the
+FIN flag set, but it does not seem an urgent issue, as no known
+implementation can do that.
+
+Fixes: 61d2bcae99f6 ("tcp: fastopen: accept data/FIN present in SYNACK message")
+Signed-off-by: Eric Dumazet <edumazet@google.com>
+Cc: Yuchung Cheng <ycheng@google.com>
+Cc: Neal Cardwell <ncardwell@google.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+Acked-by: Michal Kubecek <mkubecek@suse.cz>
+
+---
+ include/net/tcp.h       | 1 +
+ net/ipv4/tcp_fastopen.c | 3 +++
+ net/ipv4/tcp_input.c    | 2 +-
+ 3 files changed, 5 insertions(+), 1 deletion(-)
+
+diff --git a/include/net/tcp.h b/include/net/tcp.h
+index c494cab5428d..dc7df299fe20 100644
+--- a/include/net/tcp.h
++++ b/include/net/tcp.h
+@@ -570,6 +570,7 @@ void tcp_rearm_rto(struct sock *sk);
+ void tcp_synack_rtt_meas(struct sock *sk, struct request_sock *req);
+ void tcp_reset(struct sock *sk);
+ void tcp_skb_mark_lost_uncond_verify(struct tcp_sock *tp, struct sk_buff *skb);
++void tcp_fin(struct sock *sk);
+ 
+ /* tcp_timer.c */
+ void tcp_init_xmit_timers(struct sock *);
+diff --git a/net/ipv4/tcp_fastopen.c b/net/ipv4/tcp_fastopen.c
+index 3225dd2ec3ab..da7f8f4f4f8b 100644
+--- a/net/ipv4/tcp_fastopen.c
++++ b/net/ipv4/tcp_fastopen.c
+@@ -151,6 +151,9 @@ void tcp_fastopen_add_skb(struct sock *sk, struct sk_buff *skb)
+ 	 * as we certainly are not changing upper 32bit value (0)
+ 	 */
+ 	tp->bytes_received = skb->len;
++
++	if (TCP_SKB_CB(skb)->tcp_flags & TCPHDR_FIN)
++		tcp_fin(sk);
+ }
+ 
+ static struct sock *tcp_fastopen_create_child(struct sock *sk,
+diff --git a/net/ipv4/tcp_input.c b/net/ipv4/tcp_input.c
+index f421811eaab5..52de87a0bd3f 100644
+--- a/net/ipv4/tcp_input.c
++++ b/net/ipv4/tcp_input.c
+@@ -4006,7 +4006,7 @@ void tcp_reset(struct sock *sk)
+  *
+  *	If we are in FINWAIT-2, a received FIN moves us to TIME-WAIT.
+  */
+-static void tcp_fin(struct sock *sk)
++void tcp_fin(struct sock *sk)
+ {
+ 	struct tcp_sock *tp = tcp_sk(sk);
+ 
+-- 
+2.13.0
+

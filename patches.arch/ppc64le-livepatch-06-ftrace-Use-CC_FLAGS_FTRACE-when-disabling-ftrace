@@ -1,0 +1,70 @@
+From: Torsten Duwe <duwe@lst.de>
+Subject: powerpc/ftrace: Use $(CC_FLAGS_FTRACE) when disabling ftrace
+Git-commit: 9a7841ae8d6ce9b7a7cf879c9968fcf4c9545563
+Patch-mainline: v4.6
+References: FATE#322421
+
+ powerpc/ftrace: Use $(CC_FLAGS_FTRACE) when disabling ftrace
+
+Rather than open-coding -pg whereever we want to disable ftrace, use the
+existing $(CC_FLAGS_FTRACE) variable.
+
+This has the advantage that it will work in future when we use a
+different set of flags to enable ftrace.
+
+Signed-off-by: Torsten Duwe <duwe@suse.de>
+Signed-off-by: Michael Ellerman <mpe@ellerman.id.au>
+
+diff --git a/arch/powerpc/kernel/Makefile b/arch/powerpc/kernel/Makefile
+index 794f22a..2da380f 100644
+--- a/arch/powerpc/kernel/Makefile
++++ b/arch/powerpc/kernel/Makefile
+@@ -16,14 +16,14 @@ endif
+ 
+ ifdef CONFIG_FUNCTION_TRACER
+ # Do not trace early boot code
+-CFLAGS_REMOVE_cputable.o = -pg -mno-sched-epilog
+-CFLAGS_REMOVE_prom_init.o = -pg -mno-sched-epilog
+-CFLAGS_REMOVE_btext.o = -pg -mno-sched-epilog
+-CFLAGS_REMOVE_prom.o = -pg -mno-sched-epilog
++CFLAGS_REMOVE_cputable.o = -mno-sched-epilog $(CC_FLAGS_FTRACE)
++CFLAGS_REMOVE_prom_init.o = -mno-sched-epilog $(CC_FLAGS_FTRACE)
++CFLAGS_REMOVE_btext.o = -mno-sched-epilog $(CC_FLAGS_FTRACE)
++CFLAGS_REMOVE_prom.o = -mno-sched-epilog $(CC_FLAGS_FTRACE)
+ # do not trace tracer code
+-CFLAGS_REMOVE_ftrace.o = -pg -mno-sched-epilog
++CFLAGS_REMOVE_ftrace.o = -mno-sched-epilog $(CC_FLAGS_FTRACE)
+ # timers used by tracing
+-CFLAGS_REMOVE_time.o = -pg -mno-sched-epilog
++CFLAGS_REMOVE_time.o = -mno-sched-epilog $(CC_FLAGS_FTRACE)
+ endif
+ 
+ obj-y				:= cputable.o ptrace.o syscalls.o \
+diff --git a/arch/powerpc/lib/Makefile b/arch/powerpc/lib/Makefile
+index a47e142..4513d1a 100644
+--- a/arch/powerpc/lib/Makefile
++++ b/arch/powerpc/lib/Makefile
+@@ -6,8 +6,8 @@ subdir-ccflags-$(CONFIG_PPC_WERROR) := -Werror
+ 
+ ccflags-$(CONFIG_PPC64)	:= $(NO_MINIMAL_TOC)
+ 
+-CFLAGS_REMOVE_code-patching.o = -pg
+-CFLAGS_REMOVE_feature-fixups.o = -pg
++CFLAGS_REMOVE_code-patching.o = $(CC_FLAGS_FTRACE)
++CFLAGS_REMOVE_feature-fixups.o = $(CC_FLAGS_FTRACE)
+ 
+ obj-y += string.o alloc.o crtsavres.o ppc_ksyms.o code-patching.o \
+ 	 feature-fixups.o
+diff --git a/arch/powerpc/platforms/powermac/Makefile b/arch/powerpc/platforms/powermac/Makefile
+index 52c6ce1..1eb7b45 100644
+--- a/arch/powerpc/platforms/powermac/Makefile
++++ b/arch/powerpc/platforms/powermac/Makefile
+@@ -2,7 +2,7 @@ CFLAGS_bootx_init.o  		+= -fPIC
+ 
+ ifdef CONFIG_FUNCTION_TRACER
+ # Do not trace early boot code
+-CFLAGS_REMOVE_bootx_init.o = -pg -mno-sched-epilog
++CFLAGS_REMOVE_bootx_init.o = -mno-sched-epilog $(CC_FLAGS_FTRACE)
+ endif
+ 
+ obj-y				+= pic.o setup.o time.o feature.o pci.o \

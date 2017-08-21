@@ -1,0 +1,32 @@
+From: Jiri Slaby <jslaby@suse.cz>
+Subject: kABI: protect struct snd_fw_async_midi_port
+Patch-mainline: never, kabi
+References: kabi
+
+In 4.4.66, commit 8cbaf11c5026abed0f772b6478795c7170d70171 (ALSA:
+firewire-lib: fix inappropriate assignment between signed/unsigned
+type), upstream commit dfb00a56935186171abb5280b3407c3f910011f1 changed
+type of one member in struct snd_fw_async_midi_port.
+
+The structure is internal to sound/firewire, so we can just protect the
+change by __GENKSYMS__.
+
+Signed-off-by: Jiri Slaby <jslaby@suse.cz>
+---
+ sound/firewire/lib.h |    4 ++++
+ 1 file changed, 4 insertions(+)
+
+--- a/sound/firewire/lib.h
++++ b/sound/firewire/lib.h
+@@ -42,7 +42,11 @@ struct snd_fw_async_midi_port {
+ 
+ 	struct snd_rawmidi_substream *substream;
+ 	snd_fw_async_midi_port_fill fill;
++#ifdef __GENKSYMS__
++	unsigned int consume_bytes;
++#else
+ 	int consume_bytes;
++#endif
+ };
+ 
+ int snd_fw_async_midi_port_init(struct snd_fw_async_midi_port *port,

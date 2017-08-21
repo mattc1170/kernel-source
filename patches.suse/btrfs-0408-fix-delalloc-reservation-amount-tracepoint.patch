@@ -1,0 +1,31 @@
+From: Josef Bacik <jbacik@fb.com>
+Date: Fri, 25 Mar 2016 13:25:55 -0400
+Patch-mainline: 4.8
+Git-commit: f485c9ee32531794e39631437fcedc82d5b8e650
+References: bsc#1012452
+Subject: [PATCH] Btrfs: fix delalloc reservation amount tracepoint
+
+We can sometimes drop the reservation we had for our inode, so we need to remove
+that amount from to_reserve so that our tracepoint reports a valid amount of
+space.
+
+Signed-off-by: Josef Bacik <jbacik@fb.com>
+Signed-off-by: David Sterba <dsterba@suse.com>
+---
+ fs/btrfs/extent-tree.c |    4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+--- a/fs/btrfs/extent-tree.c
++++ b/fs/btrfs/extent-tree.c
+@@ -5987,8 +5987,10 @@ int btrfs_delalloc_reserve_metadata(stru
+ 
+ 	spin_lock(&BTRFS_I(inode)->lock);
+ 	if (test_and_set_bit(BTRFS_INODE_DELALLOC_META_RESERVED,
+-			     &BTRFS_I(inode)->runtime_flags))
++			     &BTRFS_I(inode)->runtime_flags)) {
++		to_reserve -= btrfs_calc_trans_metadata_size(root, 1);
+ 		release_extra = true;
++	}
+ 	BTRFS_I(inode)->reserved_extents += nr_extents;
+ 	spin_unlock(&BTRFS_I(inode)->lock);
+ 

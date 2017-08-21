@@ -1,0 +1,33 @@
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+Date: Sun, 19 Feb 2017 16:08:29 -0500
+Subject: [PATCH] NFSv4: Fix the underestimation of delegation XDR space
+ reservation
+Git-commit: 5a1f6d9e9b803003271b40b67786ff46fa4eda01
+Patch-mainline: v4.11
+References: git-fixes
+
+Account for the "space_limit" field in struct open_write_delegation4.
+
+Fixes: 2cebf82883f4 ("NFSv4: Fix the underestimate of NFSv4 open request size")
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+Acked-by: NeilBrown <neilb@suse.com>
+
+---
+ fs/nfs/nfs4xdr.c |    2 ++
+ 1 file changed, 2 insertions(+)
+
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -168,8 +168,10 @@ static int nfs4_stat_to_errno(int);
+ 				open_owner_id_maxsz + \
+ 				encode_opentype_maxsz + \
+ 				encode_claim_null_maxsz)
++#define decode_space_limit_maxsz	(3)
+ #define decode_ace_maxsz	(3 + nfs4_owner_maxsz)
+ #define decode_delegation_maxsz	(1 + decode_stateid_maxsz + 1 + \
++				decode_space_limit_maxsz + \
+ 				decode_ace_maxsz)
+ #define decode_change_info_maxsz	(5)
+ #define decode_open_maxsz	(op_decode_hdr_maxsz + \

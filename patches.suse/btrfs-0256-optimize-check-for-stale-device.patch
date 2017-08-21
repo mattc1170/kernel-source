@@ -1,0 +1,29 @@
+From: Anand Jain <anand.jain@oracle.com>
+Date: Sat, 13 Feb 2016 10:01:40 +0800
+Patch-mainline: 4.7
+Git-commit: 02feae3c5525771878461b90edd2ba38fd3f5359
+References: bsc#1012452
+Subject: [PATCH] btrfs: optimize check for stale device
+
+Optimize check for stale device to only be checked when there is device
+added or changed. If there is no update to the device, there is no need
+to call btrfs_free_stale_device().
+
+Signed-off-by: Anand Jain <anand.jain@oracle.com>
+Signed-off-by: David Sterba <dsterba@suse.com>
+---
+ fs/btrfs/volumes.c |    3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+--- a/fs/btrfs/volumes.c
++++ b/fs/btrfs/volumes.c
+@@ -699,7 +699,8 @@ static noinline int device_list_add(cons
+ 	 * if there is new btrfs on an already registered device,
+ 	 * then remove the stale device entry.
+ 	 */
+-	btrfs_free_stale_device(device);
++	if (ret > 0)
++		btrfs_free_stale_device(device);
+ 
+ 	*fs_devices_ret = fs_devices;
+ 

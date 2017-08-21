@@ -1,0 +1,661 @@
+From 7848505416be4e96af14c3387775622d26a13146 Mon Sep 17 00:00:00 2001
+From: Sara Sharon <sara.sharon@intel.com>
+Date: Mon, 14 Dec 2015 17:44:11 +0200
+Subject: [PATCH] iwlwifi: pcie: add infrastructure for multi-queue rx
+Git-commit: 7848505416be4e96af14c3387775622d26a13146
+Patch-mainline: 4.6-rc1
+References: FATE#321353, FATE#323335
+
+The 9000 series devices will support multi rx queues.
+Current code has one static rx queue - change it to allocate
+a number of queues per the device capability (pre-9000 devices
+have the number of rx queues set to one).
+
+Subsequent generalizations are:
+
+Change the code to access an explicit numbered rx queue only
+when the queue number is known - when handling interrupt, when
+accessing the default queue and when iterating the queues.
+The rest of the functions will receive the rx queue as a pointer.
+
+Generalize the warning in allocation failure to consider the
+allocator status instead of a single rx queue status.
+
+Move the rx initial pool of memory buffers to be shared among
+all the queues and allocated to the default queue on init.
+
+Signed-off-by: Sara Sharon <sara.sharon@intel.com>
+Signed-off-by: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/iwlwifi/pcie/internal.h |    8 
+ drivers/net/wireless/iwlwifi/pcie/rx.c       |  264 ++++++++++++++-------------
+ drivers/net/wireless/iwlwifi/pcie/trans.c    |   71 ++++---
+ 3 files changed, 190 insertions(+), 153 deletions(-)
+
+--- a/drivers/net/wireless/iwlwifi/pcie/internal.h
++++ b/drivers/net/wireless/iwlwifi/pcie/internal.h
+@@ -57,7 +57,7 @@
+ #define RX_POST_REQ_ALLOC 2
+ #define RX_CLAIM_REQ_ALLOC 8
+ #define RX_POOL_SIZE ((RX_CLAIM_REQ_ALLOC - RX_POST_REQ_ALLOC) * RX_NUM_QUEUES)
+-#define RX_LOW_WATERMARK 8
++#define RX_PENDING_WATERMARK 16
+ 
+ struct iwl_host_cmd;
+ 
+@@ -103,7 +103,6 @@ struct isr_statistics {
+  * @rb_stts: driver's pointer to receive buffer status
+  * @rb_stts_dma: bus address of receive buffer status
+  * @lock:
+- * @pool: initial pool of iwl_rx_mem_buffer for the queue
+  * @queue: actual rx queue
+  *
+  * NOTE:  rx_free and rx_used are used as a FIFO for iwl_rx_mem_buffers
+@@ -122,7 +121,6 @@ struct iwl_rxq {
+ 	struct iwl_rb_status *rb_stts;
+ 	dma_addr_t rb_stts_dma;
+ 	spinlock_t lock;
+-	struct iwl_rx_mem_buffer pool[RX_QUEUE_SIZE];
+ 	struct iwl_rx_mem_buffer *queue[RX_QUEUE_SIZE];
+ };
+ 
+@@ -298,6 +296,7 @@ struct iwl_tso_hdr_page {
+ /**
+  * struct iwl_trans_pcie - PCIe transport specific data
+  * @rxq: all the RX queue data
++ * @rx_pool: initial pool of iwl_rx_mem_buffer for all the queues
+  * @rba: allocator for RX replenishing
+  * @drv - pointer to iwl_drv
+  * @trans: pointer to the generic transport area
+@@ -324,7 +323,8 @@ struct iwl_tso_hdr_page {
+  * @fw_mon_size: size of the buffer for the firmware monitor
+  */
+ struct iwl_trans_pcie {
+-	struct iwl_rxq rxq;
++	struct iwl_rxq *rxq;
++	struct iwl_rx_mem_buffer rx_pool[RX_QUEUE_SIZE];
+ 	struct iwl_rb_allocator rba;
+ 	struct iwl_trans *trans;
+ 	struct iwl_drv *drv;
+--- a/drivers/net/wireless/iwlwifi/pcie/rx.c
++++ b/drivers/net/wireless/iwlwifi/pcie/rx.c
+@@ -173,10 +173,9 @@ int iwl_pcie_rx_stop(struct iwl_trans *t
+ /*
+  * iwl_pcie_rxq_inc_wr_ptr - Update the write pointer for the RX queue
+  */
+-static void iwl_pcie_rxq_inc_wr_ptr(struct iwl_trans *trans)
++static void iwl_pcie_rxq_inc_wr_ptr(struct iwl_trans *trans,
++				    struct iwl_rxq *rxq)
+ {
+-	struct iwl_trans_pcie *trans_pcie = IWL_TRANS_GET_PCIE_TRANS(trans);
+-	struct iwl_rxq *rxq = &trans_pcie->rxq;
+ 	u32 reg;
+ 
+ 	lockdep_assert_held(&rxq->lock);
+@@ -207,18 +206,18 @@ static void iwl_pcie_rxq_inc_wr_ptr(stru
+ static void iwl_pcie_rxq_check_wrptr(struct iwl_trans *trans)
+ {
+ 	struct iwl_trans_pcie *trans_pcie = IWL_TRANS_GET_PCIE_TRANS(trans);
+-	struct iwl_rxq *rxq = &trans_pcie->rxq;
+-
+-	spin_lock(&rxq->lock);
+-
+-	if (!rxq->need_update)
+-		goto exit_unlock;
++	int i;
+ 
+-	iwl_pcie_rxq_inc_wr_ptr(trans);
+-	rxq->need_update = false;
++	for (i = 0; i < trans->num_rx_queues; i++) {
++		struct iwl_rxq *rxq = &trans_pcie->rxq[i];
+ 
+- exit_unlock:
+-	spin_unlock(&rxq->lock);
++		if (!rxq->need_update)
++			continue;
++		spin_lock(&rxq->lock);
++		iwl_pcie_rxq_inc_wr_ptr(trans, rxq);
++		rxq->need_update = false;
++		spin_unlock(&rxq->lock);
++	}
+ }
+ 
+ /*
+@@ -232,10 +231,8 @@ static void iwl_pcie_rxq_check_wrptr(str
+  * also updates the memory address in the firmware to reference the new
+  * target buffer.
+  */
+-static void iwl_pcie_rxq_restock(struct iwl_trans *trans)
++static void iwl_pcie_rxq_restock(struct iwl_trans *trans, struct iwl_rxq *rxq)
+ {
+-	struct iwl_trans_pcie *trans_pcie = IWL_TRANS_GET_PCIE_TRANS(trans);
+-	struct iwl_rxq *rxq = &trans_pcie->rxq;
+ 	struct iwl_rx_mem_buffer *rxb;
+ 
+ 	/*
+@@ -272,7 +269,7 @@ static void iwl_pcie_rxq_restock(struct
+ 	 * Increment device's write pointer in multiples of 8. */
+ 	if (rxq->write_actual != (rxq->write & ~0x7)) {
+ 		spin_lock(&rxq->lock);
+-		iwl_pcie_rxq_inc_wr_ptr(trans);
++		iwl_pcie_rxq_inc_wr_ptr(trans, rxq);
+ 		spin_unlock(&rxq->lock);
+ 	}
+ }
+@@ -285,13 +282,9 @@ static struct page *iwl_pcie_rx_alloc_pa
+ 					   gfp_t priority)
+ {
+ 	struct iwl_trans_pcie *trans_pcie = IWL_TRANS_GET_PCIE_TRANS(trans);
+-	struct iwl_rxq *rxq = &trans_pcie->rxq;
+ 	struct page *page;
+ 	gfp_t gfp_mask = priority;
+ 
+-	if (rxq->free_count > RX_LOW_WATERMARK)
+-		gfp_mask |= __GFP_NOWARN;
+-
+ 	if (trans_pcie->rx_page_order > 0)
+ 		gfp_mask |= __GFP_COMP;
+ 
+@@ -301,16 +294,13 @@ static struct page *iwl_pcie_rx_alloc_pa
+ 		if (net_ratelimit())
+ 			IWL_DEBUG_INFO(trans, "alloc_pages failed, order: %d\n",
+ 				       trans_pcie->rx_page_order);
+-		/* Issue an error if the hardware has consumed more than half
+-		 * of its free buffer list and we don't have enough
+-		 * pre-allocated buffers.
++		/*
++		 * Issue an error if we don't have enough pre-allocated
++		  * buffers.
+ `		 */
+-		if (rxq->free_count <= RX_LOW_WATERMARK &&
+-		    iwl_rxq_space(rxq) > (RX_QUEUE_SIZE / 2) &&
+-		    net_ratelimit())
++		if (!(gfp_mask & __GFP_NOWARN) && net_ratelimit())
+ 			IWL_CRIT(trans,
+-				 "Failed to alloc_pages with GFP_KERNEL. Only %u free buffers remaining.\n",
+-				 rxq->free_count);
++				 "Failed to alloc_pages\n");
+ 		return NULL;
+ 	}
+ 	return page;
+@@ -325,10 +315,10 @@ static struct page *iwl_pcie_rx_alloc_pa
+  * iwl_pcie_rxq_restock. The latter function will update the HW to use the newly
+  * allocated buffers.
+  */
+-static void iwl_pcie_rxq_alloc_rbs(struct iwl_trans *trans, gfp_t priority)
++static void iwl_pcie_rxq_alloc_rbs(struct iwl_trans *trans, gfp_t priority,
++				   struct iwl_rxq *rxq)
+ {
+ 	struct iwl_trans_pcie *trans_pcie = IWL_TRANS_GET_PCIE_TRANS(trans);
+-	struct iwl_rxq *rxq = &trans_pcie->rxq;
+ 	struct iwl_rx_mem_buffer *rxb;
+ 	struct page *page;
+ 
+@@ -386,41 +376,24 @@ static void iwl_pcie_rxq_alloc_rbs(struc
+ 	}
+ }
+ 
+-static void iwl_pcie_rxq_free_rbs(struct iwl_trans *trans)
++static void iwl_pcie_free_rbs_pool(struct iwl_trans *trans)
+ {
+ 	struct iwl_trans_pcie *trans_pcie = IWL_TRANS_GET_PCIE_TRANS(trans);
+-	struct iwl_rxq *rxq = &trans_pcie->rxq;
+ 	int i;
+ 
+-	lockdep_assert_held(&rxq->lock);
+-
+ 	for (i = 0; i < RX_QUEUE_SIZE; i++) {
+-		if (!rxq->pool[i].page)
++		if (!trans_pcie->rx_pool[i].page)
+ 			continue;
+-		dma_unmap_page(trans->dev, rxq->pool[i].page_dma,
++		dma_unmap_page(trans->dev, trans_pcie->rx_pool[i].page_dma,
+ 			       PAGE_SIZE << trans_pcie->rx_page_order,
+ 			       DMA_FROM_DEVICE);
+-		__free_pages(rxq->pool[i].page, trans_pcie->rx_page_order);
+-		rxq->pool[i].page = NULL;
++		__free_pages(trans_pcie->rx_pool[i].page,
++			     trans_pcie->rx_page_order);
++		trans_pcie->rx_pool[i].page = NULL;
+ 	}
+ }
+ 
+ /*
+- * iwl_pcie_rx_replenish - Move all used buffers from rx_used to rx_free
+- *
+- * When moving to rx_free an page is allocated for the slot.
+- *
+- * Also restock the Rx queue via iwl_pcie_rxq_restock.
+- * This is called only during initialization
+- */
+-static void iwl_pcie_rx_replenish(struct iwl_trans *trans)
+-{
+-	iwl_pcie_rxq_alloc_rbs(trans, GFP_KERNEL);
+-
+-	iwl_pcie_rxq_restock(trans);
+-}
+-
+-/*
+  * iwl_pcie_rx_allocator - Allocates pages in the background for RX queues
+  *
+  * Allocates for each received request 8 pages
+@@ -444,6 +417,11 @@ static void iwl_pcie_rx_allocator(struct
+ 	while (pending) {
+ 		int i;
+ 		struct list_head local_allocated;
++		gfp_t gfp_mask = GFP_KERNEL;
++
++		/* Do not post a warning if there are only a few requests */
++		if (pending < RX_PENDING_WATERMARK)
++			gfp_mask |= __GFP_NOWARN;
+ 
+ 		INIT_LIST_HEAD(&local_allocated);
+ 
+@@ -463,7 +441,7 @@ static void iwl_pcie_rx_allocator(struct
+ 			BUG_ON(rxb->page);
+ 
+ 			/* Alloc a new receive buffer */
+-			page = iwl_pcie_rx_alloc_page(trans, GFP_KERNEL);
++			page = iwl_pcie_rx_alloc_page(trans, gfp_mask);
+ 			if (!page)
+ 				continue;
+ 			rxb->page = page;
+@@ -561,38 +539,60 @@ static void iwl_pcie_rx_allocator_work(s
+ static int iwl_pcie_rx_alloc(struct iwl_trans *trans)
+ {
+ 	struct iwl_trans_pcie *trans_pcie = IWL_TRANS_GET_PCIE_TRANS(trans);
+-	struct iwl_rxq *rxq = &trans_pcie->rxq;
+ 	struct iwl_rb_allocator *rba = &trans_pcie->rba;
+ 	struct device *dev = trans->dev;
++	int i;
+ 
+-	memset(&trans_pcie->rxq, 0, sizeof(trans_pcie->rxq));
++	if (WARN_ON(trans_pcie->rxq))
++		return -EINVAL;
++
++	trans_pcie->rxq = kcalloc(trans->num_rx_queues, sizeof(struct iwl_rxq),
++				  GFP_KERNEL);
++	if (!trans_pcie->rxq)
++		return -EINVAL;
+ 
+-	spin_lock_init(&rxq->lock);
+ 	spin_lock_init(&rba->lock);
+ 
+-	if (WARN_ON(rxq->bd || rxq->rb_stts))
+-		return -EINVAL;
++	for (i = 0; i < trans->num_rx_queues; i++) {
++		struct iwl_rxq *rxq = &trans_pcie->rxq[i];
+ 
+-	/* Allocate the circular buffer of Read Buffer Descriptors (RBDs) */
+-	rxq->bd = dma_zalloc_coherent(dev, sizeof(__le32) * RX_QUEUE_SIZE,
++		spin_lock_init(&rxq->lock);
++		/*
++		 * Allocate the circular buffer of Read Buffer Descriptors
++		 * (RBDs)
++		 */
++		rxq->bd = dma_zalloc_coherent(dev,
++				      sizeof(__le32) * RX_QUEUE_SIZE,
+ 				      &rxq->bd_dma, GFP_KERNEL);
+-	if (!rxq->bd)
+-		goto err_bd;
++		if (!rxq->bd)
++			goto err;
+ 
+-	/*Allocate the driver's pointer to receive buffer status */
+-	rxq->rb_stts = dma_zalloc_coherent(dev, sizeof(*rxq->rb_stts),
+-					   &rxq->rb_stts_dma, GFP_KERNEL);
+-	if (!rxq->rb_stts)
+-		goto err_rb_stts;
+ 
++		/*Allocate the driver's pointer to receive buffer status */
++		rxq->rb_stts = dma_zalloc_coherent(dev, sizeof(*rxq->rb_stts),
++						   &rxq->rb_stts_dma,
++						   GFP_KERNEL);
++		if (!rxq->rb_stts)
++			goto err;
++	}
+ 	return 0;
+ 
+-err_rb_stts:
+-	dma_free_coherent(dev, sizeof(__le32) * RX_QUEUE_SIZE,
+-			  rxq->bd, rxq->bd_dma);
+-	rxq->bd_dma = 0;
+-	rxq->bd = NULL;
+-err_bd:
++err:
++	for (i = 0; i < trans->num_rx_queues; i++) {
++		struct iwl_rxq *rxq = &trans_pcie->rxq[i];
++
++		if (rxq->bd)
++			dma_free_coherent(dev, sizeof(__le32) * RX_QUEUE_SIZE,
++					  rxq->bd, rxq->bd_dma);
++		rxq->bd_dma = 0;
++		rxq->bd = NULL;
++
++		if (rxq->rb_stts)
++			dma_free_coherent(trans->dev,
++					  sizeof(struct iwl_rb_status),
++					  rxq->rb_stts, rxq->rb_stts_dma);
++	}
++	kfree(trans_pcie->rxq);
+ 	return -ENOMEM;
+ }
+ 
+@@ -661,17 +661,12 @@ static void iwl_pcie_rx_hw_init(struct i
+ 
+ static void iwl_pcie_rx_init_rxb_lists(struct iwl_rxq *rxq)
+ {
+-	int i;
+-
+ 	lockdep_assert_held(&rxq->lock);
+ 
+ 	INIT_LIST_HEAD(&rxq->rx_free);
+ 	INIT_LIST_HEAD(&rxq->rx_used);
+ 	rxq->free_count = 0;
+ 	rxq->used_count = 0;
+-
+-	for (i = 0; i < RX_QUEUE_SIZE; i++)
+-		list_add(&rxq->pool[i].list, &rxq->rx_used);
+ }
+ 
+ static void iwl_pcie_rx_init_rba(struct iwl_rb_allocator *rba)
+@@ -709,15 +704,16 @@ static void iwl_pcie_rx_free_rba(struct
+ int iwl_pcie_rx_init(struct iwl_trans *trans)
+ {
+ 	struct iwl_trans_pcie *trans_pcie = IWL_TRANS_GET_PCIE_TRANS(trans);
+-	struct iwl_rxq *rxq = &trans_pcie->rxq;
++	struct iwl_rxq *def_rxq;
+ 	struct iwl_rb_allocator *rba = &trans_pcie->rba;
+ 	int i, err;
+ 
+-	if (!rxq->bd) {
++	if (!trans_pcie->rxq) {
+ 		err = iwl_pcie_rx_alloc(trans);
+ 		if (err)
+ 			return err;
+ 	}
++	def_rxq = trans_pcie->rxq;
+ 	if (!rba->alloc_wq)
+ 		rba->alloc_wq = alloc_workqueue("rb_allocator",
+ 						WQ_HIGHPRI | WQ_UNBOUND, 1);
+@@ -731,29 +727,42 @@ int iwl_pcie_rx_init(struct iwl_trans *t
+ 	iwl_pcie_rx_init_rba(rba);
+ 	spin_unlock(&rba->lock);
+ 
+-	spin_lock(&rxq->lock);
+-
+ 	/* free all first - we might be reconfigured for a different size */
+-	iwl_pcie_rxq_free_rbs(trans);
+-	iwl_pcie_rx_init_rxb_lists(rxq);
++	iwl_pcie_free_rbs_pool(trans);
+ 
+ 	for (i = 0; i < RX_QUEUE_SIZE; i++)
+-		rxq->queue[i] = NULL;
++		def_rxq->queue[i] = NULL;
+ 
+-	/* Set us so that we have processed and used all buffers, but have
+-	 * not restocked the Rx queue with fresh buffers */
+-	rxq->read = rxq->write = 0;
+-	rxq->write_actual = 0;
+-	memset(rxq->rb_stts, 0, sizeof(*rxq->rb_stts));
+-	spin_unlock(&rxq->lock);
++	for (i = 0; i < trans->num_rx_queues; i++) {
++		struct iwl_rxq *rxq = &trans_pcie->rxq[i];
+ 
+-	iwl_pcie_rx_replenish(trans);
++		spin_lock(&rxq->lock);
++		/*
++		 * Set read write pointer to reflect that we have processed
++		 * and used all buffers, but have not restocked the Rx queue
++		 * with fresh buffers
++		 */
++		rxq->read = 0;
++		rxq->write = 0;
++		rxq->write_actual = 0;
++		memset(rxq->rb_stts, 0, sizeof(*rxq->rb_stts));
+ 
+-	iwl_pcie_rx_hw_init(trans, rxq);
++		iwl_pcie_rx_init_rxb_lists(rxq);
+ 
+-	spin_lock(&rxq->lock);
+-	iwl_pcie_rxq_inc_wr_ptr(trans);
+-	spin_unlock(&rxq->lock);
++		spin_unlock(&rxq->lock);
++	}
++
++	/* move the entire pool to the default queue ownership */
++	for (i = 0; i < RX_QUEUE_SIZE; i++)
++		list_add(&trans_pcie->rx_pool[i].list, &def_rxq->rx_used);
++
++	iwl_pcie_rxq_alloc_rbs(trans, GFP_KERNEL, def_rxq);
++	iwl_pcie_rxq_restock(trans, def_rxq);
++	iwl_pcie_rx_hw_init(trans, def_rxq);
++
++	spin_lock(&def_rxq->lock);
++	iwl_pcie_rxq_inc_wr_ptr(trans, def_rxq);
++	spin_unlock(&def_rxq->lock);
+ 
+ 	return 0;
+ }
+@@ -761,12 +770,14 @@ int iwl_pcie_rx_init(struct iwl_trans *t
+ void iwl_pcie_rx_free(struct iwl_trans *trans)
+ {
+ 	struct iwl_trans_pcie *trans_pcie = IWL_TRANS_GET_PCIE_TRANS(trans);
+-	struct iwl_rxq *rxq = &trans_pcie->rxq;
+ 	struct iwl_rb_allocator *rba = &trans_pcie->rba;
++	int i;
+ 
+-	/*if rxq->bd is NULL, it means that nothing has been allocated,
+-	 * exit now */
+-	if (!rxq->bd) {
++	/*
++	 * if rxq is NULL, it means that nothing has been allocated,
++	 * exit now
++	 */
++	if (!trans_pcie->rxq) {
+ 		IWL_DEBUG_INFO(trans, "Free NULL rx context\n");
+ 		return;
+ 	}
+@@ -781,23 +792,28 @@ void iwl_pcie_rx_free(struct iwl_trans *
+ 	iwl_pcie_rx_free_rba(trans);
+ 	spin_unlock(&rba->lock);
+ 
+-	spin_lock(&rxq->lock);
+-	iwl_pcie_rxq_free_rbs(trans);
+-	spin_unlock(&rxq->lock);
++	iwl_pcie_free_rbs_pool(trans);
++
++	for (i = 0; i < trans->num_rx_queues; i++) {
++		struct iwl_rxq *rxq = &trans_pcie->rxq[i];
++
++		if (rxq->bd)
++			dma_free_coherent(trans->dev,
++					  sizeof(__le32) * RX_QUEUE_SIZE,
++					  rxq->bd, rxq->bd_dma);
++		rxq->bd_dma = 0;
++		rxq->bd = NULL;
++
++		if (rxq->rb_stts)
++			dma_free_coherent(trans->dev,
++					  sizeof(struct iwl_rb_status),
++					  rxq->rb_stts, rxq->rb_stts_dma);
++		else
++			IWL_DEBUG_INFO(trans,
++				       "Free rxq->rb_stts which is NULL\n");
++	}
+ 
+-	dma_free_coherent(trans->dev, sizeof(__le32) * RX_QUEUE_SIZE,
+-			  rxq->bd, rxq->bd_dma);
+-	rxq->bd_dma = 0;
+-	rxq->bd = NULL;
+-
+-	if (rxq->rb_stts)
+-		dma_free_coherent(trans->dev,
+-				  sizeof(struct iwl_rb_status),
+-				  rxq->rb_stts, rxq->rb_stts_dma);
+-	else
+-		IWL_DEBUG_INFO(trans, "Free rxq->rb_stts which is NULL\n");
+-	rxq->rb_stts_dma = 0;
+-	rxq->rb_stts = NULL;
++	kfree(trans_pcie->rxq);
+ }
+ 
+ /*
+@@ -841,11 +857,11 @@ static void iwl_pcie_rx_reuse_rbd(struct
+ }
+ 
+ static void iwl_pcie_rx_handle_rb(struct iwl_trans *trans,
++				struct iwl_rxq *rxq,
+ 				struct iwl_rx_mem_buffer *rxb,
+ 				bool emergency)
+ {
+ 	struct iwl_trans_pcie *trans_pcie = IWL_TRANS_GET_PCIE_TRANS(trans);
+-	struct iwl_rxq *rxq = &trans_pcie->rxq;
+ 	struct iwl_txq *txq = &trans_pcie->txq[trans_pcie->cmd_queue];
+ 	bool page_stolen = false;
+ 	int max_len = PAGE_SIZE << trans_pcie->rx_page_order;
+@@ -975,7 +991,7 @@ static void iwl_pcie_rx_handle_rb(struct
+ static void iwl_pcie_rx_handle(struct iwl_trans *trans)
+ {
+ 	struct iwl_trans_pcie *trans_pcie = IWL_TRANS_GET_PCIE_TRANS(trans);
+-	struct iwl_rxq *rxq = &trans_pcie->rxq;
++	struct iwl_rxq *rxq = &trans_pcie->rxq[0];
+ 	u32 r, i, j, count = 0;
+ 	bool emergency = false;
+ 
+@@ -1000,7 +1016,7 @@ restart:
+ 		rxq->queue[i] = NULL;
+ 
+ 		IWL_DEBUG_RX(trans, "rxbuf: HW = %d, SW = %d\n", r, i);
+-		iwl_pcie_rx_handle_rb(trans, rxb, emergency);
++		iwl_pcie_rx_handle_rb(trans, rxq, rxb, emergency);
+ 
+ 		i = (i + 1) & RX_QUEUE_MASK;
+ 
+@@ -1043,7 +1059,7 @@ restart:
+ 				if (rxq->used_count < RX_QUEUE_SIZE / 3)
+ 					emergency = false;
+ 				spin_unlock(&rxq->lock);
+-				iwl_pcie_rxq_alloc_rbs(trans, GFP_ATOMIC);
++				iwl_pcie_rxq_alloc_rbs(trans, GFP_ATOMIC, rxq);
+ 				spin_lock(&rxq->lock);
+ 			}
+ 		}
+@@ -1055,7 +1071,7 @@ restart:
+ 		if (rxq->free_count >=  RX_CLAIM_REQ_ALLOC) {
+ 			rxq->read = i;
+ 			spin_unlock(&rxq->lock);
+-			iwl_pcie_rxq_restock(trans);
++			iwl_pcie_rxq_restock(trans, rxq);
+ 			goto restart;
+ 		}
+ 	}
+@@ -1077,7 +1093,7 @@ restart:
+ 	 * will be restocked by the next call of iwl_pcie_rxq_restock.
+ 	 */
+ 	if (unlikely(emergency && count))
+-		iwl_pcie_rxq_alloc_rbs(trans, GFP_ATOMIC);
++		iwl_pcie_rxq_alloc_rbs(trans, GFP_ATOMIC, rxq);
+ 
+ 	if (trans_pcie->napi.poll)
+ 		napi_gro_flush(&trans_pcie->napi, false);
+--- a/drivers/net/wireless/iwlwifi/pcie/trans.c
++++ b/drivers/net/wireless/iwlwifi/pcie/trans.c
+@@ -2001,29 +2001,48 @@ static ssize_t iwl_dbgfs_rx_queue_read(s
+ {
+ 	struct iwl_trans *trans = file->private_data;
+ 	struct iwl_trans_pcie *trans_pcie = IWL_TRANS_GET_PCIE_TRANS(trans);
+-	struct iwl_rxq *rxq = &trans_pcie->rxq;
+-	char buf[256];
+-	int pos = 0;
+-	const size_t bufsz = sizeof(buf);
++	char *buf;
++	int pos = 0, i, ret;
++	size_t bufsz = sizeof(buf);
+ 
+-	pos += scnprintf(buf + pos, bufsz - pos, "read: %u\n",
+-						rxq->read);
+-	pos += scnprintf(buf + pos, bufsz - pos, "write: %u\n",
+-						rxq->write);
+-	pos += scnprintf(buf + pos, bufsz - pos, "write_actual: %u\n",
+-						rxq->write_actual);
+-	pos += scnprintf(buf + pos, bufsz - pos, "need_update: %d\n",
+-						rxq->need_update);
+-	pos += scnprintf(buf + pos, bufsz - pos, "free_count: %u\n",
+-						rxq->free_count);
+-	if (rxq->rb_stts) {
+-		pos += scnprintf(buf + pos, bufsz - pos, "closed_rb_num: %u\n",
+-			 le16_to_cpu(rxq->rb_stts->closed_rb_num) &  0x0FFF);
+-	} else {
+-		pos += scnprintf(buf + pos, bufsz - pos,
+-					"closed_rb_num: Not Allocated\n");
++	bufsz = sizeof(char) * 121 * trans->num_rx_queues;
++
++	if (!trans_pcie->rxq)
++		return -EAGAIN;
++
++	buf = kzalloc(bufsz, GFP_KERNEL);
++	if (!buf)
++		return -ENOMEM;
++
++	for (i = 0; i < trans->num_rx_queues && pos < bufsz; i++) {
++		struct iwl_rxq *rxq = &trans_pcie->rxq[i];
++
++		pos += scnprintf(buf + pos, bufsz - pos, "queue#: %2d\n",
++				 i);
++		pos += scnprintf(buf + pos, bufsz - pos, "\tread: %u\n",
++				 rxq->read);
++		pos += scnprintf(buf + pos, bufsz - pos, "\twrite: %u\n",
++				 rxq->write);
++		pos += scnprintf(buf + pos, bufsz - pos, "\twrite_actual: %u\n",
++				 rxq->write_actual);
++		pos += scnprintf(buf + pos, bufsz - pos, "\tneed_update: %2d\n",
++				 rxq->need_update);
++		pos += scnprintf(buf + pos, bufsz - pos, "\tfree_count: %u\n",
++				 rxq->free_count);
++		if (rxq->rb_stts) {
++			pos += scnprintf(buf + pos, bufsz - pos,
++					 "\tclosed_rb_num: %u\n",
++					 le16_to_cpu(rxq->rb_stts->closed_rb_num) &
++					 0x0FFF);
++		} else {
++			pos += scnprintf(buf + pos, bufsz - pos,
++					 "\tclosed_rb_num: Not Allocated\n");
++	}
+ 	}
+-	return simple_read_from_buffer(user_buf, count, ppos, buf, pos);
++	ret = simple_read_from_buffer(user_buf, count, ppos, buf, pos);
++	kfree(buf);
++
++	return ret;
+ }
+ 
+ static ssize_t iwl_dbgfs_interrupt_read(struct file *file,
+@@ -2188,7 +2207,8 @@ static u32 iwl_trans_pcie_dump_rbs(struc
+ {
+ 	struct iwl_trans_pcie *trans_pcie = IWL_TRANS_GET_PCIE_TRANS(trans);
+ 	int max_len = PAGE_SIZE << trans_pcie->rx_page_order;
+-	struct iwl_rxq *rxq = &trans_pcie->rxq;
++	/* Dump RBs is supported only for pre-9000 devices (1 queue) */
++	struct iwl_rxq *rxq = &trans_pcie->rxq[0];
+ 	u32 i, r, j, rb_len = 0;
+ 
+ 	spin_lock(&rxq->lock);
+@@ -2438,11 +2458,12 @@ static struct iwl_trans_dump_data
+ 	len += sizeof(*data) + (FH_MEM_UPPER_BOUND - FH_MEM_LOWER_BOUND);
+ 
+ 	if (dump_rbs) {
++		/* Dump RBs is supported only for pre-9000 devices (1 queue) */
++		struct iwl_rxq *rxq = &trans_pcie->rxq[0];
+ 		/* RBs */
+-		num_rbs = le16_to_cpu(ACCESS_ONCE(
+-				      trans_pcie->rxq.rb_stts->closed_rb_num))
++		num_rbs = le16_to_cpu(ACCESS_ONCE(rxq->rb_stts->closed_rb_num))
+ 				      & 0x0FFF;
+-		num_rbs = (num_rbs - trans_pcie->rxq.read) & RX_QUEUE_MASK;
++		num_rbs = (num_rbs - rxq->read) & RX_QUEUE_MASK;
+ 		len += num_rbs * (sizeof(*data) +
+ 				  sizeof(struct iwl_fw_error_dump_rb) +
+ 				  (PAGE_SIZE << trans_pcie->rx_page_order));

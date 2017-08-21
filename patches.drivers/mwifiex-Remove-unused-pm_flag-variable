@@ -1,0 +1,45 @@
+From e9f1db8b6859ceb75f2517cd4b54782d1024360d Mon Sep 17 00:00:00 2001
+From: Kirtika Ruchandani <kirtika.ruchandani@gmail.com>
+Date: Wed, 23 Nov 2016 17:26:06 -0800
+Subject: [PATCH] mwifiex: Remove unused 'pm_flag' variable
+Mime-version: 1.0
+Content-type: text/plain; charset=UTF-8
+Content-transfer-encoding: 8bit
+Git-commit: e9f1db8b6859ceb75f2517cd4b54782d1024360d
+Patch-mainline: 4.10-rc1
+References: bsc#1031717
+
+mwifiex_sdio_resume() intializes pm_flag, just like
+mwifiex_sdio_suspend(), but does not use it. Compiling with W=1 gives
+the following warning, fix it.
+Mwifiex/sdio.c: In function ‘mwifiex_sdio_resume’:
+mwifiex/sdio.c:234:16: warning: variable ‘pm_flag’ set but not used [-Wunused-but-set-variable]
+
+sdio_get_host_pm_caps() is just an acessor, so the call to it is safe
+to remove. The unused variable seems to be present since
+5e6e3a92b9a4 which introduced mwifiex_sdio_resume().
+
+Fixes: 5e6e3a92b9a4 ("wireless: mwifiex: initial commit for Marvell mwifiex driver")
+Cc: Bing Zhao <bzhao@marvell.com>
+Cc: Amitkumar Karwar <akarwar@marvell.com>
+Signed-off-by: Kirtika Ruchandani <kirtika@google.com>
+Signed-off-by: Kalle Valo <kvalo@codeaurora.org>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/mwifiex/sdio.c |    2 --
+ 1 file changed, 2 deletions(-)
+
+--- a/drivers/net/wireless/mwifiex/sdio.c
++++ b/drivers/net/wireless/mwifiex/sdio.c
+@@ -155,10 +155,8 @@ static int mwifiex_sdio_resume(struct de
+ 	struct sdio_func *func = dev_to_sdio_func(dev);
+ 	struct sdio_mmc_card *card;
+ 	struct mwifiex_adapter *adapter;
+-	mmc_pm_flag_t pm_flag = 0;
+ 
+ 	if (func) {
+-		pm_flag = sdio_get_host_pm_caps(func);
+ 		card = sdio_get_drvdata(func);
+ 		if (!card || !card->adapter) {
+ 			pr_err("resume: invalid card or adapter\n");

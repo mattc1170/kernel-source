@@ -1,0 +1,35 @@
+From ca05e31674b20904ff86464e475604f1de445365 Mon Sep 17 00:00:00 2001
+From: Nathan Fontenot <nfont@linux.vnet.ibm.com>
+Date: Wed, 3 May 2017 14:05:14 -0400
+Subject: [PATCH] ibmvnic: Continue skb processing after skb completion error
+
+References: fate#322021, bsc#1038297
+Patch-mainline: v4.12-rc1
+Git-commit: ca05e31674b20904ff86464e475604f1de445365
+
+There is not a need to stop processing skbs if we encounter a
+skb that has a receive completion error.
+
+Signed-off-by: Nathan Fontenot <nfont@linux.vnet.ibm.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+Acked-by: Michal Suchanek <msuchanek@suse.de>
+---
+ drivers/net/ethernet/ibm/ibmvnic.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/net/ethernet/ibm/ibmvnic.c b/drivers/net/ethernet/ibm/ibmvnic.c
+index f1ee377..00c9d5a 100644
+--- a/drivers/net/ethernet/ibm/ibmvnic.c
++++ b/drivers/net/ethernet/ibm/ibmvnic.c
+@@ -1404,7 +1404,7 @@ restart_poll:
+ 			/* free the entry */
+ 			next->rx_comp.first = 0;
+ 			remove_buff_from_pool(adapter, rx_buff);
+-			break;
++			continue;
+ 		}
+ 
+ 		length = be32_to_cpu(next->rx_comp.len);
+-- 
+2.10.2
+

@@ -1,0 +1,57 @@
+From: Hariprasad S <hariprasad@chelsio.com>
+Date: Fri, 10 Jun 2016 01:05:14 +0530
+Subject: RDMA/iw_cxgb4: Add missing error codes for act open cmd
+Patch-mainline: v4.8-rc1
+Git-commit: 4c72efefd9af015459ed63b164ff4b13cbfa3f61
+References: bsc#1026570
+
+Signed-off-by: Steve Wise <swise@opengridcomputing.com>
+Signed-off-by: Hariprasad Shenai <hariprasad@chelsio.com>
+Signed-off-by: Doug Ledford <dledford@redhat.com>
+Acked-by: Thomas Bogendoerfer <tbogendoerfer@suse.de>
+---
+ drivers/infiniband/hw/cxgb4/cm.c            | 11 ++++++++---
+ drivers/net/ethernet/chelsio/cxgb4/t4_msg.h |  2 ++
+ 2 files changed, 10 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/infiniband/hw/cxgb4/cm.c b/drivers/infiniband/hw/cxgb4/cm.c
+index 651711370d55..93b7a5556a18 100644
+--- a/drivers/infiniband/hw/cxgb4/cm.c
++++ b/drivers/infiniband/hw/cxgb4/cm.c
+@@ -1847,12 +1847,17 @@ static void send_fw_act_open_req(struct c4iw_ep *ep, unsigned int atid)
+ }
+ 
+ /*
+- * Return whether a failed active open has allocated a TID
++ * Some of the error codes above implicitly indicate that there is no TID
++ * allocated with the result of an ACT_OPEN.  We use this predicate to make
++ * that explicit.
+  */
+ static inline int act_open_has_tid(int status)
+ {
+-	return status != CPL_ERR_TCAM_FULL && status != CPL_ERR_CONN_EXIST &&
+-	       status != CPL_ERR_ARP_MISS;
++	return (status != CPL_ERR_TCAM_PARITY &&
++		status != CPL_ERR_TCAM_MISS &&
++		status != CPL_ERR_TCAM_FULL &&
++		status != CPL_ERR_CONN_EXIST_SYNRECV &&
++		status != CPL_ERR_CONN_EXIST);
+ }
+ 
+ /* Returns whether a CPL status conveys negative advice.
+diff --git a/drivers/net/ethernet/chelsio/cxgb4/t4_msg.h b/drivers/net/ethernet/chelsio/cxgb4/t4_msg.h
+index f7eeaf809c7d..f9782a14cd79 100644
+--- a/drivers/net/ethernet/chelsio/cxgb4/t4_msg.h
++++ b/drivers/net/ethernet/chelsio/cxgb4/t4_msg.h
+@@ -105,6 +105,8 @@ enum {
+ 
+ enum CPL_error {
+ 	CPL_ERR_NONE               = 0,
++	CPL_ERR_TCAM_PARITY        = 1,
++	CPL_ERR_TCAM_MISS          = 2,
+ 	CPL_ERR_TCAM_FULL          = 3,
+ 	CPL_ERR_BAD_LENGTH         = 15,
+ 	CPL_ERR_BAD_ROUTE          = 18,
+-- 
+1.8.5.6
+

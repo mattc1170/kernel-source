@@ -1,0 +1,59 @@
+From b2c5d3a89fe4ec47bf5567220326d7b3b06fd514 Mon Sep 17 00:00:00 2001
+From: Luca Coelho <luciano.coelho@intel.com>
+Date: Fri, 18 Sep 2015 14:37:46 +0300
+Subject: [PATCH] iwlwifi: generalize d0i3_entry_timeout module parameter
+Git-commit: b2c5d3a89fe4ec47bf5567220326d7b3b06fd514
+Patch-mainline: 4.5-rc1
+References: FATE#321353, FATE#323335
+
+The PCIe transport will also need a d0i3_entry_timeout_ms parameter,
+so move the existing one from the slave transports to iwlwifi, so it
+can be reused.  While at it, rename the parameter to something
+shorter, namely d0i3_entry_delay.
+
+Signed-off-by: Luca Coelho <luciano.coelho@intel.com>
+Signed-off-by: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/iwlwifi/iwl-drv.c       |    5 +++++
+ drivers/net/wireless/iwlwifi/iwl-modparams.h |    3 +++
+ 2 files changed, 8 insertions(+)
+
+--- a/drivers/net/wireless/iwlwifi/iwl-drv.c
++++ b/drivers/net/wireless/iwlwifi/iwl-drv.c
+@@ -1539,6 +1539,7 @@ struct iwl_mod_params iwlwifi_mod_params
+ 	.bt_coex_active = true,
+ 	.power_level = IWL_POWER_INDEX_1,
+ 	.d0i3_disable = true,
++	.d0i3_entry_delay = 1000,
+ #ifndef CONFIG_IWLWIFI_UAPSD
+ 	.uapsd_disable = true,
+ #endif /* CONFIG_IWLWIFI_UAPSD */
+@@ -1704,3 +1705,7 @@ MODULE_PARM_DESC(power_level,
+ module_param_named(fw_monitor, iwlwifi_mod_params.fw_monitor, bool, S_IRUGO);
+ MODULE_PARM_DESC(fw_monitor,
+ 		 "firmware monitor - to debug FW (default: false - needs lots of memory)");
++
++module_param_named(d0i3_timeout, iwlwifi_mod_params.d0i3_entry_delay,
++		   uint, S_IRUGO);
++MODULE_PARM_DESC(d0i3_timeout, "Timeout to D0i3 entry when idle (ms)");
+--- a/drivers/net/wireless/iwlwifi/iwl-modparams.h
++++ b/drivers/net/wireless/iwlwifi/iwl-modparams.h
+@@ -109,6 +109,8 @@ enum iwl_amsdu_size {
+  * @debug_level: levels are IWL_DL_*
+  * @ant_coupling: antenna coupling in dB, default = 0
+  * @d0i3_disable: disable d0i3, default = 1,
++ * @d0i3_entry_delay: time to wait after no refs are taken before
++ *	entering D0i3 (in msecs)
+  * @lar_disable: disable LAR (regulatory), default = 0
+  * @fw_monitor: allow to use firmware monitor
+  */
+@@ -128,6 +130,7 @@ struct iwl_mod_params {
+ 	char *nvm_file;
+ 	bool uapsd_disable;
+ 	bool d0i3_disable;
++	unsigned int d0i3_entry_delay;
+ 	bool lar_disable;
+ 	bool fw_monitor;
+ };

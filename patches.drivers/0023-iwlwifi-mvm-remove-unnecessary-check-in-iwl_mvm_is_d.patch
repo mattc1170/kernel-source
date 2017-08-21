@@ -1,0 +1,31 @@
+From 6f7306622ff4e6b6d59efa77383e0cd9d85f46b0 Mon Sep 17 00:00:00 2001
+From: Luca Coelho <luciano.coelho@intel.com>
+Date: Mon, 26 Oct 2015 13:43:12 +0200
+Subject: [PATCH] iwlwifi: mvm: remove unnecessary check in iwl_mvm_is_d0i3_supported()
+Git-commit: 6f7306622ff4e6b6d59efa77383e0cd9d85f46b0
+Patch-mainline: 4.5-rc1
+References: FATE#321353, FATE#323335
+
+The d0i3_mode element is never set to IWL_D0I3_OFF, so it's not
+necessary to check it in iwl_mvm_is_d0i3_supported().
+
+Signed-off-by: Luca Coelho <luciano.coelho@intel.com>
+Signed-off-by: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/iwlwifi/mvm/mvm.h |    3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
+
+--- a/drivers/net/wireless/iwlwifi/mvm/mvm.h
++++ b/drivers/net/wireless/iwlwifi/mvm/mvm.h
+@@ -913,8 +913,7 @@ iwl_mvm_sta_from_staid_protected(struct
+ 
+ static inline bool iwl_mvm_is_d0i3_supported(struct iwl_mvm *mvm)
+ {
+-	return mvm->trans->d0i3_mode != IWL_D0I3_MODE_OFF &&
+-		!iwlwifi_mod_params.d0i3_disable &&
++	return !iwlwifi_mod_params.d0i3_disable &&
+ 		fw_has_capa(&mvm->fw->ucode_capa,
+ 			    IWL_UCODE_TLV_CAPA_D0I3_SUPPORT);
+ }

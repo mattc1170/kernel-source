@@ -1,0 +1,35 @@
+From 33c85ead7115ad0a1c3c47d5d1d8f8474775d644 Mon Sep 17 00:00:00 2001
+From: Luca Coelho <luciano.coelho@intel.com>
+Date: Mon, 22 Feb 2016 15:44:13 +0200
+Subject: [PATCH] iwlwifi: mvm: only release the trans ref if d0i3 is supported in fw
+Git-commit: 33c85ead7115ad0a1c3c47d5d1d8f8474775d644
+Patch-mainline: 4.6-rc1
+References: FATE#321353, FATE#323335
+
+If d0i3 is not supported by the firmware (or if it's disabled via
+module parameters) we shouldn't release the initial transport
+reference, so that we won't enter runtime suspend.
+
+Signed-off-by: Luca Coelho <luciano.coelho@intel.com>
+Signed-off-by: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/iwlwifi/mvm/ops.c |    6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+--- a/drivers/net/wireless/iwlwifi/mvm/ops.c
++++ b/drivers/net/wireless/iwlwifi/mvm/ops.c
+@@ -655,8 +655,10 @@ iwl_op_mode_mvm_start(struct iwl_trans *
+ 
+ 	memset(&mvm->rx_stats, 0, sizeof(struct mvm_statistics_rx));
+ 
+-	/* rpm starts with a taken reference, we can release it now */
+-	iwl_trans_unref(mvm->trans);
++	/* The transport always starts with a taken reference, we can
++	 * release it now if d0i3 is supported */
++	if (iwl_mvm_is_d0i3_supported(mvm))
++		iwl_trans_unref(mvm->trans);
+ 
+ 	iwl_mvm_tof_init(mvm);
+ 

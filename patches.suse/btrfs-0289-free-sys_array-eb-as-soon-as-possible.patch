@@ -1,0 +1,35 @@
+From: Liu Bo <bo.li.liu@oracle.com>
+Date: Fri, 13 May 2016 17:06:59 -0700
+Patch-mainline: 4.7
+Git-commit: 1c8b5b6e8b570a8038fa42cf9e7c23782bd4882c
+References: bsc#1012452
+Subject: [PATCH] Btrfs: free sys_array eb as soon as possible
+
+While reading sys_chunk_array in superblock, btrfs creates a temporary
+extent buffer.  Since we don't use it after finishing reading
+ sys_chunk_array, we don't need to keep it in memory.
+
+Signed-off-by: Liu Bo <bo.li.liu@oracle.com>
+Signed-off-by: David Sterba <dsterba@suse.com>
+---
+ fs/btrfs/volumes.c |    4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+--- a/fs/btrfs/volumes.c
++++ b/fs/btrfs/volumes.c
+@@ -6632,13 +6632,13 @@ int btrfs_read_sys_array(struct btrfs_ro
+ 		sb_array_offset += len;
+ 		cur_offset += len;
+ 	}
+-	free_extent_buffer(sb);
++	free_extent_buffer_stale(sb);
+ 	return ret;
+ 
+ out_short_read:
+ 	printk(KERN_ERR "BTRFS: sys_array too short to read %u bytes at offset %u\n",
+ 			len, cur_offset);
+-	free_extent_buffer(sb);
++	free_extent_buffer_stale(sb);
+ 	return -EIO;
+ }
+ 

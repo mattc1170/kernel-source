@@ -1,0 +1,77 @@
+From 4707fde5cdefc73c408915af2579c4acaf49ade4 Mon Sep 17 00:00:00 2001
+From: Johannes Berg <johannes.berg@intel.com>
+Date: Tue, 22 Sep 2015 12:24:31 +0200
+Subject: [PATCH] iwlwifi: mvm: use build-time assertion for fw trigger ID
+Git-commit: 4707fde5cdefc73c408915af2579c4acaf49ade4
+Patch-mainline: 4.5-rc1
+References: FATE#321353, FATE#323335
+
+The firmware debug trigger ID is always a compile-time constant,
+so we can use a build-time assertion to validate that it is in
+fact a valid constant.
+
+To make that really guaranteed to work, convert this and the
+inline function iwl_fw_dbg_trigger_simple_stop() to macros.
+
+Signed-off-by: Johannes Berg <johannes.berg@intel.com>
+Signed-off-by: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/iwlwifi/iwl-fw.h  |   11 +++++++----
+ drivers/net/wireless/iwlwifi/mvm/mvm.h |   15 ++++++++-------
+ 2 files changed, 15 insertions(+), 11 deletions(-)
+
+--- a/drivers/net/wireless/iwlwifi/iwl-fw.h
++++ b/drivers/net/wireless/iwlwifi/iwl-fw.h
+@@ -311,12 +311,15 @@ iwl_fw_dbg_conf_usniffer(const struct iw
+ })
+ 
+ static inline struct iwl_fw_dbg_trigger_tlv*
+-iwl_fw_dbg_get_trigger(const struct iwl_fw *fw, u8 id)
++_iwl_fw_dbg_get_trigger(const struct iwl_fw *fw, enum iwl_fw_dbg_trigger id)
+ {
+-	if (WARN_ON(id >= ARRAY_SIZE(fw->dbg_trigger_tlv)))
+-		return NULL;
+-
+ 	return fw->dbg_trigger_tlv[id];
+ }
+ 
++#define iwl_fw_dbg_get_trigger(fw, id) ({			\
++	BUILD_BUG_ON(!__builtin_constant_p(id));		\
++	BUILD_BUG_ON((id) >= FW_DBG_TRIGGER_MAX);		\
++	_iwl_fw_dbg_get_trigger((fw), (id));			\
++})
++
+ #endif  /* __iwl_fw_h__ */
+--- a/drivers/net/wireless/iwlwifi/mvm/mvm.h
++++ b/drivers/net/wireless/iwlwifi/mvm/mvm.h
+@@ -1527,20 +1527,21 @@ iwl_fw_dbg_trigger_check_stop(struct iwl
+ }
+ 
+ static inline void
+-iwl_fw_dbg_trigger_simple_stop(struct iwl_mvm *mvm,
+-			       struct ieee80211_vif *vif,
+-			       enum iwl_fw_dbg_trigger trig)
++_iwl_fw_dbg_trigger_simple_stop(struct iwl_mvm *mvm,
++				struct ieee80211_vif *vif,
++				struct iwl_fw_dbg_trigger_tlv *trigger)
+ {
+-	struct iwl_fw_dbg_trigger_tlv *trigger;
+-
+-	if (!iwl_fw_dbg_trigger_enabled(mvm->fw, trig))
++	if (!trigger)
+ 		return;
+ 
+-	trigger = iwl_fw_dbg_get_trigger(mvm->fw, trig);
+ 	if (!iwl_fw_dbg_trigger_check_stop(mvm, vif, trigger))
+ 		return;
+ 
+ 	iwl_mvm_fw_dbg_collect_trig(mvm, trigger, NULL);
+ }
++#define iwl_fw_dbg_trigger_simple_stop(mvm, vif, trig)	\
++	_iwl_fw_dbg_trigger_simple_stop((mvm), (vif),	\
++					iwl_fw_dbg_get_trigger((mvm)->fw,\
++							       (trig)))
+ 
+ #endif /* __IWL_MVM_H__ */

@@ -1,0 +1,35 @@
+From: Jiri Slaby <jslaby@suse.cz>
+Subject: kABI: protect struct fib_info
+Patch-mainline: never, kabi
+References: kabi
+
+In 4.4.71, commit 338f665acb4ba0b2c7656cc2487326497220168f (ipv4: add
+reference counting to metrics), upstream commit
+3fb07daff8e99243366a081e5129560734de4ada changed fib_metrics from
+pointer to u32 to pointer to struct dst_metrics. This indeed makes the
+kABI checker to complain. But when we look at the structure it is also
+an array of RTAX_MAX u32s. Plus there is a refcount at the end. So there
+is no kABI change from the uesr's perspective -- they still see an array
+of u32 behind fib_metrics.
+
+So we can just protect the change by __GENKSYMS__.
+
+Signed-off-by: Jiri Slaby <jslaby@suse.cz>
+---
+ include/net/ip_fib.h |    4 ++++
+ 1 file changed, 4 insertions(+)
+
+--- a/include/net/ip_fib.h
++++ b/include/net/ip_fib.h
+@@ -112,7 +112,11 @@ struct fib_info {
+ 	unsigned char		fib_type;
+ 	__be32			fib_prefsrc;
+ 	u32			fib_priority;
++#ifdef __GENKSYMS__
++	u32			*fib_metrics;
++#else
+ 	struct dst_metrics	*fib_metrics;
++#endif
+ #define fib_mtu fib_metrics->metrics[RTAX_MTU-1]
+ #define fib_window fib_metrics->metrics[RTAX_WINDOW-1]
+ #define fib_rtt fib_metrics->metrics[RTAX_RTT-1]

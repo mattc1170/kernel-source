@@ -1,0 +1,44 @@
+From 20f4d39a2822905f250650cd9cac49492c07758f Mon Sep 17 00:00:00 2001
+From: Johannes Berg <johannes.berg@intel.com>
+Date: Sat, 21 Nov 2015 21:57:52 +0100
+Subject: [PATCH] iwlwifi: print index in api/capa flags parsing message
+Git-commit: 20f4d39a2822905f250650cd9cac49492c07758f
+Patch-mainline: 4.5-rc1
+References: FATE#321353, FATE#323335
+
+If the API or capabilities index is bigger than the driver expects,
+an error message is printed. Make that message print the index and
+distinguish between API and capabilities.
+
+Signed-off-by: Johannes Berg <johannes.berg@intel.com>
+Signed-off-by: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/iwlwifi/iwl-drv.c |    8 ++++++--
+ 1 file changed, 6 insertions(+), 2 deletions(-)
+
+--- a/drivers/net/wireless/iwlwifi/iwl-drv.c
++++ b/drivers/net/wireless/iwlwifi/iwl-drv.c
+@@ -451,7 +451,9 @@ static int iwl_set_ucode_api_flags(struc
+ 	int i;
+ 
+ 	if (api_index >= DIV_ROUND_UP(NUM_IWL_UCODE_TLV_API, 32)) {
+-		IWL_ERR(drv, "api_index larger than supported by driver\n");
++		IWL_ERR(drv,
++			"api flags index %d larger than supported by driver\n",
++			api_index);
+ 		/* don't return an error so we can load FW that has more bits */
+ 		return 0;
+ 	}
+@@ -473,7 +475,9 @@ static int iwl_set_ucode_capabilities(st
+ 	int i;
+ 
+ 	if (api_index >= DIV_ROUND_UP(NUM_IWL_UCODE_TLV_CAPA, 32)) {
+-		IWL_ERR(drv, "api_index larger than supported by driver\n");
++		IWL_ERR(drv,
++			"capa flags index %d larger than supported by driver\n",
++			api_index);
+ 		/* don't return an error so we can load FW that has more bits */
+ 		return 0;
+ 	}

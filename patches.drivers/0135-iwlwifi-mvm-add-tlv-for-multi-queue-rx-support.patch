@@ -1,0 +1,45 @@
+From 81f02ba3dbe0c9133dc4490f0a7d3acd99a89aad Mon Sep 17 00:00:00 2001
+From: Sara Sharon <sara.sharon@intel.com>
+Date: Wed, 30 Dec 2015 23:58:29 +0200
+Subject: [PATCH] iwlwifi: mvm: add tlv for multi queue rx support
+Git-commit: 81f02ba3dbe0c9133dc4490f0a7d3acd99a89aad
+Patch-mainline: 4.6-rc1
+References: FATE#321353, FATE#323335
+
+Previous patches enabled the multi-queue rx path based on
+iwl_mvm_has_new_rx_api() which returned false by default.
+Change it to return the actual value based on the firmware
+TLV which is now defined.
+
+Signed-off-by: Sara Sharon <sara.sharon@intel.com>
+Signed-off-by: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/iwlwifi/iwl-fw-file.h |    1 +
+ drivers/net/wireless/iwlwifi/mvm/mvm.h     |    4 ++--
+ 2 files changed, 3 insertions(+), 2 deletions(-)
+
+--- a/drivers/net/wireless/iwlwifi/iwl-fw-file.h
++++ b/drivers/net/wireless/iwlwifi/iwl-fw-file.h
+@@ -347,6 +347,7 @@ enum iwl_ucode_tlv_capa {
+ 	IWL_UCODE_TLV_CAPA_EXTENDED_DTS_MEASURE		= (__force iwl_ucode_tlv_capa_t)64,
+ 	IWL_UCODE_TLV_CAPA_SHORT_PM_TIMEOUTS		= (__force iwl_ucode_tlv_capa_t)65,
+ 	IWL_UCODE_TLV_CAPA_BT_MPLUT_SUPPORT		= (__force iwl_ucode_tlv_capa_t)67,
++	IWL_UCODE_TLV_CAPA_MULTI_QUEUE_RX_SUPPORT	= (__force iwl_ucode_tlv_capa_t)68,
+ 	IWL_UCODE_TLV_CAPA_BEACON_ANT_SELECTION		= (__force iwl_ucode_tlv_capa_t)71,
+ 	IWL_UCODE_TLV_CAPA_BEACON_STORING		= (__force iwl_ucode_tlv_capa_t)72,
+ 	IWL_UCODE_TLV_CAPA_LAR_SUPPORT_V2		= (__force iwl_ucode_tlv_capa_t)73,
+--- a/drivers/net/wireless/iwlwifi/mvm/mvm.h
++++ b/drivers/net/wireless/iwlwifi/mvm/mvm.h
+@@ -1017,8 +1017,8 @@ bool iwl_mvm_is_p2p_standalone_uapsd_sup
+ 
+ static inline bool iwl_mvm_has_new_rx_api(struct iwl_mvm *mvm)
+ {
+-	/* firmware flag isn't defined yet */
+-	return false;
++	return fw_has_capa(&mvm->fw->ucode_capa,
++			   IWL_UCODE_TLV_CAPA_MULTI_QUEUE_RX_SUPPORT);
+ }
+ 
+ extern const u8 iwl_mvm_ac_to_tx_fifo[];

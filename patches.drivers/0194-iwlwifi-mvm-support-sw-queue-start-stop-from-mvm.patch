@@ -1,0 +1,116 @@
+From b4f7a9d168d9f8204abf06d244a7938dd62b87b0 Mon Sep 17 00:00:00 2001
+From: Liad Kaufman <liad.kaufman@intel.com>
+Date: Wed, 3 Feb 2016 11:05:41 +0200
+Subject: [PATCH] iwlwifi: mvm: support sw queue start/stop from mvm
+Git-commit: b4f7a9d168d9f8204abf06d244a7938dd62b87b0
+Patch-mainline: 4.6-rc1
+References: FATE#321353, FATE#323335
+
+Add a wrapper function to allow stopping SW queues from MVM
+as well.
+
+Signed-off-by: Liad Kaufman <liad.kaufman@intel.com>
+Signed-off-by: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/iwlwifi/mvm/mvm.h |    4 +++
+ drivers/net/wireless/iwlwifi/mvm/ops.c |   38 ++++++++++++++++++++-------------
+ 2 files changed, 28 insertions(+), 14 deletions(-)
+
+--- a/drivers/net/wireless/iwlwifi/mvm/mvm.h
++++ b/drivers/net/wireless/iwlwifi/mvm/mvm.h
+@@ -1533,6 +1533,10 @@ static inline void iwl_mvm_stop_device(s
+ 	iwl_trans_stop_device(mvm->trans);
+ }
+ 
++/* Stop/start all mac queues in a given bitmap */
++void iwl_mvm_start_mac_queues(struct iwl_mvm *mvm, unsigned long mq);
++void iwl_mvm_stop_mac_queues(struct iwl_mvm *mvm, unsigned long mq);
++
+ /* Thermal management and CT-kill */
+ void iwl_mvm_tt_tx_backoff(struct iwl_mvm *mvm, u32 backoff);
+ void iwl_mvm_tt_temp_changed(struct iwl_mvm *mvm, u32 temp);
+--- a/drivers/net/wireless/iwlwifi/mvm/ops.c
++++ b/drivers/net/wireless/iwlwifi/mvm/ops.c
+@@ -877,24 +877,17 @@ static void iwl_mvm_rx_mq(struct iwl_op_
+ 		iwl_mvm_rx_common(mvm, rxb, pkt);
+ }
+ 
+-static void iwl_mvm_stop_sw_queue(struct iwl_op_mode *op_mode, int queue)
++void iwl_mvm_stop_mac_queues(struct iwl_mvm *mvm, unsigned long mq)
+ {
+-	struct iwl_mvm *mvm = IWL_OP_MODE_GET_MVM(op_mode);
+-	unsigned long mq;
+ 	int q;
+ 
+-	spin_lock_bh(&mvm->queue_info_lock);
+-	mq = mvm->queue_info[queue].hw_queue_to_mac80211;
+-	spin_unlock_bh(&mvm->queue_info_lock);
+-
+ 	if (WARN_ON_ONCE(!mq))
+ 		return;
+ 
+ 	for_each_set_bit(q, &mq, IEEE80211_MAX_QUEUES) {
+ 		if (atomic_inc_return(&mvm->mac80211_queue_stop_count[q]) > 1) {
+ 			IWL_DEBUG_TX_QUEUES(mvm,
+-					    "queue %d (mac80211 %d) already stopped\n",
+-					    queue, q);
++					    "mac80211 %d already stopped\n", q);
+ 			continue;
+ 		}
+ 
+@@ -914,24 +907,29 @@ static void iwl_mvm_async_cb(struct iwl_
+ 	iwl_trans_block_txq_ptrs(mvm->trans, false);
+ }
+ 
+-static void iwl_mvm_wake_sw_queue(struct iwl_op_mode *op_mode, int queue)
++static void iwl_mvm_stop_sw_queue(struct iwl_op_mode *op_mode, int hw_queue)
+ {
+ 	struct iwl_mvm *mvm = IWL_OP_MODE_GET_MVM(op_mode);
+ 	unsigned long mq;
+-	int q;
+ 
+ 	spin_lock_bh(&mvm->queue_info_lock);
+-	mq = mvm->queue_info[queue].hw_queue_to_mac80211;
++	mq = mvm->queue_info[hw_queue].hw_queue_to_mac80211;
+ 	spin_unlock_bh(&mvm->queue_info_lock);
+ 
++	iwl_mvm_stop_mac_queues(mvm, mq);
++}
++
++void iwl_mvm_start_mac_queues(struct iwl_mvm *mvm, unsigned long mq)
++{
++	int q;
++
+ 	if (WARN_ON_ONCE(!mq))
+ 		return;
+ 
+ 	for_each_set_bit(q, &mq, IEEE80211_MAX_QUEUES) {
+ 		if (atomic_dec_return(&mvm->mac80211_queue_stop_count[q]) > 0) {
+ 			IWL_DEBUG_TX_QUEUES(mvm,
+-					    "queue %d (mac80211 %d) still stopped\n",
+-					    queue, q);
++					    "mac80211 %d still stopped\n", q);
+ 			continue;
+ 		}
+ 
+@@ -939,6 +937,18 @@ static void iwl_mvm_wake_sw_queue(struct
+ 	}
+ }
+ 
++static void iwl_mvm_wake_sw_queue(struct iwl_op_mode *op_mode, int hw_queue)
++{
++	struct iwl_mvm *mvm = IWL_OP_MODE_GET_MVM(op_mode);
++	unsigned long mq;
++
++	spin_lock_bh(&mvm->queue_info_lock);
++	mq = mvm->queue_info[hw_queue].hw_queue_to_mac80211;
++	spin_unlock_bh(&mvm->queue_info_lock);
++
++	iwl_mvm_start_mac_queues(mvm, mq);
++}
++
+ void iwl_mvm_set_hw_ctkill_state(struct iwl_mvm *mvm, bool state)
+ {
+ 	if (state)

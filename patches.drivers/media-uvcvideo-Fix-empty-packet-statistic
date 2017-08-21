@@ -1,0 +1,35 @@
+From 360a3a90c6261fe24a959ff38f8f6c3a8468f23c Mon Sep 17 00:00:00 2001
+From: Kieran Bingham <kieran.bingham@ideasonboard.com>
+Date: Mon, 3 Apr 2017 08:25:32 -0300
+Subject: [PATCH] [media] uvcvideo: Fix empty packet statistic
+Git-commit: 360a3a90c6261fe24a959ff38f8f6c3a8468f23c
+Patch-mainline: 4.12-rc1
+References: bsc#1031717
+
+The frame counters are inadvertently counting packets with content as
+empty.
+
+Fix it by correcting the logic expression
+
+Fixes: 7bc5edb00bbd [media] uvcvideo: Extract video stream statistics
+
+Signed-off-by: Kieran Bingham <kieran.bingham@ideasonboard.com>
+Signed-off-by: Laurent Pinchart <laurent.pinchart@ideasonboard.com>
+Signed-off-by: Mauro Carvalho Chehab <mchehab@s-opensource.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/media/usb/uvc/uvc_video.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+--- a/drivers/media/usb/uvc/uvc_video.c
++++ b/drivers/media/usb/uvc/uvc_video.c
+@@ -821,7 +821,7 @@ static void uvc_video_stats_decode(struc
+ 
+ 	/* Update the packets counters. */
+ 	stream->stats.frame.nb_packets++;
+-	if (len > header_size)
++	if (len <= header_size)
+ 		stream->stats.frame.nb_empty++;
+ 
+ 	if (data[1] & UVC_STREAM_ERR)

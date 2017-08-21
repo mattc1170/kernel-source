@@ -1,0 +1,57 @@
+From: Josef Bacik <jbacik@fb.com>
+Date: Wed, 24 Aug 2016 11:57:52 -0400
+Patch-mainline: 4.8
+Git-commit: 3dc09ec895f098cedd789a620c90ff1bf7f779a1
+References: bsc#1012452
+Subject: [PATCH] Btrfs: kill invalid ASSERT() in process_all_refs()
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Suppose you have the following tree in snap1 on a file system mounted with -o
+inode_cache so that inode numbers are recycled
+
+└── [    258]  a
+    └── [    257]  b
+
+and then you remove b, rename a to c, and then re-create b in c so you have the
+following tree
+
+└── [    258]  c
+    └── [    257]  b
+
+and then you try to do an incremental send you will hit
+
+ASSERT(pending_move == 0);
+
+in process_all_refs().  This is because we assume that any recycling of inodes
+will not have a pending change in our path, which isn't the case.  This is the
+case for the DELETE side, since we want to remove the old file using the old
+path, but on the create side we could have a pending move and need to do the
+normal pending rename dance.  So remove this ASSERT() and put a comment about
+why we ignore pending_move.  Thanks,
+
+Signed-off-by: Josef Bacik <jbacik@fb.com>
+Signed-off-by: David Sterba <dsterba@suse.com>
+---
+ fs/btrfs/send.c |    8 +++++---
+ 1 file changed, 5 insertions(+), 3 deletions(-)
+
+--- a/fs/btrfs/send.c
++++ b/fs/btrfs/send.c
+@@ -4267,10 +4267,12 @@ static int process_all_refs(struct send_
+ 	}
+ 	btrfs_release_path(path);
+ 
++	/*
++	 * We don't actually care about pending_move as we are simply
++	 * re-creating this inode and will be rename'ing it into place once we
++	 * rename the parent directory.
++	 */
+ 	ret = process_recorded_refs(sctx, &pending_move);
+-	/* Only applicable to an incremental send. */
+-	ASSERT(pending_move == 0);
+-
+ out:
+ 	btrfs_free_path(path);
+ 	return ret;

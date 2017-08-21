@@ -1,0 +1,37 @@
+From: Josef Bacik <jbacik@fb.com>
+Date: Wed, 20 Jul 2016 16:48:45 -0700
+Patch-mainline: 4.8
+Git-commit: bac357dcec2956f01df9da5365be257741b534dc
+References: bsc#1012452
+Subject: [PATCH] Btrfs: avoid deadlocks during reservations in
+ btrfs_truncate_block
+
+The new enospc code makes it possible to deadlock if we don't use
+FLUSH_LIMIT during reservations inside a transaction.  This enforces
+the correct flush type to avoid both deadlocks and assertions
+
+Signed-off-by: Chris Mason <clm@fb.com>
+Signed-off-by: Josef Bacik <jbacik@fb.com>
+Signed-off-by: David Sterba <dsterba@suse.cz>
+---
+ fs/btrfs/extent-tree.c |    5 +++++
+ 1 file changed, 5 insertions(+)
+
+--- a/fs/btrfs/extent-tree.c
++++ b/fs/btrfs/extent-tree.c
+@@ -5926,10 +5926,15 @@ int btrfs_delalloc_reserve_metadata(stru
+ 	 * the middle of a transaction commit.  We also don't need the delalloc
+ 	 * mutex since we won't race with anybody.  We need this mostly to make
+ 	 * lockdep shut its filthy mouth.
++	 *
++	 * If we have a transaction open (can happen if we call truncate_block
++	 * from truncate), then we need FLUSH_LIMIT so we don't deadlock.
+ 	 */
+ 	if (btrfs_is_free_space_inode(inode)) {
+ 		flush = BTRFS_RESERVE_NO_FLUSH;
+ 		delalloc_lock = false;
++	} else if (current->journal_info) {
++		flush = BTRFS_RESERVE_FLUSH_LIMIT;
+ 	}
+ 
+ 	if (flush != BTRFS_RESERVE_NO_FLUSH &&

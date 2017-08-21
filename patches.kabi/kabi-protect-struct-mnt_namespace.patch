@@ -1,0 +1,32 @@
+From: Jiri Slaby <jslaby@suse.cz>
+Subject: kABI: protect struct mnt_namespace
+Patch-mainline: never, kabi
+References: kabi
+
+In 4.4.65, commit c50fd34e10897114a7be2120133bd7e0b4184024 (mnt: Add a
+per mount namespace limit on the number of mounts), upstream commit
+d29216842a85c7970c536108e093963f02714498 added two members to struct
+mnt_namespace and it indeed changed kABI of that struct.
+
+Given the structure is defined only in fs/, allocated only by
+alloc_mnt_ns, and the new members are at the end, simply protect the
+change by __GENKSYMS__ as usual.
+
+Signed-off-by: Jiri Slaby <jslaby@suse.cz>
+---
+ fs/mount.h |    2 ++
+ 1 file changed, 2 insertions(+)
+
+--- a/fs/mount.h
++++ b/fs/mount.h
+@@ -13,8 +13,10 @@ struct mnt_namespace {
+ 	u64			seq;	/* Sequence number to prevent loops */
+ 	wait_queue_head_t poll;
+ 	u64 event;
++#ifndef __GENKSYMS__
+ 	unsigned int		mounts; /* # of mounts in the namespace */
+ 	unsigned int		pending_mounts;
++#endif
+ };
+ 
+ struct mnt_pcp {

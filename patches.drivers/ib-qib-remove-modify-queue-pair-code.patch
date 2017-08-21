@@ -16,14 +16,14 @@ Signed-off-by: Doug Ledford <dledford@redhat.com>
  drivers/infiniband/hw/qib/qib_common.h |    1 
  drivers/infiniband/hw/qib/qib_driver.c |    2 
  drivers/infiniband/hw/qib/qib_qp.c     |  515 ++++-----------------------------
- drivers/infiniband/hw/qib/qib_rc.c     |   10 
+ drivers/infiniband/hw/qib/qib_rc.c     |   12 
  drivers/infiniband/hw/qib/qib_ruc.c    |    6 
  drivers/infiniband/hw/qib/qib_sdma.c   |    2 
  drivers/infiniband/hw/qib/qib_uc.c     |   10 
  drivers/infiniband/hw/qib/qib_ud.c     |    6 
  drivers/infiniband/hw/qib/qib_verbs.c  |   14 
  drivers/infiniband/hw/qib/qib_verbs.h  |   28 -
- 11 files changed, 112 insertions(+), 492 deletions(-)
+ 11 files changed, 113 insertions(+), 493 deletions(-)
 
 --- a/drivers/infiniband/hw/qib/qib.h
 +++ b/drivers/infiniband/hw/qib/qib.h
@@ -689,6 +689,15 @@ Signed-off-by: Doug Ledford <dledford@redhat.com>
  		qp->r_msn++;
  		if (!test_and_clear_bit(RVT_R_WRID_VALID, &qp->r_aflags))
  			break;
+@@ -2090,7 +2090,7 @@ send_last:
+ 		if (ret < 0)
+ 			goto nack_op_err;
+ 		if (!ret) {
+-			qib_put_ss(&qp->r_sge);
++			rvt_put_ss(&qp->r_sge);
+ 			goto rnr_nak;
+ 		}
+ 		wc.ex.imm_data = ohdr->u.rc.imm_data;
 --- a/drivers/infiniband/hw/qib/qib_ruc.c
 +++ b/drivers/infiniband/hw/qib/qib_ruc.c
 @@ -174,7 +174,7 @@ int qib_get_rwqe(struct rvt_qp *qp, int

@@ -1,0 +1,44 @@
+From: Nikolay Borisov <kernel@kyup.com>
+Date: Wed, 29 Jun 2016 09:46:41 +0300
+Patch-mainline: 4.8
+Git-commit: 3d48d9810de4ee1bca4a1c905efd0618944904cd
+References: bsc#1012452
+Subject: [PATCH] btrfs: Handle uninitialised inode eviction
+
+The code flow in btrfs_new_inode allows for btrfs_evict_inode to be
+called with not fully initialised inode (e.g. ->root member not
+being set). This can happen when btrfs_set_inode_index in
+btrfs_new_inode fails, which in turn would call iput for the newly
+allocated inode. This in turn leads to vfs calling into btrfs_evict_inode.
+This leads to null pointer dereference. To handle this situation check whether
+the passed inode has root set and just free it in case it doesn't.
+
+Signed-off-by: Nikolay Borisov <kernel@kyup.com>
+Reviewed-by: Josef Bacik <jbacik@fb.com>
+Signed-off-by: David Sterba <dsterba@suse.com>
+---
+ fs/btrfs/inode.c |    9 ++++++++-
+ 1 file changed, 8 insertions(+), 1 deletion(-)
+
+--- a/fs/btrfs/inode.c
++++ b/fs/btrfs/inode.c
+@@ -5177,11 +5177,18 @@ void btrfs_evict_inode(struct inode *ino
+ 	struct btrfs_root *root = BTRFS_I(inode)->root;
+ 	struct btrfs_block_rsv *rsv, *global_rsv;
+ 	int steal_from_global = 0;
+-	u64 min_size = btrfs_calc_trunc_metadata_size(root, 1);
++	u64 min_size;
+ 	int ret;
+ 
+ 	trace_btrfs_inode_evict(inode);
+ 
++	if (!root) {
++		kmem_cache_free(btrfs_inode_cachep, BTRFS_I(inode));
++		return;
++	}
++
++	min_size = btrfs_calc_trunc_metadata_size(root, 1);
++
+ 	evict_inode_truncate_pages(inode);
+ 
+ 	if (inode->i_nlink &&

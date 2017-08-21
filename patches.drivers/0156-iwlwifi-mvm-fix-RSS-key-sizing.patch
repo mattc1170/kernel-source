@@ -1,0 +1,68 @@
+From dd4d3161d0f229031914f403721ced8cb64d4d52 Mon Sep 17 00:00:00 2001
+From: Sara Sharon <sara.sharon@intel.com>
+Date: Sun, 7 Feb 2016 12:50:35 +0200
+Subject: [PATCH] iwlwifi: mvm: fix RSS key sizing
+Git-commit: dd4d3161d0f229031914f403721ced8cb64d4d52
+Patch-mainline: 4.6-rc1
+References: FATE#321353, FATE#323335
+
+The initialization and copying of the RSS secret key
+should not use ARRAY_SIZE as we need to initialize a
+dword array, and not a byte array.
+Fix also the hook maximum write size to allow writing
+a longer table - up to full indirection table size.
+
+Fixes: 43413a975d06("iwlwifi: mvm: support rss queues configuration command")
+Signed-off-by: Sara Sharon <sara.sharon@intel.com>
+Signed-off-by: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/iwlwifi/mvm/debugfs.c |    5 +++--
+ drivers/net/wireless/iwlwifi/mvm/fw.c      |    2 +-
+ drivers/net/wireless/iwlwifi/mvm/ops.c     |    2 +-
+ 3 files changed, 5 insertions(+), 4 deletions(-)
+
+--- a/drivers/net/wireless/iwlwifi/mvm/debugfs.c
++++ b/drivers/net/wireless/iwlwifi/mvm/debugfs.c
+@@ -976,7 +976,7 @@ static ssize_t iwl_dbgfs_indirection_tbl
+ 	memcpy(&cmd.indirection_table[i * nbytes], cmd.indirection_table,
+ 	       ARRAY_SIZE(cmd.indirection_table) % nbytes);
+ 
+-	memcpy(cmd.secret_key, mvm->secret_key, ARRAY_SIZE(cmd.secret_key));
++	memcpy(cmd.secret_key, mvm->secret_key, sizeof(cmd.secret_key));
+ 
+ 	mutex_lock(&mvm->mutex);
+ 	ret = iwl_mvm_send_cmd_pdu(mvm, RSS_CONFIG_CMD, 0, sizeof(cmd), &cmd);
+@@ -1497,7 +1497,8 @@ MVM_DEBUGFS_READ_WRITE_FILE_OPS(d0i3_ref
+ MVM_DEBUGFS_READ_WRITE_FILE_OPS(fw_dbg_conf, 8);
+ MVM_DEBUGFS_WRITE_FILE_OPS(fw_dbg_collect, 64);
+ MVM_DEBUGFS_WRITE_FILE_OPS(cont_recording, 8);
+-MVM_DEBUGFS_WRITE_FILE_OPS(indirection_tbl, 16);
++MVM_DEBUGFS_WRITE_FILE_OPS(indirection_tbl,
++			   (IWL_RSS_INDIRECTION_TABLE_SIZE * 2));
+ 
+ #ifdef CONFIG_IWLWIFI_BCAST_FILTERING
+ MVM_DEBUGFS_READ_WRITE_FILE_OPS(bcast_filters, 256);
+--- a/drivers/net/wireless/iwlwifi/mvm/fw.c
++++ b/drivers/net/wireless/iwlwifi/mvm/fw.c
+@@ -121,7 +121,7 @@ static int iwl_send_rss_cfg_cmd(struct i
+ 
+ 	for (i = 0; i < ARRAY_SIZE(cmd.indirection_table); i++)
+ 		cmd.indirection_table[i] = i % mvm->trans->num_rx_queues;
+-	memcpy(cmd.secret_key, mvm->secret_key, ARRAY_SIZE(cmd.secret_key));
++	memcpy(cmd.secret_key, mvm->secret_key, sizeof(cmd.secret_key));
+ 
+ 	return iwl_mvm_send_cmd_pdu(mvm, RSS_CONFIG_CMD, 0, sizeof(cmd), &cmd);
+ }
+--- a/drivers/net/wireless/iwlwifi/mvm/ops.c
++++ b/drivers/net/wireless/iwlwifi/mvm/ops.c
+@@ -661,7 +661,7 @@ iwl_op_mode_mvm_start(struct iwl_trans *
+ 	iwl_mvm_tof_init(mvm);
+ 
+ 	/* init RSS hash key */
+-	get_random_bytes(mvm->secret_key, ARRAY_SIZE(mvm->secret_key));
++	get_random_bytes(mvm->secret_key, sizeof(mvm->secret_key));
+ 
+ 	return op_mode;
+ 

@@ -1,0 +1,61 @@
+From: David Sterba <dsterba@suse.com>
+Date: Tue, 26 Apr 2016 23:54:39 +0200
+Patch-mainline: 4.7
+Git-commit: 2c53b912ae317e560bce1fc446e76915a5b30587
+References: bsc#1012452
+Subject: [PATCH] btrfs: sink gfp parameter to set_record_extent_bits
+
+Single caller passes GFP_NOFS.
+
+Signed-off-by: David Sterba <dsterba@suse.com>
+---
+ fs/btrfs/extent_io.c |    5 ++---
+ fs/btrfs/extent_io.h |    3 +--
+ fs/btrfs/qgroup.c    |    3 +--
+ 3 files changed, 4 insertions(+), 7 deletions(-)
+
+--- a/fs/btrfs/extent_io.c
++++ b/fs/btrfs/extent_io.c
+@@ -1286,8 +1286,7 @@ search_again:
+ 
+ /* wrappers around set/clear extent bit */
+ int set_record_extent_bits(struct extent_io_tree *tree, u64 start, u64 end,
+-			   unsigned bits, gfp_t mask,
+-			   struct extent_changeset *changeset)
++			   unsigned bits, struct extent_changeset *changeset)
+ {
+ 	/*
+ 	 * We don't support EXTENT_LOCKED yet, as current changeset will
+@@ -1297,7 +1296,7 @@ int set_record_extent_bits(struct extent
+ 	 */
+ 	BUG_ON(bits & EXTENT_LOCKED);
+ 
+-	return __set_extent_bit(tree, start, end, bits, 0, NULL, NULL, mask,
++	return __set_extent_bit(tree, start, end, bits, 0, NULL, NULL, GFP_NOFS,
+ 				changeset);
+ }
+ 
+--- a/fs/btrfs/extent_io.h
++++ b/fs/btrfs/extent_io.h
+@@ -251,8 +251,7 @@ static inline int clear_extent_bits(stru
+ }
+ 
+ int set_record_extent_bits(struct extent_io_tree *tree, u64 start, u64 end,
+-			   unsigned bits, gfp_t mask,
+-			   struct extent_changeset *changeset);
++			   unsigned bits, struct extent_changeset *changeset);
+ int set_extent_bit(struct extent_io_tree *tree, u64 start, u64 end,
+ 		   unsigned bits, u64 *failed_start,
+ 		   struct extent_state **cached_state, gfp_t mask);
+--- a/fs/btrfs/qgroup.c
++++ b/fs/btrfs/qgroup.c
+@@ -2552,8 +2552,7 @@ int btrfs_qgroup_reserve_data(struct ino
+ 	changeset.bytes_changed = 0;
+ 	changeset.range_changed = ulist_alloc(GFP_NOFS);
+ 	ret = set_record_extent_bits(&BTRFS_I(inode)->io_tree, start,
+-			start + len -1, EXTENT_QGROUP_RESERVED, GFP_NOFS,
+-			&changeset);
++			start + len -1, EXTENT_QGROUP_RESERVED, &changeset);
+ 	trace_btrfs_qgroup_reserve_data(inode, start, len,
+ 					changeset.bytes_changed,
+ 					QGROUP_RESERVE);

@@ -1,0 +1,44 @@
+From 3ff863b87e8aacef96d66b132b43e296bb8cd973 Mon Sep 17 00:00:00 2001
+From: Arnd Bergmann <arnd@arndb.de>
+Date: Thu, 15 Oct 2015 21:35:40 -0300
+Subject: [PATCH] [media] sh-vou: clarify videobuf2 dependency
+Git-commit: 3ff863b87e8aacef96d66b132b43e296bb8cd973
+Patch-mainline: 4.5-rc1
+References: bsc#1031717
+
+The sh-vou driver has been converted from videobuf to videobuf2, but
+the Kconfig file still lists VIDEOBUF_DMA_CONTIG as a dependency.
+Consequently we can build the driver without VIDEOBUF2_DMA_CONTIG
+and get a link error:
+
+Drivers/built-in.o: In function `sh_vou_probe':
+vf610-ocotp.c:(.text+0x2dbf5c): undefined reference to `vb2_dma_contig_init_ctx'
+vf610-ocotp.c:(.text+0x2dc0b4): undefined reference to `vb2_dma_contig_cleanup_ctx'
+vf610-ocotp.c:(.text+0x2dc144): undefined reference to `vb2_dma_contig_memops'
+Drivers/built-in.o: In function `sh_vou_remove':
+vf610-ocotp.c:(.text+0x2dc190): undefined reference to `vb2_dma_contig_cleanup_ctx'
+
+This changes the dependency to VIDEOBUF2_DMA_CONTIG instead.
+
+Fixes: 57af3ad59d95 ("[media] sh-vou: convert to vb2")
+
+Signed-off-by: Arnd Bergmann <arnd@arndb.de>
+Signed-off-by: Hans Verkuil <hans.verkuil@cisco.com>
+Signed-off-by: Mauro Carvalho Chehab <mchehab@osg.samsung.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/media/platform/Kconfig |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+--- a/drivers/media/platform/Kconfig
++++ b/drivers/media/platform/Kconfig
+@@ -38,7 +38,7 @@ config VIDEO_SH_VOU
+ 	depends on MEDIA_CAMERA_SUPPORT
+ 	depends on VIDEO_DEV && I2C && HAS_DMA
+ 	depends on ARCH_SHMOBILE || COMPILE_TEST
+-	select VIDEOBUF_DMA_CONTIG
++	select VIDEOBUF2_DMA_CONTIG
+ 	help
+ 	  Support for the Video Output Unit (VOU) on SuperH SoCs.
+ 

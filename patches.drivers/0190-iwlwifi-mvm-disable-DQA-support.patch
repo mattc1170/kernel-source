@@ -1,0 +1,33 @@
+From 280452c9056421364111930b6336e27d85240438 Mon Sep 17 00:00:00 2001
+From: Liad Kaufman <liad.kaufman@intel.com>
+Date: Tue, 23 Feb 2016 16:23:38 +0200
+Subject: [PATCH] iwlwifi: mvm: disable DQA support
+Git-commit: 280452c9056421364111930b6336e27d85240438
+Patch-mainline: 4.6-rc1
+References: FATE#321353, FATE#323335
+
+Do not allow entrance into DQA flows until feature is
+completely ready and merged.
+
+Signed-off-by: Liad Kaufman <liad.kaufman@intel.com>
+Signed-off-by: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/iwlwifi/mvm/mvm.h |    5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+
+--- a/drivers/net/wireless/iwlwifi/mvm/mvm.h
++++ b/drivers/net/wireless/iwlwifi/mvm/mvm.h
+@@ -985,8 +985,9 @@ static inline bool iwl_mvm_is_d0i3_suppo
+ 
+ static inline bool iwl_mvm_is_dqa_supported(struct iwl_mvm *mvm)
+ {
+-	return fw_has_capa(&mvm->fw->ucode_capa,
+-			   IWL_UCODE_TLV_CAPA_DQA_SUPPORT);
++	/* Make sure DQA isn't allowed in driver until feature is complete */
++	return false && fw_has_capa(&mvm->fw->ucode_capa,
++				    IWL_UCODE_TLV_CAPA_DQA_SUPPORT);
+ }
+ 
+ static inline bool iwl_mvm_enter_d0i3_on_suspend(struct iwl_mvm *mvm)

@@ -1,0 +1,36 @@
+From e8b3f7b6e746e5a850d243e1e11d83d2163e16e4 Mon Sep 17 00:00:00 2001
+From: Eyal Shapira <eyal@wizery.com>
+Date: Thu, 19 Nov 2015 18:37:31 +0200
+Subject: [PATCH] iwlwifi: mvm: rs: fix a potential out of bounds access
+Git-commit: e8b3f7b6e746e5a850d243e1e11d83d2163e16e4
+Patch-mainline: 4.5-rc1
+References: FATE#321353, FATE#323335
+
+Klocwork pointed these out. There is a theoretical possibility
+that rate->index might be set to IWL_RATE_INVALID (15).
+This could trigger an out of bounds access on ht_vht_rates or
+legacy_rates arrays. Fix it by adding some checks.
+
+Signed-off-by: Eyal Shapira <eyalx.shapira@intel.com>
+Signed-off-by: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/iwlwifi/mvm/rs.c |    5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+
+--- a/drivers/net/wireless/iwlwifi/mvm/rs.c
++++ b/drivers/net/wireless/iwlwifi/mvm/rs.c
+@@ -552,9 +552,10 @@ static char *rs_pretty_rate(const struct
+ 	};
+ 	const char *rate_str;
+ 
+-	if (is_type_legacy(rate->type))
++	if (is_type_legacy(rate->type) && (rate->index <= IWL_RATE_54M_INDEX))
+ 		rate_str = legacy_rates[rate->index];
+-	else if (is_type_ht(rate->type) || is_type_vht(rate->type))
++	else if ((is_type_ht(rate->type) || is_type_vht(rate->type)) &&
++		 (rate->index <= IWL_RATE_MCS_9_INDEX))
+ 		rate_str = ht_vht_rates[rate->index];
+ 	else
+ 		rate_str = "BAD_RATE";

@@ -4,8 +4,7 @@ Date: Fri, 17 Mar 2017 17:13:43 -0500
 Subject: [PATCH] ibmvnic: Correct ibmvnic handling of device open/close
 
 References: fate#322021, bsc#1031512
-Patch-mainline: queued, next-20170328
-Git-repo: https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git
+Patch-mainline: v4.12-rc1
 Git-commit: ea5509f53ce81662eb409c514086734d1ce16207
 
 When closing the ibmvnic device we need to release the resources used

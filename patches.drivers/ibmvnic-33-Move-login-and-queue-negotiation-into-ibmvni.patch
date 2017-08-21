@@ -4,8 +4,7 @@ Date: Fri, 17 Mar 2017 17:13:40 -0500
 Subject: [PATCH] ibmvnic: Move login and queue negotiation into ibmvnic_open
 
 References: fate#322021, bsc#1031512
-Patch-mainline: queued, next-20170328
-Git-repo: https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git
+Patch-mainline: v4.12-rc1
 Git-commit: bd0b6723139416fd22acd5849b93edbd32d561f3
 
 VNIC server expects LINK_STATE_UP to be sent within 30s of the login. If we
