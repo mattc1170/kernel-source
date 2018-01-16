@@ -1,0 +1,40 @@
+From: Colin Ian King <colin.king@canonical.com>
+Date: Thu, 22 Dec 2016 23:52:58 +0000
+Subject: [PATCH] MIPS: ralink: Fix incorrect assignment on ralink_soc
+References: bnc#1012382
+Patch-mainline: 4.4.91
+Git-commit: 08d90c81b714482dceb5323d14f6617bcf55ee61
+
+[ Upstream commit 08d90c81b714482dceb5323d14f6617bcf55ee61 ]
+
+ralink_soc sould be assigned to RT3883_SOC, replace incorrect
+comparision with assignment.
+
+Signed-off-by: Colin Ian King <colin.king@canonical.com>
+Fixes: 418d29c87061 ("MIPS: ralink: Unify SoC id handling")
+Cc: John Crispin <john@phrozen.org>
+Cc: linux-mips@linux-mips.org
+Cc: linux-kernel@vger.kernel.org
+Patchwork: https://patchwork.linux-mips.org/patch/14903/
+Signed-off-by: Ralf Baechle <ralf@linux-mips.org>
+Signed-off-by: Sasha Levin <alexander.levin@verizon.com>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Signed-off-by: Jiri Slaby <jslaby@suse.cz>
+---
+ arch/mips/ralink/rt3883.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/arch/mips/ralink/rt3883.c b/arch/mips/ralink/rt3883.c
+index 3c575093f8f1..f2a6e1b8cce0 100644
+--- a/arch/mips/ralink/rt3883.c
++++ b/arch/mips/ralink/rt3883.c
+@@ -144,5 +144,5 @@ void prom_soc_init(struct ralink_soc_info *soc_info)
+ 
+ 	rt2880_pinmux_data = rt3883_pinmux_data;
+ 
+-	ralink_soc == RT3883_SOC;
++	ralink_soc = RT3883_SOC;
+ }
+-- 
+2.14.2
+

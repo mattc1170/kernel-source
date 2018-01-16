@@ -11,7 +11,7 @@ eliminate unnecessary padding.
 Signed-off-by: K. Y. Srinivasan <kys@microsoft.com>
 Reviewed-by: Haiyang Zhang <haiyangz@microsoft.com>
 Signed-off-by: David S. Miller <davem@davemloft.net>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  drivers/net/hyperv/hyperv_net.h | 18 ++++++++++--------
  1 file changed, 10 insertions(+), 8 deletions(-)

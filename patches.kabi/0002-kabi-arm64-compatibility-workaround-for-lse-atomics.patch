@@ -1,0 +1,32 @@
+From bf4ec35faf0f9a6ab5e5b4cec1cf85be375d6b71 Mon Sep 17 00:00:00 2001
+From: Mian Yousaf Kaukab <yousaf.kaukab@suse.com>
+Date: Mon, 28 Aug 2017 11:35:51 +0200
+Subject: [PATCH 2/2] kabi: arm64: compatibility workaround for lse atomics
+
+Patch-Mainline: never, kabi fix for SLES12
+References: bsc#1055290
+
+Signed-off-by: Mian Yousaf Kaukab <yousaf.kaukab@suse.com>
+---
+ arch/arm64/include/asm/lse.h | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/arch/arm64/include/asm/lse.h b/arch/arm64/include/asm/lse.h
+index 285a45f8ff28..f4a2cf25267a 100644
+--- a/arch/arm64/include/asm/lse.h
++++ b/arch/arm64/include/asm/lse.h
+@@ -19,7 +19,11 @@
+ __asm__(".arch_extension	lse");
+ 
+ /* Move the ll/sc atomics out-of-line */
++#ifdef __GENKSYMS__ /* workaround for SLE12-SP3 kABI compatibility */
++#define __LL_SC_INLINE
++#else
+ #define __LL_SC_INLINE		notrace
++#endif
+ #define __LL_SC_PREFIX(x)	__ll_sc_##x
+ #define __LL_SC_EXPORT(x)	EXPORT_SYMBOL(__LL_SC_PREFIX(x))
+ 
+-- 
+2.11.0
+

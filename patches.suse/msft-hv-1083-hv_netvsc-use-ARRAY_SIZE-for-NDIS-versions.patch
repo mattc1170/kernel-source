@@ -9,7 +9,7 @@ Don't hard code size of array of NDIS versions.
 
 Signed-off-by: Stephen Hemminger <sthemmin@microsoft.com>
 Signed-off-by: David S. Miller <davem@davemloft.net>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  drivers/net/hyperv/netvsc.c | 7 ++++---
  1 file changed, 4 insertions(+), 3 deletions(-)

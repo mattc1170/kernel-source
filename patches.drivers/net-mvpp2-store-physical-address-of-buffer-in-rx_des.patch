@@ -1,8 +1,7 @@
 From: Thomas Petazzoni <thomas.petazzoni@free-electrons.com>
 Date: Tue, 7 Mar 2017 16:53:04 +0100
 Subject: net: mvpp2: store physical address of buffer in rx_desc->buf_cookie
-Patch-mainline: Queued in subsystem maintainer repository
-Git-repo: git://git.kernel.org/pub/scm/linux/kernel/git/davem/net-next.git
+Patch-mainline: v4.12-rc1
 Git-commit: 4e4a105f1fde326a5d1b0fbcbba8254c54a673e4
 References: bsc#1032150
 

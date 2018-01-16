@@ -18,7 +18,7 @@ Also:
 
 Signed-off-by: Stephen Hemminger <sthemmin@microsoft.com>
 Signed-off-by: David S. Miller <davem@davemloft.net>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  drivers/net/hyperv/hyperv_net.h   | 149 +++++++++++++++++++++++++++++++++++---
  drivers/net/hyperv/netvsc_drv.c   |  92 ++++++++++-------------
@@ -395,8 +395,8 @@ index eebeb9378bac..f26d9d2d475f 100644
  	netif_set_real_num_rx_queues(net, nvdev->num_chn);
 -	netif_set_gso_max_size(net, NETVSC_GSO_MAX_SIZE);
  
- 	ret = register_netdev(net);
- 	if (ret != 0) {
+ 	/* MTU range: 68 - 1500 or 65521 */
+ 	net->min_mtu = NETVSC_MTU_MIN;
 diff --git a/drivers/net/hyperv/rndis_filter.c b/drivers/net/hyperv/rndis_filter.c
 index 113c7f4d1590..8f04be1d7421 100644
 --- a/drivers/net/hyperv/rndis_filter.c

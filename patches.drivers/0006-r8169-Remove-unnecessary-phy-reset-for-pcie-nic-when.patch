@@ -1,0 +1,42 @@
+From 35b19032a8b5c7aed5895f711f85eb41b565d335 Mon Sep 17 00:00:00 2001
+From: Chun-Hao Lin <hau@realtek.com>
+Date: Fri, 11 Mar 2016 14:21:14 +0800
+Subject: [PATCH 6/7] r8169:Remove unnecessary phy reset for pcie nic when
+ setting link spped.
+Git-commit: c45569755e828a8458d125bb93feb1d90ac9be6f
+Patch-mainline: v4.6
+References: bsc#1050742
+
+For pcie nic, after setting link speed and there is no link driver does not need
+to do phy reset until link up.
+
+For some pcie nics, to do this will also reset phy speed down counter and prevent
+phy from auto speed down.
+
+This patch fix the issue reported in following link.
+https://bugs.launchpad.net/ubuntu/+source/linux/+bug/1547151
+
+Signed-off-by: Chunhao Lin <hau@realtek.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+Signed-off-by: Oliver Neukum <oneukum@suse.com>
+---
+ drivers/net/ethernet/realtek/r8169.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/net/ethernet/realtek/r8169.c b/drivers/net/ethernet/realtek/r8169.c
+index be16435b8e03..54f2805d3c09 100644
+--- a/drivers/net/ethernet/realtek/r8169.c
++++ b/drivers/net/ethernet/realtek/r8169.c
+@@ -1999,7 +1999,8 @@ static int rtl8169_set_speed(struct net_device *dev,
+ 		goto out;
+ 
+ 	if (netif_running(dev) && (autoneg == AUTONEG_ENABLE) &&
+-	    (advertising & ADVERTISED_1000baseT_Full)) {
++	    (advertising & ADVERTISED_1000baseT_Full) &&
++	    !pci_is_pcie(tp->pci_dev)) {
+ 		mod_timer(&tp->timer, jiffies + RTL8169_PHY_TIMEOUT);
+ 	}
+ out:
+-- 
+2.12.3
+

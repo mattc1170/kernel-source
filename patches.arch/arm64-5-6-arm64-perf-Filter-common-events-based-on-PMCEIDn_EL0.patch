@@ -1,17 +1,10 @@
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Subject: [v4,5/6] arm64/perf: Filter common events based on PMCEIDn_EL0
 From: Ashok Kumar <ashoks@broadcom.com>
-X-Patchwork-Id: 8801011
-Message-Id: <1460379741-1181-6-git-send-email-ashoks@broadcom.com>
-To: linux-arm-kernel@lists.infradead.org, devicetree@vger.kernel.org,
-	mark.rutland@arm.com, will.deacon@arm.com, Suzuki.Poulose@arm.com,
-	robh+dt@kernel.org, catalin.marinas@arm.com
-Cc: jchandra@broadcom.com, Ashok Kumar <ashoks@broadcom.com>,
-	jglauber@cavium.com
-Date: Mon, 11 Apr 2016 06:02:20 -0700
-Patch-mainline: Submitted, https://patchwork.kernel.org/patch/8801011
+Date: Thu, 21 Apr 2016 05:58:44 -0700
+Subject: arm64/perf: Filter common events based on PMCEIDn_EL0
+
+Git-commit: 4b1a9e6934ec6e38138c66c2f73cf6f3695a9c6c
+Patch-mainline: v4.7-rc1
+References: fate#319481
 
 The complete common architectural and micro-architectural
 event number structure is filtered based on PMCEIDn_EL0 and
@@ -25,18 +18,18 @@ The function which derives event bitmap from PMCEIDn_EL0 is
 executed in the cpus, which has the pmu being initialized,
 for heterogeneous pmu support.
 
+Acked-by: Mark Rutland <mark.rutland@arm.com>
 Signed-off-by: Ashok Kumar <ashoks@broadcom.com>
-Signed-off-by: Matthias Brugger <mbrugger@suse.com>
-
+Signed-off-by: Will Deacon <will.deacon@arm.com>
+Signed-off-by: Mian Yousaf Kaukab <yousaf.kaukab@suse.com>
 ---
-arch/arm64/kernel/perf_event.c | 74 +++++++++++++++++++++++++++++++++++-------
- arch/arm64/kernel/perf_event.c |   74 ++++++++++++++++++++++++++++++++++-------
+ arch/arm64/kernel/perf_event.c |   70 ++++++++++++++++++++++++++++++++---------
  include/linux/perf/arm_pmu.h   |    2 +
- 2 files changed, 65 insertions(+), 11 deletions(-)
+ 2 files changed, 57 insertions(+), 15 deletions(-)
 
 --- a/arch/arm64/kernel/perf_event.c
 +++ b/arch/arm64/kernel/perf_event.c
-@@ -323,10 +323,22 @@ static const unsigned armv8_thunder_perf
+@@ -324,10 +324,22 @@ static const unsigned armv8_thunder_perf
  	[C(BPU)][C(OP_WRITE)][C(RESULT_MISS)]	= ARMV8_PMUV3_PERFCTR_BR_MIS_PRED,
  };
  
@@ -49,7 +42,7 @@ arch/arm64/kernel/perf_event.c | 74 +++++++++++++++++++++++++++++++++++-------
 +
 +	pmu_attr = container_of(attr, struct perf_pmu_events_attr, attr);
 +
-+	return sprintf(page, "event=0x%02llx\n", pmu_attr->id);
++	return sprintf(page, "event=0x%03llx\n", pmu_attr->id);
 +}
 +
  #define ARMV8_EVENT_ATTR_RESOLVE(m) #m
@@ -61,7 +54,7 @@ arch/arm64/kernel/perf_event.c | 74 +++++++++++++++++++++++++++++++++++-------
  
  ARMV8_EVENT_ATTR(sw_incr, ARMV8_PMUV3_PERFCTR_SW_INCR);
  ARMV8_EVENT_ATTR(l1i_cache_refill, ARMV8_PMUV3_PERFCTR_L1I_CACHE_REFILL);
-@@ -431,9 +443,27 @@ static struct attribute *armv8_pmuv3_eve
+@@ -432,9 +444,27 @@ static struct attribute *armv8_pmuv3_eve
  	NULL,
  };
  
@@ -89,44 +82,47 @@ arch/arm64/kernel/perf_event.c | 74 +++++++++++++++++++++++++++++++++++-------
  };
  
  PMU_FORMAT_ATTR(event, "config:0-9");
-@@ -904,11 +934,32 @@ static void armv8pmu_read_num_pmnc_event
- 	*nb_cnt += 1;
+@@ -894,22 +924,31 @@ static int armv8_thunder_map_event(struc
+ 				ARMV8_EVTYPE_EVENT);
+ }
+ 
+-static void armv8pmu_read_num_pmnc_events(void *info)
++static void __armv8pmu_probe_pmu(void *info)
+ {
+-	int *nb_cnt = info;
++	struct arm_pmu *cpu_pmu = info;
++	u32 pmceid[2];
+ 
+ 	/* Read the nb of CNTx counters supported from PMNC */
+-	*nb_cnt = (armv8pmu_pmcr_read() >> ARMV8_PMCR_N_SHIFT) & ARMV8_PMCR_N_MASK;
++	cpu_pmu->num_events = (armv8pmu_pmcr_read() >> ARMV8_PMU_PMCR_N_SHIFT)
++		& ARMV8_PMU_PMCR_N_MASK;
+ 
+ 	/* Add the CPU cycles counter */
+-	*nb_cnt += 1;
++	cpu_pmu->num_events += 1;
++
++	pmceid[0] = read_sysreg(pmceid0_el0);
++	pmceid[1] = read_sysreg(pmceid1_el0);
++
++	bitmap_from_u32array(cpu_pmu->pmceid_bitmap,
++			     ARMV8_PMUV3_MAX_COMMON_EVENTS, pmceid,
++			     ARRAY_SIZE(pmceid));
  }
  
 -static int armv8pmu_probe_num_events(struct arm_pmu *arm_pmu)
-+static void armv8pmu_read_common_events_bitmap(unsigned long *bmp)
++static int armv8pmu_probe_pmu(struct arm_pmu *cpu_pmu)
  {
 -	return smp_call_function_any(&arm_pmu->supported_cpus,
 -				    armv8pmu_read_num_pmnc_events,
 -				    &arm_pmu->num_events, 1);
-+	u32 arr[2], reg;
-+
-+	asm volatile("mrs %0, pmceid0_el0" : "=r" (reg));
-+	arr[0] = reg;
-+	asm volatile("mrs %0, pmceid1_el0" : "=r" (reg));
-+	arr[1] = reg;
-+
-+	bitmap_from_u32array(bmp, ARMV8_PMUV3_MAX_COMMON_EVENTS,
-+			     arr, ARRAY_SIZE(arr));
-+}
-+
-+static void __armv8pmu_probe_pmu(void *info)
-+{
-+	struct arm_pmu *cpu_pmu = info;
-+
-+	armv8pmu_read_num_pmnc_events(&cpu_pmu->num_events);
-+	armv8pmu_read_common_events_bitmap(cpu_pmu->pmceid_bitmap);
-+}
-+
-+static int armv8pmu_probe_pmu(struct arm_pmu *cpu_pmu)
-+{
 +	return smp_call_function_any(&cpu_pmu->supported_cpus,
 +				    __armv8pmu_probe_pmu,
 +				    cpu_pmu, 1);
  }
  
  static void armv8_pmu_init(struct arm_pmu *cpu_pmu)
-@@ -931,7 +982,8 @@ static int armv8_pmuv3_init(struct arm_p
+@@ -932,7 +971,8 @@ static int armv8_pmuv3_init(struct arm_p
  	armv8_pmu_init(cpu_pmu);
  	cpu_pmu->name			= "armv8_pmuv3";
  	cpu_pmu->map_event		= armv8_pmuv3_map_event;
@@ -136,7 +132,7 @@ arch/arm64/kernel/perf_event.c | 74 +++++++++++++++++++++++++++++++++++-------
  }
  
  static int armv8_a53_pmu_init(struct arm_pmu *cpu_pmu)
-@@ -940,7 +992,7 @@ static int armv8_a53_pmu_init(struct arm
+@@ -941,7 +981,7 @@ static int armv8_a53_pmu_init(struct arm
  	cpu_pmu->name			= "armv8_cortex_a53";
  	cpu_pmu->map_event		= armv8_a53_map_event;
  	cpu_pmu->pmu.attr_groups	= armv8_pmuv3_attr_groups;
@@ -145,7 +141,7 @@ arch/arm64/kernel/perf_event.c | 74 +++++++++++++++++++++++++++++++++++-------
  }
  
  static int armv8_a57_pmu_init(struct arm_pmu *cpu_pmu)
-@@ -949,7 +1001,7 @@ static int armv8_a57_pmu_init(struct arm
+@@ -950,7 +990,7 @@ static int armv8_a57_pmu_init(struct arm
  	cpu_pmu->name			= "armv8_cortex_a57";
  	cpu_pmu->map_event		= armv8_a57_map_event;
  	cpu_pmu->pmu.attr_groups	= armv8_pmuv3_attr_groups;
@@ -154,7 +150,7 @@ arch/arm64/kernel/perf_event.c | 74 +++++++++++++++++++++++++++++++++++-------
  }
  
  static int armv8_a72_pmu_init(struct arm_pmu *cpu_pmu)
-@@ -958,7 +1010,7 @@ static int armv8_a72_pmu_init(struct arm
+@@ -959,7 +999,7 @@ static int armv8_a72_pmu_init(struct arm
  	cpu_pmu->name			= "armv8_cortex_a72";
  	cpu_pmu->map_event		= armv8_a57_map_event;
  	cpu_pmu->pmu.attr_groups	= armv8_pmuv3_attr_groups;
@@ -163,7 +159,7 @@ arch/arm64/kernel/perf_event.c | 74 +++++++++++++++++++++++++++++++++++-------
  }
  
  static int armv8_thunder_pmu_init(struct arm_pmu *cpu_pmu)
-@@ -967,7 +1019,7 @@ static int armv8_thunder_pmu_init(struct
+@@ -968,7 +1008,7 @@ static int armv8_thunder_pmu_init(struct
  	cpu_pmu->name			= "armv8_cavium_thunder";
  	cpu_pmu->map_event		= armv8_thunder_map_event;
  	cpu_pmu->pmu.attr_groups	= armv8_pmuv3_attr_groups;

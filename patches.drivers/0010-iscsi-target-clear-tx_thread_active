@@ -12,31 +12,28 @@ Signed-off-by: Varun Prakash <varun@chelsio.com>
 Signed-off-by: Nicholas Bellinger <nab@linux-iscsi.org>
 Acked-by: Lee Duncan <lduncan@suse.com>
 ---
- drivers/target/iscsi/iscsi_target.c | 6 ++++--
+ drivers/target/iscsi/iscsi_target.c |    6 ++++--
  1 file changed, 4 insertions(+), 2 deletions(-)
 
-diff --git a/drivers/target/iscsi/iscsi_target.c b/drivers/target/iscsi/iscsi_target.c
-index 348337c539f0..29df956ed0cc 100644
 --- a/drivers/target/iscsi/iscsi_target.c
 +++ b/drivers/target/iscsi/iscsi_target.c
-@@ -4379,7 +4379,8 @@ static void iscsit_logout_post_handler_closesession(
+@@ -4417,7 +4417,8 @@ static void iscsit_logout_post_handler_c
  	 * always sleep waiting for RX/TX thread shutdown to complete
  	 * within iscsit_close_connection().
  	 */
--	if (conn->conn_transport->transport_type == ISCSI_TCP)
+-	if (conn->conn_transport->transport_type == ISCSI_TCP) {
 +	if ((conn->conn_transport->transport_type == ISCSI_TCP) ||
-+	    (conn->conn_transport->transport_type == ISCSI_HW_OFFLOAD))
++	    (conn->conn_transport->transport_type == ISCSI_HW_OFFLOAD)) {
  		sleep = cmpxchg(&conn->tx_thread_active, true, false);
- 
- 	atomic_set(&conn->conn_logout_remove, 0);
-@@ -4396,7 +4397,8 @@ static void iscsit_logout_post_handler_samecid(
+ 		if (!sleep)
+ 			return;
+@@ -4437,7 +4438,8 @@ static void iscsit_logout_post_handler_s
  {
  	int sleep = 1;
  
--	if (conn->conn_transport->transport_type == ISCSI_TCP)
+-	if (conn->conn_transport->transport_type == ISCSI_TCP) {
 +	if ((conn->conn_transport->transport_type == ISCSI_TCP) ||
-+	    (conn->conn_transport->transport_type == ISCSI_HW_OFFLOAD))
++	    (conn->conn_transport->transport_type == ISCSI_HW_OFFLOAD)) {
  		sleep = cmpxchg(&conn->tx_thread_active, true, false);
- 
- 	atomic_set(&conn->conn_logout_remove, 0);
-
+ 		if (!sleep)
+ 			return;

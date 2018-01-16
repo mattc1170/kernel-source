@@ -1,0 +1,321 @@
+From: Takashi Iwai <tiwai@suse.de>
+Subject: PM / Hibernate: Fix scheduling while atomic during hibernation
+Patch-mainline: Never, unless BSD-style securelevel accepted by upstream
+References: bsc#1051059
+
+openSUSE Leap 42.2/42.3 kernel hits the kernel warning like below at
+hibernating:
+ BUG: sleeping function called from invalid context at ../kernel/locking/rwsem.c:21
+ in_atomic(): 1, irqs_disabled(): 1, pid: 7880, name: systemd-sleep
+ CPU: 0 PID: 7880 Comm: systemd-sleep Tainted: G           O     4.4.76-1-default #1
+ Call Trace:
+  [<ffffffff81019f29>] dump_trace+0x59/0x320
+  [<ffffffff8101a2ea>] show_stack_log_lvl+0xfa/0x180
+  [<ffffffff8101b091>] show_stack+0x21/0x40
+  [<ffffffff81339d97>] dump_stack+0x5c/0x85
+  [<ffffffff8162dd8c>] down_read+0x1c/0x40
+  [<ffffffff812e9f6d>] crypto_alg_lookup+0x1d/0x50
+  [<ffffffff812ea06b>] crypto_larval_lookup+0x2b/0x160
+  [<ffffffff812ea1cd>] crypto_alg_mod_lookup+0x2d/0xa0
+  [<ffffffff812ea433>] crypto_alloc_tfm+0x53/0xe0
+  [<ffffffff810d3225>] swsusp_save+0x365/0x4a0
+  [<ffffffff8151405b>] swsusp_arch_suspend+0x5b/0x60
+
+This is caused by the hibernation verification calling crypto
+alloc/init code that contains mutex and kmalloc with GFP_KRENEL.
+swsusp_arch_suspend() gets called from create_image() in the
+irq-disabled context, so the warning above seems valid.
+
+This patch address the problem by moving the hash init code out of the
+irq-disabled context as a preliminary function, swsusp_prepare_hash(),
+to be called beforehand.  Also the release stuff was moved to the
+counter-part, swsusp_finish_hash().
+
+A bonus by this patch is that we cleanup the usage of hash init /
+finish so that they can be used in both image creation and image
+verification codes.
+
+Signed-off-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ kernel/power/hibernate.c |    9 ++
+ kernel/power/power.h     |    5 +
+ kernel/power/snapshot.c  |  157 ++++++++++++++++++++---------------------------
+ 3 files changed, 82 insertions(+), 89 deletions(-)
+
+--- a/kernel/power/hibernate.c
++++ b/kernel/power/hibernate.c
+@@ -286,11 +286,15 @@ static int create_image(int platform_mod
+ {
+ 	int error;
+ 
++	error = swsusp_prepare_hash(false);
++	if (error)
++		return error;
++
+ 	error = dpm_suspend_end(PMSG_FREEZE);
+ 	if (error) {
+ 		printk(KERN_ERR "PM: Some devices failed to power down, "
+ 			"aborting hibernation\n");
+-		return error;
++		goto finish_hash;
+ 	}
+ 
+ 	error = platform_pre_snapshot(platform_mode);
+@@ -343,6 +347,9 @@ static int create_image(int platform_mod
+ 	dpm_resume_start(in_suspend ?
+ 		(error ? PMSG_RECOVER : PMSG_THAW) : PMSG_RESTORE);
+ 
++ finish_hash:
++	swsusp_finish_hash();
++
+ 	return error;
+ }
+ 
+--- a/kernel/power/power.h
++++ b/kernel/power/power.h
+@@ -24,10 +24,15 @@ extern bool swsusp_page_is_keys(struct p
+ extern unsigned long get_forward_buff_pfn(void);
+ extern void fill_forward_info(void *forward_buff_page, int verify_ret);
+ extern void restore_sig_forward_info(void);
++/* snapshot.c */
++int swsusp_prepare_hash(bool may_sleep);
++void swsusp_finish_hash(void);
+ #else
+ static inline bool swsusp_page_is_keys(struct page *page) { return false; }
+ static inline unsigned long get_forward_buff_pfn(void) { return 0; }
+ static inline void restore_sig_forward_info(void) {}
++static inline int swsusp_prepare_hash(bool may_sleep) { return 0; }
++static inline void swsusp_finish_hash(void) {}
+ #endif
+ 
+ /* kernel/power/snapshot.c */
+--- a/kernel/power/snapshot.c
++++ b/kernel/power/snapshot.c
+@@ -1295,21 +1295,19 @@ void *forward_buff;
+ void **h_buf;
+ 
+ #ifdef CONFIG_HIBERNATE_VERIFICATION
+-static int
+-__copy_data_pages(struct memory_bitmap *copy_bm, struct memory_bitmap *orig_bm)
++static u8 *s4_verify_digest;
++static struct shash_desc *s4_verify_desc;
++
++int swsusp_prepare_hash(bool may_sleep)
+ {
+-	unsigned long pfn, dst_pfn;
+-	struct page *d_page;
+-	void *hash_buffer = NULL;
+-	struct crypto_shash *tfm = NULL;
+-	struct shash_desc *desc = NULL;
+-	u8 *key = NULL, *digest = NULL;
++	struct crypto_shash *tfm;
++	u8 *key;
+ 	size_t digest_size, desc_size;
+-	int key_err = 0, ret = 0;
++	int ret;
+ 
+-	key_err = get_hibernation_key(&key);
+-	if (key_err)
+-		goto copy_pages;
++	ret = get_hibernation_key(&key);
++	if (ret)
++		return 0;
+ 
+ 	tfm = crypto_alloc_shash(HIBERNATION_HMAC, 0, 0);
+ 	if (IS_ERR(tfm)) {
+@@ -1320,26 +1318,54 @@ __copy_data_pages(struct memory_bitmap *
+ 	ret = crypto_shash_setkey(tfm, key, HIBERNATION_DIGEST_SIZE);
+ 	if (ret) {
+ 		pr_err("PM: Set HMAC key failed\n");
+-		goto error_setkey;
++		goto error;
+ 	}
+ 
+-	desc_size = crypto_shash_descsize(tfm) + sizeof(*desc);
++	desc_size = crypto_shash_descsize(tfm) + sizeof(*s4_verify_desc);
+ 	digest_size = crypto_shash_digestsize(tfm);
+-	digest = kzalloc(digest_size + desc_size, GFP_KERNEL);
+-	if (!digest) {
++	s4_verify_digest = kzalloc(digest_size + desc_size, GFP_KERNEL);
++	if (!s4_verify_digest) {
+ 		pr_err("PM: Allocate digest failed\n");
+ 		ret = -ENOMEM;
+-		goto error_digest;
++		goto error;
+ 	}
+ 
+-	desc = (void *) digest + digest_size;
+-	desc->tfm = tfm;
+-	desc->flags = CRYPTO_TFM_REQ_MAY_SLEEP;
+-	ret = crypto_shash_init(desc);
++	s4_verify_desc = (void *) s4_verify_digest + digest_size;
++	s4_verify_desc->tfm = tfm;
++	if (may_sleep)
++		s4_verify_desc->flags = CRYPTO_TFM_REQ_MAY_SLEEP;
++	ret = crypto_shash_init(s4_verify_desc);
+ 	if (ret < 0)
+-		goto error_shash;
++		goto free_shash;
++
++	return 0;
++
++ free_shash:
++	kfree(s4_verify_digest);
++ error:
++	crypto_free_shash(tfm);
++	s4_verify_digest = NULL;
++	s4_verify_desc = NULL;
++	return ret;
++}
++
++void swsusp_finish_hash(void)
++{
++	if (s4_verify_desc)
++		crypto_free_shash(s4_verify_desc->tfm);
++	kfree(s4_verify_digest);
++	s4_verify_desc = NULL;
++	s4_verify_digest = NULL;
++}
++
++static int
++__copy_data_pages(struct memory_bitmap *copy_bm, struct memory_bitmap *orig_bm)
++{
++	unsigned long pfn, dst_pfn;
++	struct page *d_page;
++	void *hash_buffer = NULL;
++	int ret = 0;
+ 
+-copy_pages:
+ 	memory_bm_position_reset(orig_bm);
+ 	memory_bm_position_reset(copy_bm);
+ 	for (;;) {
+@@ -1361,36 +1387,25 @@ copy_pages:
+ 			hash_buffer = page_address(d_page);
+ 		}
+ 
+-		if (key_err)
++		if (!s4_verify_desc)
+ 			continue;
+ 
+-		ret = crypto_shash_update(desc, hash_buffer, PAGE_SIZE);
++		ret = crypto_shash_update(s4_verify_desc, hash_buffer,
++					  PAGE_SIZE);
+ 		if (ret)
+-			goto error_shash;
++			return ret;
+ 	}
+ 
+-	if (key_err)
+-		goto error_key;
+-
+-	ret = crypto_shash_final(desc, digest);
+-	if (ret)
+-		goto error_shash;
+-
+-	memset(signature, 0, HIBERNATION_DIGEST_SIZE);
+-	memcpy(signature, digest, HIBERNATION_DIGEST_SIZE);
++	if (s4_verify_desc) {
++		ret = crypto_shash_final(s4_verify_desc, s4_verify_digest);
++		if (ret)
++			return ret;
+ 
+-	kfree(digest);
+-	crypto_free_shash(tfm);
++		memset(signature, 0, HIBERNATION_DIGEST_SIZE);
++		memcpy(signature, s4_verify_digest, HIBERNATION_DIGEST_SIZE);
++	}
+ 
+ 	return 0;
+-
+-error_shash:
+-	kfree(digest);
+-error_setkey:
+-error_digest:
+-	crypto_free_shash(tfm);
+-error_key:
+-	return ret;
+ }
+ 
+ static void snapshot_fill_sig_forward_info(int verify_ret)
+@@ -1406,10 +1421,6 @@ static void snapshot_fill_sig_forward_in
+ 
+ int snapshot_image_verify(void)
+ {
+-	struct crypto_shash *tfm;
+-	struct shash_desc *desc;
+-	u8 *key, *digest;
+-	size_t digest_size, desc_size;
+ 	int i, ret = 0;
+ 
+ 	if (!h_buf) {
+@@ -1417,60 +1428,30 @@ int snapshot_image_verify(void)
+ 		goto forward_ret;
+ 	}
+ 
+-	ret = get_hibernation_key(&key);
+-	if (ret)
++	ret = swsusp_prepare_hash(true);
++	if (ret || !s4_verify_desc)
+ 		goto forward_ret;
+ 
+-	tfm = crypto_alloc_shash(HIBERNATION_HMAC, 0, 0);
+-	if (IS_ERR(tfm)) {
+-		pr_err("PM: Allocate HMAC failed: %ld\n", PTR_ERR(tfm));
+-		return PTR_ERR(tfm);
+-	}
+-
+-	ret = crypto_shash_setkey(tfm, key, HIBERNATION_DIGEST_SIZE);
+-	if (ret) {
+-		pr_err("PM: Set HMAC key failed\n");
+-		goto error_setkey;
+-	}
+-
+-	desc_size = crypto_shash_descsize(tfm) + sizeof(*desc);
+-	digest_size = crypto_shash_digestsize(tfm);
+-	digest = kzalloc(digest_size + desc_size, GFP_KERNEL);
+-	if (!digest) {
+-		pr_err("PM: Allocate digest failed\n");
+-		ret = -ENOMEM;
+-		goto error_digest;
+-	}
+-	desc = (void *) digest + digest_size;
+-	desc->tfm = tfm;
+-	desc->flags = CRYPTO_TFM_REQ_MAY_SLEEP;
+-
+-	ret = crypto_shash_init(desc);
+-	if (ret < 0)
+-		goto error_shash;
+-
+ 	for (i = 0; i < nr_copy_pages; i++) {
+-		ret = crypto_shash_update(desc, *(h_buf + i), PAGE_SIZE);
++		ret = crypto_shash_update(s4_verify_desc, *(h_buf + i), PAGE_SIZE);
+ 		if (ret)
+ 			goto error_shash;
+ 	}
+ 
+-	ret = crypto_shash_final(desc, digest);
++	ret = crypto_shash_final(s4_verify_desc, s4_verify_digest);
+ 	if (ret)
+ 		goto error_shash;
+ 
+ 	pr_debug("PM: Signature %*phN\n", HIBERNATION_DIGEST_SIZE, signature);
+-	pr_debug("PM: Digest %*phN\n", (int) digest_size, digest);
+-	if (memcmp(signature, digest, HIBERNATION_DIGEST_SIZE))
++	pr_debug("PM: Digest %*phN\n", HIBERNATION_DIGEST_SIZE, s4_verify_digest);
++	if (memcmp(signature, s4_verify_digest, HIBERNATION_DIGEST_SIZE))
+ 		ret = -EKEYREJECTED;
+ 
+ error_shash:
+-	vfree(h_buf);
+-	kfree(digest);
+-error_setkey:
+-error_digest:
+-	crypto_free_shash(tfm);
++	swsusp_finish_hash();
++
+ forward_ret:
++	vfree(h_buf);
+ 	if (ret)
+ 		pr_warn("PM: Signature verifying failed: %d\n", ret);
+ 	if (ret == -ENODEV && !efi_enabled(EFI_BOOT)) {

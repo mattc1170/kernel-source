@@ -1,0 +1,28 @@
+From: "K. Y. Srinivasan" <kys@microsoft.com>
+Date: Fri, 24 Mar 2017 20:54:37 -0700
+Patch-mainline: v4.12-rc1
+Subject: netvsc: Properly initialize the return value
+Git-commit: 386f57622cc3bbb39b9c00fc8762bc9ab28e0f8d
+References: fate#320485
+
+Initialize the return value correctly.
+
+Signed-off-by: K. Y. Srinivasan <kys@microsoft.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+Acked-by: Olaf Hering <ohering@suse.de>
+---
+ drivers/net/hyperv/netvsc_drv.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/net/hyperv/netvsc_drv.c b/drivers/net/hyperv/netvsc_drv.c
+--- a/drivers/net/hyperv/netvsc_drv.c
++++ b/drivers/net/hyperv/netvsc_drv.c
+@@ -855,7 +855,7 @@ static int netvsc_change_mtu(struct net_device *ndev, int mtu)
+ 	struct hv_device *hdev = ndevctx->device_ctx;
+ 	struct netvsc_device_info device_info;
+ 	bool was_running;
+-	int ret;
++	int ret = 0;
+ 
+ 	if (!nvdev || nvdev->destroy)
+ 		return -ENODEV;

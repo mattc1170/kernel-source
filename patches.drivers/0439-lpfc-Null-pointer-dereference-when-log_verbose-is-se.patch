@@ -1,8 +1,10 @@
 From: James Smart <jsmart2021@gmail.com>
-Date: Tue, 30 May 2017 22:45:13 -0700
-Subject: lpfc: Null pointer dereference when log_verbose is set to 0xffffffff
+Date: Thu, 1 Jun 2017 21:07:06 -0700
+Subject: scsi: lpfc: Null pointer dereference when log_verbose is set to
+ 0xffffffff
+Git-commit: e92974f6cdaad36691b74045817b585a7b76988b
 References: bsc#1041873
-Patch-Mainline: submitted linux-scsi 2017/06/01
+Patch-Mainline: v4.13-rc1
 
 Kernel panic when log_verbose is set to 0xffffffff
 
@@ -12,16 +14,17 @@ Fix: Do not dereference phba->pport if it is NULL
 
 Signed-off-by: Dick Kennedy <dick.kennedy@broadcom.com>
 Signed-off-by: James Smart <james.smart@broadcom.com>
+Signed-off-by: Martin K. Petersen <martin.petersen@oracle.com>
 Acked-by: Hannes Reinecke <hare@suse.com>
 ---
  drivers/scsi/lpfc/lpfc_sli.c | 6 ++++--
  1 file changed, 4 insertions(+), 2 deletions(-)
 
 diff --git a/drivers/scsi/lpfc/lpfc_sli.c b/drivers/scsi/lpfc/lpfc_sli.c
-index 1ef1137..43ebac4 100644
+index c4ceef6..fb4c708 100644
 --- a/drivers/scsi/lpfc/lpfc_sli.c
 +++ b/drivers/scsi/lpfc/lpfc_sli.c
-@@ -7513,7 +7513,8 @@ lpfc_sli_issue_mbox_s3(struct lpfc_hba *phba, LPFC_MBOXQ_t *pmbox,
+@@ -7513,7 +7513,8 @@ void lpfc_reset_barrier(struct lpfc_hba *phba)
  				"(%d):0308 Mbox cmd issue - BUSY Data: "
  				"x%x x%x x%x x%x\n",
  				pmbox->vport ? pmbox->vport->vpi : 0xffffff,
@@ -31,7 +34,7 @@ index 1ef1137..43ebac4 100644
  				psli->sli_flag, flag);
  
  		psli->slistat.mbox_busy++;
-@@ -7565,7 +7566,8 @@ lpfc_sli_issue_mbox_s3(struct lpfc_hba *phba, LPFC_MBOXQ_t *pmbox,
+@@ -7565,7 +7566,8 @@ void lpfc_reset_barrier(struct lpfc_hba *phba)
  			"(%d):0309 Mailbox cmd x%x issue Data: x%x x%x "
  			"x%x\n",
  			pmbox->vport ? pmbox->vport->vpi : 0,

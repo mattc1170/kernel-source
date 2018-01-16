@@ -1,8 +1,7 @@
 From: Thomas Petazzoni <thomas.petazzoni@free-electrons.com>
 Date: Tue, 7 Mar 2017 16:53:02 +0100
 Subject: net: mvpp2: remove unused register definition MVPP2_TXQ_THRESH_REG
-Patch-mainline: Queued in subsystem maintainer repository
-Git-repo: git://git.kernel.org/pub/scm/linux/kernel/git/davem/net-next.git
+Patch-mainline: v4.12-rc1
 Git-commit: df905f2e21b42a948b662d39de82039e02b88de3
 References: bsc#1032150
 

@@ -1,20 +1,21 @@
 From: James Smart <jsmart2021@gmail.com>
-Date: Tue, 30 May 2017 22:44:43 -0700
-Subject: lpfc: Fix System panic after loading the driver
+Date: Thu, 1 Jun 2017 21:07:05 -0700
+Subject: scsi: lpfc: Fix System panic after loading the driver
+Git-commit: b83d005e63ba2383738c1818691e973761d1e860
 References: bsc#1041873
-Patch-Mainline: submitted linux-scsi 2017/06/01
+Patch-Mainline: v4.13-rc1
 
 System panic with general protection fault during driver load
 
-The driver uses a static array sli4_hba.handler_name
-to store the irq handler names. If the io_channel_irqs
-exceeds the pre-allocated size (32+1), then the driver
-will overwrite other fields of sli4_hba.
+The driver uses a static array sli4_hba.handler_name to store the irq
+handler names. If the io_channel_irqs exceeds the pre-allocated size
+(32+1), then the driver will overwrite other fields of sli4_hba.
 
 Fix: Dynamically allocate handler_name.
 
 Signed-off-by: Dick Kennedy <dick.kennedy@broadcom.com>
 Signed-off-by: James Smart <james.smart@broadcom.com>
+Signed-off-by: Martin K. Petersen <martin.petersen@oracle.com>
 Acked-by: Hannes Reinecke <hare@suse.com>
 ---
  drivers/scsi/lpfc/lpfc_init.c | 11 ++++++-----
@@ -22,10 +23,10 @@ Acked-by: Hannes Reinecke <hare@suse.com>
  2 files changed, 8 insertions(+), 7 deletions(-)
 
 diff --git a/drivers/scsi/lpfc/lpfc_init.c b/drivers/scsi/lpfc/lpfc_init.c
-index af3a00f..0cac6ec 100644
+index 3064f07..a8258060 100644
 --- a/drivers/scsi/lpfc/lpfc_init.c
 +++ b/drivers/scsi/lpfc/lpfc_init.c
-@@ -9745,6 +9745,7 @@ static int
+@@ -9665,6 +9665,7 @@ struct lpfc_cq_event *
  lpfc_sli4_enable_msix(struct lpfc_hba *phba)
  {
  	int vectors, rc, index;
@@ -33,7 +34,7 @@ index af3a00f..0cac6ec 100644
  
  	/* Set up MSI-X multi-message vectors */
  	for (index = 0; index < phba->cfg_fcp_io_channel; index++)
-@@ -9775,9 +9776,9 @@ lpfc_sli4_enable_msix(struct lpfc_hba *phba)
+@@ -9683,9 +9684,9 @@ struct lpfc_cq_event *
  
  	/* Assign MSI-X vectors to interrupt handlers */
  	for (index = 0; index < vectors; index++) {
@@ -46,7 +47,7 @@ index af3a00f..0cac6ec 100644
  			 LPFC_DRIVER_HANDLER_NAME"%d", index);
  
  		phba->sli4_hba.hba_eq_hdl[index].idx = index;
-@@ -9787,13 +9788,13 @@ lpfc_sli4_enable_msix(struct lpfc_hba *phba)
+@@ -9694,13 +9695,13 @@ struct lpfc_cq_event *
  			rc = request_irq(
  				phba->sli4_hba.msix_entries[index].vector,
  				 &lpfc_sli4_fof_intr_handler, 0,
@@ -63,7 +64,7 @@ index af3a00f..0cac6ec 100644
  		if (rc) {
  			lpfc_printf_log(phba, KERN_WARNING, LOG_INIT,
 diff --git a/drivers/scsi/lpfc/lpfc_sli4.h b/drivers/scsi/lpfc/lpfc_sli4.h
-index ebd6716..cb2d1e7 100644
+index cf863db..28b75e0 100644
 --- a/drivers/scsi/lpfc/lpfc_sli4.h
 +++ b/drivers/scsi/lpfc/lpfc_sli4.h
 @@ -407,8 +407,10 @@ struct lpfc_max_cfg_param {
@@ -85,7 +86,7 @@ index ebd6716..cb2d1e7 100644
  
  /* Used for IRQ vector to CPU mapping */
  struct lpfc_vector_map_info {
-@@ -549,7 +550,6 @@ struct lpfc_sli4_hba {
+@@ -548,7 +549,6 @@ struct lpfc_sli4_hba {
  	struct lpfc_register sli_intf;
  	struct lpfc_pc_sli4_params pc_sli4_params;
  	struct msix_entry *msix_entries;

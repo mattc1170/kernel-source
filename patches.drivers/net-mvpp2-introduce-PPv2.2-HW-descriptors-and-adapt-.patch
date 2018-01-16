@@ -1,8 +1,7 @@
 From: Thomas Petazzoni <thomas.petazzoni@free-electrons.com>
 Date: Tue, 7 Mar 2017 16:53:08 +0100
 Subject: net: mvpp2: introduce PPv2.2 HW descriptors and adapt accessors
-Patch-mainline: Queued in subsystem maintainer repository
-Git-repo: git://git.kernel.org/pub/scm/linux/kernel/git/davem/net-next.git
+Patch-mainline: v4.12-rc1
 Git-commit: e7c5359f2eedf2ad3b1b586552d3b6dfa44c2a79
 References: bsc#1032150
 

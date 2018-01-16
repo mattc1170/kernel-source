@@ -1,0 +1,38 @@
+From: Arvind Yadav <arvind.yadav.cs@gmail.com>
+Date: Mon, 19 Jun 2017 15:21:36 +0530
+Subject: PCI: dwc: dra7xx: Use RW1C for IRQSTATUS_MSI and IRQSTATUS_MAIN
+Git-commit: 40aa52c46288ebe37117bea84b1da8edb38e8604
+Patch-mainline: v4.13-rc1
+References: bsc#1051478
+
+Previously, we tried to clear interrupt requests by clearing bits in the
+PCIECTRL_DRA7XX_CONF_IRQSTATUS_MSI and PCIECTRL_DRA7XX_CONF_IRQSTATUS_MAIN
+registers.  But per the TRM, these fields are RW1C, so we must *set* bits
+to clear the interrupt bits.
+
+Fixes: 47ff3de911a7 ("PCI: dra7xx: Add TI DRA7xx PCIe driver")
+Signed-off-by: Arvind Yadav <arvind.yadav.cs@gmail.com>
+[bhelgaas: changelog]
+Signed-off-by: Bjorn Helgaas <bhelgaas@google.com>
+Acked-by: Kishon Vijay Abraham I <kishon@ti.com>
+Acked-by: Joerg Roedel <jroedel@suse.de>
+---
+ drivers/pci/host/pci-dra7xx.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+--- a/drivers/pci/host/pci-dra7xx.c
++++ b/drivers/pci/host/pci-dra7xx.c
+@@ -134,11 +134,11 @@ static void dra7xx_pcie_enable_interrupt
+ 	struct dra7xx_pcie *dra7xx = to_dra7xx_pcie(pp);
+ 
+ 	dra7xx_pcie_writel(dra7xx, PCIECTRL_DRA7XX_CONF_IRQSTATUS_MAIN,
+-			   ~INTERRUPTS);
++			   INTERRUPTS);
+ 	dra7xx_pcie_writel(dra7xx,
+ 			   PCIECTRL_DRA7XX_CONF_IRQENABLE_SET_MAIN, INTERRUPTS);
+ 	dra7xx_pcie_writel(dra7xx, PCIECTRL_DRA7XX_CONF_IRQSTATUS_MSI,
+-			   ~LEG_EP_INTERRUPTS & ~MSI);
++			   LEG_EP_INTERRUPTS | MSI);
+ 
+ 	if (IS_ENABLED(CONFIG_PCI_MSI))
+ 		dra7xx_pcie_writel(dra7xx,

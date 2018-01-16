@@ -1,0 +1,55 @@
+From a52b2a3a25f83e8a2ac9ad2a8c38969317239084 Mon Sep 17 00:00:00 2001
+From: Will Deacon <will.deacon@arm.com>
+Date: Mon, 21 Mar 2016 11:07:15 +0000
+Subject: [PATCH 05/56] drivers/perf: arm_pmu: avoid NULL dereference when not
+ using devicetree
+
+Git-commit: 357b565d5d52b2dc2a51390eb8f887a9caa8597f
+Patch-mainline: v4.6-rc1
+References: bsc#1062279
+
+Commit c6b90653f1f7 ("drivers/perf: arm_pmu: make info messages more
+verbose") breaks booting on systems where the PMU is probed without
+devicetree (e.g by inspecting the MIDR of the current CPU). In this case,
+pdev->dev.of_node is NULL and we shouldn't try to access its ->fullname
+field when printing probe error messages.
+
+This patch fixes the probing code to use of_node_full_name, which safely
+handles NULL nodes and removes the "Error %i" part of the string, since
+it's not terribly useful.
+
+Reported-by: Guenter Roeck <private@roeck-us.net>
+Signed-off-by: Will Deacon <will.deacon@arm.com>
+Signed-off-by: Mian Yousaf Kaukab <yousaf.kaukab@suse.com>
+---
+ drivers/perf/arm_pmu.c | 7 +++----
+ 1 file changed, 3 insertions(+), 4 deletions(-)
+
+diff --git a/drivers/perf/arm_pmu.c b/drivers/perf/arm_pmu.c
+index 396a059e..e072262a 100644
+--- a/drivers/perf/arm_pmu.c
++++ b/drivers/perf/arm_pmu.c
+@@ -994,8 +994,7 @@ int arm_pmu_device_probe(struct platform_device *pdev,
+ 	}
+ 
+ 	if (ret) {
+-		pr_info("%s: failed to probe PMU! Error %i\n",
+-			node->full_name, ret);
++		pr_info("%s: failed to probe PMU!\n", of_node_full_name(node));
+ 		goto out_free;
+ 	}
+ 
+@@ -1015,8 +1014,8 @@ int arm_pmu_device_probe(struct platform_device *pdev,
+ out_destroy:
+ 	cpu_pmu_destroy(pmu);
+ out_free:
+-	pr_info("%s: failed to register PMU devices! Error %i\n",
+-		node->full_name, ret);
++	pr_info("%s: failed to register PMU devices!\n",
++		of_node_full_name(node));
+ 	kfree(pmu);
+ 	return ret;
+ }
+-- 
+2.11.0
+

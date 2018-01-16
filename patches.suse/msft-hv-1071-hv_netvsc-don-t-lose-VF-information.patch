@@ -13,7 +13,7 @@ net_device_context which is persistent.
 Signed-off-by: Vitaly Kuznetsov <vkuznets@redhat.com>
 Acked-by: Haiyang Zhang <haiyangz@microsoft.com>
 Signed-off-by: David S. Miller <davem@davemloft.net>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  drivers/net/hyperv/hyperv_net.h | 19 ++++++++--------
  drivers/net/hyperv/netvsc.c     | 19 +++++++---------

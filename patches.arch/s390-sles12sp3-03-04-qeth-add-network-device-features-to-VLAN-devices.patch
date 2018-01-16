@@ -1,0 +1,65 @@
+From: Hans Wippel <hwippel@linux.vnet.ibm.com>
+Subject: qeth: add network device features for VLAN devices
+Patch-mainline: v4.8-rc1
+Git-commit: 9bdc441102f012b70f51e1ca73b603312fff8b5d
+References: bnc#1053472, LTC#157385
+
+Description:  qeth: add network device features for VLAN devices
+Symptom:      No hardware offload features on VLAN devices
+Problem:      Network device features are only set for the base network devices
+              and not for the VLAN devices.
+Solution:     Add network device features to vlan_features, so they can be used
+              by VLAN devices.
+Reproduction: Configure offload features on VLAN device with ethtool
+
+Upstream-Description:
+
+              qeth: add network device features for VLAN devices
+
+              Network device features indicate the capabilities of network devices (e.g.,
+              TX checksum offloading and TSO) and their configuration state. Additional
+              network device features (vlan_features) indicate for each network device,
+              which capabilities can be used on VLAN devices, that are configured on the
+              respective base network device.
+
+              In the current qeth implementation, network device features are only set
+              for the base network devices and not for the VLAN devices. Thus, features
+              like TX checksum offloading cannot be used on VLAN devices.
+
+              This patch adds network device features to vlan_features, so they can be
+              used by VLAN devices.
+
+              Signed-off-by: Hans Wippel <hwippel@linux.vnet.ibm.com>
+              Signed-off-by: Ursula Braun <ubraun@linux.vnet.ibm.com>
+              Signed-off-by: David S. Miller <davem@davemloft.net>
+
+
+Signed-off-by: Hans Wippel <hwippel@linux.vnet.ibm.com>
+Acked-by: Hannes Reinecke <hare@suse.com>
+---
+ drivers/s390/net/qeth_l2_main.c |    1 +
+ drivers/s390/net/qeth_l3_main.c |    3 +++
+ 2 files changed, 4 insertions(+)
+
+--- a/drivers/s390/net/qeth_l2_main.c
++++ b/drivers/s390/net/qeth_l2_main.c
+@@ -1147,6 +1147,7 @@ static int qeth_l2_setup_netdev(struct q
+ 	card->dev->features |= NETIF_F_HW_VLAN_CTAG_FILTER;
+ 	if (card->info.type == QETH_CARD_TYPE_OSD && !card->info.guestlan) {
+ 		card->dev->hw_features = NETIF_F_IP_CSUM | NETIF_F_RXCSUM;
++		card->dev->vlan_features |= NETIF_F_IP_CSUM | NETIF_F_RXCSUM;
+ 		/* Turn on RX offloading per default */
+ 		card->dev->features |= NETIF_F_RXCSUM;
+ 	}
+--- a/drivers/s390/net/qeth_l3_main.c
++++ b/drivers/s390/net/qeth_l3_main.c
+@@ -3197,6 +3197,9 @@ static int qeth_l3_setup_netdev(struct q
+ 				card->dev->hw_features = NETIF_F_SG |
+ 					NETIF_F_RXCSUM | NETIF_F_IP_CSUM |
+ 					NETIF_F_TSO;
++				card->dev->vlan_features |= NETIF_F_SG |
++					NETIF_F_RXCSUM | NETIF_F_IP_CSUM |
++					NETIF_F_TSO;
+ 				card->dev->features = NETIF_F_RXCSUM;
+ 			}
+ 		}

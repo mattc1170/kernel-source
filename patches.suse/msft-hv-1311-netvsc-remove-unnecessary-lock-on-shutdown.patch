@@ -1,0 +1,43 @@
+From: stephen hemminger <stephen@networkplumber.org>
+Date: Wed, 22 Mar 2017 14:51:03 -0700
+Patch-mainline: v4.12-rc1
+Subject: netvsc: remove unnecessary lock on shutdown
+Git-commit: 00ecfb3b34b69dd702dee1bd6de6fc100be384db
+References: fate#320485
+
+The channel inbound lock was not being used at all by the netvsc
+device, but the spin_lock was helpful by providing necessary
+barrier before waiting.
+
+Signed-off-by: Stephen Hemminger <sthemmin@microsoft.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+Acked-by: Olaf Hering <ohering@suse.de>
+---
+ drivers/net/hyperv/rndis_filter.c | 7 +++----
+ 1 file changed, 3 insertions(+), 4 deletions(-)
+
+diff --git a/drivers/net/hyperv/rndis_filter.c b/drivers/net/hyperv/rndis_filter.c
+--- a/drivers/net/hyperv/rndis_filter.c
++++ b/drivers/net/hyperv/rndis_filter.c
+@@ -926,8 +926,6 @@ static void rndis_filter_halt_device(struct rndis_device *dev)
+ 	struct rndis_halt_request *halt;
+ 	struct net_device_context *net_device_ctx = netdev_priv(dev->ndev);
+ 	struct netvsc_device *nvdev = net_device_ctx->nvdev;
+-	struct hv_device *hdev = net_device_ctx->device_ctx;
+-	ulong flags;
+ 
+ 	/* Attempt to do a rndis device halt */
+ 	request = get_rndis_request(dev, RNDIS_MSG_HALT,
+@@ -945,9 +943,10 @@ static void rndis_filter_halt_device(struct rndis_device *dev)
+ 	dev->state = RNDIS_DEV_UNINITIALIZED;
+ 
+ cleanup:
+-	spin_lock_irqsave(&hdev->channel->inbound_lock, flags);
+ 	nvdev->destroy = true;
+-	spin_unlock_irqrestore(&hdev->channel->inbound_lock, flags);
++
++	/* Force flag to be ordered before waiting */
++	wmb();
+ 
+ 	/* Wait for all send completions */
+ 	wait_event(nvdev->wait_drain, netvsc_device_idle(nvdev));

@@ -1,0 +1,34 @@
+From: Gal Pressman <galp@mellanox.com>
+Date: Sun, 25 Jun 2017 16:46:25 +0300
+Subject: net/mlx5e: Fix TX carrier errors report in get stats ndo
+Patch-mainline: v4.13-rc1
+Git-commit: 8ff93de7668bd81bc8efa819d1184ebd48fae72d
+References: bsc#1015342
+
+Symbol error during carrier counter from PPCNT was mistakenly reported as
+TX carrier errors in get_stats ndo, although it's an RX counter.
+
+Fixes: 269e6b3af3bf ("net/mlx5e: Report additional error statistics in get stats ndo")
+Signed-off-by: Gal Pressman <galp@mellanox.com>
+Signed-off-by: Saeed Mahameed <saeedm@mellanox.com>
+Acked-by: Thomas Bogendoerfer <tbogendoerfer@suse.de>
+---
+ drivers/net/ethernet/mellanox/mlx5/core/en_main.c | 2 --
+ 1 file changed, 2 deletions(-)
+
+diff --git a/drivers/net/ethernet/mellanox/mlx5/core/en_main.c b/drivers/net/ethernet/mellanox/mlx5/core/en_main.c
+index e16ac22215cd..8579523588d5 100644
+--- a/drivers/net/ethernet/mellanox/mlx5/core/en_main.c
++++ b/drivers/net/ethernet/mellanox/mlx5/core/en_main.c
+@@ -2680,8 +2680,6 @@ void mlx5e_get_stats(struct net_device *dev, struct rtnl_link_stats64 *stats)
+ 		PPORT_802_3_GET(pstats, a_frame_check_sequence_errors);
+ 	stats->rx_frame_errors = PPORT_802_3_GET(pstats, a_alignment_errors);
+ 	stats->tx_aborted_errors = PPORT_2863_GET(pstats, if_out_discards);
+-	stats->tx_carrier_errors =
+-		PPORT_802_3_GET(pstats, a_symbol_error_during_carrier);
+ 	stats->rx_errors = stats->rx_length_errors + stats->rx_crc_errors +
+ 			   stats->rx_frame_errors;
+ 	stats->tx_errors = stats->tx_aborted_errors + stats->tx_carrier_errors;
+-- 
+2.12.3
+

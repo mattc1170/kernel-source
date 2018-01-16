@@ -340,9 +340,9 @@ Signed-off-by: Linus Torvalds <torvalds@linux-foundation.org>
  
  /*
   * The set of flags that only affect watermark checking and reclaim
-@@ -473,4 +474,9 @@ static inline void try_to_unmap_flush_di
+@@ -479,4 +480,9 @@ static inline void flush_tlb_batched_pen
+ {
  }
- 
  #endif /* CONFIG_ARCH_WANT_BATCHED_UNMAP_TLB_FLUSH */
 +
 +extern const struct trace_print_flags pageflag_names[];

@@ -10,7 +10,7 @@ This will be used by the coming hv_sock driver.
 Signed-off-by: Dexuan Cui <decui@microsoft.com>
 Signed-off-by: K. Y. Srinivasan <kys@microsoft.com>
 Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  drivers/hv/channel_mgmt.c | 11 +++++++++++
  include/linux/hyperv.h    |  9 +++++++++

@@ -25,7 +25,7 @@ Acked-by: Takashi Iwai <tiwai@suse.de>
 
 --- a/drivers/net/wireless/iwlwifi/iwl-nvm-parse.c
 +++ b/drivers/net/wireless/iwlwifi/iwl-nvm-parse.c
-@@ -539,7 +539,7 @@ static void iwl_set_hw_address_family_80
+@@ -549,7 +549,7 @@ static void iwl_set_hw_address_family_80
  					   struct iwl_nvm_data *data,
  					   const __le16 *mac_override,
  					   const __le16 *nvm_hw,
@@ -34,7 +34,7 @@ Acked-by: Takashi Iwai <tiwai@suse.de>
  {
  	const u8 *hw_addr;
  
-@@ -583,7 +583,8 @@ static void iwl_set_hw_address_family_80
+@@ -593,7 +593,8 @@ static void iwl_set_hw_address_family_80
  
  		if (!is_valid_ether_addr(data->hw_addr))
  			IWL_ERR_DEV(dev,
@@ -44,7 +44,7 @@ Acked-by: Takashi Iwai <tiwai@suse.de>
  
  		return;
  	}
-@@ -597,7 +598,7 @@ iwl_parse_nvm_data(struct device *dev, c
+@@ -640,7 +641,7 @@ iwl_parse_nvm_data(struct device *dev, c
  		   const __le16 *nvm_calib, const __le16 *regulatory,
  		   const __le16 *mac_override, const __le16 *phy_sku,
  		   u8 tx_chains, u8 rx_chains, bool lar_fw_supported,
@@ -52,7 +52,7 @@ Acked-by: Takashi Iwai <tiwai@suse.de>
 +		   __le32 mac_addr0, __le32 mac_addr1)
  {
  	struct iwl_nvm_data *data;
- 	u32 sku;
+ 	bool no_wide_in_5ghz = iwl_nvm_no_wide_in_5ghz(dev, cfg, nvm_hw);
 --- a/drivers/net/wireless/iwlwifi/iwl-nvm-parse.h
 +++ b/drivers/net/wireless/iwlwifi/iwl-nvm-parse.h
 @@ -79,7 +79,7 @@ iwl_parse_nvm_data(struct device *dev, c

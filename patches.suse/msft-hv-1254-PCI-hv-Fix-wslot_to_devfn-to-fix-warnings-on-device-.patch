@@ -23,7 +23,7 @@ Acked-by: Haiyang Zhang <haiyangz@microsoft.com>
 CC: stable@vger.kernel.org
 CC: K. Y. Srinivasan <kys@microsoft.com>
 CC: Stephen Hemminger <sthemmin@microsoft.com>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  drivers/pci/host/pci-hyperv.c | 8 +++++---
  1 file changed, 5 insertions(+), 3 deletions(-)

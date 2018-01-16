@@ -34,14 +34,12 @@ Acked-by: "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>
 Reviewed-by: Johannes Thumshirn <jthumshirn@suse.de>
 Signed-off-by: Dan Williams <dan.j.williams@intel.com>
 ---
- drivers/dax/Kconfig |   1 +
- drivers/dax/dax.c   | 322 ++++++++++++++++++++++++++++++++++++++++++++++++++++
- mm/huge_memory.c    |   1 +
- mm/hugetlb.c        |   1 +
+ drivers/dax/Kconfig |    1 
+ drivers/dax/dax.c   |  322 ++++++++++++++++++++++++++++++++++++++++++++++++++++
+ mm/huge_memory.c    |    1 
+ mm/hugetlb.c        |    1 
  4 files changed, 325 insertions(+)
 
-diff --git a/drivers/dax/Kconfig b/drivers/dax/Kconfig
-index 86ffbaa..cedab75 100644
 --- a/drivers/dax/Kconfig
 +++ b/drivers/dax/Kconfig
 @@ -1,6 +1,7 @@
@@ -52,8 +50,6 @@ index 86ffbaa..cedab75 100644
  	help
  	  Support raw access to differentiated (persistence, bandwidth,
  	  latency...) memory via an mmap(2) capable character
-diff --git a/drivers/dax/dax.c b/drivers/dax/dax.c
-index 4c22a40..b891a12 100644
 --- a/drivers/dax/dax.c
 +++ b/drivers/dax/dax.c
 @@ -49,6 +49,7 @@ struct dax_region {
@@ -72,7 +68,7 @@ index 4c22a40..b891a12 100644
  	int id;
  	int num_resources;
  	struct resource res[0];
-@@ -150,6 +152,16 @@ static void unregister_dax_dev(void *_dev)
+@@ -150,6 +152,16 @@ static void unregister_dax_dev(void *_de
  
  	dev_dbg(dev, "%s\n", __func__);
  
@@ -89,7 +85,7 @@ index 4c22a40..b891a12 100644
  	get_device(dev);
  	device_unregister(dev);
  	ida_simple_remove(&dax_region->ida, dax_dev->id);
-@@ -173,6 +185,7 @@ int devm_create_dax_dev(struct dax_region *dax_region, struct resource *res,
+@@ -173,6 +185,7 @@ int devm_create_dax_dev(struct dax_regio
  	memcpy(dax_dev->res, res, sizeof(*res) * count);
  	dax_dev->num_resources = count;
  	kref_init(&dax_dev->kref);
@@ -97,7 +93,7 @@ index 4c22a40..b891a12 100644
  	dax_dev->region = dax_region;
  	kref_get(&dax_region->kref);
  
-@@ -217,9 +230,318 @@ int devm_create_dax_dev(struct dax_region *dax_region, struct resource *res,
+@@ -217,9 +230,318 @@ int devm_create_dax_dev(struct dax_regio
  }
  EXPORT_SYMBOL_GPL(devm_create_dax_dev);
  
@@ -416,23 +412,19 @@ index 4c22a40..b891a12 100644
  };
  
  static int __init dax_init(void)
-diff --git a/mm/huge_memory.c b/mm/huge_memory.c
-index 86f9f8b..52ea012 100644
 --- a/mm/huge_memory.c
 +++ b/mm/huge_memory.c
-@@ -1013,6 +1013,7 @@ int vmf_insert_pfn_pmd(struct vm_area_struct *vma, unsigned long addr,
+@@ -944,6 +944,7 @@ int vmf_insert_pfn_pmd(struct vm_area_st
  	insert_pfn_pmd(vma, addr, pmd, pfn, pgprot, write);
  	return VM_FAULT_NOPAGE;
  }
 +EXPORT_SYMBOL_GPL(vmf_insert_pfn_pmd);
  
  static void touch_pmd(struct vm_area_struct *vma, unsigned long addr,
- 		pmd_t *pmd)
-diff --git a/mm/hugetlb.c b/mm/hugetlb.c
-index 19d0d08..b14e981 100644
+ 		pmd_t *pmd, int flags)
 --- a/mm/hugetlb.c
 +++ b/mm/hugetlb.c
-@@ -624,6 +624,7 @@ pgoff_t linear_hugepage_index(struct vm_area_struct *vma,
+@@ -625,6 +625,7 @@ pgoff_t linear_hugepage_index(struct vm_
  {
  	return vma_hugecache_offset(hstate_vma(vma), vma, address);
  }
@@ -440,4 +432,3 @@ index 19d0d08..b14e981 100644
  
  /*
   * Return the size of the pages allocated when backing a VMA. In the majority
-

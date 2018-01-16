@@ -28,7 +28,7 @@ Fixes: 95096f2fbd10 ("uio-hv-generic: new userspace i/o driver for VMBus")
 Signed-off-by: Arnd Bergmann <arnd@arndb.de>
 Acked-by: Stephen Hemminger <sthemmin@microsoft.com>
 Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  drivers/uio/uio_hv_generic.c | 8 ++++----
  1 file changed, 4 insertions(+), 4 deletions(-)

@@ -1,0 +1,25 @@
+From: Borislav Petkov <bp@suse.de>
+Date: Thu, 25 May 2017 13:00:05 +0200
+Subject: EDAC, sb_edac: Fix mod_name
+Git-commit: 199389acd95b8a8858e98244b72ea2970bc482ff
+Patch-mainline: v4.13-rc1
+References: bsc#1061721
+
+It is called "sb_edac.c" now.
+
+Signed-off-by: Borislav Petkov <bp@suse.de>
+---
+ drivers/edac/sb_edac.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+--- a/drivers/edac/sb_edac.c
++++ b/drivers/edac/sb_edac.c
+@@ -3204,7 +3204,7 @@ static int sbridge_register_mci(struct s
+ 		MEM_FLAG_DDR4 : MEM_FLAG_DDR3;
+ 	mci->edac_ctl_cap = EDAC_FLAG_NONE;
+ 	mci->edac_cap = EDAC_FLAG_NONE;
+-	mci->mod_name = "sbridge_edac.c";
++	mci->mod_name = "sb_edac.c";
+ 	mci->mod_ver = SBRIDGE_REVISION;
+ 	mci->dev_name = pci_name(pdev);
+ 	mci->ctl_page_to_phys = NULL;

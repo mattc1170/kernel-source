@@ -1,0 +1,42 @@
+From: Marc Olson <marcolso@amazon.com>
+Date: Tue, 11 Apr 2017 12:24:09 -0700
+Subject: blkfront: add uevent for size change
+Patch-mainline: v4.12
+Git-commit: 89515d0255c918e08aa4085956c79bf17615fda5
+References: bnc#1036632
+
+When a blkfront device is resized from dom0, emit a KOBJ_CHANGE uevent to
+notify the guest about the change. This allows for custom udev rules, such
+as automatically resizing a filesystem, when an event occurs.
+
+With this patch you get these udev
+
+KERNEL[577.206230] change   /devices/vbd-51728/block/xvdb (block)
+UDEV  [577.226218] change   /devices/vbd-51728/block/xvdb (block)
+
+Signed-off-by: Marc Olson <marcolso@amazon.com>
+Signed-off-by: Konrad Rzeszutek Wilk <konrad.wilk@oracle.com>
+Signed-off-by: Juergen Gross <jgross@suse.com>
+---
+ drivers/block/xen-blkfront.c |    3 +++
+ 1 file changed, 3 insertions(+)
+
+--- a/drivers/block/xen-blkfront.c
++++ b/drivers/block/xen-blkfront.c
+@@ -2001,6 +2001,7 @@ static void blkfront_connect(struct blkf
+ 	unsigned long sector_size;
+ 	unsigned int physical_sector_size;
+ 	unsigned int binfo;
++	char *envp[] = { "RESIZE=1", NULL };
+ 	int err;
+ 
+ 	switch (info->connected) {
+@@ -2017,6 +2018,8 @@ static void blkfront_connect(struct blkf
+ 		       sectors);
+ 		set_capacity(info->gd, sectors);
+ 		revalidate_disk(info->gd);
++		kobject_uevent_env(&disk_to_dev(info->gd)->kobj,
++				   KOBJ_CHANGE, envp);
+ 
+ 		return;
+ 	case BLKIF_STATE_SUSPENDED:

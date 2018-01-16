@@ -1,0 +1,48 @@
+From: Peter Zijlstra <peterz@infradead.org>
+Date: Fri, 14 Apr 2017 17:29:16 +0200
+Subject: sched/debug: Print the scheduler topology group mask
+Git-commit: b0151c25548cacc50771a7930475727c6c8ee869
+Patch-mainline: v4.13-rc1
+References: bnc#1022476
+
+In order to determine the balance_cpu (for should_we_balance()) we need
+the sched_group_mask() for overlapping domains.
+
+Signed-off-by: Peter Zijlstra (Intel) <peterz@infradead.org>
+Cc: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: Mike Galbraith <efault@gmx.de>
+Cc: Peter Zijlstra <peterz@infradead.org>
+Cc: Thomas Gleixner <tglx@linutronix.de>
+Cc: linux-kernel@vger.kernel.org
+Signed-off-by: Ingo Molnar <mingo@kernel.org>
+Signed-off-by: Mike Galbraith <mgalbraith@suse.de>
+---
+ kernel/sched/core.c |   12 +++++++++++-
+ 1 file changed, 11 insertions(+), 1 deletion(-)
+
+--- a/kernel/sched/core.c
++++ b/kernel/sched/core.c
+@@ -5998,12 +5998,22 @@ static int sched_domain_debug_one(struct
+ 
+ 		printk(KERN_CONT " %*pbl",
+ 		       cpumask_pr_args(sched_group_cpus(group)));
++
++		if ((sd->flags & SD_OVERLAP) && !cpumask_full(sched_group_mask(group))) {
++			printk(KERN_CONT " (mask: %*pbl)",
++				cpumask_pr_args(sched_group_mask(group)));
++		}
++
+ 		if (group->sgc->capacity != SCHED_CAPACITY_SCALE) {
+-			printk(KERN_CONT " (cpu_capacity = %d)",
++			printk(KERN_CONT " (cpu_capacity: %d)",
+ 				group->sgc->capacity);
+ 		}
+ 
+ 		group = group->next;
++
++		if (group != sd->groups)
++			printk(KERN_CONT ",");
++
+ 	} while (group != sd->groups);
+ 	printk(KERN_CONT "\n");
+ 

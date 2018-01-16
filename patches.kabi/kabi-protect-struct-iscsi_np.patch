@@ -1,0 +1,40 @@
+From: Jiri Slaby <jslaby@suse.cz>
+Subject: kABI: protect struct iscsi_np
+Patch-mainline: never, kabi
+References: kabi
+
+In 4.4.83, commit b89e781dab249e1c74e6b49e2664ae53a14c0306
+(iscsi-target: Fix iscsi_np reset hung task during parallel delete),
+upstream commit 978d13d60c34818a41fc35962602bdfa5c03f214 added one
+member to struct iscsi_np.  This indeed changed the layout of the
+structure and the kABI checker now complains.
+
+Given this structure is allocated only in the core by iscsit_add_np,
+move the new member to the end and make the change invisible to the kABI
+checker.
+
+Signed-off-by: Jiri Slaby <jslaby@suse.cz>
+---
+ include/target/iscsi/iscsi_target_core.h |    4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+--- a/include/target/iscsi/iscsi_target_core.h
++++ b/include/target/iscsi/iscsi_target_core.h
+@@ -787,7 +787,6 @@ struct iscsi_np {
+ 	int			np_sock_type;
+ 	enum np_thread_state_table np_thread_state;
+ 	bool                    enabled;
+-	atomic_t		np_reset_count;
+ 	enum iscsi_timer_flags_table np_login_timer_flags;
+ 	u32			np_exports;
+ 	enum np_flags_table	np_flags;
+@@ -800,6 +799,9 @@ struct iscsi_np {
+ 	void			*np_context;
+ 	struct iscsit_transport *np_transport;
+ 	struct list_head	np_list;
++#ifndef __GENKSYMS__
++	atomic_t		np_reset_count;
++#endif
+ } ____cacheline_aligned;
+ 
+ struct iscsi_tpg_np {

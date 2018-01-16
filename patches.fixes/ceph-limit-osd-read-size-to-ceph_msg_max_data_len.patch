@@ -1,0 +1,112 @@
+From: "Yan, Zheng" <zyan@redhat.com>
+Date: Tue, 11 Jul 2017 15:56:09 +0800
+Subject: ceph: limit osd read size to CEPH_MSG_MAX_DATA_LEN
+Git-commit: aa187926b739fb391f153335c7552c7a10d60e82
+Patch-mainline: v4.14-rc1
+References: bsc#1061451
+
+libceph returns -EIO when read size > CEPH_MSG_MAX_DATA_LEN.
+
+Link: http://tracker.ceph.com/issues/20528
+Signed-off-by: "Yan, Zheng" <zyan@redhat.com>
+Signed-off-by: Ilya Dryomov <idryomov@gmail.com>
+[luis: adjusted context as we don't have commit 09dc9fc24ba7
+ ("ceph: Convert to separately allocated bdi")]
+Acked-by: Luis Henriques <lhenriques@suse.com>
+---
+ fs/ceph/addr.c  |   10 +++-------
+ fs/ceph/file.c  |    3 +++
+ fs/ceph/super.c |   17 +++++++----------
+ fs/ceph/super.h |    3 ++-
+ 4 files changed, 15 insertions(+), 18 deletions(-)
+
+--- a/fs/ceph/addr.c
++++ b/fs/ceph/addr.c
+@@ -454,13 +454,9 @@ static int ceph_readpages(struct file *f
+ 	if (rc == 0)
+ 		goto out;
+ 
+-	if (fsc->mount_options->rsize >= PAGE_CACHE_SIZE)
+-		max = (fsc->mount_options->rsize + PAGE_CACHE_SIZE - 1)
+-			>> PAGE_SHIFT;
+-
+-	dout("readpages %p file %p nr_pages %d max %d\n", inode,
+-		file, nr_pages,
+-	     max);
++	max = fsc->mount_options->rsize >> PAGE_SHIFT;
++	dout("readpages %p file %p nr_pages %d max %d\n",
++	     inode, file, nr_pages, max);
+ 	while (!list_empty(page_list)) {
+ 		rc = start_read(inode, page_list, max);
+ 		if (rc < 0)
+--- a/fs/ceph/file.c
++++ b/fs/ceph/file.c
+@@ -892,6 +892,9 @@ ceph_direct_read_write(struct kiocb *ioc
+ 			break;
+ 		}
+ 
++		if (!write)
++			size = min_t(u64, size, fsc->mount_options->rsize);
++
+ 		len = size;
+ 		pages = dio_get_pages_alloc(iter, len, &start, &num_pages);
+ 		if (IS_ERR(pages)) {
+--- a/fs/ceph/super.c
++++ b/fs/ceph/super.c
+@@ -238,7 +238,9 @@ static int parse_fsopt_token(char *c, vo
+ 		fsopt->wsize = intval;
+ 		break;
+ 	case Opt_rsize:
+-		fsopt->rsize = intval;
++		if (intval < PAGE_SIZE || intval > CEPH_MAX_READ_SIZE)
++			return -EINVAL;
++		fsopt->rsize = ALIGN(intval, PAGE_SIZE);
+ 		break;
+ 	case Opt_rasize:
+ 		fsopt->rasize = intval;
+@@ -392,7 +394,7 @@ static int parse_mount_options(struct ce
+ 	fsopt->sb_flags = flags;
+ 	fsopt->flags = CEPH_MOUNT_OPT_DEFAULT;
+ 
+-	fsopt->rsize = CEPH_RSIZE_DEFAULT;
++	fsopt->rsize = CEPH_MAX_READ_SIZE;
+ 	fsopt->rasize = CEPH_RASIZE_DEFAULT;
+ 	fsopt->snapdir_name = kstrdup(CEPH_SNAPDIRNAME_DEFAULT, GFP_KERNEL);
+ 	if (!fsopt->snapdir_name) {
+@@ -508,7 +510,7 @@ static int ceph_show_options(struct seq_
+ 		seq_printf(m, ",mds_namespace=%s", fsopt->mds_namespace);
+ 	if (fsopt->wsize)
+ 		seq_printf(m, ",wsize=%d", fsopt->wsize);
+-	if (fsopt->rsize != CEPH_RSIZE_DEFAULT)
++	if (fsopt->rsize != CEPH_MAX_READ_SIZE)
+ 		seq_printf(m, ",rsize=%d", fsopt->rsize);
+ 	if (fsopt->rasize != CEPH_RASIZE_DEFAULT)
+ 		seq_printf(m, ",rasize=%d", fsopt->rasize);
+@@ -964,13 +966,8 @@ static int ceph_register_bdi(struct supe
+ 		fsc->backing_dev_info.ra_pages =
+ 			VM_MAX_READAHEAD * 1024 / PAGE_CACHE_SIZE;
+ 
+-	if (fsc->mount_options->rsize > fsc->mount_options->rasize &&
+-	    fsc->mount_options->rsize >= PAGE_SIZE)
+-		fsc->backing_dev_info.io_pages =
+-			(fsc->mount_options->rsize + PAGE_SIZE - 1)
+-			>> PAGE_SHIFT;
+-	else if (fsc->mount_options->rsize == 0)
+-		fsc->backing_dev_info.io_pages = ULONG_MAX;
++	/* set io_pages based on max osd read size */
++	fsc->backing_dev_info.io_pages = fsc->mount_options->rsize >> PAGE_SHIFT;
+ 
+ 	err = bdi_register(&fsc->backing_dev_info, NULL, "ceph-%ld",
+ 			   atomic_long_inc_return(&bdi_seq));
+--- a/fs/ceph/super.h
++++ b/fs/ceph/super.h
+@@ -45,7 +45,8 @@
+ #define ceph_test_mount_opt(fsc, opt) \
+ 	(!!((fsc)->mount_options->flags & CEPH_MOUNT_OPT_##opt))
+ 
+-#define CEPH_RSIZE_DEFAULT              (64*1024*1024) /* max read size */
++/* max size of osd read request, limited by libceph */
++#define CEPH_MAX_READ_SIZE              CEPH_MSG_MAX_DATA_LEN
+ #define CEPH_RASIZE_DEFAULT             (8192*1024)    /* max readahead */
+ #define CEPH_MAX_READDIR_DEFAULT        1024
+ #define CEPH_MAX_READDIR_BYTES_DEFAULT  (512*1024)

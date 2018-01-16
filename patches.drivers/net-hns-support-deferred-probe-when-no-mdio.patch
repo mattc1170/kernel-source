@@ -1,8 +1,7 @@
 From: lipeng <lipeng321@huawei.com>
 Date: Fri, 28 Apr 2017 14:49:47 +0800
 Subject: net: hns: support deferred probe when no mdio
-Patch-mainline: Queued in subsystem maintainer repository
-Git-repo: git://git.kernel.org/pub/scm/linux/kernel/git/davem/net-next.git
+Patch-mainline: v4.12-rc1
 Git-commit: 804ffe5c6197fc2696681c597ce096d93eb24af5
 References: bsc#1033895
 

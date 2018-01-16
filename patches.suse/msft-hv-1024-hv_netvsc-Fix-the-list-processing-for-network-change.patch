@@ -13,7 +13,7 @@ Signed-off-by: Haiyang Zhang <haiyangz@microsoft.com>
 Reviewed-by: K. Y. Srinivasan <kys@microsoft.com>
 Reviewed-by: Vitaly Kuznetsov <vkuznets@redhat.com>
 Signed-off-by: David S. Miller <davem@davemloft.net>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  drivers/net/hyperv/netvsc_drv.c | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)

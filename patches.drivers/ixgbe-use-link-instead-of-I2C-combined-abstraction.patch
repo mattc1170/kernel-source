@@ -41,7 +41,7 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
 
 --- a/drivers/net/ethernet/intel/ixgbe/ixgbe_main.c
 +++ b/drivers/net/ethernet/intel/ixgbe/ixgbe_main.c
-@@ -9370,6 +9370,8 @@ static int ixgbe_probe(struct pci_dev *p
+@@ -9369,6 +9369,8 @@ static int ixgbe_probe(struct pci_dev *p
  	hw->mac.ops   = *ii->mac_ops;
  	hw->mac.type  = ii->mac;
  	hw->mvals     = ii->mvals;
@@ -62,7 +62,7 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
 +					u16 reg, u16 *val, bool lock)
  {
  	u32 swfw_mask = hw->phy.phy_semaphore_mask;
- 	int max_retry = 10;
+ 	int max_retry = 3;
 @@ -178,36 +178,6 @@ fail:
  }
  
@@ -348,7 +348,7 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  	return status;
  }
  
-@@ -3216,11 +3295,6 @@ static const struct ixgbe_phy_operations
+@@ -3214,11 +3293,6 @@ static const struct ixgbe_phy_operations
  	.identify		= &ixgbe_identify_phy_x550em,
  	.read_reg		= &ixgbe_read_phy_reg_generic,
  	.write_reg		= &ixgbe_write_phy_reg_generic,
@@ -360,7 +360,7 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  };
  
  static const struct ixgbe_phy_operations phy_ops_x550em_a = {
-@@ -3233,6 +3307,13 @@ static const struct ixgbe_phy_operations
+@@ -3231,6 +3305,13 @@ static const struct ixgbe_phy_operations
  	.write_reg_mdi		= &ixgbe_write_phy_reg_mdi,
  };
  
@@ -374,7 +374,7 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  static const u32 ixgbe_mvals_X550[IXGBE_MVALS_IDX_LIMIT] = {
  	IXGBE_MVALS_INIT(X550)
  };
-@@ -3263,11 +3344,12 @@ const struct ixgbe_info ixgbe_X550EM_x_i
+@@ -3261,11 +3342,12 @@ const struct ixgbe_info ixgbe_X550EM_x_i
  	.phy_ops		= &phy_ops_X550EM_x,
  	.mbx_ops		= &mbx_ops_generic,
  	.mvals			= ixgbe_mvals_X550EM_x,

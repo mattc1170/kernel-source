@@ -26,7 +26,7 @@ Cc: marc.zyngier@arm.com
 Cc: bhelgaas@google.com
 Link: http://lkml.kernel.org/r/1449769983-12948-4-git-send-email-jakeo@microsoft.com
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  drivers/pci/msi.c      | 4 ++++
  kernel/irq/chip.c      | 1 +

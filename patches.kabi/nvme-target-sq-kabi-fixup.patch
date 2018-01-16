@@ -1,0 +1,26 @@
+From: Johannes Thumshirn <jthumshirn@suse.de>
+Date: Mon Oct 16 16:25:09 CEST 2017
+Subject: KABI fixup struct nvmet_sq
+References: bsc#1063349
+Patch-mainline: Never, KABI fix
+
+Signed-off-by: Johannes Thumshirn <jthumshirn@suse.de>
+---
+ drivers/nvme/target/nvmet.h |    4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+--- a/drivers/nvme/target/nvmet.h
++++ b/drivers/nvme/target/nvmet.h
+@@ -73,9 +73,11 @@ struct nvmet_sq {
+ 	struct percpu_ref	ref;
+ 	u16			qid;
+ 	u16			size;
+-	u16			sqhd;
+ 	struct completion	free_done;
+ 	struct completion	confirm_done;
++#ifndef __GENKSYMS__
++	u16			sqhd;
++#endif
+ };
+ 
+ /**

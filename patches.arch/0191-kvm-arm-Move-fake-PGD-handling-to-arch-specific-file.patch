@@ -18,9 +18,9 @@ Signed-off-by: Suzuki K Poulose <suzuki.poulose@arm.com>
 Signed-off-by: Mian Yousaf Kaukab <yousaf.kaukab@suse.com>
 ---
  arch/arm/include/asm/kvm_mmu.h   |   11 +++++++--
- arch/arm/kvm/mmu.c               |   47 +++++----------------------------------
+ arch/arm/kvm/mmu.c               |   47 ++++++---------------------------------
  arch/arm64/include/asm/kvm_mmu.h |   43 +++++++++++++++++++++++++++++++++++
- 3 files changed, 59 insertions(+), 42 deletions(-)
+ 3 files changed, 60 insertions(+), 41 deletions(-)
 
 --- a/arch/arm/include/asm/kvm_mmu.h
 +++ b/arch/arm/include/asm/kvm_mmu.h
@@ -105,17 +105,17 @@ Signed-off-by: Mian Yousaf Kaukab <yousaf.kaukab@suse.com>
  	}
  
  	kvm_clean_pgd(pgd);
-@@ -845,9 +814,7 @@ void kvm_free_stage2_pgd(struct kvm *kvm
- 	spin_unlock(&kvm->mmu_lock);
+@@ -848,8 +817,8 @@ void kvm_free_stage2_pgd(struct kvm *kvm
  
- 	kvm_free_hwpgd(kvm_get_hwpgd(kvm));
--	if (KVM_PREALLOC_LEVEL > 0)
--		kfree(kvm->arch.pgd);
--
-+	kvm_free_fake_pgd(kvm->arch.pgd);
- 	kvm->arch.pgd = NULL;
+ 	if (hwpgd)
+ 		kvm_free_hwpgd(hwpgd);
+-	if (KVM_PREALLOC_LEVEL > 0 && pgd)
+-		kfree(pgd);
++	if (pgd)
++		kvm_free_fake_pgd(pgd);
  }
  
+ static pud_t *stage2_get_pud(struct kvm *kvm, struct kvm_mmu_memory_cache *cache,
 --- a/arch/arm64/include/asm/kvm_mmu.h
 +++ b/arch/arm64/include/asm/kvm_mmu.h
 @@ -208,6 +208,49 @@ static inline unsigned int kvm_get_hwpgd

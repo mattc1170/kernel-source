@@ -25,10 +25,10 @@ Signed-off-by: Doug Ledford <dledford@redhat.com>
 Acked-by: Thomas Bogendoerfer <tbogendoerfer@suse.de>
 ---
  drivers/infiniband/core/uverbs.h      |    1 
- drivers/infiniband/core/uverbs_cmd.c  |  200 +++++++++++++++++++++-------------
+ drivers/infiniband/core/uverbs_cmd.c  |  202 +++++++++++++++++++++-------------
  drivers/infiniband/core/uverbs_main.c |    1 
  include/uapi/rdma/ib_user_verbs.h     |   21 +++
- 4 files changed, 150 insertions(+), 73 deletions(-)
+ 4 files changed, 151 insertions(+), 74 deletions(-)
 
 --- a/drivers/infiniband/core/uverbs.h
 +++ b/drivers/infiniband/core/uverbs.h
@@ -41,7 +41,7 @@ Acked-by: Thomas Bogendoerfer <tbogendoerfer@suse.de>
  #endif /* UVERBS_H */
 --- a/drivers/infiniband/core/uverbs_cmd.c
 +++ b/drivers/infiniband/core/uverbs_cmd.c
-@@ -2328,100 +2328,92 @@ static int modify_qp_mask(enum ib_qp_typ
+@@ -2328,101 +2328,93 @@ static int modify_qp_mask(enum ib_qp_typ
  	}
  }
  
@@ -61,8 +61,9 @@ Acked-by: Thomas Bogendoerfer <tbogendoerfer@suse.de>
 -	if (copy_from_user(&cmd, buf, sizeof cmd))
 -		return -EFAULT;
 -
--	if (cmd.port_num < rdma_start_port(ib_dev) ||
--	    cmd.port_num > rdma_end_port(ib_dev))
+-	if ((cmd.attr_mask & IB_QP_PORT) &&
+-	    (cmd.port_num < rdma_start_port(ib_dev) ||
+-	     cmd.port_num > rdma_end_port(ib_dev)))
 -		return -EINVAL;
 -
 -	INIT_UDATA(&udata, buf + sizeof cmd, NULL, in_len - sizeof cmd,
@@ -127,8 +128,9 @@ Acked-by: Thomas Bogendoerfer <tbogendoerfer@suse.de>
 -	attr->alt_ah_attr.static_rate       = cmd.alt_dest.static_rate;
 -	attr->alt_ah_attr.ah_flags 	    = cmd.alt_dest.is_global ? IB_AH_GRH : 0;
 -	attr->alt_ah_attr.port_num 	    = cmd.alt_dest.port_num;
-+	if (cmd->base.port_num < rdma_start_port(qp->device) ||
-+	    cmd->base.port_num > rdma_end_port(qp->device))
++	if ((cmd->base.attr_mask & IB_QP_PORT) &&
++	    (cmd->base.port_num < rdma_start_port(qp->device) ||
++	     cmd->base.port_num > rdma_end_port(qp->device)))
 +		goto release_qp;
 +
 +	attr->qp_state		  = cmd->base.qp_state;
@@ -207,7 +209,7 @@ Acked-by: Thomas Bogendoerfer <tbogendoerfer@suse.de>
  release_qp:
  	put_qp_read(qp);
  
-@@ -2430,6 +2422,68 @@ out:
+@@ -2431,6 +2423,68 @@ out:
  
  	return ret;
  }

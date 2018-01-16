@@ -1,0 +1,140 @@
+From: Ilya Dryomov <idryomov@gmail.com>
+Date: Fri, 2 Dec 2016 14:01:55 +0100
+Subject: libceph: always signal completion when done
+Git-commit: c297eb42690b904fb5b78dd9ad001bafe25f49ec
+Patch-mainline: v4.10-rc1
+References: bsc#1048228
+
+r_safe_completion is currently, and has always been, signaled only if
+on-disk ack was requested.  It's there for fsync and syncfs, which wait
+for in-flight writes to flush - all data write requests set ONDISK.
+
+However, the pool perm check code introduced in 4.2 sends a write
+request with only ACK set.  An unfortunately timed syncfs can then hang
+forever: r_safe_completion won't be signaled because only an unsafe
+reply was requested.
+
+We could patch ceph_osdc_sync() to skip !ONDISK write requests, but
+that is somewhat incomplete and yet another special case.  Instead,
+rename this completion to r_done_completion and always signal it when
+the OSD client is done with the request, whether unsafe, safe, or
+error.  This is a bit cleaner and helps with the cancellation code.
+
+Reported-by: Yan, Zheng <zyan@redhat.com>
+Signed-off-by: Ilya Dryomov <idryomov@gmail.com>
+Acked-by: Luis Henriques <lhenriques@suse.com>
+---
+ fs/ceph/file.c                  |    2 +-
+ include/linux/ceph/osd_client.h |    2 +-
+ net/ceph/osd_client.c           |   25 +++++++++++--------------
+ 3 files changed, 13 insertions(+), 16 deletions(-)
+
+--- a/fs/ceph/file.c
++++ b/fs/ceph/file.c
+@@ -891,7 +891,7 @@ void ceph_sync_write_wait(struct inode *
+ 
+ 		dout("sync_write_wait on tid %llu (until %llu)\n",
+ 		     req->r_tid, last_tid);
+-		wait_for_completion(&req->r_safe_completion);
++		wait_for_completion(&req->r_done_completion);
+ 		ceph_osdc_put_request(req);
+ 
+ 		spin_lock(&ci->i_unsafe_lock);
+--- a/include/linux/ceph/osd_client.h
++++ b/include/linux/ceph/osd_client.h
+@@ -190,7 +190,7 @@ struct ceph_osd_request {
+ 	struct kref       r_kref;
+ 	bool              r_mempool;
+ 	struct completion r_completion;
+-	struct completion r_safe_completion;  /* fsync waiter */
++	struct completion r_done_completion;  /* fsync waiter */
+ 	ceph_osdc_callback_t r_callback;
+ 	ceph_osdc_unsafe_callback_t r_unsafe_callback;
+ 	struct list_head  r_unsafe_item;
+--- a/net/ceph/osd_client.c
++++ b/net/ceph/osd_client.c
+@@ -580,7 +580,7 @@ static void request_init(struct ceph_osd
+ 
+ 	kref_init(&req->r_kref);
+ 	init_completion(&req->r_completion);
+-	init_completion(&req->r_safe_completion);
++	init_completion(&req->r_done_completion);
+ 	RB_CLEAR_NODE(&req->r_node);
+ 	RB_CLEAR_NODE(&req->r_mc_node);
+ 	INIT_LIST_HEAD(&req->r_unsafe_item);
+@@ -1947,7 +1947,7 @@ static void complete_request(struct ceph
+ 	req->r_result = err;
+ 	__finish_request(req);
+ 	__complete_request(req);
+-	complete_all(&req->r_safe_completion);
++	complete_all(&req->r_done_completion);
+ 	ceph_osdc_put_request(req);
+ }
+ 
+@@ -1972,7 +1972,9 @@ static void cancel_request(struct ceph_o
+ 	dout("%s req %p tid %llu\n", __func__, req, req->r_tid);
+ 
+ 	cancel_map_check(req);
+-	finish_request(req);
++	__finish_request(req);
++	complete_all(&req->r_done_completion);
++	ceph_osdc_put_request(req);
+ }
+ 
+ static void check_pool_dne(struct ceph_osd_request *req)
+@@ -2983,12 +2985,12 @@ static bool done_request(const struct ce
+  * ->r_unsafe_callback is set?	yes			no
+  *
+  * first reply is OK (needed	r_cb/r_completion,	r_cb/r_completion,
+- * any or needed/got safe)	r_safe_completion	r_safe_completion
++ * any or needed/got safe)	r_done_completion	r_done_completion
+  *
+  * first reply is unsafe	r_unsafe_cb(true)	(nothing)
+  *
+  * when we get the safe reply	r_unsafe_cb(false),	r_cb/r_completion,
+- *				r_safe_completion	r_safe_completion
++ *				r_done_completion	r_done_completion
+  */
+ static void handle_reply(struct ceph_osd *osd, struct ceph_msg *msg)
+ {
+@@ -3109,8 +3111,7 @@ static void handle_reply(struct ceph_osd
+ 			dout("req %p tid %llu cb\n", req, req->r_tid);
+ 			__complete_request(req);
+ 		}
+-		if (m.flags & CEPH_OSD_FLAG_ONDISK)
+-			complete_all(&req->r_safe_completion);
++		complete_all(&req->r_done_completion);
+ 		ceph_osdc_put_request(req);
+ 	} else {
+ 		if (req->r_unsafe_callback) {
+@@ -3646,9 +3647,8 @@ int ceph_osdc_start_request(struct ceph_
+ EXPORT_SYMBOL(ceph_osdc_start_request);
+ 
+ /*
+- * Unregister a registered request.  The request is not completed (i.e.
+- * no callbacks or wakeups) - higher layers are supposed to know what
+- * they are canceling.
++ * Unregister a registered request.  The request is not completed:
++ * ->r_result isn't set and __complete_request() isn't called.
+  */
+ void ceph_osdc_cancel_request(struct ceph_osd_request *req)
+ {
+@@ -3675,9 +3675,6 @@ static int wait_request_timeout(struct c
+ 	if (left <= 0) {
+ 		left = left ?: -ETIMEDOUT;
+ 		ceph_osdc_cancel_request(req);
+-
+-		/* kludge - need to to wake ceph_osdc_sync() */
+-		complete_all(&req->r_safe_completion);
+ 	} else {
+ 		left = req->r_result; /* completed */
+ 	}
+@@ -3724,7 +3721,7 @@ again:
+ 			up_read(&osdc->lock);
+ 			dout("%s waiting on req %p tid %llu last_tid %llu\n",
+ 			     __func__, req, req->r_tid, last_tid);
+-			wait_for_completion(&req->r_safe_completion);
++			wait_for_completion(&req->r_done_completion);
+ 			ceph_osdc_put_request(req);
+ 			goto again;
+ 		}

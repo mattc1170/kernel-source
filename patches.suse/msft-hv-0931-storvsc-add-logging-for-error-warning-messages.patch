@@ -12,7 +12,7 @@ e.g. Microsoft Azure, for customer support and troubleshooting purposes.
 Signed-off-by: Long Li <longli@microsoft.com>
 Acked-by: K. Y. Srinivasan <kys@microsoft.com>
 Signed-off-by: Martin K. Petersen <martin.petersen@oracle.com>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  drivers/scsi/storvsc_drv.c | 34 +++++++++++++++++++++++++++++++++-
  1 file changed, 33 insertions(+), 1 deletion(-)

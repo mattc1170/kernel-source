@@ -9,7 +9,7 @@ The macro VMBUS_DEVICE() is unused; get rid of it.
 
 Signed-off-by: K. Y. Srinivasan <kys@microsoft.com>
 Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  include/linux/hyperv.h | 13 -------------
  1 file changed, 13 deletions(-)

@@ -9,7 +9,7 @@ The variable m_ret is only used in one basic block.
 
 Signed-off-by: Stephen Hemminger <sthemmin@microsoft.com>
 Signed-off-by: David S. Miller <davem@davemloft.net>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  drivers/net/hyperv/netvsc.c | 6 +++---
  1 file changed, 3 insertions(+), 3 deletions(-)

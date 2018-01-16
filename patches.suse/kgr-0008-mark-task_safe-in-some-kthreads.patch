@@ -1133,7 +1133,7 @@ Cc: Tejun Heo <tj@kernel.org>
  		if (atomic_read(&dev->rx_thread.thread_done))
 --- a/drivers/net/xen-netback/netback.c
 +++ b/drivers/net/xen-netback/netback.c
-@@ -2048,6 +2048,7 @@ static void xenvif_wait_for_rx_work(stru
+@@ -2052,6 +2052,7 @@ static void xenvif_wait_for_rx_work(stru
  	for (;;) {
  		long ret;
  
@@ -1141,7 +1141,7 @@ Cc: Tejun Heo <tj@kernel.org>
  		prepare_to_wait(&queue->wq, &wait, TASK_INTERRUPTIBLE);
  		if (xenvif_have_rx_work(queue))
  			break;
-@@ -2067,6 +2068,8 @@ int xenvif_kthread_guest_rx(void *data)
+@@ -2071,6 +2072,8 @@ int xenvif_kthread_guest_rx(void *data)
  		xenvif_queue_carrier_on(queue);
  
  	for (;;) {
@@ -1150,7 +1150,7 @@ Cc: Tejun Heo <tj@kernel.org>
  		xenvif_wait_for_rx_work(queue);
  
  		if (kthread_should_stop())
-@@ -2130,9 +2133,10 @@ int xenvif_dealloc_kthread(void *data)
+@@ -2134,9 +2137,10 @@ int xenvif_dealloc_kthread(void *data)
  	struct xenvif_queue *queue = data;
  
  	for (;;) {
@@ -1898,7 +1898,7 @@ Cc: Tejun Heo <tj@kernel.org>
  		 * are scheduled to run on the same CPU.
 --- a/drivers/target/iscsi/iscsi_target_login.c
 +++ b/drivers/target/iscsi/iscsi_target_login.c
-@@ -1451,6 +1451,7 @@ int iscsi_target_login_thread(void *arg)
+@@ -1454,6 +1454,7 @@ int iscsi_target_login_thread(void *arg)
  	allow_signal(SIGINT);
  
  	while (1) {
@@ -2034,7 +2034,7 @@ Cc: Tejun Heo <tj@kernel.org>
  
 --- a/drivers/usb/usbip/stub_tx.c
 +++ b/drivers/usb/usbip/stub_tx.c
-@@ -388,10 +388,11 @@ int stub_tx_loop(void *data)
+@@ -392,10 +392,11 @@ int stub_tx_loop(void *data)
  		if (stub_send_ret_unlink(sdev) < 0)
  			break;
  
@@ -2351,7 +2351,7 @@ Cc: Tejun Heo <tj@kernel.org>
  
 --- a/fs/ocfs2/dlmglue.c
 +++ b/fs/ocfs2/dlmglue.c
-@@ -4198,9 +4198,10 @@ static int ocfs2_downconvert_thread(void
+@@ -4202,9 +4202,10 @@ static int ocfs2_downconvert_thread(void
  	while (!(kthread_should_stop() &&
  		ocfs2_downconvert_thread_lists_empty(osb))) {
  
@@ -2928,24 +2928,24 @@ Cc: Tejun Heo <tj@kernel.org>
  	return 0;
 --- a/net/bluetooth/bnep/core.c
 +++ b/net/bluetooth/bnep/core.c
-@@ -493,6 +493,7 @@ static int bnep_session(void *arg)
- 	init_waitqueue_entry(&wait, current);
+@@ -492,6 +492,7 @@ static int bnep_session(void *arg)
+ 
  	add_wait_queue(sk_sleep(sk), &wait);
  	while (1) {
 +		klp_kgraft_mark_task_safe(current);
- 		set_current_state(TASK_INTERRUPTIBLE);
+ 		/* Ensure session->terminate is updated */
+ 		smp_mb__before_atomic();
  
- 		if (atomic_read(&s->terminate))
 --- a/net/bluetooth/cmtp/core.c
 +++ b/net/bluetooth/cmtp/core.c
-@@ -290,6 +290,7 @@ static int cmtp_session(void *arg)
- 	init_waitqueue_entry(&wait, current);
+@@ -289,6 +289,7 @@ static int cmtp_session(void *arg)
+ 
  	add_wait_queue(sk_sleep(sk), &wait);
  	while (1) {
 +		klp_kgraft_mark_task_safe(current);
- 		set_current_state(TASK_INTERRUPTIBLE);
+ 		/* Ensure session->terminate is updated */
+ 		smp_mb__before_atomic();
  
- 		if (atomic_read(&session->terminate))
 --- a/net/bluetooth/hidp/core.c
 +++ b/net/bluetooth/hidp/core.c
 @@ -1185,6 +1185,7 @@ static void hidp_session_run(struct hidp

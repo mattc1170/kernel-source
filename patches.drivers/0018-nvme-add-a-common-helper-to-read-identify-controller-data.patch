@@ -19,7 +19,7 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
 
 --- a/drivers/nvme/host/core.c
 +++ b/drivers/nvme/host/core.c
-@@ -776,6 +776,58 @@ int nvme_shutdown_ctrl(struct nvme_ctrl
+@@ -780,6 +780,58 @@ int nvme_shutdown_ctrl(struct nvme_ctrl
  	return ret;
  }
  
@@ -80,7 +80,7 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
  	struct nvme_ctrl *ctrl = container_of(kref, struct nvme_ctrl, kref);
 --- a/drivers/nvme/host/nvme.h
 +++ b/drivers/nvme/host/nvme.h
-@@ -62,6 +62,8 @@ struct nvme_ctrl {
+@@ -76,6 +76,8 @@ struct nvme_ctrl {
  	u32 ctrl_config;
  
  	u32 page_size;
@@ -89,7 +89,7 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
  	u16 oncs;
  	u16 abort_limit;
  	u8 event_limit;
-@@ -93,6 +95,7 @@ struct nvme_ns {
+@@ -107,6 +109,7 @@ struct nvme_ns {
  struct nvme_ctrl_ops {
  	int (*reg_read32)(struct nvme_ctrl *ctrl, u32 off, u32 *val);
  	int (*reg_write32)(struct nvme_ctrl *ctrl, u32 off, u32 val);
@@ -97,7 +97,7 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
  	void (*free_ctrl)(struct nvme_ctrl *ctrl);
  };
  
-@@ -177,6 +180,7 @@ int nvme_disable_ctrl(struct nvme_ctrl *
+@@ -191,6 +194,7 @@ int nvme_disable_ctrl(struct nvme_ctrl *
  int nvme_enable_ctrl(struct nvme_ctrl *ctrl, u64 cap);
  int nvme_shutdown_ctrl(struct nvme_ctrl *ctrl);
  void nvme_put_ctrl(struct nvme_ctrl *ctrl);
@@ -107,16 +107,16 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
  struct request *nvme_alloc_request(struct request_queue *q,
 --- a/drivers/nvme/host/pci.c
 +++ b/drivers/nvme/host/pci.c
-@@ -129,8 +129,6 @@ struct nvme_dev {
- 	struct work_struct probe_work;
+@@ -130,8 +130,6 @@ struct nvme_dev {
  	struct work_struct scan_work;
+ 	struct mutex shutdown_lock;
  	bool subsystem;
 -	u32 max_hw_sectors;
 -	u32 stripe_size;
  	void __iomem *cmb;
  	dma_addr_t cmb_dma_addr;
  	u64 cmb_size;
-@@ -1592,13 +1590,13 @@ static void nvme_alloc_ns(struct nvme_de
+@@ -1593,13 +1591,13 @@ static void nvme_alloc_ns(struct nvme_de
  	list_add_tail(&ns->list, &dev->namespaces);
  
  	blk_queue_logical_block_size(ns->queue, 1 << ns->lba_shift);
@@ -135,7 +135,7 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
  	if (dev->ctrl.vwc & NVME_CTRL_VWC_PRESENT)
  		blk_queue_flush(ns->queue, REQ_FLUSH | REQ_FUA);
  	blk_queue_virt_boundary(ns->queue, dev->ctrl.page_size - 1);
-@@ -1942,38 +1940,10 @@ static void nvme_dev_scan(struct work_st
+@@ -1943,38 +1941,10 @@ static void nvme_dev_scan(struct work_st
  static int nvme_dev_add(struct nvme_dev *dev)
  {
  	int res;
@@ -177,7 +177,7 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
  
  	if (!dev->tagset.tags) {
  		dev->tagset.ops = &nvme_mq_ops;
-@@ -2627,9 +2597,16 @@ static int nvme_pci_reg_write32(struct n
+@@ -2617,9 +2587,16 @@ static int nvme_pci_reg_write32(struct n
  	return 0;
  }
  

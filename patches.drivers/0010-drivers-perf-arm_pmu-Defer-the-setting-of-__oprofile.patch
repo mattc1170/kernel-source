@@ -1,0 +1,55 @@
+From 6bda45aae4869fb7f5c93a55f6052c9560339f0f Mon Sep 17 00:00:00 2001
+From: Julien Grall <julien.grall@arm.com>
+Date: Tue, 31 May 2016 12:41:22 +0100
+Subject: [PATCH 10/56] drivers/perf: arm_pmu: Defer the setting of
+ __oprofile_cpu_pmu
+
+Git-commit: 0f254c7671e851243412bce6c2e618732831d0f8
+Patch-mainline: v4.7-rc2
+References: bsc#1062279
+
+The global variable __oprofile_cpu_pmu is set before the PMU is fully
+initialized. If an error occurs before the end of the initialization,
+the PMU will be freed and the variable will contain an invalid pointer.
+
+This will result in a kernel crash when perf will be used.
+
+Fix it by moving the setting of __oprofile_cpu_pmu when the PMU is fully
+initialized (i.e when it is no longer possible to fail).
+
+Cc: <stable@vger.kernel.org>
+Signed-off-by: Julien Grall <julien.grall@arm.com>
+Acked-by: Mark Rutland <mark.rutland@arm.com>
+Signed-off-by: Will Deacon <will.deacon@arm.com>
+Signed-off-by: Mian Yousaf Kaukab <yousaf.kaukab@suse.com>
+---
+ drivers/perf/arm_pmu.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/perf/arm_pmu.c b/drivers/perf/arm_pmu.c
+index 9b2e216d..84cad61a 100644
+--- a/drivers/perf/arm_pmu.c
++++ b/drivers/perf/arm_pmu.c
+@@ -985,9 +985,6 @@ int arm_pmu_device_probe(struct platform_device *pdev,
+ 
+ 	armpmu_init(pmu);
+ 
+-	if (!__oprofile_cpu_pmu)
+-		__oprofile_cpu_pmu = pmu;
+-
+ 	pmu->plat_device = pdev;
+ 
+ 	if (node && (of_id = of_match_node(of_table, pdev->dev.of_node))) {
+@@ -1014,6 +1011,9 @@ int arm_pmu_device_probe(struct platform_device *pdev,
+ 	if (ret)
+ 		goto out_destroy;
+ 
++	if (!__oprofile_cpu_pmu)
++		__oprofile_cpu_pmu = pmu;
++
+ 	pr_info("enabled with %s PMU driver, %d counters available\n",
+ 			pmu->name, pmu->num_events);
+ 
+-- 
+2.11.0
+

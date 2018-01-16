@@ -1,0 +1,43 @@
+From 24f3677391fc3131dc730b622b543388d07d039f Mon Sep 17 00:00:00 2001
+From: Christoph Hellwig <hch@lst.de>
+Date: Sat, 20 May 2017 18:59:54 +0200
+Subject: PCI/msi: fix the pci_alloc_irq_vectors_affinity stub
+Git-commit: 83b4605b0c16cde5b00c8cf192408d51eab75402
+Patch-Mainline: v4.12
+References: bsc#1050211
+
+We need to return an error for any call that asks for MSI / MSI-X
+vectors only, so that non-trivial fallback logic can work properly.
+
+Also valid dev->irq and use the "correct" errno value based on feedback
+from Linus.
+
+Signed-off-by: Christoph Hellwig <hch@lst.de>
+Reported-by: Steven Rostedt <rostedt@goodmis.org>
+Fixes: aff17164 ("PCI: Provide sensible IRQ vector alloc/free routines")
+Signed-off-by: Linus Torvalds <torvalds@linux-foundation.org>
+Acked-by: Hannes Reinecke <hare@suse.com>
+---
+ include/linux/pci.h | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/include/linux/pci.h b/include/linux/pci.h
+index 9c6667d..f2fb5ff 100644
+--- a/include/linux/pci.h
++++ b/include/linux/pci.h
+@@ -1354,9 +1354,9 @@ pci_alloc_irq_vectors_affinity(struct pci_dev *dev, unsigned int min_vecs,
+ 			       unsigned int max_vecs, unsigned int flags,
+ 			       const struct irq_affinity *aff_desc)
+ {
+-	if (min_vecs > 1)
+-		return -EINVAL;
+-	return 1;
++	if ((flags & PCI_IRQ_LEGACY) && min_vecs == 1 && dev->irq)
++		return 1;
++	return -ENOSPC;
+ }
+ 
+ static inline void pci_free_irq_vectors(struct pci_dev *dev)
+-- 
+1.8.5.6
+

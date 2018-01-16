@@ -1,8 +1,7 @@
 From: Jisheng Zhang <jszhang@marvell.com>
 Date: Wed, 29 Mar 2017 16:47:19 +0800
 Subject: net: mvneta: set rx mode during resume if interface is running
-Patch-mainline: Queued in subsystem maintainer repository
-Git-repo: git://git.kernel.org/pub/scm/linux/kernel/git/davem/net-next.git
+Patch-mainline: v4.12-rc1
 Git-commit: d6956ac87b5ff6841b09c273a70de86200d82019
 References: fate#319899
 

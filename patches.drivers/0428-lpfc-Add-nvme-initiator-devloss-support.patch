@@ -1,42 +1,43 @@
 From: James Smart <jsmart2021@gmail.com>
-Date: Tue, 30 May 2017 22:37:22 -0700
-Subject: lpfc: Add nvme initiator devloss support
+Date: Thu, 1 Jun 2017 21:06:55 -0700
+Subject: scsi: lpfc: Add nvme initiator devloss support
+Git-commit: 7a06dcd3f8b0d8a89be4c0c573ecf1a1d720474e
 References: bsc#1041873
-Patch-Mainline: submitted linux-scsi 2017/06/01
+Patch-Mainline: v4.13-rc1
 
 Add nvme initiator devloss support
 
-The existing implementation was based on no devloss behavior
-in the transport (e.g. immediate teardown) so code didn't
-properly handle delayed nvme rport device unregister calls.
-In addition, the driver was not correctly cycling the rport
-port role for each register-unregister-reregister process.
+The existing implementation was based on no devloss behavior in the
+transport (e.g. immediate teardown) so code didn't properly handle
+delayed nvme rport device unregister calls.  In addition, the driver was
+not correctly cycling the rport port role for each
+register-unregister-reregister process.
 
 This patch does the following:
-Rework the code to properly handle rport device unregister
-calls and potential re-allocation of the remoteport structure
-if the port comes back in under dev_loss_tmo.
 
-Correct code that was incorrectly cycling the rport
-port role for each register-unregister-reregister process.
+Rework the code to properly handle rport device unregister calls and
+potential re-allocation of the remoteport structure if the port comes
+back in under dev_loss_tmo.
 
-Prep the code to enable calling the nvme_fc transport api
-to dynamically update dev_loss_tmo when the scsi sysfs interface
-changes it.
+Correct code that was incorrectly cycling the rport port role for each
+register-unregister-reregister process.
 
-Memset the rpinfo structure in the registration call to enforce
-"accept nvme transport defaults" in the registration call.  Driver
-parameters do influence the dev_loss_tmo transport setting
-dynamically.
+Prep the code to enable calling the nvme_fc transport api to dynamically
+update dev_loss_tmo when the scsi sysfs interface changes it.
 
-Simplifies the register function: the driver was incorrectly
-searching its local rport list to determine resume or new semantics,
-which is not valid as the transport already handles this.  The rport
-was resumed if the rport handed back matches the ndlp->nrport pointer.
-Otherwise, devloss fired and the ndlp's nrport is NULL.
+Memset the rpinfo structure in the registration call to enforce "accept
+nvme transport defaults" in the registration call.  Driver parameters do
+influence the dev_loss_tmo transport setting dynamically.
+
+Simplifies the register function: the driver was incorrectly searching
+its local rport list to determine resume or new semantics, which is not
+valid as the transport already handles this.  The rport was resumed if
+the rport handed back matches the ndlp->nrport pointer.  Otherwise,
+devloss fired and the ndlp's nrport is NULL.
 
 Signed-off-by: Dick Kennedy <dick.kennedy@broadcom.com>
 Signed-off-by: James Smart <james.smart@broadcom.com>
+Signed-off-by: Martin K. Petersen <martin.petersen@oracle.com>
 Acked-by: Hannes Reinecke <hare@suse.com>
 ---
  drivers/scsi/lpfc/lpfc_attr.c |   7 ++-
@@ -44,10 +45,10 @@ Acked-by: Hannes Reinecke <hare@suse.com>
  2 files changed, 57 insertions(+), 91 deletions(-)
 
 diff --git a/drivers/scsi/lpfc/lpfc_attr.c b/drivers/scsi/lpfc/lpfc_attr.c
-index 6a15871..36cdc39 100644
+index bb2d9e2..37f258f 100644
 --- a/drivers/scsi/lpfc/lpfc_attr.c
 +++ b/drivers/scsi/lpfc/lpfc_attr.c
-@@ -3198,9 +3198,12 @@ lpfc_update_rport_devloss_tmo(struct lpfc_vport *vport)
+@@ -3198,9 +3198,12 @@ static DEVICE_ATTR(txcmplq_hw, S_IRUGO,
  
  	shost = lpfc_shost_from_vport(vport);
  	spin_lock_irq(shost->host_lock);
@@ -66,7 +67,7 @@ diff --git a/drivers/scsi/lpfc/lpfc_nvme.c b/drivers/scsi/lpfc/lpfc_nvme.c
 index 8008c82..70675fd 100644
 --- a/drivers/scsi/lpfc/lpfc_nvme.c
 +++ b/drivers/scsi/lpfc/lpfc_nvme.c
-@@ -186,13 +186,13 @@ lpfc_nvme_remoteport_delete(struct nvme_fc_remote_port *remoteport)
+@@ -186,13 +186,13 @@
  
  	/* Remove this rport from the lport's list - memory is owned by the
  	 * transport. Remove the ndlp reference for the NVME transport before
@@ -82,7 +83,7 @@ index 8008c82..70675fd 100644
  	lpfc_nlp_put(ndlp);
  
   rport_err:
-@@ -1466,7 +1466,7 @@ lpfc_nvme_fcp_abort(struct nvme_fc_local_port *pnvme_lport,
+@@ -1466,7 +1466,7 @@
  
  	/* The remote node has to be ready to send an abort. */
  	if ((ndlp->nlp_state != NLP_STE_MAPPED_NODE) &&
@@ -91,7 +92,7 @@ index 8008c82..70675fd 100644
  		lpfc_printf_vlog(vport, KERN_ERR, LOG_NVME_ABTS,
  				 "6048 rport %p, DID x%06x not ready for "
  				 "IO. State x%x, Type x%x\n",
-@@ -2340,69 +2340,44 @@ lpfc_nvme_register_port(struct lpfc_vport *vport, struct lpfc_nodelist *ndlp)
+@@ -2340,69 +2340,44 @@
  	localport = vport->localport;
  	lport = (struct lpfc_nvme_lport *)localport->private;
  
@@ -196,7 +197,7 @@ index 8008c82..70675fd 100644
  			rport->remoteport = remote_port;
  			rport->lport = lport;
  			rport->ndlp = lpfc_nlp_get(ndlp);
-@@ -2413,26 +2388,22 @@ lpfc_nvme_register_port(struct lpfc_vport *vport, struct lpfc_nodelist *ndlp)
+@@ -2413,26 +2388,22 @@
  			list_add_tail(&rport->list, &lport->rport_list);
  			lpfc_printf_vlog(vport, KERN_INFO,
  					 LOG_NVME_DISC | LOG_NODE,
@@ -233,7 +234,7 @@ index 8008c82..70675fd 100644
  	return ret;
  #else
  	return 0;
-@@ -2460,7 +2431,6 @@ lpfc_nvme_unregister_port(struct lpfc_vport *vport, struct lpfc_nodelist *ndlp)
+@@ -2460,7 +2431,6 @@
  	struct lpfc_nvme_lport *lport;
  	struct lpfc_nvme_rport *rport;
  	struct nvme_fc_remote_port *remoteport;
@@ -241,7 +242,7 @@ index 8008c82..70675fd 100644
  
  	localport = vport->localport;
  
-@@ -2491,6 +2461,10 @@ lpfc_nvme_unregister_port(struct lpfc_vport *vport, struct lpfc_nodelist *ndlp)
+@@ -2491,6 +2461,10 @@
  	 */
  	if (ndlp->nlp_type & (NLP_NVME_TARGET | NLP_NVME_INITIATOR)) {
  		init_completion(&rport->rport_unreg_done);
@@ -252,7 +253,7 @@ index 8008c82..70675fd 100644
  		ret = nvme_fc_unregister_remoteport(remoteport);
  		if (ret != 0) {
  			lpfc_printf_vlog(vport, KERN_ERR, LOG_NVME_DISC,
-@@ -2499,17 +2473,6 @@ lpfc_nvme_unregister_port(struct lpfc_vport *vport, struct lpfc_nodelist *ndlp)
+@@ -2499,17 +2473,6 @@
  					 ret, remoteport->port_state);
  		}
  

@@ -1,0 +1,30 @@
+From: Stephen Hemminger <stephen@networkplumber.org>
+Date: Sat, 4 Mar 2017 18:27:11 -0700
+Patch-mainline: v4.12-rc1
+Subject: hyperv: fix warning about missing prototype
+Git-commit: 670718161852c6acdb8d6bca6a73510f7b9f4320
+References: fate#320485
+
+Compiling with warnings enabled finds missing prototype for
+hv_do_hypercall.
+
+Signed-off-by: Stephen Hemminger <sthemmin@microsoft.com>
+Signed-off-by: K. Y. Srinivasan <kys@microsoft.com>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Acked-by: Olaf Hering <ohering@suse.de>
+---
+ arch/x86/hyperv/hv_init.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/arch/x86/hyperv/hv_init.c b/arch/x86/hyperv/hv_init.c
+--- a/arch/x86/hyperv/hv_init.c
++++ b/arch/x86/hyperv/hv_init.c
+@@ -25,7 +25,7 @@
+ #include <linux/vmalloc.h>
+ #include <linux/mm.h>
+ #include <linux/clockchips.h>
+-
++#include <linux/hyperv.h>
+ 
+ #ifdef CONFIG_X86_64
+ 

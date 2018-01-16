@@ -1,0 +1,30 @@
+From b7dcf68f383a05567bd16a390907b67022a62d3d Mon Sep 17 00:00:00 2001
+From: Dan Carpenter <dan.carpenter@oracle.com>
+Date: Thu, 6 Apr 2017 08:12:20 +0300
+Subject: [PATCH] ath9k: off by one in ath9k_hw_nvram_read_array()
+Git-commit: b7dcf68f383a05567bd16a390907b67022a62d3d
+Patch-mainline: 4.12-rc1
+References: bsc#1031717
+
+The > should be >= or we read one space beyond the end of the array.
+
+Fixes: ab5c4f71d8c7 ("ath9k: allow to load EEPROM content via firmware API")
+Signed-off-by: Dan Carpenter <dan.carpenter@oracle.com>
+Signed-off-by: Kalle Valo <kvalo@qca.qualcomm.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/ath/ath9k/eeprom.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+--- a/drivers/net/wireless/ath/ath9k/eeprom.c
++++ b/drivers/net/wireless/ath/ath9k/eeprom.c
+@@ -113,7 +113,7 @@ static bool ath9k_hw_nvram_read_blob(str
+ {
+ 	u16 *blob_data;
+ 
+-	if (off * sizeof(u16) > ah->eeprom_blob->size)
++	if (off * sizeof(u16) >= ah->eeprom_blob->size)
+ 		return false;
+ 
+ 	blob_data = (u16 *)ah->eeprom_blob->data;

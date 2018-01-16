@@ -1,0 +1,64 @@
+From: Peter Zijlstra <peterz@infradead.org>
+Date: Tue, 25 Apr 2017 15:29:40 +0200
+Subject: sched/topology: Small cleanup
+Git-commit: 8d5dc5126bb2bbcebf0b1e061cca2fc02c935620
+Patch-mainline: v4.13-rc1
+References: bnc#1022476
+
+Move the allocation of topology specific cpumasks into the topology
+code.
+
+Signed-off-by: Peter Zijlstra (Intel) <peterz@infradead.org>
+Cc: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: Mike Galbraith <efault@gmx.de>
+Cc: Peter Zijlstra <peterz@infradead.org>
+Cc: Thomas Gleixner <tglx@linutronix.de>
+Cc: linux-kernel@vger.kernel.org
+Signed-off-by: Ingo Molnar <mingo@kernel.org>
+Signed-off-by: Mike Galbraith <mgalbraith@suse.de>
+---
+ kernel/sched/core.c |    9 +++++----
+ 1 file changed, 5 insertions(+), 4 deletions(-)
+
+--- a/kernel/sched/core.c
++++ b/kernel/sched/core.c
+@@ -7460,10 +7460,13 @@ void free_sched_domains(cpumask_var_t do
+  * For now this just excludes isolated cpus, but could be used to
+  * exclude other special cases in the future.
+  */
+-static int init_sched_domains(const struct cpumask *cpu_map)
++static int sched_init_domains(const struct cpumask *cpu_map)
+ {
+ 	int err;
+ 
++	zalloc_cpumask_var(&sched_domains_tmpmask, GFP_KERNEL);
++	zalloc_cpumask_var(&fallback_doms, GFP_KERNEL);
++
+ 	arch_update_cpu_topology();
+ 	ndoms_cur = 1;
+ 	doms_cur = alloc_sched_domains(ndoms_cur);
+@@ -7701,7 +7704,6 @@ void __init sched_init_smp(void)
+ 	cpumask_var_t non_isolated_cpus;
+ 
+ 	alloc_cpumask_var(&non_isolated_cpus, GFP_KERNEL);
+-	alloc_cpumask_var(&fallback_doms, GFP_KERNEL);
+ 
+ 	sched_init_numa();
+ 
+@@ -7711,7 +7713,7 @@ void __init sched_init_smp(void)
+ 	 * happen.
+ 	 */
+ 	mutex_lock(&sched_domains_mutex);
+-	init_sched_domains(cpu_active_mask);
++	sched_init_domains(cpu_active_mask);
+ 	cpumask_andnot(non_isolated_cpus, cpu_possible_mask, cpu_isolated_map);
+ 	if (cpumask_empty(non_isolated_cpus))
+ 		cpumask_set_cpu(smp_processor_id(), non_isolated_cpus);
+@@ -7967,7 +7969,6 @@ void __init sched_init(void)
+ 	calc_load_update = jiffies + LOAD_FREQ;
+ 
+ #ifdef CONFIG_SMP
+-	zalloc_cpumask_var(&sched_domains_tmpmask, GFP_NOWAIT);
+ 	/* May be allocated at isolcpus cmdline parse time */
+ 	if (cpu_isolated_map == NULL)
+ 		zalloc_cpumask_var(&cpu_isolated_map, GFP_NOWAIT);

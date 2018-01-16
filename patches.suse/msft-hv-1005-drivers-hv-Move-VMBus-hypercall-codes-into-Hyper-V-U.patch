@@ -22,7 +22,7 @@ CC: qemu-devel@nongnu.org
 [Do not rename the constant at the same time as moving it, as that
  would cause semantic conflicts with the Hyper-V tree. - Paolo]
 Signed-off-by: Paolo Bonzini <pbonzini@redhat.com>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  arch/x86/include/uapi/asm/hyperv.h | 2 ++
  drivers/hv/hyperv_vmbus.h          | 6 ------

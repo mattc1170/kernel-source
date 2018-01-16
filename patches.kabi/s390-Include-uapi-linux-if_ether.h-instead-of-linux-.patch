@@ -1,0 +1,32 @@
+From: Hannes Reinecke <hare@suse.de>
+Date: Thu, 24 Aug 2017 16:12:41 +0200
+Subject: s390: Include uapi/linux/if_ether.h instead of linux/if_ether.h
+Patch-Mainline: never, SLE12 kABI fix
+References: bsc#1053472
+
+Including the main linux/if_ether.h header file will slurp in
+lots of unneccesary other files and causing a kABI breakage.
+So just include uapi/linux/if_ether.h as we're only interested
+in ETH_ALEN.
+
+Signed-off-by: Hannes Reinecke <hare@suse.com>
+---
+ arch/s390/include/asm/diag.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/arch/s390/include/asm/diag.h b/arch/s390/include/asm/diag.h
+index 29f6593..34e96e8 100644
+--- a/arch/s390/include/asm/diag.h
++++ b/arch/s390/include/asm/diag.h
+@@ -8,7 +8,7 @@
+ #ifndef _ASM_S390_DIAG_H
+ #define _ASM_S390_DIAG_H
+ 
+-#include <linux/if_ether.h>
++#include <uapi/linux/if_ether.h>
+ #include <linux/percpu.h>
+ 
+ enum diag_stat_enum {
+-- 
+1.8.5.6
+

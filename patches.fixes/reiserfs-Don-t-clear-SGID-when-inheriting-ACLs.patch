@@ -3,8 +3,7 @@ From: Jan Kara <jack@suse.cz>
 Date: Thu, 22 Jun 2017 09:32:49 +0200
 Subject: [PATCH 10/11] reiserfs: Don't clear SGID when inheriting ACLs
 Git-commit: 6883cd7f68245e43e91e5ee583b7550abf14523f
-Git-repo: git://git.kernel.org/pub/scm/linux/kernel/git/jack/linux-fs.git
-Patch-mainline: Queued in subsystem maintainer repository
+Patch-mainline: v4.13-rc2
 References: bsc#1030552
 
 When new directory 'DIR1' is created in a directory 'DIR0' with SGID bit

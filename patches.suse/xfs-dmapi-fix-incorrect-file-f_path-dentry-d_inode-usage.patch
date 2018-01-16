@@ -1,0 +1,42 @@
+From: Jeff Mahoney <jeffm@suse.com>
+Subject: xfs/dmapi: fix incorrect file->f_path.dentry->d_inode usage
+References: bsc#1055896
+Patch-mainline: never, depends on DMAPI
+
+The page fault handling for DMAPI still used the old
+file->f_path.dentry->d_inode pattern to access a file's inode.  Under
+most circumstances this will do the right thing, but when used with
+a stacking file system like ecryptfs or overlayfs, it will return
+the 'upper' level's inode.  As a result, in xfs_file_mmap, if the
+memory that XFS_M(filp->f_path.dentry->d_inode->i_sb)->m_flags points
+to just happens to have the XFS_MOUNT_DMAPI bit set, we'll set up
+the dmapi vm_ops.  In turn, xfs_vm_fault will Oops because it's dealing
+with data structures that aren't what they should be.
+
+The fix is simple: use file_inode to get the correct inode.
+
+Signed-off-by: Jeff Mahoney <jeffm@suse.com>
+---
+ fs/xfs/xfs_file.c |    4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+--- a/fs/xfs/xfs_file.c
++++ b/fs/xfs/xfs_file.c
+@@ -1145,7 +1145,7 @@ xfs_vm_fault(
+ 	struct vm_area_struct	*vma,
+ 	struct vm_fault	*vmf)
+ {
+-	struct inode	*inode = vma->vm_file->f_path.dentry->d_inode;
++	struct inode	*inode = file_inode(vma->vm_file);
+ 	struct xfs_mount *mp = XFS_M(inode->i_sb);
+ 
+ 	ASSERT_ALWAYS(mp->m_flags & XFS_MOUNT_DMAPI);
+@@ -1720,7 +1720,7 @@ xfs_file_mmap(
+ 	vma->vm_ops = &xfs_file_vm_ops;
+ 
+ #ifdef HAVE_DMAPI
+-	if (XFS_M(filp->f_path.dentry->d_inode->i_sb)->m_flags & XFS_MOUNT_DMAPI)
++	if (XFS_M(file_inode(filp)->i_sb)->m_flags & XFS_MOUNT_DMAPI)
+ 		vma->vm_ops = &xfs_dmapi_file_vm_ops;
+ #endif /* HAVE_DMAPI */
+ 

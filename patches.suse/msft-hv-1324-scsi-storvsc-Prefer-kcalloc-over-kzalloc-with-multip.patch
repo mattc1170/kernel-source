@@ -1,0 +1,32 @@
+From: Miguel Bernal Marin <miguel.bernal.marin@linux.intel.com>
+Date: Thu, 16 Mar 2017 00:58:23 -0600
+Patch-mainline: v4.12-rc1
+Subject: scsi: storvsc: Prefer kcalloc over kzalloc with multiply
+Git-commit: e04085285b829dc922e78768a9abb390a8caed31
+References: fate#320485
+
+Use kcalloc for allocating an array instead of kzalloc with multiply,
+kcalloc is the preferred API.
+
+Found with checkpatch.
+
+Signed-off-by: Miguel Bernal Marin <miguel.bernal.marin@linux.intel.com>
+Reviewed-by:  K. Y. Srinivasan <kys@microsoft.com>
+Signed-off-by: Martin K. Petersen <martin.petersen@oracle.com>
+Acked-by: Olaf Hering <ohering@suse.de>
+---
+ drivers/scsi/storvsc_drv.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/scsi/storvsc_drv.c b/drivers/scsi/storvsc_drv.c
+--- a/drivers/scsi/storvsc_drv.c
++++ b/drivers/scsi/storvsc_drv.c
+@@ -866,7 +866,7 @@ static int storvsc_channel_init(struct hv_device *device, bool is_fc)
+ 	 * We will however populate all the slots to evenly distribute
+ 	 * the load.
+ 	 */
+-	stor_device->stor_chns = kzalloc(sizeof(void *) * num_possible_cpus(),
++	stor_device->stor_chns = kcalloc(num_possible_cpus(), sizeof(void *),
+ 					 GFP_KERNEL);
+ 	if (stor_device->stor_chns == NULL)
+ 		return -ENOMEM;

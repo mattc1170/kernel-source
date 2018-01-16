@@ -1,0 +1,28 @@
+From: "K. Y. Srinivasan" <kys@microsoft.com>
+Date: Tue, 14 Mar 2017 18:01:38 -0700
+Patch-mainline: v4.12-rc1
+Subject: Drivers: hv: Fix a typo
+Git-commit: 4539673a6ac027e3ba95901379b5f36c5eb3c9dc
+References: fate#320485
+
+Fix a typo in the macro.
+
+Signed-off-by: K. Y. Srinivasan <kys@microsoft.com>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Acked-by: Olaf Hering <ohering@suse.de>
+---
+ arch/x86/include/uapi/asm/hyperv.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/arch/x86/include/uapi/asm/hyperv.h b/arch/x86/include/uapi/asm/hyperv.h
+--- a/arch/x86/include/uapi/asm/hyperv.h
++++ b/arch/x86/include/uapi/asm/hyperv.h
+@@ -124,7 +124,7 @@
+   * Recommend using hypercall for address space switches rather
+   * than MOV to CR3 instruction
+   */
+-#define HV_X64_MWAIT_RECOMMENDED		(1 << 0)
++#define HV_X64_AS_SWITCH_RECOMMENDED		(1 << 0)
+ /* Recommend using hypercall for local TLB flushes rather
+  * than INVLPG or MOV to CR3 instructions */
+ #define HV_X64_LOCAL_TLB_FLUSH_RECOMMENDED	(1 << 1)

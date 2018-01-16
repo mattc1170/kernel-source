@@ -1,0 +1,66 @@
+From cf7f4f90e3cc5ce52b011ac6644560538dc3d004 Mon Sep 17 00:00:00 2001
+From: Andrew Boyer <andrew.boyer@dell.com>
+Date: Mon, 28 Aug 2017 16:11:53 -0400
+Subject: IB/rxe: Fix destination cache for IPv6
+References: bsc#1049361
+Git-commit: b9109b7ddb13a52b379c3e57d9b1d74d7445e94d
+Patch-mainline: v4.14-rc1
+
+To successfully match an IPv6 path, the path cookie must match. Store it
+in the QP so that the IPv6 path can be reused.
+
+Replace open-coded version of dst_check() with the actual call, fixing the
+logic. The open-coded version skips the check call if dst->obsolete is 0
+(DST_OBSOLETE_NONE), proceeding to replace the route. DST_OBSOLETE_NONE
+means that the route may continue to be used, though.
+
+Fixes: 4ed6ad1eb30e ("IB/rxe: Cache dst in QP instead of getting it...")
+Signed-off-by: Andrew Boyer <andrew.boyer@dell.com>
+Signed-off-by: Doug Ledford <dledford@redhat.com>
+Signed-off-by: Johannes Thumshirn <jthumshirn@suse.de>
+
+---
+ drivers/infiniband/sw/rxe/rxe_net.c   | 7 ++++++-
+ drivers/infiniband/sw/rxe/rxe_verbs.h | 1 +
+ 2 files changed, 7 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/infiniband/sw/rxe/rxe_net.c b/drivers/infiniband/sw/rxe/rxe_net.c
+index cf905d0bfbd5..f9a6d1a69c8b 100644
+--- a/drivers/infiniband/sw/rxe/rxe_net.c
++++ b/drivers/infiniband/sw/rxe/rxe_net.c
+@@ -219,7 +219,7 @@ static struct dst_entry *rxe_find_route(struct rxe_dev *rxe,
+ 	if (qp_type(qp) == IB_QPT_RC)
+ 		dst = sk_dst_get(qp->sk->sk);
+ 
+-	if (!dst || !(dst->obsolete && dst->ops->check(dst, 0))) {
++	if (!dst || !dst_check(dst, qp->dst_cookie)) {
+ 		if (dst)
+ 			dst_release(dst);
+ 
+@@ -237,6 +237,11 @@ static struct dst_entry *rxe_find_route(struct rxe_dev *rxe,
+ 			saddr6 = &av->sgid_addr._sockaddr_in6.sin6_addr;
+ 			daddr6 = &av->dgid_addr._sockaddr_in6.sin6_addr;
+ 			dst = rxe_find_route6(rxe->ndev, saddr6, daddr6);
++#if IS_ENABLED(CONFIG_IPV6)
++			if (dst)
++				qp->dst_cookie =
++					rt6_get_cookie((struct rt6_info *)dst);
++#endif
+ 		}
+ 	}
+ 
+diff --git a/drivers/infiniband/sw/rxe/rxe_verbs.h b/drivers/infiniband/sw/rxe/rxe_verbs.h
+index 911939e1bb9d..0901269a4006 100644
+--- a/drivers/infiniband/sw/rxe/rxe_verbs.h
++++ b/drivers/infiniband/sw/rxe/rxe_verbs.h
+@@ -246,6 +246,7 @@ struct rxe_qp {
+ 	struct rxe_rq		rq;
+ 
+ 	struct socket		*sk;
++	u32			dst_cookie;
+ 
+ 	struct rxe_av		pri_av;
+ 	struct rxe_av		alt_av;
+-- 
+2.12.3
+

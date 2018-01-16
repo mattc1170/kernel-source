@@ -16,12 +16,12 @@ Signed-off-by: Shengge Ding <shengge.dsg@alibaba-inc.com>
 Signed-off-by: Paolo Bonzini <pbonzini@redhat.com>
 Acked-by: Joerg Roedel <jroedel@suse.de>
 ---
- arch/x86/kvm/vmx.c | 15 ++++++++++-----
+ arch/x86/kvm/vmx.c |   15 ++++++++++-----
  1 file changed, 10 insertions(+), 5 deletions(-)
 
 --- a/arch/x86/kvm/vmx.c
 +++ b/arch/x86/kvm/vmx.c
-@@ -1997,7 +1997,8 @@ static void vmx_vcpu_pi_load(struct kvm_
+@@ -1996,7 +1996,8 @@ static void vmx_vcpu_pi_load(struct kvm_
  	unsigned int dest;
  
  	if (!kvm_arch_has_assigned_device(vcpu->kvm) ||
@@ -31,7 +31,7 @@ Acked-by: Joerg Roedel <jroedel@suse.de>
  		return;
  
  	do {
-@@ -2105,7 +2106,8 @@ static void vmx_vcpu_pi_put(struct kvm_v
+@@ -2104,7 +2105,8 @@ static void vmx_vcpu_pi_put(struct kvm_v
  	struct pi_desc *pi_desc = vcpu_to_pi_desc(vcpu);
  
  	if (!kvm_arch_has_assigned_device(vcpu->kvm) ||
@@ -41,7 +41,7 @@ Acked-by: Joerg Roedel <jroedel@suse.de>
  		return;
  
  	/* Set SN when the vCPU is preempted */
-@@ -10649,7 +10651,8 @@ static int vmx_pre_block(struct kvm_vcpu
+@@ -10677,7 +10679,8 @@ static int vmx_pre_block(struct kvm_vcpu
  	struct pi_desc *pi_desc = vcpu_to_pi_desc(vcpu);
  
  	if (!kvm_arch_has_assigned_device(vcpu->kvm) ||
@@ -51,7 +51,7 @@ Acked-by: Joerg Roedel <jroedel@suse.de>
  		return 0;
  
  	vcpu->pre_pcpu = vcpu->cpu;
-@@ -10715,7 +10718,8 @@ static void vmx_post_block(struct kvm_vc
+@@ -10743,7 +10746,8 @@ static void vmx_post_block(struct kvm_vc
  	unsigned long flags;
  
  	if (!kvm_arch_has_assigned_device(vcpu->kvm) ||
@@ -61,8 +61,8 @@ Acked-by: Joerg Roedel <jroedel@suse.de>
  		return;
  
  	do {
-@@ -10768,7 +10772,8 @@ static int vmx_update_pi_irte(struct kvm
- 	int idx, ret = -EINVAL;
+@@ -10796,7 +10800,8 @@ static int vmx_update_pi_irte(struct kvm
+ 	int idx, ret = 0;
  
  	if (!kvm_arch_has_assigned_device(kvm) ||
 -		!irq_remapping_cap(IRQ_POSTING_CAP))

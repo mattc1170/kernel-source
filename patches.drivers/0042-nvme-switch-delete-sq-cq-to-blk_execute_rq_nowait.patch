@@ -15,7 +15,7 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
 
 --- a/drivers/nvme/host/pci.c
 +++ b/drivers/nvme/host/pci.c
-@@ -86,8 +86,6 @@ static void nvme_dev_shutdown(struct nvm
+@@ -85,8 +85,6 @@ static void nvme_dev_shutdown(struct nvm
  struct async_cmd_info {
  	struct kthread_work work;
  	struct kthread_worker *worker;
@@ -24,7 +24,7 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
  	int status;
  	void *ctx;
  };
-@@ -391,16 +389,6 @@ static void abort_completion(struct nvme
+@@ -390,16 +388,6 @@ static void abort_completion(struct nvme
  	atomic_inc(&nvmeq->dev->ctrl.abort_limit);
  }
  
@@ -34,14 +34,14 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
 -	struct async_cmd_info *cmdinfo = ctx;
 -	cmdinfo->result = le32_to_cpup(&cqe->result);
 -	cmdinfo->status = le16_to_cpup(&cqe->status) >> 1;
--	queue_kthread_work(cmdinfo->worker, &cmdinfo->work);
 -	blk_mq_free_request(cmdinfo->req);
+-	queue_kthread_work(cmdinfo->worker, &cmdinfo->work);
 -}
 -
  static inline struct nvme_cmd_info *get_cmd_from_tag(struct nvme_queue *nvmeq,
  				  unsigned int tag)
  {
-@@ -985,28 +973,13 @@ static int nvme_submit_async_admin_req(s
+@@ -984,28 +972,13 @@ static int nvme_submit_async_admin_req(s
  	return 0;
  }
  
@@ -70,12 +70,12 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
 -	nvme_submit_cmd(nvmeq, cmd);
 -	return 0;
 +	cmdinfo->status = req->errors;
-+	queue_kthread_work(cmdinfo->worker, &cmdinfo->work);
 +	blk_mq_free_request(req);
++	queue_kthread_work(cmdinfo->worker, &cmdinfo->work);
  }
  
  static int adapter_delete_queue(struct nvme_dev *dev, u8 opcode, u16 id)
-@@ -1932,6 +1905,7 @@ static void nvme_del_queue_end(struct nv
+@@ -1918,6 +1891,7 @@ static void nvme_del_queue_end(struct nv
  static int adapter_async_del_queue(struct nvme_queue *nvmeq, u8 opcode,
  						kthread_work_func_t fn)
  {
@@ -83,7 +83,7 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
  	struct nvme_command c;
  
  	memset(&c, 0, sizeof(c));
-@@ -1939,8 +1913,15 @@ static int adapter_async_del_queue(struc
+@@ -1925,8 +1899,15 @@ static int adapter_async_del_queue(struc
  	c.delete_queue.qid = cpu_to_le16(nvmeq->qid);
  
  	init_kthread_work(&nvmeq->cmdinfo.work, fn);

@@ -84,5 +84,5 @@ Acked-by: David Chang <dchang@suse.com>
 -static int igb_close(struct net_device *netdev)
 +int igb_close(struct net_device *netdev)
  {
- 	return __igb_close(netdev, false);
- }
+ 	if (netif_device_present(netdev))
+ 		return __igb_close(netdev, false);

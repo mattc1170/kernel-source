@@ -1,0 +1,108 @@
+From: Jiri Slaby <jslaby@suse.cz>
+Date: Mon, 2 Oct 2017 14:00:52 +0200
+Subject: Revert "Revert "net: use lib/percpu_counter API for fragmentation mem
+ accounting""
+Patch-mainline: never, kabi
+References: kabi
+
+This reverts commit 40bc5355e134af1d0ac05fe0dcb0aa55f9144bb4, upstream
+commit fb452a1aa3fd4034d7999e309c5466ff2d7005aa. It breaks kABI and
+cannot be worked around as the percpu counter is used in inline
+functions which can be called from anywhere.
+
+Signed-off-by: Jiri Slaby <jslaby@suse.cz>
+---
+ include/net/inet_frag.h  |   36 +++++++++++++++++++++++++++---------
+ net/ipv4/inet_fragment.c |    4 +++-
+ 2 files changed, 30 insertions(+), 10 deletions(-)
+
+--- a/include/net/inet_frag.h
++++ b/include/net/inet_frag.h
+@@ -1,9 +1,14 @@
+ #ifndef __NET_FRAG_H__
+ #define __NET_FRAG_H__
+ 
++#include <linux/percpu_counter.h>
++
+ struct netns_frags {
+-	/* Keep atomic mem on separate cachelines in structs that include it */
+-	atomic_t		mem ____cacheline_aligned_in_smp;
++	/* The percpu_counter "mem" need to be cacheline aligned.
++	 *  mem.count must not share cacheline with other writers
++	 */
++	struct percpu_counter   mem ____cacheline_aligned_in_smp;
++
+ 	/* sysctls */
+ 	int			timeout;
+ 	int			high_thresh;
+@@ -105,11 +110,11 @@ void inet_frags_fini(struct inet_frags *
+ 
+ static inline int inet_frags_init_net(struct netns_frags *nf)
+ {
+-	atomic_set(&nf->mem, 0);
+-	return 0;
++	return percpu_counter_init(&nf->mem, 0, GFP_KERNEL);
+ }
+ static inline void inet_frags_uninit_net(struct netns_frags *nf)
+ {
++	percpu_counter_destroy(&nf->mem);
+ }
+ 
+ void inet_frags_exit_net(struct netns_frags *nf, struct inet_frags *f);
+@@ -135,24 +140,37 @@ static inline bool inet_frag_evicting(st
+ 
+ /* Memory Tracking Functions. */
+ 
++/* The default percpu_counter batch size is not big enough to scale to
++ * fragmentation mem acct sizes.
++ * The mem size of a 64K fragment is approx:
++ *  (44 fragments * 2944 truesize) + frag_queue struct(200) = 129736 bytes
++ */
++static unsigned int frag_percpu_counter_batch = 130000;
++
+ static inline int frag_mem_limit(struct netns_frags *nf)
+ {
+-	return atomic_read(&nf->mem);
++	return percpu_counter_read(&nf->mem);
+ }
+ 
+ static inline void sub_frag_mem_limit(struct netns_frags *nf, int i)
+ {
+-	atomic_sub(i, &nf->mem);
++	__percpu_counter_add(&nf->mem, -i, frag_percpu_counter_batch);
+ }
+ 
+ static inline void add_frag_mem_limit(struct netns_frags *nf, int i)
+ {
+-	atomic_add(i, &nf->mem);
++	__percpu_counter_add(&nf->mem, i, frag_percpu_counter_batch);
+ }
+ 
+-static inline int sum_frag_mem_limit(struct netns_frags *nf)
++static inline unsigned int sum_frag_mem_limit(struct netns_frags *nf)
+ {
+-	return atomic_read(&nf->mem);
++	unsigned int res;
++
++	local_bh_disable();
++	res = percpu_counter_sum_positive(&nf->mem);
++	local_bh_enable();
++
++	return res;
+ }
+ 
+ /* RFC 3168 support :
+--- a/net/ipv4/inet_fragment.c
++++ b/net/ipv4/inet_fragment.c
+@@ -234,8 +234,10 @@ evict_again:
+ 	cond_resched();
+ 
+ 	if (read_seqretry(&f->rnd_seqlock, seq) ||
+-	    sum_frag_mem_limit(nf))
++	    percpu_counter_sum(&nf->mem))
+ 		goto evict_again;
++
++	percpu_counter_destroy(&nf->mem);
+ }
+ EXPORT_SYMBOL(inet_frags_exit_net);
+ 

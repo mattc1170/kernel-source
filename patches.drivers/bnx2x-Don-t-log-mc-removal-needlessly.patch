@@ -1,0 +1,34 @@
+From: "Mintz, Yuval" <Yuval.Mintz@cavium.com>
+Date: Sat, 24 Jun 2017 15:37:00 +0300
+Subject: bnx2x: Don't log mc removal needlessly
+Patch-mainline: v4.12
+Git-commit: d0c32a16235aeacd32c9de6ff90f9219614d7e4e
+References: bsc#1019680 FATE#321692
+
+When mc configuration changes bnx2x_config_mcast() can return 0 for
+success, negative for failure and positive for benign reason preventing
+its immediate work, e.g., when the command awaits the completion of
+a previously sent command.
+
+When removing all configured macs on a 578xx adapter, if a positive
+value would be returned driver would errneously log it as an error.
+
+Fixes: c7b7b483ccc9 ("bnx2x: Don't flush multicast MACs")
+Signed-off-by: Yuval Mintz <Yuval.Mintz@cavium.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+Acked-by: Thomas Bogendoerfer <tbogendoerfer@suse.de>
+---
+ drivers/net/ethernet/broadcom/bnx2x/bnx2x_main.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+--- a/drivers/net/ethernet/broadcom/bnx2x/bnx2x_main.c
++++ b/drivers/net/ethernet/broadcom/bnx2x/bnx2x_main.c
+@@ -12751,7 +12751,7 @@ static int bnx2x_set_mc_list(struct bnx2
+ 	} else {
+ 		/* If no mc addresses are required, flush the configuration */
+ 		rc = bnx2x_config_mcast(bp, &rparam, BNX2X_MCAST_CMD_DEL);
+-		if (rc)
++		if (rc < 0)
+ 			BNX2X_ERR("Failed to clear multicast configuration %d\n",
+ 				  rc);
+ 	}

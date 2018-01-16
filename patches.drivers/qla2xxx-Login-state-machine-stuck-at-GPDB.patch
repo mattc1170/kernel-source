@@ -1,0 +1,53 @@
+From: Quinn Tran <quinn.tran@cavium.com>
+Date: Thu, 9 Nov 2017 16:31:19 +0530
+Subject: [PATCH] qla2xxx: Login state machine stuck at GPDB.
+References: bsc#1043017
+Patch-Mainline: no, SLE12-SP3 specific backport
+
+Need to return discovery state machine back to Login Complete.
+
+Signed-off-by: Quinn Tran <quinn.tran@cavium.com>
+Signed-off-by: Sawan Chandak <sawan.chandak@cavium.com>
+Signed-off-by: Hannes Reinecke <hare@suse.de>
+---
+ drivers/scsi/qla2xxx/qla_init.c | 10 +++++++++-
+ 1 file changed, 9 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/scsi/qla2xxx/qla_init.c b/drivers/scsi/qla2xxx/qla_init.c
+index a09fb07..828bc62 100644
+--- a/drivers/scsi/qla2xxx/qla_init.c
++++ b/drivers/scsi/qla2xxx/qla_init.c
+@@ -757,6 +757,7 @@ void qla24xx_handle_gpdb_event(scsi_qla_host_t *vha, struct event_arg *ea)
+ 	int rval = ea->rc;
+ 	fc_port_t *fcport = ea->fcport;
+ 	unsigned long flags;
++	u16 opt = ea->sp->u.iocb_cmd.u.mbx.out_mb[10];
+ 
+ 	fcport->flags &= ~FCF_ASYNC_SENT;
+ 
+@@ -787,7 +788,8 @@ void qla24xx_handle_gpdb_event(scsi_qla_host_t *vha, struct event_arg *ea)
+ 	}
+ 
+ 	spin_lock_irqsave(&vha->hw->tgt.sess_lock, flags);
+-	ea->fcport->login_gen++;
++	if (opt != PDO_FORCE_ADISC)
++		ea->fcport->login_gen++;
+ 	ea->fcport->deleted = 0;
+ 	ea->fcport->logout_on_delete = 1;
+ 
+@@ -811,6 +813,12 @@ void qla24xx_handle_gpdb_event(scsi_qla_host_t *vha, struct event_arg *ea)
+ 
+ 			qla24xx_post_gpsc_work(vha, fcport);
+ 		}
++	}else if (ea->fcport->login_succ) {
++		/* We have an existing session.  A late RSCN delivery must
++		 * have triggered the session to be re-validate.
++		 * Session is still valid.
++		 */
++		fcport->disc_state = DSC_LOGIN_COMPLETE;
+ 	}
+ 	spin_unlock_irqrestore(&vha->hw->tgt.sess_lock, flags);
+ } /* gpdb event */
+-- 
+1.8.5.6
+

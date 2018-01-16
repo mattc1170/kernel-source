@@ -12,7 +12,7 @@ hv_signal_event() as it is only callled from vmbus_set_event().
 
 Signed-off-by: K. Y. Srinivasan <kys@microsoft.com>
 Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  drivers/hv/connection.c   |  4 ++--
  drivers/hv/hv.c           | 16 ----------------

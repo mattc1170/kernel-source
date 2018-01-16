@@ -15,7 +15,7 @@ netvsc_link_change().
 Reported-by: Haiyang Zhang <haiyangz@microsoft.com>
 Signed-off-by: Vitaly Kuznetsov <vkuznets@redhat.com>
 Signed-off-by: David S. Miller <davem@davemloft.net>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  drivers/net/hyperv/netvsc_drv.c | 21 +++++++++++++++++----
  1 file changed, 17 insertions(+), 4 deletions(-)

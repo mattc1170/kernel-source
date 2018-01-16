@@ -12,7 +12,7 @@ Fixes: 14b50f80c32d ('Drivers: hv: util: introduce hv_utils_transport abstractio
 Signed-off-by: Olaf Hering <olaf@aepfle.de>
 Signed-off-by: K. Y. Srinivasan <kys@microsoft.com>
 Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  drivers/hv/hv_utils_transport.c | 9 ++++-----
  1 file changed, 4 insertions(+), 5 deletions(-)

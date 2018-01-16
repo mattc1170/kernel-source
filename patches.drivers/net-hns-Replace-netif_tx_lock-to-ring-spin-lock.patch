@@ -1,8 +1,7 @@
 From: lipeng <lipeng321@huawei.com>
 Date: Sat, 1 Apr 2017 12:03:38 +0100
 Subject: net: hns: Replace netif_tx_lock to ring spin lock
-Patch-mainline: Queued in subsystem maintainer repository
-Git-repo: git://git.kernel.org/pub/scm/linux/kernel/git/davem/net-next.git
+Patch-mainline: v4.12-rc1
 Git-commit: f2aaed557ecff57f7523f889acf1981fb23c4047
 References: fate#322061
 

@@ -1,0 +1,34 @@
+From ca260ece6a57dc7d751e0685f51fa2c55d851873 Mon Sep 17 00:00:00 2001
+From: Johan Hovold <johan@kernel.org>
+Date: Mon, 13 Mar 2017 13:44:21 +0100
+Subject: [PATCH] zd1211rw: fix NULL-deref at probe
+Git-commit: ca260ece6a57dc7d751e0685f51fa2c55d851873
+Patch-mainline: 4.12-rc1
+References: bsc#1031717
+
+Make sure to check the number of endpoints to avoid dereferencing a
+NULL-pointer or accessing memory beyond the endpoint array should a
+malicious device lack the expected endpoints.
+
+Fixes: a1030e92c150 ("[PATCH] zd1211rw: Convert installer CDROM device into WLAN device")
+Cc: Daniel Drake <dsd@gentoo.org>
+Signed-off-by: Johan Hovold <johan@kernel.org>
+Signed-off-by: Kalle Valo <kvalo@codeaurora.org>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/zd1211rw/zd_usb.c |    3 +++
+ 1 file changed, 3 insertions(+)
+
+--- a/drivers/net/wireless/zd1211rw/zd_usb.c
++++ b/drivers/net/wireless/zd1211rw/zd_usb.c
+@@ -1278,6 +1278,9 @@ static int eject_installer(struct usb_in
+ 	u8 bulk_out_ep;
+ 	int r;
+ 
++	if (iface_desc->desc.bNumEndpoints < 2)
++		return -ENODEV;
++
+ 	/* Find bulk out endpoint */
+ 	for (r = 1; r >= 0; r--) {
+ 		endpoint = &iface_desc->endpoint[r].desc;

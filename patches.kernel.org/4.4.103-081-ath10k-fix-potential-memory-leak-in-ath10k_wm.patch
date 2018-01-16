@@ -1,0 +1,66 @@
+From: Christian Lamparter <chunkeey@googlemail.com>
+Date: Thu, 29 Dec 2016 16:12:09 +0200
+Subject: [PATCH] ath10k: fix potential memory leak in
+ ath10k_wmi_tlv_op_pull_fw_stats()
+References: bnc#1012382
+Patch-mainline: 4.4.103
+Git-commit: 097e46d2ae90265d1afe141ba6208ba598b79e01
+
+[ Upstream commit 097e46d2ae90265d1afe141ba6208ba598b79e01 ]
+
+ath10k_wmi_tlv_op_pull_fw_stats() uses tb = ath10k_wmi_tlv_parse_alloc(...)
+function, which allocates memory. If any of the three error-paths are
+taken, this tb needs to be freed.
+
+Signed-off-by: Christian Lamparter <chunkeey@googlemail.com>
+Signed-off-by: Kalle Valo <kvalo@qca.qualcomm.com>
+Signed-off-by: Sasha Levin <alexander.levin@verizon.com>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Signed-off-by: Jiri Slaby <jslaby@suse.cz>
+---
+ drivers/net/wireless/ath/ath10k/wmi-tlv.c | 12 +++++++++---
+ 1 file changed, 9 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/net/wireless/ath/ath10k/wmi-tlv.c b/drivers/net/wireless/ath/ath10k/wmi-tlv.c
+index 6fbd17b69469..02eea3c3b5d3 100644
+--- a/drivers/net/wireless/ath/ath10k/wmi-tlv.c
++++ b/drivers/net/wireless/ath/ath10k/wmi-tlv.c
+@@ -1105,8 +1105,10 @@ static int ath10k_wmi_tlv_op_pull_fw_stats(struct ath10k *ar,
+ 		struct ath10k_fw_stats_pdev *dst;
+ 
+ 		src = data;
+-		if (data_len < sizeof(*src))
++		if (data_len < sizeof(*src)) {
++			kfree(tb);
+ 			return -EPROTO;
++		}
+ 
+ 		data += sizeof(*src);
+ 		data_len -= sizeof(*src);
+@@ -1126,8 +1128,10 @@ static int ath10k_wmi_tlv_op_pull_fw_stats(struct ath10k *ar,
+ 		struct ath10k_fw_stats_vdev *dst;
+ 
+ 		src = data;
+-		if (data_len < sizeof(*src))
++		if (data_len < sizeof(*src)) {
++			kfree(tb);
+ 			return -EPROTO;
++		}
+ 
+ 		data += sizeof(*src);
+ 		data_len -= sizeof(*src);
+@@ -1145,8 +1149,10 @@ static int ath10k_wmi_tlv_op_pull_fw_stats(struct ath10k *ar,
+ 		struct ath10k_fw_stats_peer *dst;
+ 
+ 		src = data;
+-		if (data_len < sizeof(*src))
++		if (data_len < sizeof(*src)) {
++			kfree(tb);
+ 			return -EPROTO;
++		}
+ 
+ 		data += sizeof(*src);
+ 		data_len -= sizeof(*src);
+-- 
+2.15.1
+

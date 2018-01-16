@@ -11,7 +11,7 @@ only uses sizeof(struct pci_child_message).
 Signed-off-by: Dexuan Cui <decui@microsoft.com>
 Signed-off-by: Bjorn Helgaas <bhelgaas@google.com>
 Reviewed-by: Jake Oshins <jakeo@microsoft.com>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  drivers/pci/host/pci-hyperv.c | 6 +++---
  1 file changed, 3 insertions(+), 3 deletions(-)

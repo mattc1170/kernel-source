@@ -1,8 +1,7 @@
 From: Jane Li <jiel@marvell.com>
 Date: Thu, 16 Mar 2017 16:22:28 +0800
 Subject: net: mvneta: support suspend and resume
-Patch-mainline: Queued in subsystem maintainer repository
-Git-repo: git://git.kernel.org/pub/scm/linux/kernel/git/davem/net-next.git
+Patch-mainline: v4.12-rc1
 Git-commit: 9768b45ceb0bc7bdee61837afad331dd6bf7977f
 References: fate#319899
 

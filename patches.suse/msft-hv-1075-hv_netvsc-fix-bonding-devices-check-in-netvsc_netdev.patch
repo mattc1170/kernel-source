@@ -17,7 +17,7 @@ we still hold vf_netdev pointer to the device we crash on the next inject.
 Signed-off-by: Vitaly Kuznetsov <vkuznets@redhat.com>
 Acked-by: Haiyang Zhang <haiyangz@microsoft.com>
 Signed-off-by: David S. Miller <davem@davemloft.net>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  drivers/net/hyperv/netvsc_drv.c | 9 +++++++--
  1 file changed, 7 insertions(+), 2 deletions(-)

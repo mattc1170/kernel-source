@@ -19,7 +19,7 @@ adding a configurable macro.
 Signed-off-by: Alex Fluter <afluter@yandex.com>
 Signed-off-by: K. Y. Srinivasan <kys@microsoft.com>
 Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  tools/hv/hv_kvp_daemon.c | 11 ++++++++---
  1 file changed, 8 insertions(+), 3 deletions(-)

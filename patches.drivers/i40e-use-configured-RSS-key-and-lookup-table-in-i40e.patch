@@ -2,8 +2,7 @@ From: Jacob Keller <jacob.e.keller@intel.com>
 Date: Tue, 19 Jul 2016 16:23:31 -0700
 Subject: [PATCH] i40e: use configured RSS key and lookup table in
  i40e_vsi_config_rss
-Patch-mainline: Queued in subsystem maintainer repository
-Git-repo: git://git.kernel.org/pub/scm/linux/kernel/git/davem/net-next.git
+Patch-mainline: v4.9-rc1
 Git-commit: 552b996256241198a08005a91a206b402ac234f6
 References: bsc#998216
 

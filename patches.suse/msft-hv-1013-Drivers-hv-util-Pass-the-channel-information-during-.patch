@@ -20,7 +20,7 @@ the first real request from the server.
 Signed-off-by: K. Y. Srinivasan <kys@microsoft.com>
 Reported-by: Vitaly Kuznetsov <vkuznets@redhat.com>
 Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  drivers/hv/hv_fcopy.c    |    2 +-
  drivers/hv/hv_kvp.c      |    2 +-

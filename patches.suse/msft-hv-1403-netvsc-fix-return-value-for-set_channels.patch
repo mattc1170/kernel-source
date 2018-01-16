@@ -1,0 +1,29 @@
+From: stephen hemminger <stephen@networkplumber.org>
+Date: Fri, 28 Jul 2017 08:59:41 -0700
+Patch-mainline: v4.14-rc1
+Subject: netvsc: fix return value for set_channels
+Git-commit: d6aac1f218873f2266de23280bffb909b4a98fbf
+References: fate#320485
+
+The error and normal case got swapped.
+
+Signed-off-by: Stephen Hemminger <sthemmin@microsoft.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+Acked-by: Olaf Hering <ohering@suse.de>
+---
+ drivers/net/hyperv/netvsc_drv.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/net/hyperv/netvsc_drv.c b/drivers/net/hyperv/netvsc_drv.c
+--- a/drivers/net/hyperv/netvsc_drv.c
++++ b/drivers/net/hyperv/netvsc_drv.c
+@@ -758,8 +758,8 @@ static int netvsc_set_channels(struct net_device *net,
+ 	if (!IS_ERR(nvdev)) {
+ 		netif_set_real_num_tx_queues(net, nvdev->num_chn);
+ 		netif_set_real_num_rx_queues(net, nvdev->num_chn);
+-		ret = PTR_ERR(nvdev);
+ 	} else {
++		ret = PTR_ERR(nvdev);
+ 		device_info.num_chn = orig;
+ 		rndis_filter_device_add(dev, &device_info);
+ 	}

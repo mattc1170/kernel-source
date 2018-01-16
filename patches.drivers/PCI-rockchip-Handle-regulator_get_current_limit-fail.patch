@@ -1,0 +1,43 @@
+From: Brian Norris <briannorris@chromium.org>
+Date: Thu, 9 Mar 2017 18:46:13 -0800
+Subject: PCI: rockchip: Handle regulator_get_current_limit() failure correctly
+Git-commit: 5fcaa0051dfcc5fe77aee95061945d80e465a027
+Patch-mainline: v4.12-rc1
+References: bsc#1056849
+
+regulator_get_current_limit() can return negative error codes.  We saved
+the return value in an unsigned "curr", and a subsequent check interpreted
+a negative error code as a positive (invalid) current limit.
+
+Save the return code as a signed value, which avoids messages like this,
+seen on Samsung Chromebook Plus:
+
+  rockchip-pcie f8000000.pcie: invalid power supply
+
+[bhelgaas: changelog]
+Fixes: 4816c4c7b82b ("PCI: rockchip: Provide captured slot power limit and scale")
+Signed-off-by: Brian Norris <briannorris@chromium.org>
+Signed-off-by: Bjorn Helgaas <bhelgaas@google.com>
+Acked-by: Shawn Lin <shawn.lin@rock-chips.com>
+Signed-off-by: Matthias Brugger <mbrugger@suse.com>
+---
+ drivers/pci/host/pcie-rockchip.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/pci/host/pcie-rockchip.c b/drivers/pci/host/pcie-rockchip.c
+index 26ddd3535272..d785f64ec03b 100644
+--- a/drivers/pci/host/pcie-rockchip.c
++++ b/drivers/pci/host/pcie-rockchip.c
+@@ -425,7 +425,8 @@ static struct pci_ops rockchip_pcie_ops = {
+ 
+ static void rockchip_pcie_set_power_limit(struct rockchip_pcie *rockchip)
+ {
+-	u32 status, curr, scale, power;
++	int curr;
++	u32 status, scale, power;
+ 
+ 	if (IS_ERR(rockchip->vpcie3v3))
+ 		return;
+-- 
+2.14.0
+

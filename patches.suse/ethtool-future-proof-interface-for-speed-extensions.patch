@@ -13,7 +13,7 @@ extension and to avoid conflict with SPEED_UNKNOWN.
 
 Signed-off-by: Michael S. Tsirkin <mst@redhat.com>
 Signed-off-by: David S. Miller <davem@davemloft.net>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  include/uapi/linux/ethtool.h | 6 +++---
  1 file changed, 3 insertions(+), 3 deletions(-)

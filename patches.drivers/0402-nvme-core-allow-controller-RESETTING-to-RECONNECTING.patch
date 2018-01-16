@@ -1,27 +1,30 @@
 From: James Smart <jsmart2021@gmail.com>
-Date: Sat, 13 May 2017 12:07:15 -0700
-Subject: nvme core: allow controller RESETTING to RECONNECTING transition
+Date: Wed, 25 Oct 2017 16:43:13 -0700
+Subject: nvme: allow controller RESETTING to RECONNECTING transition
+Git-commit: 3cec7f9de448131778a1428100621fd371db75f4
 References: bsc#1037838
-Patch-Mainline: submitted to linux-scsi 2017/05/16
+Patch-Mainline: v4.15-rc1
 
-Allow controller state transition : RESETTING to RECONNECTING
-
-The nvme_fc transport will set the state to RESETTING when
-tearing down the current association (error or controller reset),
-then transition to RECONNECTING when attempting to establish a new
-association.
+Transport will typically transition from LIVE to RESETTING when initially
+performing a reset or recovering from an error.  Adding this transition
+allows a transport to transition to RECONNECTING when it checks/waits for
+connectivity then creates new transport connections and reinits the
+controller.
 
 Signed-off-by: James Smart <james.smart@broadcom.com>
+Reviewed-by: Sagi Grimberg <sagi@grimberg.me>
+Reviewed-by: Johannes Thumshirn <jthumshirn@suse.de>
 Reviewed-by: Hannes Reinecke <hare@suse.com>
+Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
  drivers/nvme/host/core.c | 1 +
  1 file changed, 1 insertion(+)
 
 diff --git a/drivers/nvme/host/core.c b/drivers/nvme/host/core.c
-index 17fb694..0c75ebd 100644
+index 003314e..07b9f4e 100644
 --- a/drivers/nvme/host/core.c
 +++ b/drivers/nvme/host/core.c
-@@ -163,6 +163,7 @@ bool nvme_change_ctrl_state(struct nvme_ctrl *ctrl,
+@@ -241,6 +241,7 @@ bool nvme_change_ctrl_state(struct nvme_ctrl *ctrl,
  	case NVME_CTRL_RECONNECTING:
  		switch (old_state) {
  		case NVME_CTRL_LIVE:

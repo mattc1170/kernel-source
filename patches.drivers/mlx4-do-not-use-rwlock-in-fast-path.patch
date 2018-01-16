@@ -41,7 +41,7 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  
  	memset(hwts, 0, sizeof(struct skb_shared_hwtstamps));
  	hwts->hwtstamp = ns_to_ktime(nsec);
-@@ -95,9 +96,9 @@ void mlx4_en_ptp_overflow_check(struct m
+@@ -102,9 +103,9 @@ void mlx4_en_ptp_overflow_check(struct m
  	unsigned long flags;
  
  	if (timeout) {
@@ -53,7 +53,7 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  		mdev->last_overflow_check = jiffies;
  	}
  }
-@@ -128,10 +129,10 @@ static int mlx4_en_phc_adjfreq(struct pt
+@@ -135,10 +136,10 @@ static int mlx4_en_phc_adjfreq(struct pt
  	adj *= delta;
  	diff = div_u64(adj, 1000000000ULL);
  
@@ -66,7 +66,7 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  
  	return 0;
  }
-@@ -149,9 +150,9 @@ static int mlx4_en_phc_adjtime(struct pt
+@@ -156,9 +157,9 @@ static int mlx4_en_phc_adjtime(struct pt
  						ptp_clock_info);
  	unsigned long flags;
  
@@ -78,7 +78,7 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  
  	return 0;
  }
-@@ -172,9 +173,9 @@ static int mlx4_en_phc_gettime(struct pt
+@@ -179,9 +180,9 @@ static int mlx4_en_phc_gettime(struct pt
  	unsigned long flags;
  	u64 ns;
  
@@ -90,7 +90,7 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  
  	*ts = ns_to_timespec64(ns);
  
-@@ -198,9 +199,9 @@ static int mlx4_en_phc_settime(struct pt
+@@ -205,9 +206,9 @@ static int mlx4_en_phc_settime(struct pt
  	unsigned long flags;
  
  	/* reset the timecounter */
@@ -102,7 +102,7 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  
  	return 0;
  }
-@@ -266,7 +267,7 @@ void mlx4_en_init_timestamp(struct mlx4_
+@@ -271,7 +272,7 @@ void mlx4_en_init_timestamp(struct mlx4_
  	if (mdev->ptp_clock)
  		return;
  
@@ -111,7 +111,7 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  
  	memset(&mdev->cycles, 0, sizeof(mdev->cycles));
  	mdev->cycles.read = mlx4_en_read_clock;
-@@ -276,10 +277,10 @@ void mlx4_en_init_timestamp(struct mlx4_
+@@ -281,10 +282,10 @@ void mlx4_en_init_timestamp(struct mlx4_
  		clocksource_khz2mult(1000 * dev->caps.hca_core_clock, mdev->cycles.shift);
  	mdev->nominal_c_mult = mdev->cycles.mult;
  
@@ -122,8 +122,8 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
 -	write_unlock_irqrestore(&mdev->clock_lock, flags);
 +	write_sequnlock_irqrestore(&mdev->clock_lock, flags);
  
- 	/* Calculate period in seconds to call the overflow watchdog - to make
- 	 * sure counter is checked at least once every wrap around.
+ 	/* Configure the PHC */
+ 	mdev->ptp_clock_info = mlx4_en_ptp_clock_info;
 --- a/drivers/net/ethernet/mellanox/mlx4/mlx4_en.h
 +++ b/drivers/net/ethernet/mellanox/mlx4/mlx4_en.h
 @@ -395,9 +395,9 @@ struct mlx4_en_dev {
@@ -136,4 +136,4 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
 +	seqlock_t		clock_lock;
  	struct timecounter	clock;
  	unsigned long		last_overflow_check;
- 	unsigned long		overflow_period;
+ 	struct ptp_clock	*ptp_clock;

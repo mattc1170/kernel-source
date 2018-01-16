@@ -1,8 +1,7 @@
 From: Thomas Petazzoni <thomas.petazzoni@free-electrons.com>
 Date: Tue, 7 Mar 2017 16:53:16 +0100
 Subject: net: mvpp2: rework RXQ interrupt group initialization for PPv2.2
-Patch-mainline: Queued in subsystem maintainer repository
-Git-repo: git://git.kernel.org/pub/scm/linux/kernel/git/davem/net-next.git
+Patch-mainline: v4.12-rc1
 Git-commit: a73fef100275d5228cad5041b3e55af859f30d1e
 References: bsc#1032150
 

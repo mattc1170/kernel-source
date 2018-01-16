@@ -17,7 +17,7 @@ Fixes: 631e63a9f346 ("vmbus: change to per channel tasklet")
 Signed-off-by: Stephen Hemminger <sthemmin@microsoft.com>
 Signed-off-by: K. Y. Srinivasan <kys@microsoft.com>
 Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  drivers/hv/channel_mgmt.c | 7 ++++---
  drivers/hv/vmbus_drv.c    | 6 +++++-

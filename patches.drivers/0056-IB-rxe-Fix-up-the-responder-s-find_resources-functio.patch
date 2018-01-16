@@ -1,0 +1,39 @@
+From f4d280ba74398cb21fafbb1066d4df963f31792e Mon Sep 17 00:00:00 2001
+From: Andrew Boyer <andrew.boyer@dell.com>
+Date: Mon, 28 Aug 2017 16:11:52 -0400
+Subject: IB/rxe: Fix up the responder's find_resources() function
+References: bsc#1049361
+Git-commit: d45d29567f87492e467ec854e0e81ad847c9b840
+Patch-mainline: v4.14-rc1
+
+The resource array is sized by max_dest_rd_atomic, not max_rd_atomic.
+Iterating over max_rd_atomic entries of qp->resp.resources[] will cause
+incorrect behavior when the two attributes are different (or even
+crash if max_rd_atomic is larger).
+
+Fixes: 8700e3e7c485 ("Soft RoCE driver")
+Signed-off-by: Andrew Boyer <andrew.boyer@dell.com>
+Reviewed-by: Yuval Shaia <yuval.shaia@oracle.com>
+Signed-off-by: Doug Ledford <dledford@redhat.com>
+Signed-off-by: Johannes Thumshirn <jthumshirn@suse.de>
+
+---
+ drivers/infiniband/sw/rxe/rxe_resp.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/infiniband/sw/rxe/rxe_resp.c b/drivers/infiniband/sw/rxe/rxe_resp.c
+index c9dd385ce62e..9b61ef0f1291 100644
+--- a/drivers/infiniband/sw/rxe/rxe_resp.c
++++ b/drivers/infiniband/sw/rxe/rxe_resp.c
+@@ -1052,7 +1052,7 @@ static struct resp_res *find_resource(struct rxe_qp *qp, u32 psn)
+ {
+ 	int i;
+ 
+-	for (i = 0; i < qp->attr.max_rd_atomic; i++) {
++	for (i = 0; i < qp->attr.max_dest_rd_atomic; i++) {
+ 		struct resp_res *res = &qp->resp.resources[i];
+ 
+ 		if (res->type == 0)
+-- 
+2.12.3
+

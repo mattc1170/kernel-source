@@ -1,0 +1,43 @@
+From: Dongpo Li <lidongpo@hisilicon.com>
+Date: Mon, 12 Dec 2016 20:03:43 +0800
+Subject: net: ethernet: hip04: Call SET_NETDEV_DEV()
+Patch-mainline: v4.10-rc1
+Git-commit: 8cd1f70f205a1c684037f06906566ddb3066d659
+References: bsc#1049336
+
+The hip04 driver calls into PHYLIB which now checks for
+net_device->dev.parent, so make sure we do set it before calling into
+any MDIO/PHYLIB related function.
+
+Fixes: ec988ad78ed6 ("phy: Don't increment MDIO bus refcount unless it's a different owner")
+Signed-off-by: Dongpo Li <lidongpo@hisilicon.com>
+Reviewed-by: Florian Fainelli <f.fainelli@gmail.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+Acked-by: Thomas Bogendoerfer <tbogendoerfer@suse.de>
+---
+ drivers/net/ethernet/hisilicon/hip04_eth.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/net/ethernet/hisilicon/hip04_eth.c b/drivers/net/ethernet/hisilicon/hip04_eth.c
+index 02f2e7e47f9e..bae42709fcd0 100644
+--- a/drivers/net/ethernet/hisilicon/hip04_eth.c
++++ b/drivers/net/ethernet/hisilicon/hip04_eth.c
+@@ -825,6 +825,7 @@ static int hip04_mac_probe(struct platform_device *pdev)
+ 	priv = netdev_priv(ndev);
+ 	priv->ndev = ndev;
+ 	platform_set_drvdata(pdev, ndev);
++	SET_NETDEV_DEV(ndev, &pdev->dev);
+ 
+ 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+ 	priv->base = devm_ioremap_resource(d, res);
+@@ -901,7 +902,6 @@ static int hip04_mac_probe(struct platform_device *pdev)
+ 	ndev->priv_flags |= IFF_UNICAST_FLT;
+ 	ndev->irq = irq;
+ 	netif_napi_add(ndev, &priv->napi, hip04_rx_poll, NAPI_POLL_WEIGHT);
+-	SET_NETDEV_DEV(ndev, &pdev->dev);
+ 
+ 	hip04_reset_ppe(priv);
+ 	if (priv->phy_mode == PHY_INTERFACE_MODE_MII)
+-- 
+2.12.3
+

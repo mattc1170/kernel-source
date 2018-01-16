@@ -83,7 +83,7 @@ Acked-by: Takashi Iwai <tiwai@suse.de>
  
  /* NVM offsets (in words) definitions */
  enum wkp_nvm_offsets {
-@@ -524,6 +526,36 @@ static void iwl_set_radio_cfg(const stru
+@@ -534,6 +536,36 @@ static void iwl_set_radio_cfg(const stru
  	data->valid_rx_ant = NVM_RF_CFG_RX_ANT_MSK_FAMILY_8000(radio_cfg);
  }
  
@@ -120,7 +120,7 @@ Acked-by: Takashi Iwai <tiwai@suse.de>
  static void iwl_set_hw_address_family_8000(struct iwl_trans *trans,
  					   const struct iwl_cfg *cfg,
  					   struct iwl_nvm_data *data,
-@@ -564,21 +596,8 @@ static void iwl_set_hw_address_family_80
+@@ -574,21 +606,8 @@ static void iwl_set_hw_address_family_80
  						WFMP_MAC_ADDR_0));
  		__le32 mac_addr1 = cpu_to_le32(iwl_trans_read_prph(trans,
  						WFMP_MAC_ADDR_1));
@@ -143,7 +143,7 @@ Acked-by: Takashi Iwai <tiwai@suse.de>
  
  		return;
  	}
-@@ -586,12 +605,14 @@ static void iwl_set_hw_address_family_80
+@@ -596,12 +615,14 @@ static void iwl_set_hw_address_family_80
  	IWL_ERR(trans, "mac address is not found\n");
  }
  
@@ -164,7 +164,7 @@ Acked-by: Takashi Iwai <tiwai@suse.de>
  		const u8 *hw_addr = (const u8 *)(nvm_hw + HW_ADDR);
  
  		/* The byte order is little endian 16 bit, meaning 214365 */
-@@ -605,6 +626,13 @@ static void iwl_set_hw_address(struct iw
+@@ -615,6 +636,13 @@ static void iwl_set_hw_address(struct iw
  		iwl_set_hw_address_family_8000(trans, cfg, data,
  					       mac_override, nvm_hw);
  	}
@@ -177,8 +177,8 @@ Acked-by: Takashi Iwai <tiwai@suse.de>
 +	return 0;
  }
  
- struct iwl_nvm_data *
-@@ -680,7 +708,12 @@ iwl_parse_nvm_data(struct iwl_trans *tra
+ static bool
+@@ -724,7 +752,12 @@ iwl_parse_nvm_data(struct iwl_trans *tra
  		ch_section = regulatory;
  	}
  
@@ -190,5 +190,5 @@ Acked-by: Takashi Iwai <tiwai@suse.de>
 +	}
 +
  	iwl_init_sbands(dev, cfg, data, ch_section, tx_chains, rx_chains,
- 			lar_fw_supported && lar_enabled);
+ 			lar_fw_supported && lar_enabled, no_wide_in_5ghz);
  	data->calib_version = 255;

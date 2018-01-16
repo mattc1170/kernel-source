@@ -15,7 +15,7 @@ that to be guaranteed.
 Signed-off-by: Jake Oshins <jakeo@microsoft.com>
 Signed-off-by: K. Y. Srinivasan <kys@microsoft.com>
 Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  drivers/hv/vmbus_drv.c |   37 ++++++++++++++++++++++++++++++++++++-
  1 file changed, 36 insertions(+), 1 deletion(-)

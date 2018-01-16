@@ -1,7 +1,8 @@
 From: Kalesh AP <kalesh-anakkur.purayil@broadcom.com>
 Subject: RDMA/bnxt_re: Add vlan tag for untagged RoCE traffic when PFC is configured
 Date: Mon, 22 May 2017 03:15:38 -0700
-Patch-mainline: submitted, https://patchwork.kernel.org/patch/9739881
+Patch-mainline: v4.14-rc1
+Git-commit: 5fac5b1b297fe1702f4c65d3b16aefb7d52967ab
 References: bsc#1037579
 
 Current implementation does not program vlan header insertion

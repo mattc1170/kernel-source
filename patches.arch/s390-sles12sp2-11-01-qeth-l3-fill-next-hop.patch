@@ -1,0 +1,45 @@
+From: Ursula Braun <ubraun@linux.vnet.ibm.com>
+Subject: qeth: fix L3 next-hop im xmit qeth hdr
+Patch-mainline: Queued in subsystem maintainers repo
+Git-commit: ec2c6726322f0d270bab477e4904bf9496f70ee5
+Git-repo: git://git.kernel.org/pub/scm/linux/kernel/git/davem/net.gi
+References: bnc#1052773, LTC#157374
+
+Description:  qeth: fix L3 next-hop im xmit qeth hdr
+Symptom:      wrong destination address in qdio header
+Problem:      The current code accesses rtable->rt_gateway without checking
+              that rtable is a valid address. The accidental access to a
+              lowcore area results in a random next-hop address in the
+              qeth_hdr.
+              rtable (or more precisely, skb_dst(skb)) can be NULL in rare
+              cases (for instance together with AF_PACKET sockets).
+Solution:     Add the missing NULL-ptr checks.
+Reproduction: AF_PACKET program sending raw data
+
+
+Signed-off-by: Ursula Braun <ubraun@linux.vnet.ibm.com>
+Acked-by: Hannes Reinecke <hare@suse.com>
+---
+ drivers/s390/net/qeth_l3_main.c |    4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+--- a/drivers/s390/net/qeth_l3_main.c
++++ b/drivers/s390/net/qeth_l3_main.c
+@@ -2727,7 +2727,7 @@ static void qeth_l3_fill_header(struct q
+ 		struct rtable *rt = (struct rtable *) dst;
+ 		__be32 *pkey = &ip_hdr(skb)->daddr;
+ 
+-		if (rt->rt_gateway)
++		if (rt && rt->rt_gateway)
+ 			pkey = &rt->rt_gateway;
+ 
+ 		/* IPv4 */
+@@ -2738,7 +2738,7 @@ static void qeth_l3_fill_header(struct q
+ 		struct rt6_info *rt = (struct rt6_info *) dst;
+ 		struct in6_addr *pkey = &ipv6_hdr(skb)->daddr;
+ 
+-		if (!ipv6_addr_any(&rt->rt6i_gateway))
++		if (rt && !ipv6_addr_any(&rt->rt6i_gateway))
+ 			pkey = &rt->rt6i_gateway;
+ 
+ 		/* IPv6 */

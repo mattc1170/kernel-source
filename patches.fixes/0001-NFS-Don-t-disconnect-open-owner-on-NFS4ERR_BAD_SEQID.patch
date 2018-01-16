@@ -1,0 +1,80 @@
+From: NeilBrown <neilb@suse.com>
+Date: Mon, 19 Dec 2016 11:48:23 +1100
+Subject: [PATCH] NFS: Don't disconnect open-owner on NFS4ERR_BAD_SEQID
+Git-commit: 86cfb0418537460baf0de0b5e9253784be27a6f9
+Patch-mainline: v4.10
+References: bsc#989261
+
+When an NFS4ERR_BAD_SEQID is received the open-owner is removed from
+the ->state_owners rbtree so that it will no longer be used.
+
+If any stateids attached to this open-owner are still in use, and if a
+request using one gets an NFS4ERR_BAD_STATEID reply, this can for bad.
+
+The state is marked as needing recovery and the nfs4_state_manager()
+is scheduled to clean up.  nfs4_state_manager() finds states to be
+recovered by walking the state_owners rbtree.  As the open-owner is
+not in the rbtree, the bad state is not found so nfs4_state_manager()
+completes having done nothing.  The request is then retried, with a
+predicatable result (indefinite retries).
+
+If the stateid is for a delegation, this open_owner will be used
+to open files when the delegation is returned.  For that to work,
+a new open-owner needs to be presented to the server.
+
+This patch changes NFS4ERR_BAD_SEQID handling to leave the open-owner
+in the rbtree but updates the 'create_time' so it looks like a new
+open-owner.  With this the indefinite retries no longer happen.
+
+Signed-off-by: NeilBrown <neilb@suse.com>
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+Acked-by: NeilBrown <neilb@suse.com>
+
+---
+ fs/nfs/nfs4state.c |   27 ++++++++++++---------------
+ 1 file changed, 12 insertions(+), 15 deletions(-)
+
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -491,21 +491,18 @@ nfs4_alloc_state_owner(struct nfs_server
+ }
+ 
+ static void
+-nfs4_drop_state_owner(struct nfs4_state_owner *sp)
++nfs4_reset_state_owner(struct nfs4_state_owner *sp)
+ {
+-	struct rb_node *rb_node = &sp->so_server_node;
+-
+-	if (!RB_EMPTY_NODE(rb_node)) {
+-		struct nfs_server *server = sp->so_server;
+-		struct nfs_client *clp = server->nfs_client;
+-
+-		spin_lock(&clp->cl_lock);
+-		if (!RB_EMPTY_NODE(rb_node)) {
+-			rb_erase(rb_node, &server->state_owners);
+-			RB_CLEAR_NODE(rb_node);
+-		}
+-		spin_unlock(&clp->cl_lock);
+-	}
++	/* This state_owner is no longer usable, but must
++	 * remain in place so that state recovery can find it
++	 * and the opens associated with it.
++	 * It may also be used for new 'open' request to
++	 * return a delegation to the server.
++	 * So update the 'create_time' so that it looks like
++	 * a new state_owner.  This will cause the server to
++	 * request an OPEN_CONFIRM to start a new sequence.
++	 */
++	sp->so_seqid.create_time = ktime_get();
+ }
+ 
+ static void nfs4_free_state_owner(struct nfs4_state_owner *sp)
+@@ -1104,7 +1101,7 @@ void nfs_increment_open_seqid(int status
+ 
+ 	sp = container_of(seqid->sequence, struct nfs4_state_owner, so_seqid);
+ 	if (status == -NFS4ERR_BAD_SEQID)
+-		nfs4_drop_state_owner(sp);
++		nfs4_reset_state_owner(sp);
+ 	if (!nfs4_has_session(sp->so_server->nfs_client))
+ 		nfs_increment_seqid(status, seqid);
+ }

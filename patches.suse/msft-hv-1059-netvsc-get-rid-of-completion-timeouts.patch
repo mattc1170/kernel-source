@@ -33,7 +33,7 @@ on and if the host screws things up there is no easy way to recover anyway.
 Signed-off-by: Vitaly Kuznetsov <vkuznets@redhat.com>
 Acked-by: Haiyang Zhang <haiyangz@microsoft.com>
 Signed-off-by: David S. Miller <davem@davemloft.net>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  drivers/net/hyperv/netvsc.c       |  14 +----
  drivers/net/hyperv/rndis_filter.c | 117 +++++++++-----------------------------

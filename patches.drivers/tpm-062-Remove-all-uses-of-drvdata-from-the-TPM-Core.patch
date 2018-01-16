@@ -20,17 +20,15 @@ Tested-by: Stefan Berger <stefanb@linux.vnet.ibm.com>
 Signed-off-by: Jarkko Sakkinen <jarkko.sakkinen@linux.intel.com>
 Acked-by: Michal Suchanek <msuchanek@suse.de>
 ---
- drivers/char/tpm/tpm-chip.c      | 73 ++++++++++++++++++++++++++++------------
- drivers/char/tpm/tpm-interface.c |  7 ++--
- drivers/char/tpm/tpm-sysfs.c     | 61 ++++++++++++++-------------------
- drivers/char/tpm/tpm.h           | 10 +++---
+ drivers/char/tpm/tpm-chip.c      |   73 +++++++++++++++++++++++++++------------
+ drivers/char/tpm/tpm-interface.c |    7 +--
+ drivers/char/tpm/tpm-sysfs.c     |   61 +++++++++++++-------------------
+ drivers/char/tpm/tpm.h           |   10 ++---
  4 files changed, 84 insertions(+), 67 deletions(-)
 
-diff --git a/drivers/char/tpm/tpm-chip.c b/drivers/char/tpm/tpm-chip.c
-index 2ea2f15..57d9794 100644
 --- a/drivers/char/tpm/tpm-chip.c
 +++ b/drivers/char/tpm/tpm-chip.c
-@@ -170,9 +170,7 @@ struct tpm_chip *tpm_chip_alloc(struct device *dev,
+@@ -170,9 +170,7 @@ struct tpm_chip *tpm_chip_alloc(struct d
  	chip->dev.class = tpm_class;
  	chip->dev.release = tpm_dev_release;
  	chip->dev.parent = dev;
@@ -40,7 +38,7 @@ index 2ea2f15..57d9794 100644
  
  	if (chip->dev_num == 0)
  		chip->dev.devt = MKDEV(MISC_MAJOR, TPM_MINOR);
-@@ -277,14 +275,10 @@ static void tpm_del_char_device(struct tpm_chip *chip)
+@@ -277,14 +275,10 @@ static void tpm_del_char_device(struct t
  
  static int tpm1_chip_register(struct tpm_chip *chip)
  {
@@ -56,7 +54,7 @@ index 2ea2f15..57d9794 100644
  
  	chip->bios_dir = tpm_bios_log_setup(dev_name(&chip->dev));
  
-@@ -298,10 +292,50 @@ static void tpm1_chip_unregister(struct tpm_chip *chip)
+@@ -298,10 +292,50 @@ static void tpm1_chip_unregister(struct
  
  	if (chip->bios_dir)
  		tpm_bios_log_teardown(chip->bios_dir);
@@ -108,7 +106,7 @@ index 2ea2f15..57d9794 100644
  /*
   * tpm_chip_register() - create a character device for the TPM chip
   * @chip: TPM chip to use.
-@@ -324,24 +358,20 @@ int tpm_chip_register(struct tpm_chip *chip)
+@@ -324,24 +358,20 @@ int tpm_chip_register(struct tpm_chip *c
  	tpm_add_ppi(chip);
  
  	rc = tpm_add_char_device(chip);
@@ -141,7 +139,7 @@ index 2ea2f15..57d9794 100644
  }
  EXPORT_SYMBOL_GPL(tpm_chip_register);
  
-@@ -363,8 +393,7 @@ void tpm_chip_unregister(struct tpm_chip *chip)
+@@ -363,8 +393,7 @@ void tpm_chip_unregister(struct tpm_chip
  	if (!(chip->flags & TPM_CHIP_FLAG_REGISTERED))
  		return;
  
@@ -151,11 +149,9 @@ index 2ea2f15..57d9794 100644
  
  	tpm1_chip_unregister(chip);
  	tpm_del_char_device(chip);
-diff --git a/drivers/char/tpm/tpm-interface.c b/drivers/char/tpm/tpm-interface.c
-index 83361e5..b25a7e2 100644
 --- a/drivers/char/tpm/tpm-interface.c
 +++ b/drivers/char/tpm/tpm-interface.c
-@@ -434,12 +434,11 @@ static const struct tpm_input_header tpm_getcap_header = {
+@@ -434,12 +434,11 @@ static const struct tpm_input_header tpm
  	.ordinal = TPM_ORD_GET_CAP
  };
  
@@ -169,7 +165,7 @@ index 83361e5..b25a7e2 100644
  
  	tpm_cmd.header.in = tpm_getcap_header;
  	if (subcap_id == CAP_VERSION_1_1 || subcap_id == CAP_VERSION_1_2) {
-@@ -939,7 +938,7 @@ static struct tpm_input_header savestate_header = {
+@@ -939,7 +938,7 @@ static struct tpm_input_header savestate
   */
  int tpm_pm_suspend(struct device *dev)
  {
@@ -187,20 +183,18 @@ index 83361e5..b25a7e2 100644
  
  	if (chip == NULL)
  		return -ENODEV;
-diff --git a/drivers/char/tpm/tpm-sysfs.c b/drivers/char/tpm/tpm-sysfs.c
-index 0f44b07..e1f7236 100644
 --- a/drivers/char/tpm/tpm-sysfs.c
 +++ b/drivers/char/tpm/tpm-sysfs.c
-@@ -36,7 +36,7 @@ static ssize_t pubek_show(struct device *dev, struct device_attribute *attr,
+@@ -36,7 +36,7 @@ static ssize_t pubek_show(struct device
  	int i, rc;
  	char *str = buf;
  
 -	struct tpm_chip *chip = dev_get_drvdata(dev);
 +	struct tpm_chip *chip = to_tpm_chip(dev);
  
- 	tpm_cmd.header.in = tpm_readpubek_header;
- 	err = tpm_transmit_cmd(chip, &tpm_cmd, READ_PUBEK_RESULT_SIZE, 0,
-@@ -92,9 +92,9 @@ static ssize_t pcrs_show(struct device *dev, struct device_attribute *attr,
+ 	memset(&tpm_cmd, 0, sizeof(tpm_cmd));
+ 
+@@ -94,9 +94,9 @@ static ssize_t pcrs_show(struct device *
  	ssize_t rc;
  	int i, j, num_pcrs;
  	char *str = buf;
@@ -212,7 +206,7 @@ index 0f44b07..e1f7236 100644
  			"attempting to determine the number of PCRS");
  	if (rc)
  		return 0;
-@@ -119,8 +119,8 @@ static ssize_t enabled_show(struct device *dev, struct device_attribute *attr,
+@@ -121,8 +121,8 @@ static ssize_t enabled_show(struct devic
  	cap_t cap;
  	ssize_t rc;
  
@@ -223,7 +217,7 @@ index 0f44b07..e1f7236 100644
  	if (rc)
  		return 0;
  
-@@ -135,8 +135,8 @@ static ssize_t active_show(struct device *dev, struct device_attribute *attr,
+@@ -137,8 +137,8 @@ static ssize_t active_show(struct device
  	cap_t cap;
  	ssize_t rc;
  
@@ -234,7 +228,7 @@ index 0f44b07..e1f7236 100644
  	if (rc)
  		return 0;
  
-@@ -151,8 +151,8 @@ static ssize_t owned_show(struct device *dev, struct device_attribute *attr,
+@@ -153,8 +153,8 @@ static ssize_t owned_show(struct device
  	cap_t cap;
  	ssize_t rc;
  
@@ -245,7 +239,7 @@ index 0f44b07..e1f7236 100644
  	if (rc)
  		return 0;
  
-@@ -167,8 +167,8 @@ static ssize_t temp_deactivated_show(struct device *dev,
+@@ -169,8 +169,8 @@ static ssize_t temp_deactivated_show(str
  	cap_t cap;
  	ssize_t rc;
  
@@ -256,7 +250,7 @@ index 0f44b07..e1f7236 100644
  	if (rc)
  		return 0;
  
-@@ -180,11 +180,12 @@ static DEVICE_ATTR_RO(temp_deactivated);
+@@ -182,11 +182,12 @@ static DEVICE_ATTR_RO(temp_deactivated);
  static ssize_t caps_show(struct device *dev, struct device_attribute *attr,
  			 char *buf)
  {
@@ -270,7 +264,7 @@ index 0f44b07..e1f7236 100644
  			"attempting to determine the manufacturer");
  	if (rc)
  		return 0;
-@@ -192,8 +193,8 @@ static ssize_t caps_show(struct device *dev, struct device_attribute *attr,
+@@ -194,8 +195,8 @@ static ssize_t caps_show(struct device *
  		       be32_to_cpu(cap.manufacturer_id));
  
  	/* Try to get a TPM version 1.2 TPM_CAP_VERSION_INFO */
@@ -281,7 +275,7 @@ index 0f44b07..e1f7236 100644
  	if (!rc) {
  		str += sprintf(str,
  			       "TCG version: %d.%d\nFirmware version: %d.%d\n",
-@@ -203,7 +204,7 @@ static ssize_t caps_show(struct device *dev, struct device_attribute *attr,
+@@ -205,7 +206,7 @@ static ssize_t caps_show(struct device *
  			       cap.tpm_version_1_2.revMinor);
  	} else {
  		/* Otherwise just use TPM_STRUCT_VER */
@@ -290,7 +284,7 @@ index 0f44b07..e1f7236 100644
  				"attempting to determine the 1.1 version");
  		if (rc)
  			return 0;
-@@ -222,7 +223,7 @@ static DEVICE_ATTR_RO(caps);
+@@ -224,7 +225,7 @@ static DEVICE_ATTR_RO(caps);
  static ssize_t cancel_store(struct device *dev, struct device_attribute *attr,
  			    const char *buf, size_t count)
  {
@@ -299,7 +293,7 @@ index 0f44b07..e1f7236 100644
  	if (chip == NULL)
  		return 0;
  
-@@ -234,7 +235,7 @@ static DEVICE_ATTR_WO(cancel);
+@@ -236,7 +237,7 @@ static DEVICE_ATTR_WO(cancel);
  static ssize_t durations_show(struct device *dev, struct device_attribute *attr,
  			      char *buf)
  {
@@ -308,7 +302,7 @@ index 0f44b07..e1f7236 100644
  
  	if (chip->duration[TPM_LONG] == 0)
  		return 0;
-@@ -251,7 +252,7 @@ static DEVICE_ATTR_RO(durations);
+@@ -253,7 +254,7 @@ static DEVICE_ATTR_RO(durations);
  static ssize_t timeouts_show(struct device *dev, struct device_attribute *attr,
  			     char *buf)
  {
@@ -317,7 +311,7 @@ index 0f44b07..e1f7236 100644
  
  	return sprintf(buf, "%d %d %d %d [%s]\n",
  		       jiffies_to_usecs(chip->timeout_a),
-@@ -281,24 +282,12 @@ static const struct attribute_group tpm_dev_group = {
+@@ -283,24 +284,12 @@ static const struct attribute_group tpm_
  	.attrs = tpm_dev_attrs,
  };
  
@@ -348,8 +342,6 @@ index 0f44b07..e1f7236 100644
 +	WARN_ON(chip->groups_cnt != 0);
 +	chip->groups[chip->groups_cnt++] = &tpm_dev_group;
  }
-diff --git a/drivers/char/tpm/tpm.h b/drivers/char/tpm/tpm.h
-index c88cf48..5fcfebd 100644
 --- a/drivers/char/tpm/tpm.h
 +++ b/drivers/char/tpm/tpm.h
 @@ -168,9 +168,9 @@ struct tpm_chip {
@@ -364,7 +356,7 @@ index c88cf48..5fcfebd 100644
  	acpi_handle acpi_dev_handle;
  	char ppi_version[TPM_PPI_VERSION_LEN + 1];
  #endif /* CONFIG_ACPI */
-@@ -479,7 +479,8 @@ ssize_t tpm_transmit(struct tpm_chip *chip, const u8 *buf, size_t bufsiz,
+@@ -479,7 +479,8 @@ ssize_t tpm_transmit(struct tpm_chip *ch
  		     unsigned int flags);
  ssize_t tpm_transmit_cmd(struct tpm_chip *chip, const void *cmd, int len,
  			 unsigned int flags, const char *desc);
@@ -374,7 +366,7 @@ index c88cf48..5fcfebd 100644
  extern int tpm_get_timeouts(struct tpm_chip *);
  extern void tpm_gen_interrupt(struct tpm_chip *);
  extern int tpm_do_selftest(struct tpm_chip *);
-@@ -500,8 +501,7 @@ extern struct tpm_chip *tpmm_chip_alloc(struct device *pdev,
+@@ -500,8 +501,7 @@ extern struct tpm_chip *tpmm_chip_alloc(
  extern int tpm_chip_register(struct tpm_chip *chip);
  extern void tpm_chip_unregister(struct tpm_chip *chip);
  
@@ -384,6 +376,3 @@ index c88cf48..5fcfebd 100644
  
  int tpm_pcr_read_dev(struct tpm_chip *chip, int pcr_idx, u8 *res_buf);
  
--- 
-2.10.2
-

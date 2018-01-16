@@ -1,0 +1,40 @@
+From: Edward Cree <ecree@solarflare.com>
+Date: Fri, 15 Sep 2017 14:37:38 +0100
+Subject: [PATCH] bpf/verifier: reject BPF_ALU64|BPF_END
+References: bnc#1012382
+Patch-mainline: 4.4.94
+Git-commit: e67b8a685c7c984e834e3181ef4619cd7025a136
+
+[ Upstream commit e67b8a685c7c984e834e3181ef4619cd7025a136 ]
+
+Neither ___bpf_prog_run nor the JITs accept it.
+Also adds a new test case.
+
+Fixes: 17a5267067f3 ("bpf: verifier (add verifier core)")
+Signed-off-by: Edward Cree <ecree@solarflare.com>
+Acked-by: Alexei Starovoitov <ast@kernel.org>
+Acked-by: Daniel Borkmann <daniel@iogearbox.net>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Signed-off-by: Jiri Slaby <jslaby@suse.cz>
+---
+ kernel/bpf/verifier.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/kernel/bpf/verifier.c b/kernel/bpf/verifier.c
+index 863e24f1e62e..70dc6dcf8649 100644
+--- a/kernel/bpf/verifier.c
++++ b/kernel/bpf/verifier.c
+@@ -1033,7 +1033,8 @@ static int check_alu_op(struct verifier_env *env, struct bpf_insn *insn)
+ 			}
+ 		} else {
+ 			if (insn->src_reg != BPF_REG_0 || insn->off != 0 ||
+-			    (insn->imm != 16 && insn->imm != 32 && insn->imm != 64)) {
++			    (insn->imm != 16 && insn->imm != 32 && insn->imm != 64) ||
++			    BPF_CLASS(insn->code) == BPF_ALU64) {
+ 				verbose("BPF_END uses reserved fields\n");
+ 				return -EINVAL;
+ 			}
+-- 
+2.14.3
+

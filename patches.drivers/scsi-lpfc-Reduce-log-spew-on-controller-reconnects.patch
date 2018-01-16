@@ -1,0 +1,117 @@
+From: James Smart <jsmart2021@gmail.com>
+Date: Fri, 29 Sep 2017 17:34:36 -0700
+Subject: [PATCH] scsi: lpfc: Reduce log spew on controller reconnects
+References: bsc#1067735
+Git-commit: e3246a123d3b2e90ee2e071e49c2dce191acbab4
+Patch-Mainline: v4.15
+
+There are several log messages that report abnormal terminations that by
+default are marked warn. These are typically the result of failures due
+to invalid controller state or abort completions. They are all natural
+when a controller resets.
+
+Unfortunately, as they are logged by default, it makes the admin very
+concerned.
+
+Convert the messages to Info.
+
+Signed-off-by: Dick Kennedy <dick.kennedy@broadcom.com>
+Signed-off-by: James Smart <james.smart@broadcom.com>
+Reviewed-by: Johannes Thumshirn <jthumshirn@suse.de>
+Signed-off-by: Martin K. Petersen <martin.petersen@oracle.com>
+Signed-off-by: Hannes Reinecke <hare@suse.de>
+---
+ drivers/scsi/lpfc/lpfc_nvme.c  |  6 +++---
+ drivers/scsi/lpfc/lpfc_nvmet.c | 16 ++++++++++------
+ 2 files changed, 13 insertions(+), 9 deletions(-)
+
+diff --git a/drivers/scsi/lpfc/lpfc_nvme.c b/drivers/scsi/lpfc/lpfc_nvme.c
+index 9ef753a..4d5e1bb 100644
+--- a/drivers/scsi/lpfc/lpfc_nvme.c
++++ b/drivers/scsi/lpfc/lpfc_nvme.c
+@@ -897,7 +897,7 @@
+ 					 bf_get(lpfc_wcqe_c_xb, wcqe));
+ 		default:
+ out_err:
+-			lpfc_printf_vlog(vport, KERN_ERR, LOG_NVME_IOERR,
++			lpfc_printf_vlog(vport, KERN_INFO, LOG_NVME_IOERR,
+ 					 "6072 NVME Completion Error: xri %x "
+ 					 "status x%x result x%x placed x%x\n",
+ 					 lpfc_ncmd->cur_iocbq.sli4_xritag,
+@@ -1356,7 +1356,7 @@
+ 	ret = lpfc_sli4_issue_wqe(phba, LPFC_FCP_RING, &lpfc_ncmd->cur_iocbq);
+ 	if (ret) {
+ 		atomic_dec(&ndlp->cmd_pending);
+-		lpfc_printf_vlog(vport, KERN_ERR, LOG_NVME_IOERR,
++		lpfc_printf_vlog(vport, KERN_INFO, LOG_NVME_IOERR,
+ 				 "6113 FCP could not issue WQE err %x "
+ 				 "sid: x%x did: x%x oxid: x%x\n",
+ 				 ret, vport->fc_myDID, ndlp->nlp_DID,
+@@ -1416,7 +1416,7 @@
+ lpfc_nvme_abort_fcreq_cmpl(struct lpfc_hba *phba, struct lpfc_iocbq *cmdiocb,
+ 			   struct lpfc_wcqe_complete *abts_cmpl)
+ {
+-	lpfc_printf_log(phba, KERN_ERR, LOG_NVME,
++	lpfc_printf_log(phba, KERN_INFO, LOG_NVME,
+ 			"6145 ABORT_XRI_CN completing on rpi x%x "
+ 			"original iotag x%x, abort cmd iotag x%x "
+ 			"req_tag x%x, status x%x, hwstatus x%x\n",
+diff --git a/drivers/scsi/lpfc/lpfc_nvmet.c b/drivers/scsi/lpfc/lpfc_nvmet.c
+index b7c9979..2420e94 100644
+--- a/drivers/scsi/lpfc/lpfc_nvmet.c
++++ b/drivers/scsi/lpfc/lpfc_nvmet.c
+@@ -76,7 +76,7 @@ static int lpfc_nvmet_unsol_ls_issue_abort(struct lpfc_hba *,
+ {
+ 	unsigned long iflag;
+ 
+-	lpfc_printf_log(phba, KERN_ERR, LOG_NVME_ABTS,
++	lpfc_printf_log(phba, KERN_INFO, LOG_NVME_ABTS,
+ 			"6313 NVMET Defer ctx release xri x%x flg x%x\n",
+ 			ctxp->oxid, ctxp->flag);
+ 
+@@ -491,7 +491,7 @@ static int lpfc_nvmet_unsol_ls_issue_abort(struct lpfc_hba *,
+ 	struct lpfc_nvmet_tgtport *tgtp;
+ 	struct nvmefc_tgt_fcp_req *rsp;
+ 	struct lpfc_nvmet_rcv_ctx *ctxp;
+-	uint32_t status, result, op, start_clean;
++	uint32_t status, result, op, start_clean, logerr;
+ #ifdef CONFIG_SCSI_LPFC_DEBUG_FS
+ 	uint32_t id;
+ #endif
+@@ -519,17 +519,21 @@ static int lpfc_nvmet_unsol_ls_issue_abort(struct lpfc_hba *,
+ 		if (tgtp)
+ 			atomic_inc(&tgtp->xmt_fcp_rsp_error);
+ 
++		logerr = LOG_NVME_IOERR;
++
+ 		/* pick up SLI4 exhange busy condition */
+ 		if (bf_get(lpfc_wcqe_c_xb, wcqe)) {
+ 			ctxp->flag |= LPFC_NVMET_XBUSY;
++			logerr |= LOG_NVME_ABTS;
+ 
+-			lpfc_printf_log(phba, KERN_INFO, LOG_NVME_ABTS,
+-					"6315 IO Cmpl XBUSY: xri x%x: %x/%x\n",
+-					ctxp->oxid, status, result);
+ 		} else {
+ 			ctxp->flag &= ~LPFC_NVMET_XBUSY;
+ 		}
+ 
++		lpfc_printf_log(phba, KERN_INFO, logerr,
++				"6315 IO Error Cmpl xri x%x: %x/%x XBUSY:x%x\n",
++				ctxp->oxid, status, result, ctxp->flag);
++
+ 	} else {
+ 		rsp->fcp_error = NVME_SC_SUCCESS;
+ 		if (op == NVMET_FCOP_RSP)
+@@ -2346,7 +2350,7 @@ static int lpfc_nvmet_unsol_ls_issue_abort(struct lpfc_hba *,
+ 	spin_unlock_irqrestore(&ctxp->ctxlock, flags);
+ 	atomic_inc(&tgtp->xmt_abort_rsp);
+ 
+-	lpfc_printf_log(phba, KERN_ERR, LOG_NVME_ABTS,
++	lpfc_printf_log(phba, KERN_INFO, LOG_NVME_ABTS,
+ 			"6165 ABORT cmpl: xri x%x flg x%x (%d) "
+ 			"WCQE: %08x %08x %08x %08x\n",
+ 			ctxp->oxid, ctxp->flag, released,
+-- 
+1.8.5.6
+

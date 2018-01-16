@@ -1,7 +1,8 @@
 From: Shaun Tancheff <shaun@tancheff.com>
 Subject: Missing bio_put following submit_bio_wait
 Date: Tue,  7 Jun 2016 11:32:13 -0500
-Patch-mainline: Submitted, https://patchwork.kernel.org/patch/9161987/
+Git-commit: 05bd92dddc595d74ea645e793c1f3bd4b1fc251a
+Patch-mainline: v4.7-rc3
 References: fate#319999
 
 submit_bio_wait() gives the caller an opportunity to examine

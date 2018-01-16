@@ -1,23 +1,26 @@
 From: James Smart <jsmart2021@gmail.com>
-Date: Sat, 13 May 2017 12:03:07 -0700
+Date: Mon, 15 May 2017 17:10:22 -0700
 Subject: nvme_fc: remove extra controller reference taken on reconnect
+Git-commit: 2cb657bc0242dfdca20869685bf179774ef1a6fb
 References: bsc#1037838
-Patch-Mainline: submitted to linux-scsi 2017/05/16
+Patch-Mainline: v4.12-rc3
 
 fix extra controller reference taken on reconnect by moving
 reference to initial controller create
 
 Signed-off-by: James Smart <james.smart@broadcom.com>
 Reviewed-by: Hannes Reinecke <hare@suse.com>
+Reviewed-by: Johannes Thumshirn <jthumshirn@suse.de>
+Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
  drivers/nvme/host/fc.c | 5 ++---
  1 file changed, 2 insertions(+), 3 deletions(-)
 
 diff --git a/drivers/nvme/host/fc.c b/drivers/nvme/host/fc.c
-index dae5b3c..a6b2912 100644
+index 775869c..14a009e 100644
 --- a/drivers/nvme/host/fc.c
 +++ b/drivers/nvme/host/fc.c
-@@ -2400,8 +2400,6 @@ nvme_fc_create_association(struct nvme_fc_ctrl *ctrl)
+@@ -2395,8 +2395,6 @@ enum {
  
  	ctrl->ctrl.opts->nr_reconnects = 0;
  
@@ -26,7 +29,7 @@ index dae5b3c..a6b2912 100644
  	if (ctrl->queue_count > 1) {
  		nvme_start_queues(&ctrl->ctrl);
  		nvme_queue_scan(&ctrl->ctrl);
-@@ -2802,7 +2800,6 @@ nvme_fc_init_ctrl(struct device *dev, struct nvmf_ctrl_options *opts,
+@@ -2793,7 +2791,6 @@ enum {
  		ctrl->ctrl.opts = NULL;
  		/* initiate nvme ctrl ref counting teardown */
  		nvme_uninit_ctrl(&ctrl->ctrl);
@@ -34,7 +37,7 @@ index dae5b3c..a6b2912 100644
  
  		/* as we're past the point where we transition to the ref
  		 * counting teardown path, if we return a bad pointer here,
-@@ -2818,6 +2815,8 @@ nvme_fc_init_ctrl(struct device *dev, struct nvmf_ctrl_options *opts,
+@@ -2809,6 +2806,8 @@ enum {
  		return ERR_PTR(ret);
  	}
  

@@ -1,0 +1,28 @@
+From: Quan Nguyen <qnguyen@apm.com>
+Date: Wed, 15 Mar 2017 13:27:15 -0700
+Subject: drivers: net: phy: xgene: Fix mdio write
+Patch-mainline: v4.12-rc1
+Git-commit: 4b72436dc3dd2457056b22d6f147777368c869fa
+References: bsc#1057383
+
+This patches fixes a typo in the argument to xgene_enet_wr_mdio_csr().
+
+Signed-off-by: Quan Nguyen <qnguyen@apm.com>
+Signed-off-by: Iyappan Subramanian <isubramanian@apm.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+Acked-by: Matthias Brugger <mbrugger@suse.com>
+---
+ drivers/net/phy/mdio-xgene.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+--- a/drivers/net/phy/mdio-xgene.c
++++ b/drivers/net/phy/mdio-xgene.c
+@@ -229,7 +229,7 @@ static int xgene_xfi_mdio_write(struct m
+ 
+ 	val = SET_VAL(HSTPHYADX, phy_id) | SET_VAL(HSTREGADX, reg) |
+ 	      SET_VAL(HSTMIIMWRDAT, data);
+-	xgene_enet_wr_mdio_csr(addr, MIIM_FIELD_ADDR, data);
++	xgene_enet_wr_mdio_csr(addr, MIIM_FIELD_ADDR, val);
+ 
+ 	val = HSTLDCMD | SET_VAL(HSTMIIMCMD, MIIM_CMD_LEGACY_WRITE);
+ 	xgene_enet_wr_mdio_csr(addr, MIIM_COMMAND_ADDR, val);

@@ -1,0 +1,46 @@
+From aaa2af4da03a5f54173b5957389f7ea6e1535860 Mon Sep 17 00:00:00 2001
+From: Florian Fainelli <f.fainelli@gmail.com>
+Date: Sat, 3 Dec 2016 12:01:19 -0800
+Subject: [PATCH 7/7] r8169: Add support for restarting auto-negotiation
+Git-commit: f0903ea371f56c4977d1c07c2f8d4a55846c2801
+Patch-mainline: v4.10
+References: bsc#1050742
+
+Implement ethtooll::nway_restart by utilizing mii_nway_restart.
+
+Signed-off-by: Florian Fainelli <f.fainelli@gmail.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+Signed-off-by: Oliver Neukum <oneukum@suse.com>
+---
+ drivers/net/ethernet/realtek/r8169.c | 8 ++++++++
+ 1 file changed, 8 insertions(+)
+
+diff --git a/drivers/net/ethernet/realtek/r8169.c b/drivers/net/ethernet/realtek/r8169.c
+index 54f2805d3c09..5c97eb3611dc 100644
+--- a/drivers/net/ethernet/realtek/r8169.c
++++ b/drivers/net/ethernet/realtek/r8169.c
+@@ -2322,6 +2322,13 @@ static void rtl8169_get_strings(struct net_device *dev, u32 stringset, u8 *data)
+ 	}
+ }
+ 
++static int rtl8169_nway_reset(struct net_device *dev)
++{
++	struct rtl8169_private *tp = netdev_priv(dev);
++
++	return mii_nway_restart(&tp->mii);
++}
++
+ static const struct ethtool_ops rtl8169_ethtool_ops = {
+ 	.get_drvinfo		= rtl8169_get_drvinfo,
+ 	.get_regs_len		= rtl8169_get_regs_len,
+@@ -2337,6 +2344,7 @@ static const struct ethtool_ops rtl8169_ethtool_ops = {
+ 	.get_sset_count		= rtl8169_get_sset_count,
+ 	.get_ethtool_stats	= rtl8169_get_ethtool_stats,
+ 	.get_ts_info		= ethtool_op_get_ts_info,
++	.nway_reset		= rtl8169_nway_reset,
+ };
+ 
+ static void rtl8169_get_mac_version(struct rtl8169_private *tp,
+-- 
+2.12.3
+

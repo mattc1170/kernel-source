@@ -18,7 +18,7 @@ Acked-by: Bjorn Helgaas <bhelgaas@google.com>
 Acked-by: Rafael J. Wysocki <rjw@rjwysocki.net>
 Signed-off-by: Suravee Suthikulpanit <Suravee.Suthikulpanit@amd.com>
 Signed-off-by: Marc Zyngier <marc.zyngier@arm.com>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  drivers/pci/pci-acpi.c    | 42 ++++++++++++++++++++++++++++++++++++++++++
  drivers/pci/probe.c       |  2 ++

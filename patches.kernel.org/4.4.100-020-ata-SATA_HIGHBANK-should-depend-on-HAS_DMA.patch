@@ -1,0 +1,39 @@
+From: Geert Uytterhoeven <geert@linux-m68k.org>
+Date: Tue, 3 Jan 2017 19:09:45 +0100
+Subject: [PATCH] ata: SATA_HIGHBANK should depend on HAS_DMA
+References: bnc#1012382
+Patch-mainline: 4.4.100
+Git-commit: 2a736e0585e585c2566b5119af8381910a170e44
+
+[ Upstream commit 2a736e0585e585c2566b5119af8381910a170e44 ]
+
+If NO_DMA=y:
+
+    ERROR: "bad_dma_ops" [drivers/ata/sata_highbank.ko] undefined!
+
+Add a dependency on HAS_DMA to fix this.
+
+Signed-off-by: Geert Uytterhoeven <geert@linux-m68k.org>
+Signed-off-by: Tejun Heo <tj@kernel.org>
+Signed-off-by: Sasha Levin <alexander.levin@verizon.com>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Signed-off-by: Jiri Slaby <jslaby@suse.cz>
+---
+ drivers/ata/Kconfig | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/drivers/ata/Kconfig b/drivers/ata/Kconfig
+index fd19d180f640..c1e40ebaf5e2 100644
+--- a/drivers/ata/Kconfig
++++ b/drivers/ata/Kconfig
+@@ -319,6 +319,7 @@ config SATA_DWC_VDEBUG
+ 
+ config SATA_HIGHBANK
+ 	tristate "Calxeda Highbank SATA support"
++	depends on HAS_DMA
+ 	depends on ARCH_HIGHBANK || COMPILE_TEST
+ 	help
+ 	  This option enables support for the Calxeda Highbank SoC's
+-- 
+2.15.0
+

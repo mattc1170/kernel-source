@@ -1,0 +1,63 @@
+From: Hannes Reinecke <hare@suse.de>
+Date: Fri, 1 Dec 2017 10:36:34 +0100
+Subject: [PATCH] nvme-fabrics: kABI fix for duplicate_connect option
+Patch-mainline: no, SUSE-specific kABI fix
+References: bsc#1067734
+
+The duplicate_connect option breaks kABI, so add the required
+guard defines.
+
+Signed-off-by: Hannes Reinecke <hare@suse.com>
+---
+ drivers/nvme/host/fabrics.c | 4 ++++
+ drivers/nvme/host/fabrics.h | 4 +++-
+ 2 files changed, 7 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/nvme/host/fabrics.c b/drivers/nvme/host/fabrics.c
+index 2d98acc..036db5b 100644
+--- a/drivers/nvme/host/fabrics.c
++++ b/drivers/nvme/host/fabrics.c
+@@ -591,7 +591,9 @@ static int nvmf_parse_options(struct nvmf_ctrl_options *opts,
+ 	opts->nr_io_queues = num_online_cpus();
+ 	opts->reconnect_delay = NVMF_DEF_RECONNECT_DELAY;
+ 	opts->kato = NVME_DEFAULT_KATO;
++#ifndef __GENKSYMS__
+ 	opts->duplicate_connect = false;
++#endif
+ 
+ 	options = o = kstrdup(buf, GFP_KERNEL);
+ 	if (!options)
+@@ -767,9 +769,11 @@ static int nvmf_parse_options(struct nvmf_ctrl_options *opts,
+ 				goto out;
+ 			}
+ 			break;
++#ifndef __GENKSYMS__
+ 		case NVMF_OPT_DUP_CONNECT:
+ 			opts->duplicate_connect = true;
+ 			break;
++#endif
+ 		default:
+ 			pr_warn("unknown parameter or missing value '%s' in ctrl creation request\n",
+ 				p);
+diff --git a/drivers/nvme/host/fabrics.h b/drivers/nvme/host/fabrics.h
+index 00aa5a6..82fa942 100644
+--- a/drivers/nvme/host/fabrics.h
++++ b/drivers/nvme/host/fabrics.h
+@@ -98,11 +98,13 @@ struct nvmf_ctrl_options {
+ 	unsigned int		nr_io_queues;
+ 	unsigned int		reconnect_delay;
+ 	bool			discovery_nqn;
+-	bool			duplicate_connect;
+ 	unsigned int		kato;
+ 	struct nvmf_host	*host;
+ 	int			nr_reconnects;
+ 	int			max_reconnects;
++#ifndef __GENKSYMS__
++	bool			duplicate_connect;
++#endif
+ };
+ 
+ /*
+-- 
+1.8.5.6
+

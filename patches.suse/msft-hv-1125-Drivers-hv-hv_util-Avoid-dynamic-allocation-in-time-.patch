@@ -11,7 +11,7 @@ this dynamic allocation.
 Signed-off-by: Vivek Yadav <vyadav@microsoft.com>
 Signed-off-by: K. Y. Srinivasan <kys@microsoft.com>
 Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  drivers/hv/hv_util.c | 39 ++++++++++++++++++++++++++++-----------
  1 file changed, 28 insertions(+), 11 deletions(-)

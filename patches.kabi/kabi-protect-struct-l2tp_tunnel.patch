@@ -1,0 +1,31 @@
+From: Jiri Slaby <jslaby@suse.cz>
+Subject: kABI: protect struct l2tp_tunnel
+Patch-mainline: never, kabi
+References: kabi
+
+In 4.4.94, commit b5f689d94bc3bbcaf25142f43bd31712d10adb44 (l2tp: fix
+race condition in l2tp_tunnel_delete), upstream commit
+62b982eeb4589b2e6d7c01a90590e3a4c2b2ca19 added dead member to struct
+l2tp_tunnel. This indeed changed the layout of the structure and the
+kABI checker now complains.
+
+Given this structure is internal to l2tp tunnel code, make the change
+invisible to the kABI checker.
+
+Signed-off-by: Jiri Slaby <jslaby@suse.cz>
+---
+ net/l2tp/l2tp_core.h |    2 ++
+ 1 file changed, 2 insertions(+)
+
+--- a/net/l2tp/l2tp_core.h
++++ b/net/l2tp/l2tp_core.h
+@@ -170,7 +170,9 @@ struct l2tp_tunnel_cfg {
+ struct l2tp_tunnel {
+ 	int			magic;		/* Should be L2TP_TUNNEL_MAGIC */
+ 
++#ifndef __GENKSYMS__
+ 	unsigned long		dead;
++#endif
+ 
+ 	struct rcu_head rcu;
+ 	rwlock_t		hlist_lock;	/* protect session_hlist */

@@ -27,7 +27,7 @@ This is based on patches by Roopa Prabhu and Nikolay Aleksandrov.
 
 Signed-off-by: Simon Xiao <sixiao@microsoft.com>
 Signed-off-by: David S. Miller <davem@davemloft.net>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  drivers/net/hyperv/hyperv_net.h |    4 ++
  drivers/net/hyperv/netvsc_drv.c |   56 ++++++++++++++++++++++++++++++++++++++++

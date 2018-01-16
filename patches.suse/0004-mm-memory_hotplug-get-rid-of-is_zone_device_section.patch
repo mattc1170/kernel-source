@@ -1,9 +1,8 @@
-From 91435ba49f730728112e8f8b3f4dc761125b2ee4 Mon Sep 17 00:00:00 2001
 From: Michal Hocko <mhocko@suse.com>
-Date: Thu, 6 Apr 2017 09:50:35 +0200
+Date: Thu, 6 Jul 2017 15:37:45 -0700
 Subject: [PATCH 4/9] mm, memory_hotplug: get rid of is_zone_device_section
-Git-commit: 9d416eb0bc6e646f09bfa36d036f7d1822c10392
-Patch-mainline: 4.12-rc1
+Patch-mainline: v4.13-rc1
+Git-commit: 1b862aecfbd419cdc4553645bf86d07554279bed
 References: bnc#1030659
 
 device memory hotplug hooks into regular memory hotplug only half way.

@@ -1,0 +1,58 @@
+From: Lauro Ramos Venancio <lvenanci@redhat.com>
+Date: Thu, 20 Apr 2017 16:51:42 -0300
+Subject: sched/topology: Move comment about asymmetric node setups
+Git-commit: c20e1ea4b61c3d99a354d912f2d74822fd2a001d
+Patch-mainline: v4.13-rc1
+References: bnc#1022476
+
+Signed-off-by: Lauro Ramos Venancio <lvenanci@redhat.com>
+Signed-off-by: Peter Zijlstra (Intel) <peterz@infradead.org>
+Cc: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: Mike Galbraith <efault@gmx.de>
+Cc: Peter Zijlstra <peterz@infradead.org>
+Cc: Thomas Gleixner <tglx@linutronix.de>
+Cc: lwang@redhat.com
+Cc: riel@redhat.com
+Link: http://lkml.kernel.org/r/1492717903-5195-4-git-send-email-lvenanci@redhat.com
+Signed-off-by: Ingo Molnar <mingo@kernel.org>
+Signed-off-by: Mike Galbraith <mgalbraith@suse.de>
+---
+ kernel/sched/core.c |   20 ++++++++++----------
+ 1 file changed, 10 insertions(+), 10 deletions(-)
+
+--- a/kernel/sched/core.c
++++ b/kernel/sched/core.c
+@@ -6403,15 +6403,6 @@ enum s_alloc {
+  *
+  * Only CPUs that can arrive at this group should be considered to continue
+  * balancing.
+- *
+- * Asymmetric node setups can result in situations where the domain tree is of
+- * unequal depth, make sure to skip domains that already cover the entire
+- * range.
+- *
+- * In that case build_sched_domains() will have terminated the iteration early
+- * and our sibling sd spans will be empty. Domains should always include the
+- * cpu they're built on, so check that.
+- *
+  */
+ static void build_group_mask(struct sched_domain *sd, struct sched_group *sg)
+ {
+@@ -6511,7 +6502,16 @@ build_overlap_sched_groups(struct sched_
+ 
+ 		sibling = *per_cpu_ptr(sdd->sd, i);
+ 
+-		/* See the comment near build_group_mask(). */
++		/*
++		 * Asymmetric node setups can result in situations where the
++		 * domain tree is of unequal depth, make sure to skip domains
++		 * that already cover the entire range.
++		 *
++		 * In that case build_sched_domains() will have terminated the
++		 * iteration early and our sibling sd spans will be empty.
++		 * Domains should always include the CPU they're built on, so
++		 * check that.
++		 */
+ 		if (!cpumask_test_cpu(i, sched_domain_span(sibling)))
+ 			continue;
+ 

@@ -3394,8 +3394,8 @@ Signed-off-by: Coly Li <colyli@suse.de>
 --- a/arch/powerpc/kernel/rtasd.c
 +++ b/arch/powerpc/kernel/rtasd.c
 @@ -22,7 +22,7 @@
- #include <linux/workqueue.h>
  #include <linux/slab.h>
+ #include <linux/topology.h>
  
 -#include <asm/uaccess.h>
 +#include <linux/uaccess.h>
@@ -4260,7 +4260,7 @@ Signed-off-by: Coly Li <colyli@suse.de>
 +#include <linux/uaccess.h>
  #include <asm/rtas.h>
  
- struct cc_workarea {
+ struct workqueue_struct *pseries_hp_wq;
 --- a/arch/powerpc/platforms/pseries/dtl.c
 +++ b/arch/powerpc/platforms/pseries/dtl.c
 @@ -24,7 +24,7 @@
@@ -11845,9 +11845,9 @@ Signed-off-by: Coly Li <colyli@suse.de>
  
 -#include <asm/uaccess.h>
 +#include <linux/uaccess.h>
+ #include <asm/sections.h>
  
  #define CREATE_TRACE_POINTS
- #include <trace/events/printk.h>
 --- a/kernel/profile.c
 +++ b/kernel/profile.c
 @@ -419,7 +419,7 @@ void profile_tick(int type)

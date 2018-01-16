@@ -1,8 +1,7 @@
 From: Thanneeru Srinivasulu <tsrinivasulu@cavium.com>
 Date: Thu, 6 Apr 2017 16:12:26 +0530
 Subject: net: thunderx: Enable TSO and checksum offloads for ipv6
-Patch-mainline: Queued in subsystem maintainer repository
-Git-repo: git://git.kernel.org/pub/scm/linux/kernel/git/davem/net-next.git
+Patch-mainline: v4.12-rc1
 Git-commit: 3a9024f52c2e92a143195db43d2abbd5d0792c06
 References: bsc#1035479
 

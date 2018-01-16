@@ -1,0 +1,43 @@
+From f679dda6ef1083a740fdc1def17a7d40d5a58ec1 Mon Sep 17 00:00:00 2001
+From: Andrew Boyer <andrew.boyer@dell.com>
+Date: Mon, 28 Aug 2017 16:11:59 -0400
+Subject: IB/rxe: Handle NETDEV_CHANGE events
+References: bsc#1049361
+Git-commit: 5c50f1d18f6bdd8ff8d274479b8bf0d89ab5a47d
+Patch-mainline: v4.14-rc1
+
+Without this fix, ports configured on top of ixgbe miss link up
+notifications. ibv_query_port() will continue to return IBV_PORT_DOWN even
+though the port is up and working.
+
+Fixes: 8700e3e7c485 ("Soft RoCE driver")
+Signed-off-by: Andrew Boyer <andrew.boyer@dell.com>
+Signed-off-by: Doug Ledford <dledford@redhat.com>
+Signed-off-by: Johannes Thumshirn <jthumshirn@suse.de>
+
+---
+ drivers/infiniband/sw/rxe/rxe_net.c | 7 ++++++-
+ 1 file changed, 6 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/infiniband/sw/rxe/rxe_net.c b/drivers/infiniband/sw/rxe/rxe_net.c
+index eb9c5c19f04a..7d8e22cf6c80 100644
+--- a/drivers/infiniband/sw/rxe/rxe_net.c
++++ b/drivers/infiniband/sw/rxe/rxe_net.c
+@@ -672,8 +672,13 @@ static int rxe_notify(struct notifier_block *not_blk,
+ 		pr_info("%s changed mtu to %d\n", ndev->name, ndev->mtu);
+ 		rxe_set_mtu(rxe, ndev->mtu);
+ 		break;
+-	case NETDEV_REBOOT:
+ 	case NETDEV_CHANGE:
++		if (netif_running(ndev) && netif_carrier_ok(ndev))
++			rxe_port_up(rxe);
++		else
++			rxe_port_down(rxe);
++		break;
++	case NETDEV_REBOOT:
+ 	case NETDEV_GOING_DOWN:
+ 	case NETDEV_CHANGEADDR:
+ 	case NETDEV_CHANGENAME:
+-- 
+2.12.3
+

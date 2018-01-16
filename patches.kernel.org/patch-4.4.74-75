@@ -1,7 +1,7 @@
 From: Jiri Slaby <jslaby@suse.cz>
 Subject: Linux 4.4.75
 Patch-mainline: 4.4.75
-References: CVE-2017-1000365 bnc#1012382 bnc#1039354 bsc#1020685 bsc#988784
+References: CVE-2017-1000365 CVE-2017-7482 bnc#1012382 bnc#1039354 bsc#1020685 bsc#988784 bsc#1046107
 Git-commit: b5a10c5f7532b7473776da87e67f8301bbc32693
 Git-commit: 54adc01055b75ec8769c5a36574c7a0895c0c0b2
 Git-commit: 898805e0cdf7fd860ec21bf661d3a0285a3defbd

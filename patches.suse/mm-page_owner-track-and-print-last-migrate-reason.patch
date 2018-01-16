@@ -45,8 +45,8 @@ Signed-off-by: Linus Torvalds <torvalds@linux-foundation.org>
  include/linux/page_owner.h |    9 +++++++++
  mm/debug.c                 |   11 +++++++++++
  mm/migrate.c               |   10 +++++++---
- mm/page_owner.c            |   17 +++++++++++++++++
- 6 files changed, 50 insertions(+), 4 deletions(-)
+ mm/page_owner.c            |   19 +++++++++++++++++++
+ 6 files changed, 52 insertions(+), 4 deletions(-)
 
 --- a/include/linux/migrate.h
 +++ b/include/linux/migrate.h
@@ -131,7 +131,7 @@ Signed-off-by: Linus Torvalds <torvalds@linux-foundation.org>
  	{0, NULL}
 --- a/mm/migrate.c
 +++ b/mm/migrate.c
-@@ -951,8 +951,10 @@ static ICE_noinline int unmap_and_move(n
+@@ -954,8 +954,10 @@ static ICE_noinline int unmap_and_move(n
  			goto out;
  
  	rc = __unmap_and_move(page, newpage, force, mode);
@@ -143,7 +143,7 @@ Signed-off-by: Linus Torvalds <torvalds@linux-foundation.org>
  
  out:
  	if (rc != -EAGAIN) {
-@@ -1017,7 +1019,7 @@ out:
+@@ -1026,7 +1028,7 @@ out:
  static int unmap_and_move_huge_page(new_page_t get_new_page,
  				free_page_t put_new_page, unsigned long private,
  				struct page *hpage, int force,
@@ -152,7 +152,7 @@ Signed-off-by: Linus Torvalds <torvalds@linux-foundation.org>
  {
  	int rc = -EAGAIN;
  	int *result = NULL;
-@@ -1075,6 +1077,7 @@ put_anon:
+@@ -1084,6 +1086,7 @@ put_anon:
  	if (rc == MIGRATEPAGE_SUCCESS) {
  		hugetlb_cgroup_migrate(hpage, new_hpage);
  		put_new_page = NULL;
@@ -160,7 +160,7 @@ Signed-off-by: Linus Torvalds <torvalds@linux-foundation.org>
  	}
  
  	unlock_page(hpage);
-@@ -1147,7 +1150,7 @@ int migrate_pages(struct list_head *from
+@@ -1156,7 +1159,7 @@ int migrate_pages(struct list_head *from
  			if (PageHuge(page))
  				rc = unmap_and_move_huge_page(get_new_page,
  						put_new_page, private, page,
@@ -169,7 +169,7 @@ Signed-off-by: Linus Torvalds <torvalds@linux-foundation.org>
  			else
  				rc = unmap_and_move(get_new_page, put_new_page,
  						private, page, pass > 2, mode,
-@@ -1837,6 +1840,7 @@ fail_putback:
+@@ -1840,6 +1843,7 @@ fail_putback:
  	set_page_memcg(new_page, page_memcg(page));
  	set_page_memcg(page, NULL);
  	page_remove_rmap(page);
@@ -187,7 +187,7 @@ Signed-off-by: Linus Torvalds <torvalds@linux-foundation.org>
  #include "internal.h"
  
  static bool page_owner_disabled = true;
-@@ -73,10 +74,18 @@ void __set_page_owner(struct page *page,
+@@ -79,10 +80,20 @@ void __set_page_owner(struct page *page,
  	page_ext->order = order;
  	page_ext->gfp_mask = gfp_mask;
  	page_ext->nr_entries = trace.nr_entries;
@@ -199,6 +199,8 @@ Signed-off-by: Linus Torvalds <torvalds@linux-foundation.org>
 +void __set_page_owner_migrate_reason(struct page *page, int reason)
 +{
 +	struct page_ext *page_ext = lookup_page_ext(page);
++	if (unlikely(!page_ext))
++		return;
 +
 +	page_ext->last_migrate_reason = reason;
 +}
@@ -206,7 +208,7 @@ Signed-off-by: Linus Torvalds <torvalds@linux-foundation.org>
  gfp_t __get_page_owner_gfp(struct page *page)
  {
  	struct page_ext *page_ext = lookup_page_ext(page);
-@@ -151,6 +160,14 @@ print_page_owner(char __user *buf, size_
+@@ -166,6 +177,14 @@ print_page_owner(char __user *buf, size_
  	if (ret >= count)
  		goto err;
  

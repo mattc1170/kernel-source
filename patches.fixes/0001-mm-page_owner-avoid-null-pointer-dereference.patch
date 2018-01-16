@@ -1,0 +1,49 @@
+From 8285027fc479949a7a166bc1b26ce57e894878a7 Mon Sep 17 00:00:00 2001
+From: Sudip Mukherjee <sudipm.mukherjee@gmail.com>
+Date: Fri, 24 Jun 2016 14:50:24 -0700
+Subject: [PATCH] mm/page_owner: avoid null pointer dereference
+Git-commit: 8285027fc479949a7a166bc1b26ce57e894878a7
+Patch-mainline: 4.7-rc5
+References: bnc#1068982
+
+We have dereferenced page_ext before checking it.  Lets check it first
+and then used it.
+
+Fixes: f86e4271978b ("mm: check the return value of lookup_page_ext for all call sites")
+Link: http://lkml.kernel.org/r/1465249059-7883-1-git-send-email-sudipm.mukherjee@gmail.com
+Signed-off-by: Sudip Mukherjee <sudip.mukherjee@codethink.co.uk>
+Acked-by: Vlastimil Babka <vbabka@suse.cz>
+Cc: Joonsoo Kim <iamjoonsoo.kim@lge.com>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+Signed-off-by: Linus Torvalds <torvalds@linux-foundation.org>
+Reviewed-by: Michal Hocko <mhocko@suse.com>
+
+---
+ mm/page_owner.c | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/mm/page_owner.c b/mm/page_owner.c
+index c6cda3e36212..fedeba88c9cb 100644
+--- a/mm/page_owner.c
++++ b/mm/page_owner.c
+@@ -207,13 +207,15 @@ void __dump_page_owner(struct page *page)
+ 		.nr_entries = page_ext->nr_entries,
+ 		.entries = &page_ext->trace_entries[0],
+ 	};
+-	gfp_t gfp_mask = page_ext->gfp_mask;
+-	int mt = gfpflags_to_migratetype(gfp_mask);
++	gfp_t gfp_mask;
++	int mt;
+ 
+ 	if (unlikely(!page_ext)) {
+ 		pr_alert("There is not page extension available.\n");
+ 		return;
+ 	}
++	gfp_mask = page_ext->gfp_mask;
++	mt = gfpflags_to_migratetype(gfp_mask);
+ 
+ 	if (!test_bit(PAGE_EXT_OWNER, &page_ext->flags)) {
+ 		pr_alert("page_owner info is not active (free page?)\n");
+-- 
+1.8.5.6
+

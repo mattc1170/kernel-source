@@ -10,7 +10,7 @@ We were getting build warning about unused variable "tsc_msr" and
 
 Signed-off-by: Sudip Mukherjee <sudip@vectorindia.org>
 Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  drivers/hv/hv.c | 5 +++--
  1 file changed, 3 insertions(+), 2 deletions(-)

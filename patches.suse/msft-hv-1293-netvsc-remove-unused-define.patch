@@ -1,0 +1,29 @@
+From: stephen hemminger <stephen@networkplumber.org>
+Date: Thu, 16 Mar 2017 16:12:39 -0700
+Patch-mainline: v4.12-rc1
+Subject: netvsc: remove unused #define
+Git-commit: 76f5ed881c8de0264283c5b934deb33bf87209a8
+References: fate#320485
+
+Not used anywhere.
+
+Signed-off-by: Stephen Hemminger <sthemmin@microsoft.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+Acked-by: Olaf Hering <ohering@suse.de>
+---
+ drivers/net/hyperv/hyperv_net.h | 3 ---
+ 1 file changed, 3 deletions(-)
+
+diff --git a/drivers/net/hyperv/hyperv_net.h b/drivers/net/hyperv/hyperv_net.h
+--- a/drivers/net/hyperv/hyperv_net.h
++++ b/drivers/net/hyperv/hyperv_net.h
+@@ -1427,9 +1427,6 @@ struct rndis_message {
+ 	((void *) rndis_msg)
+ 
+ 
+-#define __struct_bcount(x)
+-
+-
+ 
+ #define RNDIS_HEADER_SIZE	(sizeof(struct rndis_message) - \
+ 				 sizeof(union rndis_message_container))

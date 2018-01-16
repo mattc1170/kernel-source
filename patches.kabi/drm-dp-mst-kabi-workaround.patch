@@ -1,0 +1,401 @@
+From: Takashi Iwai <tiwai@suse.de>
+Subject: Workaround for kABI compatibility with DP-MST patches
+Patch-mainline: Never, SLE12-SP2/SP3, Leap only
+References: bsc#1055493
+
+This is an ugly workaround for keeping the kABI compatibility with
+DP-MST fixes backported from 4.13.  Since the newly added fields to
+the structs that are embedded by others, we have to take them out and
+manage in another list and resolve dynamically.
+
+Signed-off-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/gpu/drm/drm_atomic.c          |  110 +++++++++++++++++++++++++---------
+ drivers/gpu/drm/drm_atomic_helper.c   |   12 +++
+ drivers/gpu/drm/drm_dp_mst_topology.c |   84 +++++++++++++++++++++----
+ include/drm/drm_crtc.h                |    9 ++
+ include/drm/drm_dp_mst_helper.h       |   19 ++---
+ 5 files changed, 176 insertions(+), 58 deletions(-)
+
+--- a/drivers/gpu/drm/drm_atomic.c
++++ b/drivers/gpu/drm/drm_atomic.c
+@@ -30,6 +30,38 @@
+ #include <drm/drm_atomic.h>
+ #include <drm/drm_plane_helper.h>
+ 
++static DEFINE_SPINLOCK(priv_objs_lock);
++static LIST_HEAD(priv_objs_list);
++
++struct drm_atomic_state_private_objs *
++__drm_atomic_state_get_private_objs(struct drm_atomic_state *state)
++{
++	unsigned long flags;
++	struct drm_atomic_state_private_objs *p;
++	struct drm_atomic_state_private_objs *found = NULL;
++
++	spin_lock_irqsave(&priv_objs_lock, flags);
++	list_for_each_entry(p, &priv_objs_list, list) {
++		if (p->state == state) {
++			found = p;
++			break;
++		}
++	}
++	spin_unlock_irqrestore(&priv_objs_lock, flags);
++	return found;
++}
++EXPORT_SYMBOL_GPL(__drm_atomic_state_get_private_objs);
++
++static void
++__drm_atomic_state_free_private_objs(struct drm_atomic_state_private_objs *p)
++{
++	spin_lock_irq(&priv_objs_lock);
++	list_del(&p->list);
++	spin_unlock_irq(&priv_objs_lock);
++	kfree(p->private_objs);
++	kfree(p);
++}
++
+ /**
+  * drm_atomic_state_default_release -
+  * release memory initialized by drm_atomic_state_init
+@@ -46,7 +78,6 @@ void drm_atomic_state_default_release(st
+ 	kfree(state->crtc_states);
+ 	kfree(state->planes);
+ 	kfree(state->plane_states);
+-	kfree(state->private_objs);
+ }
+ EXPORT_SYMBOL(drm_atomic_state_default_release);
+ 
+@@ -180,15 +211,18 @@ void drm_atomic_state_default_clear(stru
+ 		state->plane_states[i] = NULL;
+ 	}
+ 
+-	for (i = 0; i < state->num_private_objs; i++) {
+-		void *obj_state = state->private_objs[i].obj_state;
+-
+-		state->private_objs[i].funcs->destroy_state(obj_state);
+-		state->private_objs[i].obj = NULL;
+-		state->private_objs[i].obj_state = NULL;
+-		state->private_objs[i].funcs = NULL;
++	{
++		struct drm_atomic_state_private_objs *p;
++		p = __drm_atomic_state_get_private_objs(state);
++		if (p) {
++			for (i = 0; i < p->num_private_objs; i++) {
++				void *obj_state = p->private_objs[i].obj_state;
++
++				p->private_objs[i].funcs->destroy_state(obj_state);
++			}
++			__drm_atomic_state_free_private_objs(p);
++		}
+ 	}
+-	state->num_private_objs = 0;
+ 
+ }
+ EXPORT_SYMBOL(drm_atomic_state_default_clear);
+@@ -801,35 +835,53 @@ drm_atomic_get_private_obj_state(struct
+ {
+ 	int index, num_objs, i;
+ 	size_t size;
++	struct drm_atomic_state_private_objs *p;
+ 	struct __drm_private_objs_state *arr;
+ 
+-	for (i = 0; i < state->num_private_objs; i++)
+-		if (obj == state->private_objs[i].obj &&
+-		    state->private_objs[i].obj_state)
+-			return state->private_objs[i].obj_state;
+-
+-	num_objs = state->num_private_objs + 1;
+-	size = sizeof(*state->private_objs) * num_objs;
+-	arr = krealloc(state->private_objs, size, GFP_KERNEL);
+-	if (!arr)
+-		return ERR_PTR(-ENOMEM);
++	p = __drm_atomic_state_get_private_objs(state);
++	if (p) {
++		for (i = 0; i < p->num_private_objs; i++)
++			if (obj == p->private_objs[i].obj &&
++			    p->private_objs[i].obj_state)
++				return p->private_objs[i].obj_state;
++
++		num_objs = p->num_private_objs + 1;
++		size = sizeof(*p->private_objs) * num_objs;
++		arr = krealloc(p->private_objs, size, GFP_KERNEL);
++		if (!arr)
++			return ERR_PTR(-ENOMEM);
++		p->private_objs = arr;
++	} else {
++		p = kzalloc(sizeof(*p), GFP_KERNEL);
++		if (!p)
++			return ERR_PTR(-ENOMEM);
++		p->state = state;
++		p->private_objs = kmalloc(sizeof(*p->private_objs), GFP_KERNEL);
++		if (!p->private_objs) {
++			kfree(p);
++			return ERR_PTR(-ENOMEM);
++		}
++		num_objs = 1;
++		spin_lock_irq(&priv_objs_lock);
++		list_add(&p->list, &priv_objs_list);
++		spin_unlock_irq(&priv_objs_lock);
++	}
+ 
+-	state->private_objs = arr;
+-	index = state->num_private_objs;
+-	memset(&state->private_objs[index], 0, sizeof(*state->private_objs));
++	index = p->num_private_objs;
++	memset(&p->private_objs[index], 0, sizeof(*p->private_objs));
+ 
+-	state->private_objs[index].obj_state = funcs->duplicate_state(state, obj);
+-	if (!state->private_objs[index].obj_state)
++	p->private_objs[index].obj_state = funcs->duplicate_state(state, obj);
++	if (!p->private_objs[index].obj_state)
+ 		return ERR_PTR(-ENOMEM);
+ 
+-	state->private_objs[index].obj = obj;
+-	state->private_objs[index].funcs = funcs;
+-	state->num_private_objs = num_objs;
++	p->private_objs[index].obj = obj;
++	p->private_objs[index].funcs = funcs;
++	p->num_private_objs = num_objs;
+ 
+ 	DRM_DEBUG_ATOMIC("Added new private object state %p to %p\n",
+-			 state->private_objs[index].obj_state, state);
++			 p->private_objs[index].obj_state, state);
+ 
+-	return state->private_objs[index].obj_state;
++	return p->private_objs[index].obj_state;
+ }
+ EXPORT_SYMBOL(drm_atomic_get_private_obj_state);
+ 
+--- a/drivers/gpu/drm/drm_atomic_helper.c
++++ b/drivers/gpu/drm/drm_atomic_helper.c
+@@ -1442,6 +1442,10 @@ void drm_atomic_helper_cleanup_planes(st
+ }
+ EXPORT_SYMBOL(drm_atomic_helper_cleanup_planes);
+ 
++/* XXX defined in drm_atomic.c */
++struct drm_atomic_state_private_objs *
++__drm_atomic_state_get_private_objs(struct drm_atomic_state *state);
++
+ /**
+  * drm_atomic_helper_swap_state - store atomic state into current sw state
+  * @dev: DRM device
+@@ -1473,6 +1477,7 @@ void drm_atomic_helper_swap_state(struct
+ 	int i;
+ 	void *obj, *obj_state;
+ 	const struct drm_private_state_funcs *funcs;
++	struct drm_atomic_state_private_objs *pstate;
+ 
+ 	for (i = 0; i < state->num_connector; i++) {
+ 		struct drm_connector *connector = state->connectors[i];
+@@ -1507,8 +1512,11 @@ void drm_atomic_helper_swap_state(struct
+ 		plane->state->state = NULL;
+ 	}
+ 
+-	__for_each_private_obj(state, obj, obj_state, i, funcs)
+-		funcs->swap_state(obj, &state->private_objs[i].obj_state);
++	pstate = __drm_atomic_state_get_private_objs(state);
++	if (pstate) {
++		__for_each_private_obj(pstate, obj, obj_state, i, funcs)
++			funcs->swap_state(obj, &pstate->private_objs[i].obj_state);
++	}
+ }
+ EXPORT_SYMBOL(drm_atomic_helper_swap_state);
+ 
+--- a/drivers/gpu/drm/drm_dp_mst_topology.c
++++ b/drivers/gpu/drm/drm_dp_mst_topology.c
+@@ -32,6 +32,27 @@
+ 
+ #include <drm/drm_fixed.h>
+ 
++static DEFINE_SPINLOCK(mgr_priv_objs_lock);
++static LIST_HEAD(mgr_priv_objs_list);
++
++static struct drm_dp_mst_topology_mgr_priv_state *
++__get_mgr_priv_state(struct drm_dp_mst_topology_mgr *mgr)
++{
++	unsigned long flags;
++	struct drm_dp_mst_topology_mgr_priv_state *p;
++	struct drm_dp_mst_topology_mgr_priv_state *found = NULL;
++
++	spin_lock_irqsave(&mgr_priv_objs_lock, flags);
++	list_for_each_entry(p, &mgr_priv_objs_list, list) {
++		if (p->mgr == mgr) {
++			found = p;
++			break;
++		}
++	}
++	spin_unlock_irqrestore(&mgr_priv_objs_lock, flags);
++	return found;
++}
++
+ /**
+  * DOC: dp mst helper
+  *
+@@ -2921,11 +2942,15 @@ void *drm_dp_mst_duplicate_state(struct
+ {
+ 	struct drm_dp_mst_topology_mgr *mgr = obj;
+ 	struct drm_dp_mst_topology_state *new_mst_state;
++	struct drm_dp_mst_topology_mgr_priv_state *pstate;
+ 
+-	if (WARN_ON(!mgr->state))
++	pstate = __get_mgr_priv_state(mgr);
++	if (WARN_ON(!pstate))
++		return NULL;
++	if (WARN_ON(!pstate->state))
+ 		return NULL;
+ 
+-	new_mst_state = kmemdup(mgr->state, sizeof(*new_mst_state), GFP_KERNEL);
++	new_mst_state = kmemdup(pstate->state, sizeof(*new_mst_state), GFP_KERNEL);
+ 	if (new_mst_state)
+ 		new_mst_state->state = state;
+ 	return new_mst_state;
+@@ -2935,12 +2960,17 @@ void drm_dp_mst_swap_state(void *obj, vo
+ {
+ 	struct drm_dp_mst_topology_mgr *mgr = obj;
+ 	struct drm_dp_mst_topology_state **topology_state_ptr;
++	struct drm_dp_mst_topology_mgr_priv_state *pstate;
++
++	pstate = __get_mgr_priv_state(mgr);
++	if (WARN_ON(!pstate))
++		return;
+ 
+ 	topology_state_ptr = (struct drm_dp_mst_topology_state **)obj_state_ptr;
+ 
+-	mgr->state->state = (*topology_state_ptr)->state;
+-	swap(*topology_state_ptr, mgr->state);
+-	mgr->state->state = NULL;
++	pstate->state->state = (*topology_state_ptr)->state;
++	swap(*topology_state_ptr, pstate->state);
++	pstate->state->state = NULL;
+ }
+ 
+ void drm_dp_mst_destroy_state(void *obj_state)
+@@ -3020,14 +3050,28 @@ int drm_dp_mst_topology_mgr_init(struct
+ 	set_bit(0, &mgr->payload_mask);
+ 	test_calc_pbn_mode();
+ 
+-	mgr->state = kzalloc(sizeof(*mgr->state), GFP_KERNEL);
+-	if (mgr->state == NULL)
+-		return -ENOMEM;
+-	mgr->state->mgr = mgr;
++	{
++		struct drm_dp_mst_topology_mgr_priv_state *pstate;
+ 
+-	/* max. time slots - one slot for MTP header */
+-	mgr->state->avail_slots = 63;
+-	mgr->funcs = &mst_state_funcs;
++		pstate = kzalloc(sizeof(*pstate), GFP_KERNEL);
++		if (!pstate)
++			return -ENOMEM;
++		pstate->mgr = mgr;
++		pstate->state = kzalloc(sizeof(*pstate->state), GFP_KERNEL);
++		if (!pstate->state) {
++			kfree(pstate);
++			return -ENOMEM;
++		}
++		pstate->state->mgr = mgr;
++
++		/* max. time slots - one slot for MTP header */
++		pstate->state->avail_slots = 63;
++		/* pstate->funcs = &mst_state_funcs; */
++
++		spin_lock_irq(&mgr_priv_objs_lock);
++		list_add(&pstate->list, &mgr_priv_objs_list);
++		spin_unlock_irq(&mgr_priv_objs_lock);
++	}
+ 
+ 	return 0;
+ }
+@@ -3049,9 +3093,19 @@ void drm_dp_mst_topology_mgr_destroy(str
+ 	mutex_unlock(&mgr->payload_lock);
+ 	mgr->dev = NULL;
+ 	mgr->aux = NULL;
+-	kfree(mgr->state);
+-	mgr->state = NULL;
+-	mgr->funcs = NULL;
++
++	{
++		struct drm_dp_mst_topology_mgr_priv_state *pstate;
++
++		pstate = __get_mgr_priv_state(mgr);
++		if (pstate) {
++			spin_lock_irq(&mgr_priv_objs_lock);
++			list_del(&pstate->list);
++			spin_unlock_irq(&mgr_priv_objs_lock);
++			kfree(pstate->state);
++			kfree(pstate);
++		}
++	}
+ }
+ EXPORT_SYMBOL(drm_dp_mst_topology_mgr_destroy);
+ 
+--- a/include/drm/drm_crtc.h
++++ b/include/drm/drm_crtc.h
+@@ -971,6 +971,13 @@ struct __drm_private_objs_state {
+ 	const struct drm_private_state_funcs *funcs;
+ };
+ 
++struct drm_atomic_state_private_objs {
++	int num_private_objs;
++	struct __drm_private_objs_state *private_objs;
++	struct drm_atomic_state *state;
++	struct list_head list;
++};
++
+ /**
+  * struct drm_atomic_state - the global state object for atomic updates
+  * @dev: parent DRM device
+@@ -998,8 +1005,6 @@ struct drm_atomic_state {
+ 	int num_connector;
+ 	struct drm_connector **connectors;
+ 	struct drm_connector_state **connector_states;
+-	int num_private_objs;
+-	struct __drm_private_objs_state *private_objs;
+ 
+ 	struct drm_modeset_acquire_ctx *acquire_ctx;
+ };
+--- a/include/drm/drm_dp_mst_helper.h
++++ b/include/drm/drm_dp_mst_helper.h
+@@ -24,7 +24,9 @@
+ 
+ #include <linux/types.h>
+ #include <drm/drm_dp_helper.h>
++#ifndef __GENKSYMS__
+ #include <drm/drm_atomic.h>
++#endif
+ 
+ struct drm_dp_mst_branch;
+ 
+@@ -401,6 +403,13 @@ struct drm_dp_mst_topology_state {
+ 	struct drm_dp_mst_topology_mgr *mgr;
+ };
+ 
++struct drm_dp_mst_topology_mgr_priv_state {
++	struct drm_dp_mst_topology_state *state;
++	const struct drm_private_state_funcs *funcs;
++	struct drm_dp_mst_topology_mgr *mgr;
++	struct list_head list;
++};
++
+ /**
+  * struct drm_dp_mst_topology_mgr - DisplayPort MST manager
+  * @dev: device pointer for adding i2c devices etc.
+@@ -447,16 +456,6 @@ struct drm_dp_mst_topology_mgr {
+ 	int avail_slots;
+ 	int total_pbn;
+ 
+-	/**
+-	 * @state: State information for topology manager
+-	 */
+-	struct drm_dp_mst_topology_state *state;
+-
+-	/**
+-	 * @funcs: Atomic helper callbacks
+-	 */
+-	const struct drm_private_state_funcs *funcs;
+-
+ 	/* messages to be transmitted */
+ 	/* qlock protects the upq/downq and in_progress,
+ 	   the mstb tx_slots and txmsg->state once they are queued */

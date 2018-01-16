@@ -1,0 +1,77 @@
+From: Joerg Roedel <jroedel@suse.de>
+Date: Thu, 21 Sep 2017 15:04:31 +0200
+Subject: [PATCH] kABI: Workaround kABI breakage of AMD-AVIC fixes
+Patch-mainline: never, kabi
+References: bsc#1044503
+
+The fixes change the prototype of kvm_x86_ops->get_enable_apicv
+call-back. Work around it by moving the call-back out of
+kvm_x86_ops.
+
+** UPDATED **
+
+Since this may cause NULL dereference, move the new callback to the
+tail of kvm_x86_ops but with a __GENKSYMS__ protection.
+See bsc#1063570.
+
+Signed-off-by: Joerg Roedel <jroedel@suse.de>
+Signed-off-by: Takashi Iwai <tiwai@suse.de>
+---
+ arch/x86/include/asm/kvm_host.h |    3 ++-
+ arch/x86/kvm/svm.c              |    2 +-
+ arch/x86/kvm/vmx.c              |    2 +-
+ arch/x86/kvm/x86.c              |    2 +-
+ 4 files changed, 5 insertions(+), 4 deletions(-)
+
+--- a/arch/x86/include/asm/kvm_host.h
++++ b/arch/x86/include/asm/kvm_host.h
+@@ -882,7 +882,7 @@ struct kvm_x86_ops {
+ 	void (*enable_nmi_window)(struct kvm_vcpu *vcpu);
+ 	void (*enable_irq_window)(struct kvm_vcpu *vcpu);
+ 	void (*update_cr8_intercept)(struct kvm_vcpu *vcpu, int tpr, int irr);
+-	bool (*get_enable_apicv)(struct kvm_vcpu *vcpu);
++	bool (*get_enable_apicv)(void);
+ 	void (*refresh_apicv_exec_ctrl)(struct kvm_vcpu *vcpu);
+ 	void (*hwapic_irr_update)(struct kvm_vcpu *vcpu, int max_irr);
+ 	void (*hwapic_isr_update)(struct kvm *kvm, int isr);
+@@ -974,6 +974,7 @@ struct kvm_x86_ops {
+ 	/* kABI compatibility hacks */
+ #ifndef __GENKSYMS__
+ 	void (*set_pkru)(struct kvm_vcpu *vcpu, u32 pkru);
++	bool (*get_enable_apicv_new)(struct kvm_vcpu *vcpu);
+ #endif
+ };
+ 
+--- a/arch/x86/kvm/svm.c
++++ b/arch/x86/kvm/svm.c
+@@ -5381,7 +5381,7 @@ static struct kvm_x86_ops svm_x86_ops =
+ 	.enable_irq_window = enable_irq_window,
+ 	.update_cr8_intercept = update_cr8_intercept,
+ 	.set_virtual_x2apic_mode = svm_set_virtual_x2apic_mode,
+-	.get_enable_apicv = svm_get_enable_apicv,
++	.get_enable_apicv_new = svm_get_enable_apicv,
+ 	.refresh_apicv_exec_ctrl = svm_refresh_apicv_exec_ctrl,
+ 	.load_eoi_exitmap = svm_load_eoi_exitmap,
+ 	.sync_pir_to_irr = svm_sync_pir_to_irr,
+--- a/arch/x86/kvm/vmx.c
++++ b/arch/x86/kvm/vmx.c
+@@ -10956,7 +10956,7 @@ static struct kvm_x86_ops vmx_x86_ops =
+ 	.update_cr8_intercept = update_cr8_intercept,
+ 	.set_virtual_x2apic_mode = vmx_set_virtual_x2apic_mode,
+ 	.set_apic_access_page_addr = vmx_set_apic_access_page_addr,
+-	.get_enable_apicv = vmx_get_enable_apicv,
++	.get_enable_apicv_new = vmx_get_enable_apicv,
+ 	.refresh_apicv_exec_ctrl = vmx_refresh_apicv_exec_ctrl,
+ 	.load_eoi_exitmap = vmx_load_eoi_exitmap,
+ 	.hwapic_irr_update = vmx_hwapic_irr_update,
+--- a/arch/x86/kvm/x86.c
++++ b/arch/x86/kvm/x86.c
+@@ -7684,7 +7684,7 @@ int kvm_arch_vcpu_init(struct kvm_vcpu *
+ 	BUG_ON(vcpu->kvm == NULL);
+ 	kvm = vcpu->kvm;
+ 
+-	vcpu->arch.apicv_active = kvm_x86_ops->get_enable_apicv(vcpu);
++	vcpu->arch.apicv_active = kvm_x86_ops->get_enable_apicv_new(vcpu);
+ 	vcpu->arch.pv.pv_unhalted = false;
+ 	vcpu->arch.emulate_ctxt.ops = &emulate_ops;
+ 	if (!irqchip_in_kernel(kvm) || kvm_vcpu_is_reset_bsp(vcpu))

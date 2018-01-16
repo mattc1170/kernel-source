@@ -1,8 +1,7 @@
 From: Michael Chan <michael.chan@broadcom.com>
 Date: Tue, 4 Apr 2017 18:14:11 -0400
 Subject: bnxt_en: Add suspend/resume callbacks.
-Patch-mainline: Queued in subsystem maintainer repository
-Git-repo: git://git.kernel.org/pub/scm/linux/kernel/git/davem/net-next.git
+Patch-mainline: v4.12-rc1
 Git-commit: f65a2044a8c988adf16788c51c04ac10dbbdb494
 References: bsc#1020412 FATE#321671
 

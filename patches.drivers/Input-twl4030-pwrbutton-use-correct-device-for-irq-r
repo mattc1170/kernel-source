@@ -1,0 +1,31 @@
+From 3071e9dd6cd3f2290d770117330f2c8b2e9a97e4 Mon Sep 17 00:00:00 2001
+From: Sebastian Reichel <sebastian.reichel@collabora.co.uk>
+Date: Fri, 28 Apr 2017 10:25:51 -0700
+Subject: [PATCH] Input: twl4030-pwrbutton - use correct device for irq request
+Git-commit: 3071e9dd6cd3f2290d770117330f2c8b2e9a97e4
+Patch-mainline: 4.12-rc1
+References: bsc#1031717
+
+The interrupt should be requested for the platform device
+and not for the input device.
+
+Fixes: 7f9ce649d267 ("Input: twl4030-pwrbutton - simplify driver using devm_*")
+Signed-off-by: Sebastian Reichel <sebastian.reichel@collabora.co.uk>
+Signed-off-by: Dmitry Torokhov <dmitry.torokhov@gmail.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/input/misc/twl4030-pwrbutton.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+--- a/drivers/input/misc/twl4030-pwrbutton.c
++++ b/drivers/input/misc/twl4030-pwrbutton.c
+@@ -70,7 +70,7 @@ static int twl4030_pwrbutton_probe(struc
+ 	pwr->phys = "twl4030_pwrbutton/input0";
+ 	pwr->dev.parent = &pdev->dev;
+ 
+-	err = devm_request_threaded_irq(&pwr->dev, irq, NULL, powerbutton_irq,
++	err = devm_request_threaded_irq(&pdev->dev, irq, NULL, powerbutton_irq,
+ 			IRQF_TRIGGER_FALLING | IRQF_TRIGGER_RISING |
+ 			IRQF_ONESHOT,
+ 			"twl4030_pwrbutton", pwr);

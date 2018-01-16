@@ -1,8 +1,7 @@
 From: Michael Chan <michael.chan@broadcom.com>
 Date: Tue, 4 Apr 2017 18:14:08 -0400
 Subject: bnxt_en: Add pci shutdown method.
-Patch-mainline: Queued in subsystem maintainer repository
-Git-repo: git://git.kernel.org/pub/scm/linux/kernel/git/davem/net-next.git
+Patch-mainline: v4.12-rc1
 Git-commit: d196ece740bf337aa25731cd8cb44660a2a227dd
 References: bsc#1020412 FATE#321671
 

@@ -29,7 +29,7 @@ space. In theory, it should not give us performance penalty.
 
 Signed-off-by: Vitaly Kuznetsov <vkuznets@redhat.com>
 Signed-off-by: David S. Miller <davem@davemloft.net>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  drivers/net/hyperv/netvsc_drv.c | 3 +++
  1 file changed, 3 insertions(+)

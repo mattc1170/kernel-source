@@ -1,0 +1,68 @@
+From e5658847c6d292a7a3f92a0323319a4cae8c87e3 Mon Sep 17 00:00:00 2001
+From: Mark Rutland <mark.rutland@arm.com>
+Date: Tue, 11 Apr 2017 09:39:44 +0100
+Subject: [PATCH 31/56] drivers/perf: arm_pmu: remove pointless PMU disabling
+
+Git-commit: a9e469d1c89b5e9890859b5f001601498549577d
+Patch-mainline: v4.12-rc1
+References: bsc#1062279
+
+We currently disable the PMU temporarily in armpmu_add(). We may have
+required this historically, but the perf core always disables an event's
+PMU when calling event::pmu::add(), so this is not necessary.
+
+We don't do similarly in armpmu_del(), or elsewhere, so this is
+unnecessary and inconsistent, and only serves to confuse the reader.
+
+Remove the pointless disable, simplifying armpmu_add() in the process.
+
+Signed-off-by: Mark Rutland <mark.rutland@arm.com>
+Tested-by: Jeremy Linton <jeremy.linton@arm.com>
+Cc: Will Deacon <will.deacon@arm.com>
+Signed-off-by: Will Deacon <will.deacon@arm.com>
+Signed-off-by: Mian Yousaf Kaukab <yousaf.kaukab@suse.com>
+---
+ drivers/perf/arm_pmu.c | 13 +++----------
+ 1 file changed, 3 insertions(+), 10 deletions(-)
+
+diff --git a/drivers/perf/arm_pmu.c b/drivers/perf/arm_pmu.c
+index 75c8b2fb..91edfacd 100644
+--- a/drivers/perf/arm_pmu.c
++++ b/drivers/perf/arm_pmu.c
+@@ -234,20 +234,15 @@ armpmu_add(struct perf_event *event, int flags)
+ 	struct pmu_hw_events *hw_events = this_cpu_ptr(armpmu->hw_events);
+ 	struct hw_perf_event *hwc = &event->hw;
+ 	int idx;
+-	int err = 0;
+ 
+ 	/* An event following a process won't be stopped earlier */
+ 	if (!cpumask_test_cpu(smp_processor_id(), &armpmu->supported_cpus))
+ 		return -ENOENT;
+ 
+-	perf_pmu_disable(event->pmu);
+-
+ 	/* If we don't have a space for the counter then finish early. */
+ 	idx = armpmu->get_event_idx(hw_events, event);
+-	if (idx < 0) {
+-		err = idx;
+-		goto out;
+-	}
++	if (idx < 0)
++		return idx;
+ 
+ 	/*
+ 	 * If there is an event in the counter we are going to use then make
+@@ -264,9 +259,7 @@ armpmu_add(struct perf_event *event, int flags)
+ 	/* Propagate our changes to the userspace mapping. */
+ 	perf_event_update_userpage(event);
+ 
+-out:
+-	perf_pmu_enable(event->pmu);
+-	return err;
++	return 0;
+ }
+ 
+ static int
+-- 
+2.11.0
+

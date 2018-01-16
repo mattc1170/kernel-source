@@ -1,0 +1,107 @@
+From: Stephen Hemminger <stephen@networkplumber.org>
+Date: Sat, 4 Mar 2017 18:27:12 -0700
+Patch-mainline: v4.12-rc1
+Subject: vmbus: remove useless return's
+Git-commit: 8b1f91fb4c1a8a860b8edc0c383821b2ff8a1ece
+References: fate#320485
+
+No need for empty return at end of void function
+
+Signed-off-by: Stephen Hemminger <sthemmin@microsoft.com>
+Signed-off-by: K. Y. Srinivasan <kys@microsoft.com>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Acked-by: Olaf Hering <ohering@suse.de>
+---
+ drivers/hv/hv_balloon.c  | 2 --
+ drivers/hv/hv_fcopy.c    | 2 --
+ drivers/hv/hv_kvp.c      | 2 --
+ drivers/hv/hv_snapshot.c | 2 --
+ drivers/hv/ring_buffer.c | 2 --
+ drivers/hv/vmbus_drv.c   | 2 --
+ include/linux/hyperv.h   | 2 --
+ 7 files changed, 14 deletions(-)
+
+diff --git a/drivers/hv/hv_balloon.c b/drivers/hv/hv_balloon.c
+--- a/drivers/hv/hv_balloon.c
++++ b/drivers/hv/hv_balloon.c
+@@ -722,8 +722,6 @@ static void hv_mem_hot_add(unsigned long start, unsigned long size,
+ 		wait_for_completion_timeout(&dm_device.ol_waitevent, 5*HZ);
+ 		post_status(&dm_device);
+ 	}
+-
+-	return;
+ }
+ 
+ static void hv_online_page(struct page *pg)
+diff --git a/drivers/hv/hv_fcopy.c b/drivers/hv/hv_fcopy.c
+--- a/drivers/hv/hv_fcopy.c
++++ b/drivers/hv/hv_fcopy.c
+@@ -187,8 +187,6 @@ static void fcopy_send_data(struct work_struct *dummy)
+ 		}
+ 	}
+ 	kfree(smsg_out);
+-
+-	return;
+ }
+ 
+ /*
+diff --git a/drivers/hv/hv_kvp.c b/drivers/hv/hv_kvp.c
+--- a/drivers/hv/hv_kvp.c
++++ b/drivers/hv/hv_kvp.c
+@@ -484,8 +484,6 @@ kvp_send_key(struct work_struct *dummy)
+ 	}
+ 
+ 	kfree(message);
+-
+-	return;
+ }
+ 
+ /*
+diff --git a/drivers/hv/hv_snapshot.c b/drivers/hv/hv_snapshot.c
+--- a/drivers/hv/hv_snapshot.c
++++ b/drivers/hv/hv_snapshot.c
+@@ -213,8 +213,6 @@ static void vss_send_op(void)
+ 	}
+ 
+ 	kfree(vss_msg);
+-
+-	return;
+ }
+ 
+ static void vss_handle_request(struct work_struct *dummy)
+diff --git a/drivers/hv/ring_buffer.c b/drivers/hv/ring_buffer.c
+--- a/drivers/hv/ring_buffer.c
++++ b/drivers/hv/ring_buffer.c
+@@ -73,8 +73,6 @@ static void hv_signal_on_write(u32 old_write, struct vmbus_channel *channel)
+ 	 */
+ 	if (old_write == READ_ONCE(rbi->ring_buffer->read_index))
+ 		vmbus_setevent(channel);
+-
+-	return;
+ }
+ 
+ /* Get the next write location for the specified ring buffer. */
+diff --git a/drivers/hv/vmbus_drv.c b/drivers/hv/vmbus_drv.c
+--- a/drivers/hv/vmbus_drv.c
++++ b/drivers/hv/vmbus_drv.c
+@@ -787,8 +787,6 @@ static void vmbus_shutdown(struct device *child_device)
+ 
+ 	if (drv->shutdown)
+ 		drv->shutdown(dev);
+-
+-	return;
+ }
+ 
+ 
+diff --git a/include/linux/hyperv.h b/include/linux/hyperv.h
+--- a/include/linux/hyperv.h
++++ b/include/linux/hyperv.h
+@@ -1500,8 +1500,6 @@ static inline  void hv_signal_on_read(struct vmbus_channel *channel)
+ 	cached_write_sz = hv_get_cached_bytes_to_write(rbi);
+ 	if (cached_write_sz < pending_sz)
+ 		vmbus_setevent(channel);
+-
+-	return;
+ }
+ 
+ /*

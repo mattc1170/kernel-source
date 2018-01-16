@@ -2,8 +2,7 @@ From: Somnath Kotur <somnath.kotur@broadcom.com>
 Date: Wed, 7 Sep 2016 19:57:51 +0530
 Subject: [PATCH] be2net: Add privilege level check for
  OPCODE_COMMON_GET_EXT_FAT_CAPABILITIES SLI cmd.
-Patch-mainline: Queued in subsystem maintainer repository
-Git-repo: git://git.kernel.org/pub/scm/linux/kernel/git/davem/net-next.git
+Patch-mainline: v4.9-rc1
 Git-commit: 62259ac4b36e348077635e673f253cc139dd6032
 References: bsc#963844 FATE#320192
 

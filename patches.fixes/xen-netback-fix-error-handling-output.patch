@@ -1,0 +1,38 @@
+From: Arnd Bergmann <arnd@arndb.de>
+Date: Thu Nov 10 09:55:42 2016 +0100
+Git-commit: 0f06ac3b6616b9793b3fb5c398d94044a0423492
+Subject: xen-netback: fix error handling output
+Patch-mainline: v4.10
+References: bnc#1065600
+
+The connect function prints an unintialized error code after an
+earlier initialization was removed:
+
+drivers/net/xen-netback/xenbus.c: In function 'connect':
+drivers/net/xen-netback/xenbus.c:938:3: error: 'err' may be used uninitialized in this function [-Werror=maybe-uninitialized]
+
+This prints it as -EINVAL instead, which seems to be the most
+appropriate error code. Before the patch that caused the warning,
+this would print a positive number returned by vsscanf() instead,
+which is also wrong. We probably don't need a backport though,
+as fixing the warning here should be sufficient.
+
+Fixes: f95842e7a9f2 ("xen: make use of xenbus_read_unsigned() in xen-netback")
+Fixes: 8d3d53b3e433 ("xen-netback: Add support for multiple queues")
+Signed-off-by: Arnd Bergmann <arnd@arndb.de>
+Reviewed-by: Paul Durrant <paul.durrant@citrix.com>
+Signed-off-by: Juergen Gross <jgross@suse.com>
+
+diff --git a/drivers/net/xen-netback/xenbus.c b/drivers/net/xen-netback/xenbus.c
+index 7356e00fac54..bfed79877b8a 100644
+--- a/drivers/net/xen-netback/xenbus.c
++++ b/drivers/net/xen-netback/xenbus.c
+@@ -768,7 +768,7 @@ static void connect(struct backend_info *be)
+ 		requested_num_queues = 1; /* Fall back to single queue */
+ 	} else if (requested_num_queues > xenvif_max_queues) {
+ 		/* buggy or malicious guest */
+-		xenbus_dev_fatal(dev, err,
++		xenbus_dev_fatal(dev, -EINVAL,
+ 				 "guest requested %u queues, exceeding the maximum of %u.",
+ 				 requested_num_queues, xenvif_max_queues);
+ 		return;

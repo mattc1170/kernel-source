@@ -1,0 +1,45 @@
+From: Jiri Slaby <jslaby@suse.cz>
+Date: Mon, 20 Nov 2017 15:15:57 +0100
+Subject: Revert "phy: increase size of MII_BUS_ID_SIZE and bus_id"
+Patch-mainline: never, kabi
+References: kabi
+
+This reverts commit ca2090aa58ba5ad8d6821b5655b7cd64f680a5a6, upstream
+commit 4567d686f5c6d955e57a3afa1741944c1e7f4033. It breaks kABI by
+increading MII_BUS_ID_SIZE which is used as size for char[] inside
+mii_bus.
+
+Signed-off-by: Jiri Slaby <jslaby@suse.cz>
+---
+ include/linux/phy.h | 8 ++++++--
+ 1 file changed, 6 insertions(+), 2 deletions(-)
+
+diff --git a/include/linux/phy.h b/include/linux/phy.h
+index 5bc4b9d563a9..b64825d6ad26 100644
+--- a/include/linux/phy.h
++++ b/include/linux/phy.h
+@@ -136,7 +136,11 @@ static inline const char *phy_modes(phy_interface_t interface)
+ /* Used when trying to connect to a specific phy (mii bus id:phy device id) */
+ #define PHY_ID_FMT "%s:%02x"
+ 
+-#define MII_BUS_ID_SIZE	61
++/*
++ * Need to be a little smaller than phydev->dev.bus_id to leave room
++ * for the ":%02x"
++ */
++#define MII_BUS_ID_SIZE	(20 - 3)
+ 
+ /* Or MII_ADDR_C45 into regnum for read/write on mii_bus to enable the 21 bit
+    IEEE 802.3ae clause 45 addressing mode used by 10GIGE phy chips. */
+@@ -595,7 +599,7 @@ struct phy_driver {
+ /* A Structure for boards to register fixups with the PHY Lib */
+ struct phy_fixup {
+ 	struct list_head list;
+-	char bus_id[MII_BUS_ID_SIZE + 3];
++	char bus_id[20];
+ 	u32 phy_uid;
+ 	u32 phy_uid_mask;
+ 	int (*run)(struct phy_device *phydev);
+-- 
+2.15.0
+

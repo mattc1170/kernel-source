@@ -1,0 +1,60 @@
+From: Jeff Layton <jlayton@redhat.com>
+Date: Tue, 4 Apr 2017 08:39:36 -0400
+Subject: libceph: remove req->r_replay_version
+Git-commit: aa26d662b9d44e7f5b0d109e892e537a23471863
+Patch-mainline: v4.12-rc1
+References: bsc#1048228
+
+Nothing uses this anymore with the removal of the ack vs. commit code.
+Remove the field and just encode zeroes into place in the request
+encoding.
+
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+Reviewed-by: Ilya Dryomov <idryomov@gmail.com>
+Signed-off-by: Ilya Dryomov <idryomov@gmail.com>
+Acked-by: Luis Henriques <lhenriques@suse.com>
+---
+ include/linux/ceph/osd_client.h |    1 -
+ net/ceph/debugfs.c              |    4 +---
+ net/ceph/osd_client.c           |    7 ++++---
+ 3 files changed, 5 insertions(+), 7 deletions(-)
+
+--- a/include/linux/ceph/osd_client.h
++++ b/include/linux/ceph/osd_client.h
+@@ -205,7 +205,6 @@ struct ceph_osd_request {
+ 	unsigned long r_stamp;                /* jiffies, send or check time */
+ 	unsigned long r_start_stamp;          /* jiffies */
+ 	int r_attempts;
+-	struct ceph_eversion r_replay_version; /* aka reassert_version */
+ 	u32 r_last_force_resend;
+ 	u32 r_map_dne_bound;
+ 
+--- a/net/ceph/debugfs.c
++++ b/net/ceph/debugfs.c
+@@ -177,9 +177,7 @@ static void dump_request(struct seq_file
+ 	seq_printf(s, "%llu\t", req->r_tid);
+ 	dump_target(s, &req->r_t);
+ 
+-	seq_printf(s, "\t%d\t%u'%llu", req->r_attempts,
+-		   le32_to_cpu(req->r_replay_version.epoch),
+-		   le64_to_cpu(req->r_replay_version.version));
++	seq_printf(s, "\t%d", req->r_attempts);
+ 
+ 	for (i = 0; i < req->r_num_ops; i++) {
+ 		struct ceph_osd_req_op *op = &req->r_ops[i];
+--- a/net/ceph/osd_client.c
++++ b/net/ceph/osd_client.c
+@@ -1677,9 +1677,10 @@ static void encode_request(struct ceph_o
+ 	ceph_encode_32(&p, req->r_flags);
+ 	ceph_encode_timespec(p, &req->r_mtime);
+ 	p += sizeof(struct ceph_timespec);
+-	/* aka reassert_version */
+-	memcpy(p, &req->r_replay_version, sizeof(req->r_replay_version));
+-	p += sizeof(req->r_replay_version);
++
++	/* reassert_version */
++	memset(p, 0, sizeof(struct ceph_eversion));
++	p += sizeof(struct ceph_eversion);
+ 
+ 	/* oloc */
+ 	ceph_start_encoding(&p, 5, 4,

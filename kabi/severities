@@ -26,8 +26,15 @@ arch/s390/*			PASS
 drivers/s390/*			PASS
 net/iucv/*			PASS
 
+diag_stat_inc			PASS
+diag_stat_inc_norecursion	PASS
+zpci_disable_device		PASS
+zpci_enable_device		PASS
+zpci_stop_device		PASS
+
 net/ceph/libceph		PASS
 drivers/block/rbd		PASS
+fs/ceph				PASS
 
 kgr_patch_*			PASS
 
@@ -38,3 +45,10 @@ amd_df_mcablock_names		PASS
 amd_hwids			PASS
 
 uv_cpu_nmi			PASS
+
+drivers/nvme/target/*		PASS
+drivers/scsi/hisi_sas/*		PASS
+drivers/scsi/cxgbi/*		PASS
+drivers/scsi/qla2xxx/*		PASS
+
+nfs_pgio_data_destroy		PASS

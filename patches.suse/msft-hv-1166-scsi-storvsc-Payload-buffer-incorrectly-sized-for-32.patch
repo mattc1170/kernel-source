@@ -13,7 +13,7 @@ Suggested-by: Vitaly Kuznetsov <vkuznets@redhat.com>
 Signed-off-by: Cathy Avery <cavery@redhat.com>
 Reviewed-by: K. Y. Srinivasan <kys@microsoft.com>
 Signed-off-by: Martin K. Petersen <martin.petersen@oracle.com>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  drivers/scsi/storvsc_drv.c | 4 ++--
  1 file changed, 2 insertions(+), 2 deletions(-)

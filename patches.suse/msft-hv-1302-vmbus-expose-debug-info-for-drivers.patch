@@ -1,0 +1,92 @@
+From: Stephen Hemminger <stephen@networkplumber.org>
+Date: Sat, 4 Mar 2017 18:27:18 -0700
+Patch-mainline: v4.12-rc1
+Subject: vmbus: expose debug info for drivers
+Git-commit: 4827ee1dca5691c9fc568883170a568db94f9b38
+References: fate#320485
+
+Allow driver to get debug information about state of the ring.
+
+Signed-off-by: Stephen Hemminger <sthemmin@microsoft.com>
+Signed-off-by: K. Y. Srinivasan <kys@microsoft.com>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Acked-by: Olaf Hering <ohering@suse.de>
+---
+ drivers/hv/hyperv_vmbus.h | 11 -----------
+ drivers/hv/ring_buffer.c  |  1 +
+ include/linux/hyperv.h    | 17 +++++++++++++++++
+ 3 files changed, 18 insertions(+), 11 deletions(-)
+
+diff --git a/drivers/hv/hyperv_vmbus.h b/drivers/hv/hyperv_vmbus.h
+--- a/drivers/hv/hyperv_vmbus.h
++++ b/drivers/hv/hyperv_vmbus.h
+@@ -248,14 +248,6 @@ struct hv_context {
+ 
+ extern struct hv_context hv_context;
+ 
+-struct hv_ring_buffer_debug_info {
+-	u32 current_interrupt_mask;
+-	u32 current_read_index;
+-	u32 current_write_index;
+-	u32 bytes_avail_toread;
+-	u32 bytes_avail_towrite;
+-};
+-
+ /* Hv Interface */
+ 
+ extern int hv_init(void);
+@@ -289,9 +281,6 @@ int hv_ringbuffer_read(struct vmbus_channel *channel,
+ 		       void *buffer, u32 buflen, u32 *buffer_actual_len,
+ 		       u64 *requestid, bool raw);
+ 
+-void hv_ringbuffer_get_debuginfo(const struct hv_ring_buffer_info *ring_info,
+-				 struct hv_ring_buffer_debug_info *debug_info);
+-
+ /*
+  * Maximum channels is determined by the size of the interrupt page
+  * which is PAGE_SIZE. 1/2 of PAGE_SIZE is for send endpoint interrupt
+diff --git a/drivers/hv/ring_buffer.c b/drivers/hv/ring_buffer.c
+--- a/drivers/hv/ring_buffer.c
++++ b/drivers/hv/ring_buffer.c
+@@ -206,6 +206,7 @@ void hv_ringbuffer_get_debuginfo(const struct hv_ring_buffer_info *ring_info,
+ 			ring_info->ring_buffer->interrupt_mask;
+ 	}
+ }
++EXPORT_SYMBOL_GPL(hv_ringbuffer_get_debuginfo);
+ 
+ /* Initialize the ring buffer. */
+ int hv_ringbuffer_init(struct hv_ring_buffer_info *ring_info,
+diff --git a/include/linux/hyperv.h b/include/linux/hyperv.h
+--- a/include/linux/hyperv.h
++++ b/include/linux/hyperv.h
+@@ -491,6 +491,12 @@ struct vmbus_channel_rescind_offer {
+ 	u32 child_relid;
+ } __packed;
+ 
++static inline u32
++hv_ringbuffer_pending_size(const struct hv_ring_buffer_info *rbi)
++{
++	return rbi->ring_buffer->pending_send_sz;
++}
++
+ /*
+  * Request Offer -- no parameters, SynIC message contains the partition ID
+  * Set Snoop -- no parameters, SynIC message contains the partition ID
+@@ -1148,6 +1154,17 @@ static inline void *hv_get_drvdata(struct hv_device *dev)
+ 	return dev_get_drvdata(&dev->device);
+ }
+ 
++struct hv_ring_buffer_debug_info {
++	u32 current_interrupt_mask;
++	u32 current_read_index;
++	u32 current_write_index;
++	u32 bytes_avail_toread;
++	u32 bytes_avail_towrite;
++};
++
++void hv_ringbuffer_get_debuginfo(const struct hv_ring_buffer_info *ring_info,
++			    struct hv_ring_buffer_debug_info *debug_info);
++
+ /* Vmbus interface */
+ #define vmbus_driver_register(driver)	\
+ 	__vmbus_driver_register(driver, THIS_MODULE, KBUILD_MODNAME)

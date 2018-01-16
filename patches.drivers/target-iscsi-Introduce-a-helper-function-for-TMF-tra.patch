@@ -14,15 +14,12 @@ Cc: Nicholas A. Bellinger <nab@linux-iscsi.org>
 Signed-off-by: Nicholas Bellinger <nab@linux-iscsi.org>
 Signed-off-by: Hannes Reinecke <hare@suse.de>
 ---
- drivers/target/iscsi/iscsi_target.c | 48 ++++++++++++++++++-------------------
- include/target/target_core_base.h   |  1 +
- 2 files changed, 25 insertions(+), 24 deletions(-)
+ drivers/target/iscsi/iscsi_target.c |   48 ++++++++++++++++++------------------
+ 1 file changed, 24 insertions(+), 24 deletions(-)
 
-diff --git a/drivers/target/iscsi/iscsi_target.c b/drivers/target/iscsi/iscsi_target.c
-index 6710017..43d95979 100644
 --- a/drivers/target/iscsi/iscsi_target.c
 +++ b/drivers/target/iscsi/iscsi_target.c
-@@ -1918,6 +1918,28 @@ out:
+@@ -1931,6 +1931,28 @@ out:
  	return ret;
  }
  
@@ -51,7 +48,7 @@ index 6710017..43d95979 100644
  int
  iscsit_handle_task_mgt_cmd(struct iscsi_conn *conn, struct iscsi_cmd *cmd,
  			   unsigned char *buf)
-@@ -1983,30 +2005,8 @@ iscsit_handle_task_mgt_cmd(struct iscsi_conn *conn, struct iscsi_cmd *cmd,
+@@ -1992,30 +2014,8 @@ iscsit_handle_task_mgt_cmd(struct iscsi_
  
  		target_get_sess_cmd(&cmd->se_cmd, true);
  		sess_ref = true;
@@ -84,18 +81,3 @@ index 6710017..43d95979 100644
  			pr_err("Unknown iSCSI TMR Function:"
  			       " 0x%02x\n", function);
  			return iscsit_add_reject_cmd(cmd,
-diff --git a/include/target/target_core_base.h b/include/target/target_core_base.h
-index 7d7239e..9ffcad2 100644
---- a/include/target/target_core_base.h
-+++ b/include/target/target_core_base.h
-@@ -203,6 +203,7 @@ enum tcm_tmreq_table {
- 	TMR_LUN_RESET		= 5,
- 	TMR_TARGET_WARM_RESET	= 6,
- 	TMR_TARGET_COLD_RESET	= 7,
-+	TMR_UNKNOWN		= 0xff,
- };
- 
- /* fabric independent task management response values */
--- 
-1.8.5.6
-

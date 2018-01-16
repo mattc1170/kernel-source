@@ -1,8 +1,7 @@
 From: Jack Morgenstein <jackm@dev.mellanox.co.il>
 Date: Mon, 13 Mar 2017 19:29:08 +0200
 Subject: net/mlx4_core: Avoid delays during VF driver device shutdown
-Patch-mainline: Queued in subsystem maintainer repository
-Git-repo: git://git.kernel.org/pub/scm/linux/kernel/git/davem/net.git
+Patch-mainline: v4.11-rc4
 Git-commit: 4cbe4dac82e423ecc9a0ba46af24a860853259f4
 References: bsc#1015336 FATE#321685 bsc#1015337 FATE#321686 bsc#1015340 FATE#321687
 

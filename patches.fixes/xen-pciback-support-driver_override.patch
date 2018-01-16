@@ -3,8 +3,7 @@ From: Juergen Gross <jgross@suse.com>
 Date: Tue, 20 Sep 2016 16:55:51 +0200
 Subject: xen/pciback: support driver_override
 References: bnc#995451
-Patch-mainline: Queued in subsystem maintainer repository
-Git-repo: git://git.kernel.org/pub/scm/linux/kernel/git/xen/tip
+Patch-mainline: 4.9
 Git-commit: b057878b2aadc7e06280e7e702a36e7adb1bcdf7
 
 Support the driver_override scheme introduced with commit 782a985d7af2

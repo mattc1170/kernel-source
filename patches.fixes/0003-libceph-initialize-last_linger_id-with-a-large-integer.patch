@@ -1,0 +1,39 @@
+From: Ilya Dryomov <idryomov@gmail.com>
+Date: Tue, 8 Nov 2016 15:15:24 +0100
+Subject: libceph: initialize last_linger_id with a large integer
+Git-commit: 264048afab27d7c27eedf5394714e0b396d787f7
+Patch-mainline: v4.9-rc5
+References: bsc#1048228
+
+osdc->last_linger_id is a counter for lreq->linger_id, which is used
+for watch cookies.  Starting with a large integer should ease the task
+of telling apart kernel and userspace clients.
+
+Signed-off-by: Ilya Dryomov <idryomov@gmail.com>
+Acked-by: Luis Henriques <lhenriques@suse.com>
+---
+ include/linux/ceph/osd_client.h |    2 ++
+ net/ceph/osd_client.c           |    1 +
+ 2 files changed, 3 insertions(+)
+
+--- a/include/linux/ceph/osd_client.h
++++ b/include/linux/ceph/osd_client.h
+@@ -272,6 +272,8 @@ struct ceph_watch_item {
+ 	struct ceph_entity_addr addr;
+ };
+ 
++#define CEPH_LINGER_ID_START	0xffff000000000000ULL
++
+ struct ceph_osd_client {
+ 	struct ceph_client     *client;
+ 
+--- a/net/ceph/osd_client.c
++++ b/net/ceph/osd_client.c
+@@ -4264,6 +4264,7 @@ int ceph_osdc_init(struct ceph_osd_clien
+ 	osd_init(&osdc->homeless_osd);
+ 	osdc->homeless_osd.o_osdc = osdc;
+ 	osdc->homeless_osd.o_osd = CEPH_HOMELESS_OSD;
++	osdc->last_linger_id = CEPH_LINGER_ID_START;
+ 	osdc->linger_requests = RB_ROOT;
+ 	osdc->map_checks = RB_ROOT;
+ 	osdc->linger_map_checks = RB_ROOT;

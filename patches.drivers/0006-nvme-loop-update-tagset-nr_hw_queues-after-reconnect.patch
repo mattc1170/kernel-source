@@ -1,0 +1,35 @@
+From: Sagi Grimberg <sagi@grimberg.me>
+Date: Thu, 29 Jun 2017 11:13:43 +0300
+Subject: nvme-loop: update tagset nr_hw_queues after reconnecting/resetting
+Git-commit: 4368c39bf6e6a2bfffb7a72d78912c68f156e8da
+Patch-Mainline: v4.13
+References: bsc#1052384
+
+We might have more/less queues once we reconnect/reset. For
+example due to cpu going online/offline
+
+Reviewed-by: Johannes Thumshirn <jthumshirn@suse.de>
+Reviewed-by: Christoph Hellwig <hch@lst.de>
+Signed-off-by: Sagi Grimberg <sagi@grimberg.me>
+Signed-off-by: Hannes Reinecke <hare@suse.de>
+---
+ drivers/nvme/target/loop.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/drivers/nvme/target/loop.c b/drivers/nvme/target/loop.c
+index 6d47e82..1e95b4f 100644
+--- a/drivers/nvme/target/loop.c
++++ b/drivers/nvme/target/loop.c
+@@ -519,6 +519,9 @@ static void nvme_loop_reset_ctrl_work(struct work_struct *work)
+ 	if (ret)
+ 		goto out_destroy_io;
+ 
++	blk_mq_update_nr_hw_queues(&ctrl->tag_set,
++			ctrl->queue_count - 1);
++
+ 	changed = nvme_change_ctrl_state(&ctrl->ctrl, NVME_CTRL_LIVE);
+ 	WARN_ON_ONCE(!changed);
+ 
+-- 
+1.8.5.6
+

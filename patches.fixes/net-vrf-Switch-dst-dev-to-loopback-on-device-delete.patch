@@ -90,18 +90,18 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  }
  
  static int vrf_rtable_create(struct net_device *dev)
-@@ -586,8 +606,8 @@ static void vrf_dev_uninit(struct net_de
- 	struct net_device *port_dev;
- 	struct list_head *iter;
+@@ -587,8 +607,8 @@ static void vrf_dev_uninit(struct net_de
+ //	struct list_head *head = &queue->all_slaves;
+ //	struct slave *slave, *next;
  
 -	vrf_rtable_release(vrf);
 -	vrf_rt6_release(vrf);
 +	vrf_rtable_release(dev, vrf);
 +	vrf_rt6_release(dev, vrf);
  
- 	netdev_for_each_lower_dev(dev, port_dev, iter)
- 		vrf_del_slave(dev, port_dev);
-@@ -616,7 +636,7 @@ static int vrf_dev_init(struct net_devic
+ //	list_for_each_entry_safe(slave, next, head, list)
+ //		vrf_del_slave(dev, slave->dev);
+@@ -617,7 +637,7 @@ static int vrf_dev_init(struct net_devic
  	return 0;
  
  out_rth:

@@ -1,0 +1,44 @@
+From: Colin Ian King <colin.king@canonical.com>
+Date: Thu, 8 Sep 2016 09:38:01 +0100
+Subject: EDAC, sb_edac: Remove NULL pointer check on array pci_tad
+Git-commit: c7c35407cd8654b5ee138b6f1dbb24dc62a3f3c0
+Patch-mainline: v4.9-rc1
+References: bsc#1061721
+
+pvt->pci_tad is a NUM_CHANNELS array of struct pci_dev pointers and
+hence cannot be NULL, so the NULL pointer check on pci_tad is redundant.
+Remove it.
+
+Signed-off-by: Colin Ian King <colin.king@canonical.com>
+Acked-by: Tony Luck <tony.luck@intel.com>
+Cc: linux-edac <linux-edac@vger.kernel.org>
+Link: http://lkml.kernel.org/r/20160908083801.14766-1-colin.king@canonical.com
+Signed-off-by: Borislav Petkov <bp@suse.de>
+---
+ drivers/edac/sb_edac.c | 5 ++---
+ 1 file changed, 2 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/edac/sb_edac.c b/drivers/edac/sb_edac.c
+index 4fb2eb7c800d..04aafdda9e98 100644
+--- a/drivers/edac/sb_edac.c
++++ b/drivers/edac/sb_edac.c
+@@ -2474,7 +2474,7 @@ static int sbridge_mci_bind_devs(struct mem_ctl_info *mci,
+ 
+ 	/* Check if everything were registered */
+ 	if (!pvt->pci_sad0 || !pvt->pci_sad1 || !pvt->pci_ha0 ||
+-	    !pvt-> pci_tad || !pvt->pci_ras  || !pvt->pci_ta)
++	    !pvt->pci_ras || !pvt->pci_ta)
+ 		goto enodev;
+ 
+ 	if (saw_chan_mask != 0x0f)
+@@ -2563,8 +2563,7 @@ static int ibridge_mci_bind_devs(struct mem_ctl_info *mci,
+ 
+ 	/* Check if everything were registered */
+ 	if (!pvt->pci_sad0 || !pvt->pci_ha0 || !pvt->pci_br0 ||
+-	    !pvt->pci_br1 || !pvt->pci_tad || !pvt->pci_ras  ||
+-	    !pvt->pci_ta)
++	    !pvt->pci_br1 || !pvt->pci_ras || !pvt->pci_ta)
+ 		goto enodev;
+ 
+ 	if (saw_chan_mask != 0x0f && /* -EN */
+

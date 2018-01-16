@@ -1,0 +1,249 @@
+From: James Smart <jsmart2021@gmail.com>
+Date: Fri, 3 Nov 2017 08:13:17 -0700
+Subject: [PATCH] nvme-fc: decouple ns references from lldd references
+References: bsc#1067734
+Git-commit: 158bfb8888c3f2beab747ab4f7a8197639f03e54
+Patch-Mainline: v4.15-rc1
+
+In the lldd api, a lldd may unregister a remoteport (loss of connectivity
+or driver unload) or localport (driver unload). The lldd must wait for the
+remoteport_delete or localport_delete before completing its actions post
+the unregister.  The xxx_deletes currently occur only when the xxxport
+structure is fully freed after all references are removed. Thus the lldd
+may be held hostage until an app or in-kernel entity that has a namespace
+open finally closes so the namespace can be removed, the controller
+removed, thus the transport objects, thus the lldd.
+
+This patch decouples the transport and os-facing objects from the lldd
+and the remoteport and localport. There is a point in all deletions
+where the transport will no longer interact with the lldd on behalf of
+a controller. That point centers around the association established
+with the target/subsystem. It will access the lldd whenever it attempts
+to create an association and while the association is active. New
+associations may only be created if the remoteport is live (thus the
+localport is live). It will not access the lldd after deleting the
+association.
+
+Therefore, the patch tracks the count of active controllers - those with
+associations being created or that are active - on a remoteport. It also
+tracks the number of remoteports that have active controllers, on a
+a localport. When a remoteport is unregistered, as soon as there are no
+active controllers, the lldd's remoteport_delete may be called and the
+lldd may continue. Similarly, when a localport is unregistered, as soon
+as there are no remoteports with active controllers, the localport_delete
+callback may be made. This significantly speeds up unregistration with
+the lldd.
+
+The transport objects continue in suspended status with reconnect timers
+running, and upon expiration, normal ref-counting will occur and the
+objects will be freed. The transport object may still be held hostage
+by the application/kernel module, but that is acceptable.
+
+With this change, the lldd may be fully unloaded and reloaded, and
+if registrations occur prior to the timeouts, the nvme controller and
+namespaces will resume normally as if a link bounce.
+
+Signed-off-by: James Smart <james.smart@broadcom.com>
+Signed-off-by: Christoph Hellwig <hch@lst.de>
+Signed-off-by: Jens Axboe <axboe@kernel.dk>
+Signed-off-by: Hannes Reinecke <hare@suse.de>
+---
+ drivers/nvme/host/fc.c | 84 ++++++++++++++++++++++++++++++++++++++++++++++----
+ 1 file changed, 78 insertions(+), 6 deletions(-)
+
+diff --git a/drivers/nvme/host/fc.c b/drivers/nvme/host/fc.c
+index 3b99a4db..18e3954 100644
+--- a/drivers/nvme/host/fc.c
++++ b/drivers/nvme/host/fc.c
+@@ -125,6 +125,7 @@ struct nvme_fc_lport {
+ 	struct device			*dev;	/* physical device for dma */
+ 	struct nvme_fc_port_template	*ops;
+ 	struct kref			ref;
++	atomic_t                        act_rport_cnt;
+ } __aligned(sizeof(u64));	/* alignment for other things alloc'd with */
+ 
+ struct nvme_fc_rport {
+@@ -137,6 +138,7 @@ struct nvme_fc_rport {
+ 	struct nvme_fc_lport		*lport;
+ 	spinlock_t			lock;
+ 	struct kref			ref;
++	atomic_t                        act_ctrl_cnt;
+ 	unsigned long			dev_loss_end;
+ } __aligned(sizeof(u64));	/* alignment for other things alloc'd with */
+ 
+@@ -153,6 +155,7 @@ struct nvme_fc_ctrl {
+ 	u32			queue_count;
+ 	u32			cnum;
+ 
++	bool			assoc_active;
+ 	u64			association_id;
+ 
+ 	u64			cap;
+@@ -249,9 +252,6 @@ static void __nvme_fc_delete_hw_queue(struct nvme_fc_ctrl *,
+ 	list_del(&lport->port_list);
+ 	spin_unlock_irqrestore(&nvme_fc_lock, flags);
+ 
+-	/* let the LLDD know we've finished tearing it down */
+-	lport->ops->localport_delete(&lport->localport);
+-
+ 	ida_simple_remove(&nvme_fc_local_port_cnt, lport->localport.port_num);
+ 	ida_destroy(&lport->endp_cnt);
+ 
+@@ -406,6 +406,7 @@ static void __nvme_fc_delete_hw_queue(struct nvme_fc_ctrl *,
+ 	INIT_LIST_HEAD(&newrec->port_list);
+ 	INIT_LIST_HEAD(&newrec->endp_list);
+ 	kref_init(&newrec->ref);
++	atomic_set(&newrec->act_rport_cnt, 0);
+ 	newrec->ops = template;
+ 	newrec->dev = dev;
+ 	ida_init(&newrec->endp_cnt);
+@@ -468,6 +469,9 @@ static void __nvme_fc_delete_hw_queue(struct nvme_fc_ctrl *,
+ 
+ 	spin_unlock_irqrestore(&nvme_fc_lock, flags);
+ 
++	if (atomic_read(&lport->act_rport_cnt) == 0)
++		lport->ops->localport_delete(&lport->localport);
++
+ 	nvme_fc_lport_put(lport);
+ 
+ 	return 0;
+@@ -521,9 +525,6 @@ static void __nvme_fc_delete_hw_queue(struct nvme_fc_ctrl *,
+ 	list_del(&rport->endp_list);
+ 	spin_unlock_irqrestore(&nvme_fc_lock, flags);
+ 
+-	/* let the LLDD know we've finished tearing it down */
+-	lport->ops->remoteport_delete(&rport->remoteport);
+-
+ 	ida_simple_remove(&lport->endp_cnt, rport->remoteport.port_num);
+ 
+ 	kfree(rport);
+@@ -710,6 +711,7 @@ static void __nvme_fc_delete_hw_queue(struct nvme_fc_ctrl *,
+ 	INIT_LIST_HEAD(&newrec->ctrl_list);
+ 	INIT_LIST_HEAD(&newrec->ls_req_list);
+ 	kref_init(&newrec->ref);
++	atomic_set(&newrec->act_ctrl_cnt, 0);
+ 	spin_lock_init(&newrec->lock);
+ 	newrec->remoteport.localport = &lport->localport;
+ 	newrec->dev = lport->dev;
+@@ -866,6 +868,9 @@ static void __nvme_fc_delete_hw_queue(struct nvme_fc_ctrl *,
+ 
+ 	nvme_fc_abort_lsops(rport);
+ 
++	if (atomic_read(&rport->act_ctrl_cnt) == 0)
++		rport->lport->ops->remoteport_delete(portptr);
++
+ 	/*
+ 	 * release the reference, which will allow, if all controllers
+ 	 * go away, which should only occur after dev_loss_tmo occurs,
+@@ -2660,6 +2665,61 @@ enum {
+ 	return ret;
+ }
+ 
++static void
++nvme_fc_rport_active_on_lport(struct nvme_fc_rport *rport)
++{
++	struct nvme_fc_lport *lport = rport->lport;
++
++	atomic_inc(&lport->act_rport_cnt);
++}
++
++static void
++nvme_fc_rport_inactive_on_lport(struct nvme_fc_rport *rport)
++{
++	struct nvme_fc_lport *lport = rport->lport;
++	u32 cnt;
++
++	cnt = atomic_dec_return(&lport->act_rport_cnt);
++	if (cnt == 0 && lport->localport.port_state == FC_OBJSTATE_DELETED)
++		lport->ops->localport_delete(&lport->localport);
++}
++
++static int
++nvme_fc_ctlr_active_on_rport(struct nvme_fc_ctrl *ctrl)
++{
++	struct nvme_fc_rport *rport = ctrl->rport;
++	u32 cnt;
++
++	if (ctrl->assoc_active)
++		return 1;
++
++	ctrl->assoc_active = true;
++	cnt = atomic_inc_return(&rport->act_ctrl_cnt);
++	if (cnt == 1)
++		nvme_fc_rport_active_on_lport(rport);
++
++	return 0;
++}
++
++static int
++nvme_fc_ctlr_inactive_on_rport(struct nvme_fc_ctrl *ctrl)
++{
++	struct nvme_fc_rport *rport = ctrl->rport;
++	struct nvme_fc_lport *lport = rport->lport;
++	u32 cnt;
++
++	/* ctrl->assoc_active=false will be set independently */
++
++	cnt = atomic_dec_return(&rport->act_ctrl_cnt);
++	if (cnt == 0) {
++		if (rport->remoteport.port_state == FC_OBJSTATE_DELETED)
++			lport->ops->remoteport_delete(&rport->remoteport);
++		nvme_fc_rport_inactive_on_lport(rport);
++	}
++
++	return 0;
++}
++
+ /*
+  * This routine restarts the controller on the host side, and
+  * on the link side, recreates the controller association.
+@@ -2677,6 +2737,9 @@ enum {
+ 	if (ctrl->rport->remoteport.port_state != FC_OBJSTATE_ONLINE)
+ 		return -ENODEV;
+ 
++	if (nvme_fc_ctlr_active_on_rport(ctrl))
++		return -ENOTUNIQ;
++
+ 	/*
+ 	 * Create the admin queue
+ 	 */
+@@ -2791,6 +2854,8 @@ enum {
+ 	__nvme_fc_delete_hw_queue(ctrl, &ctrl->queues[0], 0);
+ out_free_queue:
+ 	nvme_fc_free_queue(&ctrl->queues[0]);
++	ctrl->assoc_active = false;
++	nvme_fc_ctlr_inactive_on_rport(ctrl);
+ 
+ 	return ret;
+ }
+@@ -2808,6 +2873,10 @@ enum {
+ 
+ 	nvme_stop_keep_alive(&ctrl->ctrl);
+ 
++	if (!ctrl->assoc_active)
++		return;
++	ctrl->assoc_active = false;
++
+ 	spin_lock_irqsave(&ctrl->lock, flags);
+ 	ctrl->flags |= FCCTRL_TERMIO;
+ 	ctrl->iocnt = 0;
+@@ -2880,6 +2949,8 @@ enum {
+ 
+ 	__nvme_fc_delete_hw_queue(ctrl, &ctrl->queues[0], 0);
+ 	nvme_fc_free_queue(&ctrl->queues[0]);
++
++	nvme_fc_ctlr_inactive_on_rport(ctrl);
+ }
+ 
+ static void
+@@ -3124,6 +3195,7 @@ enum {
+ 	ctrl->dev = lport->dev;
+ 	ctrl->cnum = idx;
+ 	init_waitqueue_head(&ctrl->ioabort_wait);
++	ctrl->assoc_active = false;
+ 
+ 	get_device(ctrl->dev);
+ 	kref_init(&ctrl->ref);
+-- 
+1.8.5.6
+

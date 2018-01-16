@@ -1,0 +1,73 @@
+From: Keith Busch <keith.busch@intel.com>
+Date: Tue, 7 Nov 2017 15:13:11 -0700
+Subject: nvme-fc: remove unused "queue_size" field
+Git-commit: 08e1507544839b98fc3732aea935e70ed9c209ec
+References: bsc#1042268
+Patch-Mainline: v4.15-rc1
+
+This was being saved in a structure, but never used anywhere. The queue
+size is obtained through other means, so there's no reason to duplicate
+this without a user for it.
+
+Reviewed-by: Sagi Grimberg <sagi@grimberg.me>
+Signed-off-by: Keith Busch <keith.busch@intel.com>
+Reviewed-by: Guan Junxiong <guanjunxiong@huawei.com>
+Reviewed-by: James Smart <james.smart@broadcom.com>
+Signed-off-by: Christoph Hellwig <hch@lst.de>
+Signed-off-by: Jens Axboe <axboe@kernel.dk>
+Acked-by: Hannes Reinecke <hare@suse.com>
+---
+ drivers/nvme/host/fc.c | 9 +++------
+ 1 file changed, 3 insertions(+), 6 deletions(-)
+
+diff --git a/drivers/nvme/host/fc.c b/drivers/nvme/host/fc.c
+index ab40ec4..d1f4ba8 100644
+--- a/drivers/nvme/host/fc.c
++++ b/drivers/nvme/host/fc.c
+@@ -52,7 +52,6 @@ struct nvme_fc_queue {
+ 	struct device		*dev;
+ 	struct blk_mq_hw_ctx	*hctx;
+ 	void			*lldd_handle;
+-	int			queue_size;
+ 	size_t			cmnd_capsule_len;
+ 	u32			qnum;
+ 	u32			rqcnt;
+@@ -1898,7 +1897,7 @@ enum {
+ }
+ 
+ static void
+-nvme_fc_init_queue(struct nvme_fc_ctrl *ctrl, int idx, size_t queue_size)
++nvme_fc_init_queue(struct nvme_fc_ctrl *ctrl, int idx)
+ {
+ 	struct nvme_fc_queue *queue;
+ 
+@@ -1914,8 +1913,6 @@ enum {
+ 	else
+ 		queue->cmnd_capsule_len = sizeof(struct nvme_command);
+ 
+-	queue->queue_size = queue_size;
+-
+ 	/*
+ 	 * Considered whether we should allocate buffers for all SQEs
+ 	 * and CQEs and dma map them - mapping their respective entries
+@@ -2039,7 +2036,7 @@ enum {
+ 	int i;
+ 
+ 	for (i = 1; i < ctrl->queue_count; i++)
+-		nvme_fc_init_queue(ctrl, i, ctrl->ctrl.sqsize);
++		nvme_fc_init_queue(ctrl, i);
+ }
+ 
+ static void
+@@ -2665,7 +2662,7 @@ enum {
+ 	 * Create the admin queue
+ 	 */
+ 
+-	nvme_fc_init_queue(ctrl, 0, NVME_FC_AQ_BLKMQ_DEPTH);
++	nvme_fc_init_queue(ctrl, 0);
+ 
+ 	ret = __nvme_fc_create_hw_queue(ctrl, &ctrl->queues[0], 0,
+ 				NVME_FC_AQ_BLKMQ_DEPTH);
+-- 
+1.8.5.6
+

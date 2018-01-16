@@ -1,0 +1,35 @@
+From: Jiri Slaby <jslaby@suse.cz>
+Subject: kABI: protect struct iscsi_tpg_attrib
+Patch-mainline: never, kabi
+References: kabi
+
+In 4.4.79, commit c50e87ecca55b1a7199deb23cf46703f40227de3
+(iscsi-target: Add login_keys_workaround attribute for non RFC
+initiators), upstream commit 138d351eefb727ab9e41a3dc5f112ceb4f6e59f2
+added one member to struct iscsi_tpg_attrib. This indeed changed the
+layout of the structure and the kABI checker now complains.
+
+Given this is only used as a boolean, let's type this to u8 and make use
+of a hole in the structure. Then, we make the changes invisible to the
+kABI checker by the usual #ifndef.
+
+Signed-off-by: Jiri Slaby <jslaby@suse.cz>
+---
+ include/target/iscsi/iscsi_target_core.h |    4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+--- a/include/target/iscsi/iscsi_target_core.h
++++ b/include/target/iscsi/iscsi_target_core.h
+@@ -772,9 +772,11 @@ struct iscsi_tpg_attrib {
+ 	u32			demo_mode_discovery;
+ 	u32			default_erl;
+ 	u8			t10_pi;
++#ifndef __GENKSYMS__
++	u8			login_keys_workaround;
++#endif
+ 	u32			fabric_prot_type;
+ 	u32			tpg_enabled_sendtargets;
+-	u32			login_keys_workaround;
+ 	struct iscsi_portal_group *tpg;
+ };
+ 

@@ -1,0 +1,41 @@
+From a93a99838248bdab49db2eaac00236847670bc7f Mon Sep 17 00:00:00 2001
+From: Junxiao Bi <junxiao.bi@oracle.com>
+Date: Tue, 22 Dec 2015 08:06:08 -0600
+Subject: [PATCH] gfs2: fix flock panic issue
+Git-commit: a93a99838248bdab49db2eaac00236847670bc7f
+Patch-mainline: v4.5-rc1
+References: bsc#1012829
+
+Commit 4f6563677ae8 ("Move locks API users to locks_lock_inode_wait()")
+moved flock/posix lock identify code to locks_lock_inode_wait(), but
+missed to set fl_flags to FL_FLOCK which will cause kernel panic in
+locks_lock_inode_wait().
+
+Fixes: 4f6563677ae8 ("Move locks API users to locks_lock_inode_wait()")
+Signed-off-by: Junxiao Bi <junxiao.bi@oracle.com>
+Signed-off-by: Bob Peterson <rpeterso@redhat.com>
+Acked-by: Jan Kara <jack@suse.cz>
+
+---
+ fs/gfs2/file.c | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/fs/gfs2/file.c b/fs/gfs2/file.c
+index 860408053c95..7412863cda1e 100644
+--- a/fs/gfs2/file.c
++++ b/fs/gfs2/file.c
+@@ -1027,7 +1027,10 @@ static int do_flock(struct file *file, int cmd, struct file_lock *fl)
+ 		if (fl_gh->gh_state == state)
+ 			goto out;
+ 		locks_lock_file_wait(file,
+-				     &(struct file_lock){.fl_type = F_UNLCK});
++				     &(struct file_lock) {
++					     .fl_type = F_UNLCK,
++					     .fl_flags = FL_FLOCK
++				     });
+ 		gfs2_glock_dq(fl_gh);
+ 		gfs2_holder_reinit(state, flags, fl_gh);
+ 	} else {
+-- 
+2.12.3
+

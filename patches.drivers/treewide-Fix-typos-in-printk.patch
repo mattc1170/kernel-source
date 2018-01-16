@@ -60,8 +60,8 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  		goto fail;
  	}
  
-@@ -443,7 +443,7 @@ static int is_gpt_valid(struct parsed_pa
- 			le32_to_cpu((*gpt)->sizeof_partition_entry));
+@@ -450,7 +450,7 @@ static int is_gpt_valid(struct parsed_pa
+ 	crc = efi_crc32((const unsigned char *) (*ptes), pt_size);
  
  	if (crc != le32_to_cpu((*gpt)->partition_entry_array_crc32)) {
 -		pr_debug("GUID Partitition Entry Array CRC check failed.\n");

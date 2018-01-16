@@ -11,7 +11,7 @@ Signed-off-by: K. Y. Srinivasan <kys@microsoft.com>
 Signed-off-by: Bjorn Helgaas <bhelgaas@google.com>
 Reviewed-by: Long Li <longli@microsoft.com>
 Cc: <stable@vger.kernel.org>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  drivers/pci/host/pci-hyperv.c | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)

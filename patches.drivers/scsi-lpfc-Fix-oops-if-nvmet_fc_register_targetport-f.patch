@@ -1,0 +1,63 @@
+From: Dick Kennedy <dick.kennedy@broadcom.com>
+Date: Fri, 29 Sep 2017 17:34:39 -0700
+Subject: [PATCH] scsi: lpfc: Fix oops if nvmet_fc_register_targetport fails
+References: bsc#1067735
+Git-commit: e7981a2c725f8e237f749fa1358997707d57e32c
+Patch-Mainline: v4.15
+
+if nvmet targetport registration fails, the driver encounters a NULL
+pointer oops in lpfc_hb_timeout_handler.
+
+To fix: if registration fails, ensure nvmet_support is cleared on the
+port structure.
+
+Also enhanced the log message on failure.
+
+Cc: <stable@vger.kernel.org> # 4.12+
+Signed-off-by: Dick Kennedy <dick.kennedy@broadcom.com>
+Signed-off-by: James Smart <james.smart@broadcom.com>
+Reviewed-by: Johannes Thumshirn <jthumshirn@suse.de>
+Signed-off-by: Martin K. Petersen <martin.petersen@oracle.com>
+Signed-off-by: Hannes Reinecke <hare@suse.de>
+---
+ drivers/scsi/lpfc/lpfc_nvmet.c | 15 +++++++++++----
+ 1 file changed, 11 insertions(+), 4 deletions(-)
+
+diff --git a/drivers/scsi/lpfc/lpfc_nvmet.c b/drivers/scsi/lpfc/lpfc_nvmet.c
+index 2650954..01c7892 100644
+--- a/drivers/scsi/lpfc/lpfc_nvmet.c
++++ b/drivers/scsi/lpfc/lpfc_nvmet.c
+@@ -1164,9 +1164,14 @@ static int lpfc_nvmet_unsol_ls_issue_abort(struct lpfc_hba *,
+ #endif
+ 	if (error) {
+ 		lpfc_printf_log(phba, KERN_ERR, LOG_NVME_DISC,
+-				"6025 Cannot register NVME targetport "
+-				"x%x\n", error);
++				"6025 Cannot register NVME targetport x%x: "
++				"portnm %llx nodenm %llx segs %d qs %d\n",
++				error,
++				pinfo.port_name, pinfo.node_name,
++				lpfc_tgttemplate.max_sgl_segments,
++				lpfc_tgttemplate.max_hw_queues);
+ 		phba->targetport = NULL;
++		phba->nvmet_support = 0;
+ 
+ 		lpfc_nvmet_cleanup_io_context(phba);
+ 
+@@ -1178,9 +1183,11 @@ static int lpfc_nvmet_unsol_ls_issue_abort(struct lpfc_hba *,
+ 		lpfc_printf_log(phba, KERN_INFO, LOG_NVME_DISC,
+ 				"6026 Registered NVME "
+ 				"targetport: %p, private %p "
+-				"portnm %llx nodenm %llx\n",
++				"portnm %llx nodenm %llx segs %d qs %d\n",
+ 				phba->targetport, tgtp,
+-				pinfo.port_name, pinfo.node_name);
++				pinfo.port_name, pinfo.node_name,
++				lpfc_tgttemplate.max_sgl_segments,
++				lpfc_tgttemplate.max_hw_queues);
+ 
+ 		atomic_set(&tgtp->rcv_ls_req_in, 0);
+ 		atomic_set(&tgtp->rcv_ls_req_out, 0);
+-- 
+1.8.5.6
+

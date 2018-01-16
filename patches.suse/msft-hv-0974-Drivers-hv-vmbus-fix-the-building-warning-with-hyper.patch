@@ -22,7 +22,7 @@ The patch fixes the warning.
 Signed-off-by: Dexuan Cui <decui@microsoft.com>
 Signed-off-by: K. Y. Srinivasan <kys@microsoft.com>
 Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  drivers/input/serio/hyperv-keyboard.c | 10 ----------
  include/linux/hyperv.h                |  8 ++++++++

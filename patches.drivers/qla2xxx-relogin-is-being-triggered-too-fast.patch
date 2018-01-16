@@ -1,0 +1,120 @@
+From: Quinn Tran <quinn.tran@cavium.com>
+Date: Fri, 3 Nov 2017 19:56:35 +0530
+Subject: [PATCH] qla2xxx: relogin is being triggered too fast
+References: bsc#1043017
+Patch-Mainline: no, SLE12-SP3 specific backport
+
+The relogin process suppose to be spaced apart by 1 seconds.
+The relogin process is being driven by on the DPC thread.The
+DPC thread is overloaded with many jobs.Because of the
+multiple jobs, the relogin is triggered to relogin too fast.
+
+Signed-off-by: Quinn Tran <quinn.tran@cavium.com>
+Signed-off-by: Sawan Chandak <sawan.chandak@cavium.com>
+Signed-off-by: Hannes Reinecke <hare@suse.de>
+---
+ drivers/scsi/qla2xxx/qla_def.h |  1 +
+ drivers/scsi/qla2xxx/qla_mid.c | 24 +++++++++++++++---------
+ drivers/scsi/qla2xxx/qla_os.c  | 22 ++++++++++++++--------
+ 3 files changed, 30 insertions(+), 17 deletions(-)
+
+diff --git a/drivers/scsi/qla2xxx/qla_def.h b/drivers/scsi/qla2xxx/qla_def.h
+index caa81fd..4e02383 100644
+--- a/drivers/scsi/qla2xxx/qla_def.h
++++ b/drivers/scsi/qla2xxx/qla_def.h
+@@ -4019,6 +4019,7 @@ struct qla_tgt_counters {
+ #define LOOP_READY	5
+ #define LOOP_DEAD	6
+ 
++	unsigned long   relogin_jif;
+ 	unsigned long   dpc_flags;
+ #define RESET_MARKER_NEEDED	0	/* Send marker to ISP. */
+ #define RESET_ACTIVE		1
+diff --git a/drivers/scsi/qla2xxx/qla_mid.c b/drivers/scsi/qla2xxx/qla_mid.c
+index 7baa7fd..4e477dd 100644
+--- a/drivers/scsi/qla2xxx/qla_mid.c
++++ b/drivers/scsi/qla2xxx/qla_mid.c
+@@ -338,15 +338,21 @@
+ 		    "FCPort update end.\n");
+ 	}
+ 
+-	if ((test_and_clear_bit(RELOGIN_NEEDED, &vha->dpc_flags)) &&
+-		!test_bit(LOOP_RESYNC_NEEDED, &vha->dpc_flags) &&
+-		atomic_read(&vha->loop_state) != LOOP_DOWN) {
+-
+-		ql_dbg(ql_dbg_dpc, vha, 0x4018,
+-		    "Relogin needed scheduled.\n");
+-		qla2x00_relogin(vha);
+-		ql_dbg(ql_dbg_dpc, vha, 0x4019,
+-		    "Relogin needed end.\n");
++	if (test_bit(RELOGIN_NEEDED, &vha->dpc_flags) &&
++	    !test_bit(LOOP_RESYNC_NEEDED, &vha->dpc_flags) &&
++	    atomic_read(&vha->loop_state) != LOOP_DOWN) {
++
++		if (!vha->relogin_jif ||
++		    time_after_eq(jiffies, vha->relogin_jif)) {
++			vha->relogin_jif = jiffies + HZ;
++			clear_bit(RELOGIN_NEEDED, &vha->dpc_flags);
++
++			ql_dbg(ql_dbg_dpc, vha, 0x4018,
++			    "Relogin needed scheduled.\n");
++			qla2x00_relogin(vha);
++			ql_dbg(ql_dbg_dpc, vha, 0x4019,
++			    "Relogin needed end.\n");
++		}
+ 	}
+ 
+ 	if (test_and_clear_bit(RESET_MARKER_NEEDED, &vha->dpc_flags) &&
+diff --git a/drivers/scsi/qla2xxx/qla_os.c b/drivers/scsi/qla2xxx/qla_os.c
+index 6cc5d56..e01fbc5 100644
+--- a/drivers/scsi/qla2xxx/qla_os.c
++++ b/drivers/scsi/qla2xxx/qla_os.c
+@@ -4655,7 +4655,7 @@ void qla2x00_relogin(struct scsi_qla_host *vha)
+ 	 */
+ 		if (atomic_read(&fcport->state) != FCS_ONLINE &&
+ 		    fcport->login_retry && !(fcport->flags & FCF_ASYNC_SENT)) {
+-			fcport->login_retry--;
++
+ 			if (fcport->flags & FCF_FABRIC_DEVICE) {
+ 				ql_dbg(ql_dbg_disc, fcport->vha, 0x2108,
+ 				    "%s %8phC DS %d LS %d\n", __func__,
+@@ -4666,6 +4666,7 @@ void qla2x00_relogin(struct scsi_qla_host *vha)
+ 				ea.fcport = fcport;
+ 				qla2x00_fcport_event_handler(vha, &ea);
+ 			} else {
++				fcport->login_retry--;
+ 				status = qla2x00_local_device_login(vha,
+ 								fcport);
+ 				if (status == QLA_SUCCESS) {
+@@ -5632,16 +5633,21 @@ void qla2x00_relogin(struct scsi_qla_host *vha)
+ 		}
+ 
+ 		/* Retry each device up to login retry count */
+-		if ((test_and_clear_bit(RELOGIN_NEEDED,
+-						&base_vha->dpc_flags)) &&
++		if (test_bit(RELOGIN_NEEDED, &base_vha->dpc_flags) &&
+ 		    !test_bit(LOOP_RESYNC_NEEDED, &base_vha->dpc_flags) &&
+ 		    atomic_read(&base_vha->loop_state) != LOOP_DOWN) {
+ 
+-			ql_dbg(ql_dbg_dpc, base_vha, 0x400d,
+-			    "Relogin scheduled.\n");
+-			qla2x00_relogin(base_vha);
+-			ql_dbg(ql_dbg_dpc, base_vha, 0x400e,
+-			    "Relogin end.\n");
++			if (!base_vha->relogin_jif ||
++			    time_after_eq(jiffies, base_vha->relogin_jif)) {
++				base_vha->relogin_jif = jiffies + HZ;
++				clear_bit(RELOGIN_NEEDED, &base_vha->dpc_flags);
++
++				ql_dbg(ql_dbg_dpc, base_vha, 0x400d,
++				    "Relogin scheduled.\n");
++				qla2x00_relogin(base_vha);
++				ql_dbg(ql_dbg_dpc, base_vha, 0x400e,
++				    "Relogin end.\n");
++			}
+ 		}
+ loop_resync_check:
+ 		if (test_and_clear_bit(LOOP_RESYNC_NEEDED,
+-- 
+1.8.5.6
+

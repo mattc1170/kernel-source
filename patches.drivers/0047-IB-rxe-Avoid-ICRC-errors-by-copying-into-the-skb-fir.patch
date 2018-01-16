@@ -1,0 +1,66 @@
+From be370e67480f8e214e8bd3a826136a45349dfd84 Mon Sep 17 00:00:00 2001
+From: Andrew Boyer <andrew.boyer@dell.com>
+Date: Mon, 28 Aug 2017 16:11:58 -0400
+Subject: IB/rxe: Avoid ICRC errors by copying into the skb first
+References: bsc#1049361
+Git-commit: 13eb1e21d6198c9068eab7e7cb68c6d5c6834d1b
+Patch-mainline: v4.14-rc1
+
+The current process is to first calculate the CRC and then copy the client
+data into the packet. This leaves a window in which the packet contents and
+CRC can get out of sync, if the client changes the data after the CRC is
+calculated but before the data is copied.
+
+By copying the data into the packet and then calculating the CRC directly
+from the packet contents we eliminate the window.
+
+This can be seen with qperf's ud_bi_bw test. This seems like very
+strange/reckless client behavior, but whether the client has mangled its
+data or not RXE should be able to transfer it reliably.
+
+Fixes: 8700e3e7c485 ("Soft RoCE driver")
+Signed-off-by: Andrew Boyer <andrew.boyer@dell.com>
+Signed-off-by: Doug Ledford <dledford@redhat.com>
+Signed-off-by: Johannes Thumshirn <jthumshirn@suse.de>
+
+---
+ drivers/infiniband/sw/rxe/rxe_mr.c | 12 ++++++------
+ 1 file changed, 6 insertions(+), 6 deletions(-)
+
+diff --git a/drivers/infiniband/sw/rxe/rxe_mr.c b/drivers/infiniband/sw/rxe/rxe_mr.c
+index 97b3b399e211..56b8466cc808 100644
+--- a/drivers/infiniband/sw/rxe/rxe_mr.c
++++ b/drivers/infiniband/sw/rxe/rxe_mr.c
+@@ -369,11 +369,11 @@ int rxe_mem_copy(struct rxe_mem *mem, u64 iova, void *addr, int length,
+ 		dest = (dir == to_mem_obj) ?
+ 			((void *)(uintptr_t)iova) : addr;
+ 
++		memcpy(dest, src, length);
++
+ 		if (crcp)
+ 			*crcp = rxe_crc32(to_rdev(mem->pd->ibpd.device),
+-					*crcp, src, length);
+-
+-		memcpy(dest, src, length);
++					*crcp, dest, length);
+ 
+ 		return 0;
+ 	}
+@@ -403,11 +403,11 @@ int rxe_mem_copy(struct rxe_mem *mem, u64 iova, void *addr, int length,
+ 		if (bytes > length)
+ 			bytes = length;
+ 
++		memcpy(dest, src, bytes);
++
+ 		if (crcp)
+ 			crc = rxe_crc32(to_rdev(mem->pd->ibpd.device),
+-					crc, src, bytes);
+-
+-		memcpy(dest, src, bytes);
++					crc, dest, bytes);
+ 
+ 		length	-= bytes;
+ 		addr	+= bytes;
+-- 
+2.12.3
+

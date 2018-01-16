@@ -1,0 +1,136 @@
+From e13934bdf45935f51243515c275629922dc43839 Mon Sep 17 00:00:00 2001
+From: Linus Walleij <linus.walleij@linaro.org>
+Date: Fri, 27 Jan 2017 15:04:54 +0100
+Subject: [PATCH] mmc: core/mmci: restore pre/post_req behaviour
+Git-commit: e13934bdf45935f51243515c275629922dc43839
+Patch-mainline: 4.11-rc1
+References: bsc#1031717
+
+commit 64b12a68a9f74bb32d8efd7af1ad8a2ba02fc884
+"mmc: core: fix prepared requests while doing bkops"
+is fixing a bug in the wrong way. A bug in the MMCI
+device driver is fixed by amending the MMC core.
+
+Thinking about it: what the pre- and post-callbacks
+are doing is to essentially map and unmap SG lists
+for DMA transfers. Why would we not be able to do that
+just because a BKOPS command is sent inbetween?
+Having to unprepare/prepare the next asynchronous
+request for DMA seems wrong.
+
+Looking the backtrace in that commit we can see what
+the real problem actually is:
+
+mmci_data_irq() is calling mmci_dma_unmap() twice
+which is goung to call arm_dma_unmap_sg() twice
+and v7_dma_inv_range() twice for the same sglist
+and that will crash.
+
+This happens because a request is prepared, then
+a BKOPS is sent. The IRQ completing the BKOPS command
+goes through mmci_data_irq() and thinks that a DMA
+operation has just been completed because
+dma_inprogress() reports true. It then proceeds to
+unmap the sglist.
+
+But that was wrong! dma_inprogress() should NOT be
+true because no DMA was actually in progress! We had
+just prepared the sglist, and the DMA channel
+dma_current has been configured, but NOT started!
+
+Because of this, the sglist is already unmapped when
+we get our actual data completion IRQ, and we are
+unmapping the sglist once more, and we get this crash.
+
+Therefore, we need to revert this solution pushing
+the problem to the core and causing problems, and
+instead augment the implementation such that
+dma_inprogress() only reports true if some DMA has
+actually been started.
+
+After this we can keep the request prepared during the
+BKOPS and we need not unprepare/reprepare it.
+
+Fixes: 64b12a68a9f7 ("mmc: core: fix prepared requests while doing bkops")
+Cc: Srinivas Kandagatla <srinivas.kandagatla@linaro.org>
+Signed-off-by: Linus Walleij <linus.walleij@linaro.org>
+Tested-by: Srinivas Kandagatla <srinivas.kandagatla@linaro.org>
+Signed-off-by: Ulf Hansson <ulf.hansson@linaro.org>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/mmc/core/core.c |    9 ---------
+ drivers/mmc/host/mmci.c |    7 ++++++-
+ drivers/mmc/host/mmci.h |    3 ++-
+ 3 files changed, 8 insertions(+), 11 deletions(-)
+
+--- a/drivers/mmc/core/core.c
++++ b/drivers/mmc/core/core.c
+@@ -604,16 +604,7 @@ struct mmc_async_req *mmc_start_req(stru
+ 		    ((mmc_resp_type(host->areq->mrq->cmd) == MMC_RSP_R1) ||
+ 		     (mmc_resp_type(host->areq->mrq->cmd) == MMC_RSP_R1B)) &&
+ 		    (host->areq->mrq->cmd->resp[0] & R1_EXCEPTION_EVENT)) {
+-
+-			/* Cancel the prepared request */
+-			if (areq)
+-				mmc_post_req(host, areq->mrq, -EINVAL);
+-
+ 			mmc_start_bkops(host->card, true);
+-
+-			/* prepare the request again */
+-			if (areq)
+-				mmc_pre_req(host, areq->mrq, !host->areq);
+ 		}
+ 	}
+ 
+--- a/drivers/mmc/host/mmci.c
++++ b/drivers/mmc/host/mmci.c
+@@ -500,6 +500,7 @@ static void mmci_dma_data_error(struct m
+ {
+ 	dev_err(mmc_dev(host->mmc), "error during DMA transfer!\n");
+ 	dmaengine_terminate_all(host->dma_current);
++	host->dma_in_progress = false;
+ 	host->dma_current = NULL;
+ 	host->dma_desc_current = NULL;
+ 	host->data->host_cookie = 0;
+@@ -558,6 +559,7 @@ static void mmci_dma_finalize(struct mmc
+ 		mmci_dma_release(host);
+ 	}
+ 
++	host->dma_in_progress = false;
+ 	host->dma_current = NULL;
+ 	host->dma_desc_current = NULL;
+ }
+@@ -658,6 +660,7 @@ static int mmci_dma_start_data(struct mm
+ 	dev_vdbg(mmc_dev(host->mmc),
+ 		 "Submit MMCI DMA job, sglen %d blksz %04x blks %04x flags %08x\n",
+ 		 data->sg_len, data->blksz, data->blocks, data->flags);
++	host->dma_in_progress = true;
+ 	dmaengine_submit(host->dma_desc_current);
+ 	dma_async_issue_pending(host->dma_current);
+ 
+@@ -734,8 +737,10 @@ static void mmci_post_request(struct mmc
+ 		if (host->dma_desc_current == next->dma_desc)
+ 			host->dma_desc_current = NULL;
+ 
+-		if (host->dma_current == next->dma_chan)
++		if (host->dma_current == next->dma_chan) {
++			host->dma_in_progress = false;
+ 			host->dma_current = NULL;
++		}
+ 
+ 		next->dma_desc = NULL;
+ 		next->dma_chan = NULL;
+--- a/drivers/mmc/host/mmci.h
++++ b/drivers/mmc/host/mmci.h
+@@ -238,8 +238,9 @@ struct mmci_host {
+ 	struct dma_chan		*dma_tx_channel;
+ 	struct dma_async_tx_descriptor	*dma_desc_current;
+ 	struct mmci_host_next	next_data;
++	bool			dma_in_progress;
+ 
+-#define dma_inprogress(host)	((host)->dma_current)
++#define dma_inprogress(host)	((host)->dma_in_progress)
+ #else
+ #define dma_inprogress(host)	(0)
+ #endif

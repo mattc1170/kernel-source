@@ -54,9 +54,9 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  	struct net_device *dev = netdev_notifier_info_to_dev(ptr);
 +	struct netdev_notifier_changeupper_info *info;
  	struct inet6_dev *idev = __in6_dev_get(dev);
+ 	struct net *net = dev_net(dev);
  	int run_pending = 0;
- 	int err;
-@@ -3296,6 +3297,15 @@ static int addrconf_notify(struct notifi
+@@ -3303,6 +3304,15 @@ static int addrconf_notify(struct notifi
  	case NETDEV_POST_TYPE_CHANGE:
  		addrconf_type_change(dev, event);
  		break;

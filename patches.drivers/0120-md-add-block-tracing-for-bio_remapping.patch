@@ -23,14 +23,12 @@ Signed-off-by: NeilBrown <neilb@suse.com>
 Signed-off-by: Shaohua Li <shli@fb.com>
 Signed-off-by: Hannes Reinecke <hare@suse.de>
 ---
- drivers/md/linear.c | 18 ++++++++++++------
- drivers/md/raid0.c  | 13 ++++++++++---
- drivers/md/raid1.c  | 26 ++++++++++++++++++++++++--
- drivers/md/raid10.c | 31 +++++++++++++++++++++++++++++--
+ drivers/md/linear.c |   18 ++++++++++++------
+ drivers/md/raid0.c  |   13 ++++++++++---
+ drivers/md/raid1.c  |   26 ++++++++++++++++++++++++--
+ drivers/md/raid10.c |   31 +++++++++++++++++++++++++++++--
  4 files changed, 75 insertions(+), 13 deletions(-)
 
-diff --git a/drivers/md/linear.c b/drivers/md/linear.c
-index 5c77fa9..767e4b8 100644
 --- a/drivers/md/linear.c
 +++ b/drivers/md/linear.c
 @@ -21,6 +21,7 @@
@@ -41,7 +39,7 @@ index 5c77fa9..767e4b8 100644
  #include "md.h"
  #include "linear.h"
  
-@@ -255,22 +256,22 @@ static void linear_make_request(struct mddev *mddev, struct bio *bio)
+@@ -256,22 +257,22 @@ static void linear_make_request(struct m
  	}
  
  	do {
@@ -69,7 +67,7 @@ index 5c77fa9..767e4b8 100644
  					  GFP_NOIO, fs_bio_set);
  			bio_chain(split, bio);
  		} else {
-@@ -284,8 +285,13 @@ static void linear_make_request(struct mddev *mddev, struct bio *bio)
+@@ -285,8 +286,13 @@ static void linear_make_request(struct m
  			 !blk_queue_discard(bdev_get_queue(split->bi_bdev)))) {
  			/* Just ignore it */
  			bio_endio(split);
@@ -84,8 +82,6 @@ index 5c77fa9..767e4b8 100644
  	} while (split != bio);
  	return;
  
-diff --git a/drivers/md/raid0.c b/drivers/md/raid0.c
-index b3ba77a..e628f18 100644
 --- a/drivers/md/raid0.c
 +++ b/drivers/md/raid0.c
 @@ -21,6 +21,7 @@
@@ -96,7 +92,7 @@ index b3ba77a..e628f18 100644
  #include "md.h"
  #include "raid0.h"
  #include "raid5.h"
-@@ -463,7 +464,8 @@ static void raid0_make_request(struct mddev *mddev, struct bio *bio)
+@@ -463,7 +464,8 @@ static void raid0_make_request(struct md
  	}
  
  	do {
@@ -106,7 +102,7 @@ index b3ba77a..e628f18 100644
  		unsigned chunk_sects = mddev->chunk_sectors;
  
  		unsigned sectors = chunk_sects -
-@@ -472,7 +474,7 @@ static void raid0_make_request(struct mddev *mddev, struct bio *bio)
+@@ -472,7 +474,7 @@ static void raid0_make_request(struct md
  			 : sector_div(sector, chunk_sects));
  
  		/* Restore due to sector_div */
@@ -115,7 +111,7 @@ index b3ba77a..e628f18 100644
  
  		if (sectors < bio_sectors(bio)) {
  			split = bio_split(bio, sectors, GFP_NOIO, fs_bio_set);
-@@ -491,8 +493,13 @@ static void raid0_make_request(struct mddev *mddev, struct bio *bio)
+@@ -491,8 +493,13 @@ static void raid0_make_request(struct md
  			 !blk_queue_discard(bdev_get_queue(split->bi_bdev)))) {
  			/* Just ignore it */
  			bio_endio(split);
@@ -130,8 +126,6 @@ index b3ba77a..e628f18 100644
  	} while (split != bio);
  }
  
-diff --git a/drivers/md/raid1.c b/drivers/md/raid1.c
-index e1532a5..d66b55b 100644
 --- a/drivers/md/raid1.c
 +++ b/drivers/md/raid1.c
 @@ -37,6 +37,7 @@
@@ -142,7 +136,7 @@ index e1532a5..d66b55b 100644
  #include "md.h"
  #include "raid1.h"
  #include "bitmap.h"
-@@ -1167,6 +1168,11 @@ read_again:
+@@ -1170,6 +1171,11 @@ read_again:
  		bio_set_op_attrs(read_bio, op, do_sync);
  		read_bio->bi_private = r1_bio;
  
@@ -154,7 +148,7 @@ index e1532a5..d66b55b 100644
  		if (max_sectors < r1_bio->sectors) {
  			/* could not read all from this device, so we will
  			 * need another r1_bio.
-@@ -1372,13 +1378,20 @@ read_again:
+@@ -1375,13 +1381,20 @@ read_again:
  
  		mbio->bi_iter.bi_sector	= (r1_bio->sector +
  				   conf->mirrors[i].rdev->data_offset);
@@ -176,7 +170,7 @@ index e1532a5..d66b55b 100644
  		cb = blk_check_plugged(raid1_unplug, mddev, sizeof(*plug));
  		if (cb)
  			plug = container_of(cb, struct raid1_plug_cb, cb);
-@@ -2295,6 +2308,8 @@ static void handle_read_error(struct r1conf *conf, struct r1bio *r1_bio)
+@@ -2300,6 +2313,8 @@ static void handle_read_error(struct r1c
  	struct bio *bio;
  	char b[BDEVNAME_SIZE];
  	struct md_rdev *rdev;
@@ -185,7 +179,7 @@ index e1532a5..d66b55b 100644
  
  	clear_bit(R1BIO_ReadError, &r1_bio->state);
  	/* we got a read error. Maybe the drive is bad.  Maybe just
-@@ -2308,6 +2323,8 @@ static void handle_read_error(struct r1conf *conf, struct r1bio *r1_bio)
+@@ -2313,6 +2328,8 @@ static void handle_read_error(struct r1c
  
  	bio = r1_bio->bios[r1_bio->read_disk];
  	bdevname(bio->bi_bdev, b);
@@ -194,7 +188,7 @@ index e1532a5..d66b55b 100644
  	bio_put(bio);
  	r1_bio->bios[r1_bio->read_disk] = NULL;
  
-@@ -2358,6 +2375,8 @@ read_more:
+@@ -2363,6 +2380,8 @@ read_more:
  			else
  				mbio->bi_phys_segments++;
  			spin_unlock_irq(&conf->device_lock);
@@ -203,7 +197,7 @@ index e1532a5..d66b55b 100644
  			generic_make_request(bio);
  			bio = NULL;
  
-@@ -2372,8 +2391,11 @@ read_more:
+@@ -2377,8 +2396,11 @@ read_more:
  				sectors_handled;
  
  			goto read_more;
@@ -216,8 +210,6 @@ index e1532a5..d66b55b 100644
  	}
  }
  
-diff --git a/drivers/md/raid10.c b/drivers/md/raid10.c
-index 846e2ed..8ed9f64 100644
 --- a/drivers/md/raid10.c
 +++ b/drivers/md/raid10.c
 @@ -25,6 +25,7 @@
@@ -228,7 +220,7 @@ index 846e2ed..8ed9f64 100644
  #include "md.h"
  #include "raid10.h"
  #include "raid0.h"
-@@ -1165,6 +1166,10 @@ read_again:
+@@ -1167,6 +1168,10 @@ read_again:
  		bio_set_op_attrs(read_bio, op, do_sync);
  		read_bio->bi_private = r10_bio;
  
@@ -239,7 +231,7 @@ index 846e2ed..8ed9f64 100644
  		if (max_sectors < r10_bio->sectors) {
  			/* Could not read all from this device, so we will
  			 * need another r10_bio.
-@@ -1367,11 +1372,18 @@ retry_write:
+@@ -1369,11 +1374,18 @@ retry_write:
  			mbio->bi_iter.bi_sector	= (r10_bio->devs[i].addr+
  					   choose_data_offset(r10_bio,
  							      rdev));
@@ -259,7 +251,7 @@ index 846e2ed..8ed9f64 100644
  			atomic_inc(&r10_bio->remaining);
  
  			cb = blk_check_plugged(raid10_unplug, mddev,
-@@ -1409,11 +1421,18 @@ retry_write:
+@@ -1411,11 +1423,18 @@ retry_write:
  			mbio->bi_iter.bi_sector	= (r10_bio->devs[i].addr +
  					   choose_data_offset(
  						   r10_bio, rdev));
@@ -277,9 +269,9 @@ index 846e2ed..8ed9f64 100644
 +			mbio->bi_bdev = (void*)rdev;
 +
  			atomic_inc(&r10_bio->remaining);
- 			spin_lock_irqsave(&conf->device_lock, flags);
- 			bio_list_add(&conf->pending_bio_list, mbio);
-@@ -2500,6 +2519,8 @@ static void handle_read_error(struct mddev *mddev, struct r10bio *r10_bio)
+ 
+ 			cb = blk_check_plugged(raid10_unplug, mddev,
+@@ -2533,6 +2552,8 @@ static void handle_read_error(struct mdd
  	char b[BDEVNAME_SIZE];
  	unsigned long do_sync;
  	int max_sectors;
@@ -288,7 +280,7 @@ index 846e2ed..8ed9f64 100644
  
  	/* we got a read error. Maybe the drive is bad.  Maybe just
  	 * the block and we can fix it.
-@@ -2511,6 +2532,8 @@ static void handle_read_error(struct mddev *mddev, struct r10bio *r10_bio)
+@@ -2544,6 +2565,8 @@ static void handle_read_error(struct mdd
  	 */
  	bio = r10_bio->devs[slot].bio;
  	bdevname(bio->bi_bdev, b);
@@ -297,7 +289,7 @@ index 846e2ed..8ed9f64 100644
  	bio_put(bio);
  	r10_bio->devs[slot].bio = NULL;
  
-@@ -2550,6 +2573,10 @@ read_more:
+@@ -2583,6 +2606,10 @@ read_more:
  	bio_set_op_attrs(bio, REQ_OP_READ, do_sync);
  	bio->bi_private = r10_bio;
  	bio->bi_end_io = raid10_end_read_request;
@@ -308,6 +300,3 @@ index 846e2ed..8ed9f64 100644
  	if (max_sectors < r10_bio->sectors) {
  		/* Drat - have to split this up more */
  		struct bio *mbio = r10_bio->master_bio;
--- 
-1.8.5.6
-

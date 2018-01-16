@@ -11,7 +11,7 @@ and default to using the latest protocol if the host is unknown or new.
 Signed-off-by: Alex Ng <alexng@microsoft.com>
 Signed-off-by: K. Y. Srinivasan <kys@microsoft.com>
 Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  drivers/hv/hv_util.c | 9 ++++++---
  1 file changed, 6 insertions(+), 3 deletions(-)

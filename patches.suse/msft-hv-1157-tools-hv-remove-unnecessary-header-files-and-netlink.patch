@@ -11,7 +11,7 @@ do not use netlink to communicate with the kernel now.
 Signed-off-by: Weibing Zhang <atheism.zhang@gmail.com>
 Signed-off-by: K. Y. Srinivasan <kys@microsoft.com>
 Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  tools/hv/hv_fcopy_daemon.c | 7 -------
  tools/hv/hv_kvp_daemon.c   | 7 -------

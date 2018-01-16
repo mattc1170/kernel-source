@@ -10,7 +10,7 @@ enable vAPIC functionality if available.
 
 Signed-off-by: K. Y. Srinivasan <kys@microsoft.com>
 Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  arch/x86/include/uapi/asm/hyperv.h | 5 +++++
  drivers/hv/hv.c                    | 5 ++++-

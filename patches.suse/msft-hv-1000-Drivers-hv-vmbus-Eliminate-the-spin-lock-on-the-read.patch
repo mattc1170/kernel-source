@@ -12,7 +12,7 @@ acquire the spin lock; get rid of this overhead.
 
 Signed-off-by: K. Y. Srinivasan <kys@microsoft.com>
 Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  drivers/hv/ring_buffer.c | 18 +++++-------------
  1 file changed, 5 insertions(+), 13 deletions(-)

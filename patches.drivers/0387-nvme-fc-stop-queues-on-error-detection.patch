@@ -1,9 +1,8 @@
 From: James Smart <jsmart2021@gmail.com>
 Date: Tue, 25 Apr 2017 15:32:01 -0700
 Subject: [PATCH] nvme-fc: stop queues on error detection
-Git-commit: 4c6a709d7b6a345a8ab5cbc7a46ca279ee9a5e52
-Patch-Mainline: queued in subsystem maintainer repository
-Git-repo: git://git.infradead.org/nvme
+Git-commit: 2952a879bacbfae8b03fd886754e64fe14b8041e
+Patch-Mainline: v4.12-rc2
 References: bsc#1037838
 
 Per the recommendation by Sagi on:

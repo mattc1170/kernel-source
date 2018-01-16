@@ -1,0 +1,112 @@
+From: Ming Lei <ming.lei@redhat.com>
+Date: Mon, 30 Oct 2017 15:41:59 -0700
+Subject: [PATCH] block: Make q_usage_counter also track legacy requests
+Git-commit: 055f6e18e08f5b7fd98171fce857a0bad87a919d
+Patch-mainline: v4.14
+References: bsc#1057820
+
+This patch makes it possible to pause request allocation for
+the legacy block layer by calling blk_mq_freeze_queue() and
+blk_mq_unfreeze_queue().
+
+Signed-off-by: Ming Lei <ming.lei@redhat.com>
+[ bvanassche: Combined two patches into one, edited a comment and made sure
+  REQ_NOWAIT is handled properly in blk_old_get_request() ]
+Signed-off-by: Bart Van Assche <bart.vanassche@wdc.com>
+Reviewed-by: Christoph Hellwig <hch@lst.de>
+Reviewed-by: Johannes Thumshirn <jthumshirn@suse.de>
+Reviewed-by: Hannes Reinecke <hare@suse.com>
+Tested-by: Martin Steigerwald <martin@lichtvoll.de>
+Cc: Ming Lei <ming.lei@redhat.com>
+Acked-by: Hannes Reinecke <hare@suse.com>
+---
+ block/blk-core.c | 11 +++++++++++
+ block/blk-mq.c   | 10 ++--------
+ 2 files changed, 13 insertions(+), 8 deletions(-)
+
+diff --git a/block/blk-core.c b/block/blk-core.c
+index d4e409e..2020d5c 100644
+--- a/block/blk-core.c
++++ b/block/blk-core.c
+@@ -516,6 +516,9 @@ void blk_set_queue_dying(struct request_queue *q)
+ 			}
+ 		}
+ 	}
++
++	/* Make blk_queue_enter() reexamine the DYING flag. */
++	wake_up_all(&q->mq_freeze_wq);
+ }
+ EXPORT_SYMBOL_GPL(blk_set_queue_dying);
+ 
+@@ -1268,16 +1271,21 @@ static struct request *blk_old_get_request(struct request_queue *q, int rw,
+ 		gfp_t gfp_mask)
+ {
+ 	struct request *rq;
++	int ret = 0;
+ 
+ 	BUG_ON(rw != READ && rw != WRITE);
+ 
+ 	/* create ioc upfront */
+ 	create_io_context(gfp_mask, q->node);
+ 
++	ret = blk_queue_enter(q, !(gfp_mask & __GFP_DIRECT_RECLAIM));
++	if (ret)
++		return ERR_PTR(ret);
+ 	spin_lock_irq(q->queue_lock);
+ 	rq = get_request(q, rw, NULL, gfp_mask);
+ 	if (IS_ERR(rq)) {
+ 		spin_unlock_irq(q->queue_lock);
++		blk_queue_exit(q);
+ 		return rq;
+ 	}
+ 
+@@ -1435,6 +1443,7 @@ void __blk_put_request(struct request_queue *q, struct request *req)
+ 		blk_free_request(rl, req);
+ 		freed_request(rl, sync, rq_flags);
+ 		blk_put_rl(rl);
++		blk_queue_exit(q);
+ 	}
+ }
+ EXPORT_SYMBOL_GPL(__blk_put_request);
+@@ -1676,8 +1685,10 @@ get_rq:
+ 	 * Grab a free request. This is might sleep but can not fail.
+ 	 * Returns with the queue unlocked.
+ 	 */
++	blk_queue_enter_live(q);
+ 	req = get_request(q, bio->bi_opf, bio, GFP_NOIO);
+ 	if (IS_ERR(req)) {
++		blk_queue_exit(q);
+ 		__wbt_done(q->rq_wb, wb_acct);
+ 		bio->bi_error = PTR_ERR(req);
+ 		bio_endio(bio);
+diff --git a/block/blk-mq.c b/block/blk-mq.c
+index e4409ad..4720d2a 100644
+--- a/block/blk-mq.c
++++ b/block/blk-mq.c
+@@ -67,7 +67,8 @@ void blk_mq_freeze_queue_start(struct request_queue *q)
+ 	freeze_depth = atomic_inc_return(&q->mq_freeze_depth);
+ 	if (freeze_depth == 1) {
+ 		percpu_ref_kill(&q->q_usage_counter);
+-		blk_mq_run_hw_queues(q, false);
++		if (q->mq_ops)
++			blk_mq_run_hw_queues(q, false);
+ 	}
+ }
+ EXPORT_SYMBOL_GPL(blk_mq_freeze_queue_start);
+@@ -162,13 +163,6 @@ void blk_mq_wake_waiters(struct request_queue *q)
+ 	queue_for_each_hw_ctx(q, hctx, i)
+ 		if (blk_mq_hw_queue_mapped(hctx))
+ 			blk_mq_tag_wakeup_all(hctx->tags, true);
+-
+-	/*
+-	 * If we are called because the queue has now been marked as
+-	 * dying, we need to ensure that processes currently waiting on
+-	 * the queue are notified as well.
+-	 */
+-	wake_up_all(&q->mq_freeze_wq);
+ }
+ 
+ bool blk_mq_can_queue(struct blk_mq_hw_ctx *hctx)
+-- 
+1.8.5.6
+

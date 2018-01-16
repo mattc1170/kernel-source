@@ -16,7 +16,7 @@ Acked-by: KY Srinivasan <kys@microsoft.com>
 CC: Jake Oshins <jakeo@microsoft.com>
 CC: Haiyang Zhang <haiyangz@microsoft.com>
 CC: Vitaly Kuznetsov <vkuznets@redhat.com>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  drivers/pci/host/pci-hyperv.c | 42 ++++++++++++++++++++----------------------
  1 file changed, 20 insertions(+), 22 deletions(-)

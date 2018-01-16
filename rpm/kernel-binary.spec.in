@@ -115,7 +115,6 @@ Requires(post): mkinitrd >= 2.7.1
 # Install the package providing /etc/SuSE-release early enough, so that
 # the grub entry has correct title (bnc#757565)
 Requires(post): distribution-release
-# END COMMON DEPS
 # Do not install p-b and mkinitrd for the install check, the %post script is
 # able to handle this
 #!BuildIgnore: perl-Bootloader mkinitrd distribution-release
@@ -153,6 +152,7 @@ Conflicts:      hyper-v < 4
 Conflicts:      libc.so.6()(64bit)
 %endif
 Provides:       kernel = %version-%source_rel
+# END COMMON DEPS
 @PROVIDES_OBSOLETES@
 @PROVIDES_OBSOLETES_BASE@
 %obsolete_rebuilds %name
@@ -681,6 +681,7 @@ if [ %CONFIG_MODULES = y ]; then
     # checksums. As the file is not included in the resulting RPM, it's
     # pointless to rely on its contents. Replacing by zeros to make the
     # checksums always the same for several builds of the same package.
+    test -s %buildroot/lib/modules/%kernelrelease-%build_flavor/modules.dep && \
     dd if=/dev/zero of=%buildroot/lib/modules/%kernelrelease-%build_flavor/modules.dep ibs=`stat -c%s %buildroot/lib/modules/%kernelrelease-%build_flavor/modules.dep` count=1
 
     res=0
@@ -879,7 +880,8 @@ Requires(post): perl-Bootloader
 Requires(post): mkinitrd
 @PROVIDES_OBSOLETES_EXTRA@
 %obsolete_rebuilds %name-extra
-Supplements:    packageand(product(SUSE_SLED):%{name}_%_target_cpu)
+Supplements:    packageand(product(SLED):%{name}_%_target_cpu)
+Supplements:    packageand(product(sle-we):%{name}_%_target_cpu)
 %ifarch %ix86
 Conflicts:      libc.so.6()(64bit)
 %endif

@@ -10,7 +10,7 @@ explicitly control when the host is to be signaled.
 
 Signed-off-by: K. Y. Srinivasan <kys@microsoft.com>
 Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  drivers/hv/channel.c      | 18 ++++--------------
  drivers/hv/channel_mgmt.c |  2 ++

@@ -12,7 +12,7 @@ return; } can now be replaced with a simple 'break';
 Signed-off-by: Vitaly Kuznetsov <vkuznets@redhat.com>
 Signed-off-by: Bjorn Helgaas <bhelgaas@google.com>
 Acked-by: Jake Oshins <jakeo@microsoft.com>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  drivers/pci/host/pci-hyperv.c | 11 +++++------
  1 file changed, 5 insertions(+), 6 deletions(-)

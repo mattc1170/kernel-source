@@ -47,21 +47,19 @@ rely on CFQ doing that for us.
 Signed-off-by: Jens Axboe <axboe@fb.com>
 Acked-by: Hannes Reinecke <hare@suse.com>
 ---
- Documentation/block/queue-sysfs.txt |  6 +++
- block/Kconfig                       | 26 +++++++++++
- block/blk-core.c                    | 17 ++++++-
- block/blk-mq.c                      | 26 ++++++++++-
- block/blk-settings.c                |  4 ++
- block/blk-sysfs.c                   | 88 +++++++++++++++++++++++++++++++++++++
- block/cfq-iosched.c                 | 14 ++++++
- include/linux/blkdev.h              |  3 ++
+ Documentation/block/queue-sysfs.txt |    6 ++
+ block/Kconfig                       |   26 ++++++++++
+ block/blk-core.c                    |   17 ++++++
+ block/blk-mq.c                      |   26 +++++++++-
+ block/blk-settings.c                |    4 +
+ block/blk-sysfs.c                   |   88 ++++++++++++++++++++++++++++++++++++
+ block/cfq-iosched.c                 |   14 +++++
+ include/linux/blkdev.h              |    3 +
  8 files changed, 180 insertions(+), 4 deletions(-)
 
-diff --git a/Documentation/block/queue-sysfs.txt b/Documentation/block/queue-sysfs.txt
-index dce25d8..1d3303a 100644
 --- a/Documentation/block/queue-sysfs.txt
 +++ b/Documentation/block/queue-sysfs.txt
-@@ -151,5 +151,11 @@ device state. This means that it might not be safe to toggle the
+@@ -151,5 +151,11 @@ device state. This means that it might n
  setting from "write back" to "write through", since that will also
  eliminate cache flushes issued by the kernel.
  
@@ -73,8 +71,6 @@ index dce25d8..1d3303a 100644
 +scaling back writes.
  
  Jens Axboe <jens.axboe@oracle.com>, February 2009
-diff --git a/block/Kconfig b/block/Kconfig
-index 3a02444..8bf114a 100644
 --- a/block/Kconfig
 +++ b/block/Kconfig
 @@ -121,6 +121,32 @@ config BLK_CMDLINE_PARSER
@@ -110,8 +106,6 @@ index 3a02444..8bf114a 100644
  menu "Partition Types"
  
  source "block/partitions/Kconfig"
-diff --git a/block/blk-core.c b/block/blk-core.c
-index c020e44..516858a 100644
 --- a/block/blk-core.c
 +++ b/block/blk-core.c
 @@ -39,6 +39,7 @@
@@ -122,7 +116,7 @@ index c020e44..516858a 100644
  
  EXPORT_TRACEPOINT_SYMBOL_GPL(block_bio_remap);
  EXPORT_TRACEPOINT_SYMBOL_GPL(block_rq_remap);
-@@ -882,6 +883,7 @@ blk_init_allocated_queue(struct request_queue *q, request_fn_proc *rfn,
+@@ -882,6 +883,7 @@ blk_init_allocated_queue(struct request_
  
  fail:
  	blk_free_flush_queue(q->fq);
@@ -130,7 +124,7 @@ index c020e44..516858a 100644
  	return NULL;
  }
  EXPORT_SYMBOL(blk_init_allocated_queue);
-@@ -1344,6 +1346,7 @@ void blk_requeue_request(struct request_queue *q, struct request *rq)
+@@ -1344,6 +1346,7 @@ void blk_requeue_request(struct request_
  	blk_delete_timer(rq);
  	blk_clear_rq_complete(rq);
  	trace_block_rq_requeue(q, rq);
@@ -138,7 +132,7 @@ index c020e44..516858a 100644
  
  	if (rq->rq_flags & RQF_QUEUED)
  		blk_queue_end_tag(q, rq);
-@@ -1436,6 +1439,8 @@ void __blk_put_request(struct request_queue *q, struct request *req)
+@@ -1436,6 +1439,8 @@ void __blk_put_request(struct request_qu
  	/* this is a bio leak */
  	WARN_ON(req->bio != NULL);
  
@@ -147,7 +141,7 @@ index c020e44..516858a 100644
  	/*
  	 * Request may not have originated from ll_rw_blk. if not,
  	 * it didn't come out of our reserved rq pools
-@@ -1664,6 +1669,7 @@ static blk_qc_t blk_queue_bio(struct request_queue *q, struct bio *bio)
+@@ -1664,6 +1669,7 @@ static blk_qc_t blk_queue_bio(struct req
  	int el_ret, where = ELEVATOR_INSERT_SORT;
  	struct request *req;
  	unsigned int request_count = 0;
@@ -155,7 +149,7 @@ index c020e44..516858a 100644
  
  	/*
  	 * low level driver can indicate that it wants pages above a
-@@ -1716,17 +1722,22 @@ static blk_qc_t blk_queue_bio(struct request_queue *q, struct bio *bio)
+@@ -1716,17 +1722,22 @@ static blk_qc_t blk_queue_bio(struct req
  	}
  
  get_rq:
@@ -178,7 +172,7 @@ index c020e44..516858a 100644
  	/*
  	 * After dropping the lock and possibly sleeping here, our request
  	 * may now be mergeable after it had proven unmergeable (above).
-@@ -2463,6 +2474,7 @@ void blk_start_request(struct request *req)
+@@ -2486,6 +2497,7 @@ void blk_start_request(struct request *r
  	if (test_bit(QUEUE_FLAG_STATS, &req->q->queue_flags)) {
  		blk_stat_set_issue_time(&req->issue_stat);
  		req->rq_flags |= RQF_STATS;
@@ -186,7 +180,7 @@ index c020e44..516858a 100644
  	}
  
  	/*
-@@ -2704,9 +2716,10 @@ void blk_finish_request(struct request *req, int error)
+@@ -2727,9 +2739,10 @@ void blk_finish_request(struct request *
  
  	blk_account_io_done(req);
  
@@ -199,8 +193,6 @@ index c020e44..516858a 100644
  		if (blk_bidi_rq(req))
  			__blk_put_request(req->next_rq->q, req->next_rq);
  
-diff --git a/block/blk-mq.c b/block/blk-mq.c
-index 5ef177e..513c0d9 100644
 --- a/block/blk-mq.c
 +++ b/block/blk-mq.c
 @@ -31,6 +31,7 @@
@@ -211,7 +203,7 @@ index 5ef177e..513c0d9 100644
  
  static DEFINE_MUTEX(all_q_mutex);
  static LIST_HEAD(all_q_list);
-@@ -326,6 +327,8 @@ static void __blk_mq_free_request(struct blk_mq_hw_ctx *hctx,
+@@ -326,6 +327,8 @@ static void __blk_mq_free_request(struct
  
  	if (rq->rq_flags & RQF_MQ_INFLIGHT)
  		atomic_dec(&hctx->nr_active);
@@ -220,7 +212,7 @@ index 5ef177e..513c0d9 100644
  	rq->rq_flags = 0;
  
  	clear_bit(REQ_ATOM_STARTED, &rq->atomic_flags);
-@@ -354,6 +357,7 @@ inline void __blk_mq_end_request(struct request *rq, int error)
+@@ -354,6 +357,7 @@ inline void __blk_mq_end_request(struct
  	blk_account_io_done(rq);
  
  	if (rq->end_io) {
@@ -228,7 +220,7 @@ index 5ef177e..513c0d9 100644
  		rq->end_io(rq, error);
  	} else {
  		if (unlikely(blk_bidi_rq(rq)))
-@@ -471,6 +475,7 @@ void blk_mq_start_request(struct request *rq)
+@@ -471,6 +475,7 @@ void blk_mq_start_request(struct request
  	if (test_bit(QUEUE_FLAG_STATS, &q->queue_flags)) {
  		blk_stat_set_issue_time(&rq->issue_stat);
  		rq->rq_flags |= RQF_STATS;
@@ -236,7 +228,7 @@ index 5ef177e..513c0d9 100644
  	}
  
  	blk_add_timer(rq);
-@@ -508,6 +513,7 @@ static void __blk_mq_requeue_request(struct request *rq)
+@@ -508,6 +513,7 @@ static void __blk_mq_requeue_request(str
  	struct request_queue *q = rq->q;
  
  	trace_block_rq_requeue(q, rq);
@@ -244,7 +236,7 @@ index 5ef177e..513c0d9 100644
  
  	if (test_and_clear_bit(REQ_ATOM_STARTED, &rq->atomic_flags)) {
  		if (q->dma_drain_size && blk_rq_bytes(rq))
-@@ -1339,6 +1345,7 @@ static blk_qc_t blk_mq_make_request(struct request_queue *q, struct bio *bio)
+@@ -1339,6 +1345,7 @@ static blk_qc_t blk_mq_make_request(stru
  	struct blk_plug *plug;
  	struct request *same_queue_rq = NULL;
  	blk_qc_t cookie;
@@ -252,7 +244,7 @@ index 5ef177e..513c0d9 100644
  
  	blk_queue_bounce(q, &bio);
  
-@@ -1353,9 +1360,15 @@ static blk_qc_t blk_mq_make_request(struct request_queue *q, struct bio *bio)
+@@ -1353,9 +1360,15 @@ static blk_qc_t blk_mq_make_request(stru
  	    blk_attempt_plug_merge(q, bio, &request_count, &same_queue_rq))
  		return BLK_QC_T_NONE;
  
@@ -269,7 +261,7 @@ index 5ef177e..513c0d9 100644
  
  	cookie = blk_tag_to_qc_t(rq->tag, data.hctx->queue_num);
  
-@@ -1439,6 +1452,7 @@ static blk_qc_t blk_sq_make_request(struct request_queue *q, struct bio *bio)
+@@ -1439,6 +1452,7 @@ static blk_qc_t blk_sq_make_request(stru
  	struct blk_mq_alloc_data data;
  	struct request *rq;
  	blk_qc_t cookie;
@@ -277,7 +269,7 @@ index 5ef177e..513c0d9 100644
  
  	blk_queue_bounce(q, &bio);
  
-@@ -1455,9 +1469,15 @@ static blk_qc_t blk_sq_make_request(struct request_queue *q, struct bio *bio)
+@@ -1455,9 +1469,15 @@ static blk_qc_t blk_sq_make_request(stru
  	} else
  		request_count = blk_plug_queued_count(q);
  
@@ -294,7 +286,7 @@ index 5ef177e..513c0d9 100644
  
  	cookie = blk_tag_to_qc_t(rq->tag, data.hctx->queue_num);
  
-@@ -2165,6 +2185,8 @@ void blk_mq_free_queue(struct request_queue *q)
+@@ -2165,6 +2185,8 @@ void blk_mq_free_queue(struct request_qu
  	list_del_init(&q->all_q_node);
  	mutex_unlock(&all_q_mutex);
  
@@ -303,8 +295,6 @@ index 5ef177e..513c0d9 100644
  	blk_mq_del_queue_tag_set(q);
  
  	blk_mq_exit_hw_queues(q, set, set->nr_hw_queues);
-diff --git a/block/blk-settings.c b/block/blk-settings.c
-index f641002..ab37107 100644
 --- a/block/blk-settings.c
 +++ b/block/blk-settings.c
 @@ -13,6 +13,7 @@
@@ -315,7 +305,7 @@ index f641002..ab37107 100644
  
  unsigned long blk_max_low_pfn;
  EXPORT_SYMBOL(blk_max_low_pfn);
-@@ -846,6 +847,7 @@ EXPORT_SYMBOL_GPL(blk_queue_flush_queueable);
+@@ -846,6 +847,7 @@ EXPORT_SYMBOL_GPL(blk_queue_flush_queuea
  void blk_set_queue_depth(struct request_queue *q, unsigned int depth)
  {
  	q->queue_depth = depth;
@@ -323,7 +313,7 @@ index f641002..ab37107 100644
  }
  EXPORT_SYMBOL(blk_set_queue_depth);
  
-@@ -869,6 +871,8 @@ void blk_queue_write_cache(struct request_queue *q, bool wc, bool fua)
+@@ -869,6 +871,8 @@ void blk_queue_write_cache(struct reques
  	else
  		queue_flag_clear(QUEUE_FLAG_FUA, q);
  	spin_unlock_irq(q->queue_lock);
@@ -332,8 +322,6 @@ index f641002..ab37107 100644
  }
  EXPORT_SYMBOL_GPL(blk_queue_write_cache);
  
-diff --git a/block/blk-sysfs.c b/block/blk-sysfs.c
-index 0e3b56d..854d3d9 100644
 --- a/block/blk-sysfs.c
 +++ b/block/blk-sysfs.c
 @@ -13,6 +13,7 @@
@@ -344,7 +332,7 @@ index 0e3b56d..854d3d9 100644
  
  struct queue_sysfs_entry {
  	struct attribute attr;
-@@ -41,6 +42,19 @@ queue_var_store(unsigned long *var, const char *page, size_t count)
+@@ -41,6 +42,19 @@ queue_var_store(unsigned long *var, cons
  	return count;
  }
  
@@ -364,7 +352,7 @@ index 0e3b56d..854d3d9 100644
  static ssize_t queue_requests_show(struct request_queue *q, char *page)
  {
  	return queue_var_show(q->nr_requests, (page));
-@@ -365,6 +379,32 @@ static ssize_t queue_poll_store(struct request_queue *q, const char *page,
+@@ -365,6 +379,32 @@ static ssize_t queue_poll_store(struct r
  	return ret;
  }
  
@@ -397,7 +385,7 @@ index 0e3b56d..854d3d9 100644
  static ssize_t queue_wc_show(struct request_queue *q, char *page)
  {
  	if (test_bit(QUEUE_FLAG_WC, &q->queue_flags))
-@@ -579,6 +619,12 @@ static struct queue_sysfs_entry queue_stats_entry = {
+@@ -579,6 +619,12 @@ static struct queue_sysfs_entry queue_st
  	.show = queue_stats_show,
  };
  
@@ -410,7 +398,7 @@ index 0e3b56d..854d3d9 100644
  static struct attribute *default_attrs[] = {
  	&queue_requests_entry.attr,
  	&queue_ra_entry.attr,
-@@ -609,6 +655,7 @@ static struct attribute *default_attrs[] = {
+@@ -609,6 +655,7 @@ static struct attribute *default_attrs[]
  	&queue_wc_entry.attr,
  	&queue_dax_entry.attr,
  	&queue_stats_entry.attr,
@@ -418,7 +406,7 @@ index 0e3b56d..854d3d9 100644
  	NULL,
  };
  
-@@ -683,6 +730,7 @@ static void blk_release_queue(struct kobject *kobj)
+@@ -683,6 +730,7 @@ static void blk_release_queue(struct kob
  	struct request_queue *q =
  		container_of(kobj, struct request_queue, kobj);
  
@@ -471,17 +459,15 @@ index 0e3b56d..854d3d9 100644
  int blk_register_queue(struct gendisk *disk)
  {
  	int ret;
-@@ -762,6 +848,8 @@ int blk_register_queue(struct gendisk *disk)
+@@ -765,6 +851,8 @@ int blk_register_queue(struct gendisk *d
  	if (q->mq_ops)
  		blk_mq_register_dev(dev, q);
  
 +	blk_wb_init(q);
 +
  	if (!q->request_fn)
- 		return 0;
+ 		goto unlock;
  
-diff --git a/block/cfq-iosched.c b/block/cfq-iosched.c
-index b926dcb..68b64e5 100644
 --- a/block/cfq-iosched.c
 +++ b/block/cfq-iosched.c
 @@ -16,6 +16,7 @@
@@ -492,7 +478,7 @@ index b926dcb..68b64e5 100644
  
  /*
   * tunables
-@@ -3762,9 +3763,11 @@ static void check_blkcg_changed(struct cfq_io_cq *cic, struct bio *bio)
+@@ -3775,9 +3776,11 @@ static void check_blkcg_changed(struct c
  	struct cfq_data *cfqd = cic_to_cfqd(cic);
  	struct cfq_queue *cfqq;
  	uint64_t serial_nr;
@@ -504,7 +490,7 @@ index b926dcb..68b64e5 100644
  	rcu_read_unlock();
  
  	/*
-@@ -3775,6 +3778,17 @@ static void check_blkcg_changed(struct cfq_io_cq *cic, struct bio *bio)
+@@ -3788,6 +3791,17 @@ static void check_blkcg_changed(struct c
  		return;
  
  	/*
@@ -522,8 +508,6 @@ index b926dcb..68b64e5 100644
  	 * Drop reference to queues.  New queues will be assigned in new
  	 * group upon arrival of fresh requests.
  	 */
-diff --git a/include/linux/blkdev.h b/include/linux/blkdev.h
-index 7d3dd40..1f3be02 100644
 --- a/include/linux/blkdev.h
 +++ b/include/linux/blkdev.h
 @@ -38,6 +38,7 @@ struct bsg_job;
@@ -543,6 +527,3 @@ index 7d3dd40..1f3be02 100644
  	/*
  	 * If blkcg is not used, @q->root_rl serves all requests.  If blkcg
  	 * is used, root blkg allocates from @q->root_rl and all other
--- 
-1.8.5.6
-

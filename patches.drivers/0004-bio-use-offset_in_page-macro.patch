@@ -11,14 +11,12 @@ Signed-off-by: Geliang Tang <geliangtang@163.com>
 Signed-off-by: Jens Axboe <axboe@fb.com>
 Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
 ---
- block/bio.c | 4 ++--
+ block/bio.c |    4 ++--
  1 file changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/block/bio.c b/block/bio.c
-index 4f184d9..dbabd48 100644
 --- a/block/bio.c
 +++ b/block/bio.c
-@@ -1125,7 +1125,7 @@ struct bio *bio_copy_user_iov(struct request_queue *q,
+@@ -1139,7 +1139,7 @@ struct bio *bio_copy_user_iov(struct req
  	int i, ret;
  	int nr_pages = 0;
  	unsigned int len = iter->count;
@@ -27,7 +25,7 @@ index 4f184d9..dbabd48 100644
  
  	for (i = 0; i < iter->nr_segs; i++) {
  		unsigned long uaddr;
-@@ -1304,7 +1304,7 @@ struct bio *bio_map_user_iov(struct request_queue *q,
+@@ -1318,7 +1318,7 @@ struct bio *bio_map_user_iov(struct requ
  			goto out_unmap;
  		}
  
@@ -36,4 +34,3 @@ index 4f184d9..dbabd48 100644
  		for (j = cur_page; j < page_limit; j++) {
  			unsigned int bytes = PAGE_SIZE - offset;
  
-

@@ -17,7 +17,7 @@ whenever IO is issued to the device.
 Signed-off-by: Cathy Avery <cavery@redhat.com>
 Reviewed-by: K. Y. Srinivasan <kys@microsoft.com>
 Signed-off-by: Martin K. Petersen <martin.petersen@oracle.com>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  drivers/scsi/storvsc_drv.c | 2 ++
  1 file changed, 2 insertions(+)

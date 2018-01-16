@@ -1,0 +1,28 @@
+From: Manish Rangankar <manish.rangankar@cavium.com>
+Date: Thu, 15 Jun 2017 00:10:39 -0700
+Subject: scsi: qedi: Remove WARN_ON for untracked cleanup.
+Git-commit: 6ebf81536d3be327c4f5f59bae3b841d62322343
+Patch-mainline: v4.12-rc7
+References: bsc#1044443
+
+Signed-off-by: Manish Rangankar <manish.rangankar@cavium.com>
+Reviewed-by: Lee Duncan <lduncan@suse.com>
+Signed-off-by: Martin K. Petersen <martin.petersen@oracle.com>
+Acked-by: Lee Duncan <lduncan@suse.com>
+---
+ drivers/scsi/qedi/qedi_fw.c | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/drivers/scsi/qedi/qedi_fw.c b/drivers/scsi/qedi/qedi_fw.c
+index 8bc7ee1a8ca8..507512cc478b 100644
+--- a/drivers/scsi/qedi/qedi_fw.c
++++ b/drivers/scsi/qedi/qedi_fw.c
+@@ -870,7 +870,6 @@ static void qedi_process_cmd_cleanup_resp(struct qedi_ctx *qedi,
+ 		QEDI_ERR(&qedi->dbg_ctx,
+ 			 "Delayed or untracked cleanup response, itt=0x%x, tid=0x%x, cid=0x%x, task=%p\n",
+ 			 protoitt, cqe->itid, qedi_conn->iscsi_conn_id, task);
+-		WARN_ON(1);
+ 	}
+ }
+ 
+

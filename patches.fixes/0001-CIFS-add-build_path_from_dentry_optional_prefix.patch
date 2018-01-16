@@ -1,0 +1,90 @@
+From 44962127cae050cc16465085c665ec916f925211 Mon Sep 17 00:00:00 2001
+From: Aurelien Aptel <aaptel@suse.com>
+Date: Mon, 13 Feb 2017 16:14:17 +0100
+Subject: [PATCH] CIFS: add build_path_from_dentry_optional_prefix()
+Git-commit: 268a635d414df45a4a8da699d431da8f8ffcf014
+Patch-mainline: 4.11
+References: fate#323482
+
+this function does the same thing as add build_path_from_dentry() but
+takes a boolean parameter to decide whether or not to prefix the path
+with the tree name.
+
+we cannot rely on tcon->Flags & SMB_SHARE_IS_IN_DFS for SMB2 as smb2
+code never sets tcon->Flags but it sets tcon->share_flags and it seems
+the SMB_SHARE_IS_IN_DFS has different semantics in SMB2: the prefix
+shouldn't be added everytime it was in SMB1.
+
+Signed-off-by: Aurelien Aptel <aaptel@suse.com>
+Acked-by: Pavel Shilovsky <pshilov@microsoft.com>
+Signed-off-by: Steve French <smfrench@gmail.com>
+Acked-by: Aurelien Aptel <aaptel@suse.com>
+
+---
+ fs/cifs/cifs_dfs_ref.c |  4 +++-
+ fs/cifs/cifsproto.h    |  2 ++
+ fs/cifs/dir.c          | 13 ++++++++++++-
+ 3 files changed, 17 insertions(+), 2 deletions(-)
+
+diff --git a/fs/cifs/cifs_dfs_ref.c b/fs/cifs/cifs_dfs_ref.c
+index 7dc886c9a78f..abffbf6ed528 100644
+--- a/fs/cifs/cifs_dfs_ref.c
++++ b/fs/cifs/cifs_dfs_ref.c
+@@ -298,7 +298,9 @@ static struct vfsmount *cifs_dfs_do_automount(struct dentry *mntpt)
+ 	 * gives us the latter, so we must adjust the result.
+ 	 */
+ 	mnt = ERR_PTR(-ENOMEM);
+-	full_path = build_path_from_dentry(mntpt);
++
++	/* always use tree name prefix */
++	full_path = build_path_from_dentry_optional_prefix(mntpt, true);
+ 	if (full_path == NULL)
+ 		goto cdda_exit;
+ 
+diff --git a/fs/cifs/cifsproto.h b/fs/cifs/cifsproto.h
+index 46ab1d37e69c..4552a4ffc551 100644
+--- a/fs/cifs/cifsproto.h
++++ b/fs/cifs/cifsproto.h
+@@ -59,6 +59,8 @@ do {								\
+ extern int init_cifs_idmap(void);
+ extern void exit_cifs_idmap(void);
+ extern char *build_path_from_dentry(struct dentry *);
++extern char *build_path_from_dentry_optional_prefix(struct dentry *direntry,
++						    bool prefix);
+ extern char *cifs_build_path_to_root(struct smb_vol *vol,
+ 				     struct cifs_sb_info *cifs_sb,
+ 				     struct cifs_tcon *tcon,
+diff --git a/fs/cifs/dir.c b/fs/cifs/dir.c
+index a739acff01f1..74bac5cb5e12 100644
+--- a/fs/cifs/dir.c
++++ b/fs/cifs/dir.c
+@@ -81,6 +81,17 @@ cifs_build_path_to_root(struct smb_vol *vol, struct cifs_sb_info *cifs_sb,
+ char *
+ build_path_from_dentry(struct dentry *direntry)
+ {
++	struct cifs_sb_info *cifs_sb = CIFS_SB(direntry->d_sb);
++	struct cifs_tcon *tcon = cifs_sb_master_tcon(cifs_sb);
++	bool prefix = tcon->Flags & SMB_SHARE_IS_IN_DFS;
++
++	return build_path_from_dentry_optional_prefix(direntry,
++						      prefix);
++}
++
++char *
++build_path_from_dentry_optional_prefix(struct dentry *direntry, bool prefix)
++{
+ 	struct dentry *temp;
+ 	int namelen;
+ 	int dfsplen;
+@@ -92,7 +103,7 @@ build_path_from_dentry(struct dentry *direntry)
+ 	unsigned seq;
+ 
+ 	dirsep = CIFS_DIR_SEP(cifs_sb);
+-	if (tcon->Flags & SMB_SHARE_IS_IN_DFS)
++	if (prefix)
+ 		dfsplen = strnlen(tcon->treeName, MAX_TREE_SIZE + 1);
+ 	else
+ 		dfsplen = 0;
+-- 
+2.12.3
+

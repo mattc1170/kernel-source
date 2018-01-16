@@ -1,0 +1,65 @@
+From: Heiko Carstens <heiko.carstens@de.ibm.com>
+Subject: s390/topology: always use s390 specific sched_domain_topology_level
+Patch-mainline: v4.10-rc1
+Git-commit: ebb299a51059017ec253bd30781a83d1f6e11b24
+References: bnc#1060249, LTC#159177
+
+Description:  kernel: alternative topology
+Symptom:      Overall performance is lower than expected.
+Problem:      When running within a z/VM guest the Linux scheduling domains
+              are configured in such a way that each CPU is far away from
+              all other CPUs. This way the kernel tries to avoid to send
+              expensive inter processor interrupts to other CPUs. As a
+              downside sometimes this also leads to the situation where
+              idle CPUs won't be woken up even if there is a runable process
+              waiting for execution. It depends on the workload if this
+              behavior is good or not.
+Solution:     Add a sysctl file /proc/sys/s390/topology which allows to
+              change the default configuration. When running within a
+              z/VM guest writing 1 to the file will result in a different
+              topology where all CPUs are configured to be close to each
+              other. This may increase overall performance depending on
+              the workload.
+              The used default topology within a z/VM guest can also be
+              changed with the kernel command line parameter 'topology=on'.
+Reproduction: -
+
+Upstream-Description:
+
+              s390/topology: always use s390 specific sched_domain_topology_level
+
+              The s390 specific sched_domain_topology_level should always be used,
+              not only if the machine provides topology information. Luckily this
+              odd behaviour, that was by accident introduced with git commit
+              d05d15da18f5 ("s390/topology: delay initialization of topology cpu
+              masks") has currently no side effect.
+
+              Fixes: d05d15da18f5 ("s390/topology: delay initialization of topology cpumasks")
+              Signed-off-by: Heiko Carstens <heiko.carstens@de.ibm.com>
+              Signed-off-by: Martin Schwidefsky <schwidefsky@de.ibm.com>
+
+
+Signed-off-by: Heiko Carstens <heiko.carstens@de.ibm.com>
+Acked-by: Hannes Reinecke <hare@suse.com>
+---
+ arch/s390/kernel/topology.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+--- a/arch/s390/kernel/topology.c
++++ b/arch/s390/kernel/topology.c
+@@ -499,6 +499,7 @@ static int __init s390_topology_init(voi
+ 	struct sysinfo_15_1_x *info;
+ 	int i;
+ 
++	set_sched_topology(s390_topology);
+ 	if (!MACHINE_HAS_TOPOLOGY)
+ 		return 0;
+ 	tl_info = (struct sysinfo_15_1_x *)__get_free_page(GFP_KERNEL);
+@@ -511,7 +512,6 @@ static int __init s390_topology_init(voi
+ 	alloc_masks(info, &socket_info, 1);
+ 	alloc_masks(info, &book_info, 2);
+ 	alloc_masks(info, &drawer_info, 3);
+-	set_sched_topology(s390_topology);
+ 	return 0;
+ }
+ early_initcall(s390_topology_init);

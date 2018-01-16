@@ -1,9 +1,8 @@
 From: James Smart <jsmart2021@gmail.com>
 Date: Fri, 5 May 2017 16:13:15 -0700
 Subject: [PATCH] nvme-fc: require target or discovery role for fc-nvme targets
-Git-commit: ff0820c85f35b20df4f1749708a4b124cb3a6352
-Patch-Mainline: queued in subsystem maintainer repository
-Git-repo: git://git.infradead.org/nvme
+Git-commit: 85e6a6adf8de7f992e01d2c3c59d9875d658b276
+Patch-Mainline: v4.12-rc2
 References: bsc#1037838
 
 In order to create an association, the remoteport must be

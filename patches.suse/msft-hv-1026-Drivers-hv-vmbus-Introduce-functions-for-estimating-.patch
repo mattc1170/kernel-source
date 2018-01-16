@@ -10,7 +10,7 @@ and written to the ring buffer.
 
 Signed-off-by: K. Y. Srinivasan <kys@microsoft.com>
 Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  drivers/hv/ring_buffer.c | 25 ++++---------------------
  include/linux/hyperv.h   | 27 +++++++++++++++++++++++++++

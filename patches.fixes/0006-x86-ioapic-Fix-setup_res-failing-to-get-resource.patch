@@ -24,15 +24,13 @@ Link: http://lkml.kernel.org/r/1471420837-31003-4-git-send-email-rui.y.wang@inte
 Signed-off-by: Ingo Molnar <mingo@kernel.org>
 Acked-by: Joerg Roedel <jroedel@suse.de>
 ---
- drivers/acpi/ioapic.c | 2 +-
+ drivers/acpi/ioapic.c |    2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/drivers/acpi/ioapic.c b/drivers/acpi/ioapic.c
-index 2449377..8ab6d42 100644
 --- a/drivers/acpi/ioapic.c
 +++ b/drivers/acpi/ioapic.c
-@@ -46,7 +46,7 @@ static acpi_status setup_res(struct acpi_resource *acpi_res, void *data)
- 	struct resource_win win;
+@@ -52,7 +52,7 @@ static acpi_status setup_res(struct acpi
+ 	memset(&win, 0, sizeof(win));
  
  	res->flags = 0;
 -	if (acpi_dev_filter_resource_type(acpi_res, IORESOURCE_MEM) == 0)
@@ -40,6 +38,3 @@ index 2449377..8ab6d42 100644
  		return AE_OK;
  
  	if (!acpi_dev_resource_memory(acpi_res, res)) {
--- 
-2.10.1
-

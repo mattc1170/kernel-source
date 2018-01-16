@@ -1,0 +1,38 @@
+From: Emil Tantilov <emil.s.tantilov@intel.com>
+Date: Wed, 28 Sep 2016 16:01:48 -0700
+Subject: [PATCH] ixgbe: do not disable FEC from the driver
+References: bnc#1012382
+Patch-mainline: 4.4.100
+Git-commit: 1fe954b2097bb907b4578e6a74e4c1d23785a601
+
+[ Upstream commit 1fe954b2097bb907b4578e6a74e4c1d23785a601 ]
+
+FEC is configured by the NVM and the driver should not be
+overriding it.
+
+Signed-off-by: Emil Tantilov <emil.s.tantilov@intel.com>
+Tested-by: Krishneil Singh <krishneil.k.singh@intel.com>
+Signed-off-by: Jeff Kirsher <jeffrey.t.kirsher@intel.com>
+Signed-off-by: Sasha Levin <alexander.levin@verizon.com>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Signed-off-by: Jiri Slaby <jslaby@suse.cz>
+---
+ drivers/net/ethernet/intel/ixgbe/ixgbe_x550.c | 2 --
+ 1 file changed, 2 deletions(-)
+
+diff --git a/drivers/net/ethernet/intel/ixgbe/ixgbe_x550.c b/drivers/net/ethernet/intel/ixgbe/ixgbe_x550.c
+index ebe0ac950b14..31f864fb30c1 100644
+--- a/drivers/net/ethernet/intel/ixgbe/ixgbe_x550.c
++++ b/drivers/net/ethernet/intel/ixgbe/ixgbe_x550.c
+@@ -1643,8 +1643,6 @@ static s32 ixgbe_setup_kr_speed_x550em(struct ixgbe_hw *hw,
+ 		return status;
+ 
+ 	reg_val |= IXGBE_KRM_LINK_CTRL_1_TETH_AN_ENABLE;
+-	reg_val &= ~(IXGBE_KRM_LINK_CTRL_1_TETH_AN_FEC_REQ |
+-		     IXGBE_KRM_LINK_CTRL_1_TETH_AN_CAP_FEC);
+ 	reg_val &= ~(IXGBE_KRM_LINK_CTRL_1_TETH_AN_CAP_KR |
+ 		     IXGBE_KRM_LINK_CTRL_1_TETH_AN_CAP_KX);
+ 
+-- 
+2.15.0
+

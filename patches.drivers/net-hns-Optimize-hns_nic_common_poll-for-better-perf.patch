@@ -1,8 +1,7 @@
 From: lipeng <lipeng321@huawei.com>
 Date: Sat, 1 Apr 2017 12:03:36 +0100
 Subject: net: hns: Optimize hns_nic_common_poll for better performance
-Patch-mainline: Queued in subsystem maintainer repository
-Git-repo: git://git.kernel.org/pub/scm/linux/kernel/git/davem/net-next.git
+Patch-mainline: v4.12-rc1
 Git-commit: 36eedfde1a3602e8054c16bc295c47764647a208
 References: fate#322061
 

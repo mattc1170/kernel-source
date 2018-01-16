@@ -18,7 +18,7 @@ CC: Nikolay Aleksandrov <nikolay@cumulusnetworks.com>
 Signed-off-by: Nicolas Dichtel <nicolas.dichtel@6wind.com>
 Acked-by: Nikolay Aleksandrov <nikolay@cumulusnetworks.com>
 Signed-off-by: David S. Miller <davem@davemloft.net>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  include/uapi/linux/ethtool.h | 4 ++++
  1 file changed, 4 insertions(+)

@@ -16,16 +16,14 @@ Reviewed-by: Tomas Henzl <thenzl@redhat.com>
 Signed-off-by: Martin K. Petersen <martin.petersen@oracle.com>
 Acked-by: Hannes Reinecke <hare@suse.de>
 ---
- drivers/scsi/mpt3sas/mpt3sas_base.c  |  63 +++++++++++---
- drivers/scsi/mpt3sas/mpt3sas_base.h  |  27 ++++++
- drivers/scsi/mpt3sas/mpt3sas_scsih.c | 154 ++++++++++++++++++++++++++++++++++-
+ drivers/scsi/mpt3sas/mpt3sas_base.c  |   63 +++++++++++---
+ drivers/scsi/mpt3sas/mpt3sas_base.h  |   27 ++++++
+ drivers/scsi/mpt3sas/mpt3sas_scsih.c |  154 ++++++++++++++++++++++++++++++++++-
  3 files changed, 228 insertions(+), 16 deletions(-)
 
-diff --git a/drivers/scsi/mpt3sas/mpt3sas_base.c b/drivers/scsi/mpt3sas/mpt3sas_base.c
-index f59495b..31838d9a 100644
 --- a/drivers/scsi/mpt3sas/mpt3sas_base.c
 +++ b/drivers/scsi/mpt3sas/mpt3sas_base.c
-@@ -775,7 +775,7 @@ mpt3sas_base_done(struct MPT3SAS_ADAPTER *ioc, u16 smid, u8 msix_index,
+@@ -775,7 +775,7 @@ mpt3sas_base_done(struct MPT3SAS_ADAPTER
  
  	mpi_reply = mpt3sas_base_get_reply_virt_addr(ioc, reply);
  	if (mpi_reply && mpi_reply->Function == MPI2_FUNCTION_EVENT_ACK)
@@ -34,7 +32,7 @@ index f59495b..31838d9a 100644
  
  	if (ioc->base_cmds.status == MPT3_CMD_NOT_USED)
  		return 1;
-@@ -806,6 +806,7 @@ _base_async_event(struct MPT3SAS_ADAPTER *ioc, u8 msix_index, u32 reply)
+@@ -806,6 +806,7 @@ _base_async_event(struct MPT3SAS_ADAPTER
  	Mpi2EventNotificationReply_t *mpi_reply;
  	Mpi2EventAckRequest_t *ack_request;
  	u16 smid;
@@ -42,7 +40,7 @@ index f59495b..31838d9a 100644
  
  	mpi_reply = mpt3sas_base_get_reply_virt_addr(ioc, reply);
  	if (!mpi_reply)
-@@ -819,8 +820,18 @@ _base_async_event(struct MPT3SAS_ADAPTER *ioc, u8 msix_index, u32 reply)
+@@ -819,8 +820,18 @@ _base_async_event(struct MPT3SAS_ADAPTER
  		goto out;
  	smid = mpt3sas_base_get_smid(ioc, ioc->base_cb_idx);
  	if (!smid) {
@@ -63,7 +61,7 @@ index f59495b..31838d9a 100644
  		goto out;
  	}
  
-@@ -3189,20 +3200,35 @@ _base_allocate_memory_pools(struct MPT3SAS_ADAPTER *ioc,  int sleep_flag)
+@@ -3202,20 +3213,35 @@ _base_allocate_memory_pools(struct MPT3S
  	}
  	ioc->shost->sg_tablesize = sg_tablesize;
  
@@ -104,7 +102,7 @@ index f59495b..31838d9a 100644
  
  	/* request frame size */
  	ioc->request_sz = facts->IOCRequestFrameSize * 4;
-@@ -3249,7 +3275,6 @@ _base_allocate_memory_pools(struct MPT3SAS_ADAPTER *ioc,  int sleep_flag)
+@@ -3262,7 +3288,6 @@ _base_allocate_memory_pools(struct MPT3S
  		ioc->reply_post_queue_depth += 16 -
  		(ioc->reply_post_queue_depth % 16);
  
@@ -112,7 +110,7 @@ index f59495b..31838d9a 100644
  	if (ioc->reply_post_queue_depth >
  	    facts->MaxReplyDescriptorPostQueueDepth) {
  		ioc->reply_post_queue_depth =
-@@ -3331,7 +3356,7 @@ _base_allocate_memory_pools(struct MPT3SAS_ADAPTER *ioc,  int sleep_flag)
+@@ -3344,7 +3369,7 @@ _base_allocate_memory_pools(struct MPT3S
  	/* set the scsi host can_queue depth
  	 * with some internal commands that could be outstanding
  	 */
@@ -121,7 +119,7 @@ index f59495b..31838d9a 100644
  	dinitprintk(ioc, pr_info(MPT3SAS_FMT
  		"scsi host: can_queue depth (%d)\n",
  		ioc->name, ioc->shost->can_queue));
-@@ -3358,8 +3383,8 @@ _base_allocate_memory_pools(struct MPT3SAS_ADAPTER *ioc,  int sleep_flag)
+@@ -3371,8 +3396,8 @@ _base_allocate_memory_pools(struct MPT3S
  		    ioc->chains_needed_per_io, ioc->request_sz, sz/1024);
  		if (ioc->scsiio_depth < MPT3SAS_SAS_QUEUE_DEPTH)
  			goto out;
@@ -132,7 +130,7 @@ index f59495b..31838d9a 100644
  		goto retry_allocation;
  	}
  
-@@ -4977,6 +5002,8 @@ _base_make_ioc_operational(struct MPT3SAS_ADAPTER *ioc, int sleep_flag)
+@@ -4990,6 +5015,8 @@ _base_make_ioc_operational(struct MPT3SA
  	u32 reply_address;
  	u16 smid;
  	struct _tr_list *delayed_tr, *delayed_tr_next;
@@ -140,8 +138,8 @@ index f59495b..31838d9a 100644
 +	struct _event_ack_list *delayed_event_ack, *delayed_event_ack_next;
  	u8 hide_flag;
  	struct adapter_reply_queue *reply_q;
- 	long reply_post_free;
-@@ -4999,6 +5026,18 @@ _base_make_ioc_operational(struct MPT3SAS_ADAPTER *ioc, int sleep_flag)
+ 	Mpi2ReplyDescriptorsUnion_t *reply_post_free_contig;
+@@ -5011,6 +5038,18 @@ _base_make_ioc_operational(struct MPT3SA
  		kfree(delayed_tr);
  	}
  
@@ -160,8 +158,6 @@ index f59495b..31838d9a 100644
  	/* initialize the scsi lookup free list */
  	spin_lock_irqsave(&ioc->scsi_lookup_lock, flags);
  	INIT_LIST_HEAD(&ioc->free_list);
-diff --git a/drivers/scsi/mpt3sas/mpt3sas_base.h b/drivers/scsi/mpt3sas/mpt3sas_base.h
-index 2786222..4b52a07 100644
 --- a/drivers/scsi/mpt3sas/mpt3sas_base.h
 +++ b/drivers/scsi/mpt3sas/mpt3sas_base.h
 @@ -122,6 +122,8 @@
@@ -173,7 +169,7 @@ index 2786222..4b52a07 100644
  
  #define MPI3_HIM_MASK			0xFFFFFFFF /* mask every bit*/
  
-@@ -677,6 +679,25 @@ struct _tr_list {
+@@ -691,6 +693,25 @@ struct _tr_list {
  	u16	state;
  };
  
@@ -199,7 +195,7 @@ index 2786222..4b52a07 100644
  
  /**
   * struct adapter_reply_queue - the reply queue struct
-@@ -922,6 +943,8 @@ typedef void (*MPT3SAS_FLUSH_RUNNING_CMDS)(struct MPT3SAS_ADAPTER *ioc);
+@@ -936,6 +957,8 @@ typedef void (*MPT3SAS_FLUSH_RUNNING_CMD
   * @replyPostRegisterIndex: index of next position in Reply Desc Post Queue
   * @delayed_tr_list: target reset link list
   * @delayed_tr_volume_list: volume target reset link list
@@ -208,7 +204,7 @@ index 2786222..4b52a07 100644
   * @temp_sensors_count: flag to carry the number of temperature sensors
   * @pci_access_mutex: Mutex to synchronize ioctl,sysfs show path and
   *	pci resource handling. PCI resource freeing will lead to free
-@@ -1143,6 +1166,8 @@ struct MPT3SAS_ADAPTER {
+@@ -1157,6 +1180,8 @@ struct MPT3SAS_ADAPTER {
  
  	struct list_head delayed_tr_list;
  	struct list_head delayed_tr_volume_list;
@@ -217,7 +213,7 @@ index 2786222..4b52a07 100644
  	u8		temp_sensors_count;
  	struct mutex pci_access_mutex;
  
-@@ -1260,6 +1285,8 @@ void mpt3sas_scsih_clear_tm_flag(struct MPT3SAS_ADAPTER *ioc, u16 handle);
+@@ -1275,6 +1300,8 @@ void mpt3sas_scsih_clear_tm_flag(struct
  void mpt3sas_expander_remove(struct MPT3SAS_ADAPTER *ioc, u64 sas_address);
  void mpt3sas_device_remove_by_sas_address(struct MPT3SAS_ADAPTER *ioc,
  	u64 sas_address);
@@ -226,11 +222,9 @@ index 2786222..4b52a07 100644
  
  struct _sas_node *mpt3sas_scsih_expander_find_by_handle(
  	struct MPT3SAS_ADAPTER *ioc, u16 handle);
-diff --git a/drivers/scsi/mpt3sas/mpt3sas_scsih.c b/drivers/scsi/mpt3sas/mpt3sas_scsih.c
-index dcb4c18..b12cada 100644
 --- a/drivers/scsi/mpt3sas/mpt3sas_scsih.c
 +++ b/drivers/scsi/mpt3sas/mpt3sas_scsih.c
-@@ -3222,6 +3222,7 @@ _scsih_tm_tr_complete(struct MPT3SAS_ADAPTER *ioc, u16 smid, u8 msix_index,
+@@ -3229,6 +3229,7 @@ _scsih_tm_tr_complete(struct MPT3SAS_ADA
  	Mpi2SasIoUnitControlRequest_t *mpi_request;
  	u16 smid_sas_ctrl;
  	u32 ioc_state;
@@ -238,7 +232,7 @@ index dcb4c18..b12cada 100644
  
  	if (ioc->remove_host) {
  		dewtprintk(ioc, pr_info(MPT3SAS_FMT
-@@ -3264,9 +3265,16 @@ _scsih_tm_tr_complete(struct MPT3SAS_ADAPTER *ioc, u16 smid, u8 msix_index,
+@@ -3271,9 +3272,16 @@ _scsih_tm_tr_complete(struct MPT3SAS_ADA
  
  	smid_sas_ctrl = mpt3sas_base_get_smid(ioc, ioc->tm_sas_control_cb_idx);
  	if (!smid_sas_ctrl) {
@@ -258,7 +252,7 @@ index dcb4c18..b12cada 100644
  	}
  
  	dewtprintk(ioc, pr_info(MPT3SAS_FMT
-@@ -3317,7 +3325,7 @@ _scsih_sas_control_complete(struct MPT3SAS_ADAPTER *ioc, u16 smid,
+@@ -3324,7 +3332,7 @@ _scsih_sas_control_complete(struct MPT3S
  		pr_err(MPT3SAS_FMT "mpi_reply not valid at %s:%d/%s()!\n",
  		    ioc->name, __FILE__, __LINE__, __func__);
  	}
@@ -267,7 +261,7 @@ index dcb4c18..b12cada 100644
  }
  
  /**
-@@ -3424,6 +3432,142 @@ _scsih_tm_volume_tr_complete(struct MPT3SAS_ADAPTER *ioc, u16 smid,
+@@ -3431,6 +3439,142 @@ _scsih_tm_volume_tr_complete(struct MPT3
  	return _scsih_check_for_pending_tm(ioc, smid);
  }
  
@@ -410,7 +404,7 @@ index dcb4c18..b12cada 100644
  
  /**
   * _scsih_check_for_pending_tm - check for pending task management
-@@ -8589,6 +8733,8 @@ _scsih_probe(struct pci_dev *pdev, const struct pci_device_id *id)
+@@ -8641,6 +8785,8 @@ _scsih_probe(struct pci_dev *pdev, const
  	INIT_LIST_HEAD(&ioc->raid_device_list);
  	INIT_LIST_HEAD(&ioc->sas_hba.sas_port_list);
  	INIT_LIST_HEAD(&ioc->delayed_tr_list);
@@ -419,6 +413,3 @@ index dcb4c18..b12cada 100644
  	INIT_LIST_HEAD(&ioc->delayed_tr_volume_list);
  	INIT_LIST_HEAD(&ioc->reply_queue_list);
  
--- 
-1.8.5.6
-

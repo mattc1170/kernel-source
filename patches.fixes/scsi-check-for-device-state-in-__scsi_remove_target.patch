@@ -1,0 +1,37 @@
+From: Hannes Reinecke <hare@suse.de>
+Date: Wed, 13 Dec 2017 14:15:03 +0100
+Subject: [PATCH] scsi: check for device state in __scsi_remove_target()
+References: bsc#1072589
+Patch-Mainline: submitted linux-scsi 2017/12/13
+
+As it turned out device_get() doesn't use kref_get_unless_zero(),
+so we will be always getting a device pointer.
+So we need to check for the device state in __scsi_remove_target()
+to avoid tripping over deleted objects.
+
+Fixes: fbce4d9 ("scsi: fixup kernel warning during rmmod()")
+
+Signed-off-by: Hannes Reinecke <hare@suse.com>
+---
+ drivers/scsi/scsi_sysfs.c | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/scsi/scsi_sysfs.c b/drivers/scsi/scsi_sysfs.c
+index 995539f..e176c7d 100644
+--- a/drivers/scsi/scsi_sysfs.c
++++ b/drivers/scsi/scsi_sysfs.c
+@@ -1343,7 +1343,10 @@ static void __scsi_remove_target(struct scsi_target *starget)
+ 		 * check.
+ 		 */
+ 		if (sdev->channel != starget->channel ||
+-		    sdev->id != starget->id ||
++		    sdev->id != starget->id)
++			continue;
++		if (sdev->sdev_state == SDEV_DEL ||
++		    sdev->sdev_state == SDEV_CANCEL ||
+ 		    !get_device(&sdev->sdev_gendev))
+ 			continue;
+ 		spin_unlock_irqrestore(shost->host_lock, flags);
+-- 
+1.8.5.6
+

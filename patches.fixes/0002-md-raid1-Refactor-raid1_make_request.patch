@@ -18,7 +18,7 @@ Signed-off-by: Coly Li <colyli@suse.de>
 
 --- a/drivers/md/raid1.c
 +++ b/drivers/md/raid1.c
-@@ -1070,17 +1070,107 @@ static void raid1_unplug(struct blk_plug
+@@ -1071,17 +1071,107 @@ static void raid1_unplug(struct blk_plug
  	kfree(plug);
  }
  
@@ -130,7 +130,7 @@ Signed-off-by: Coly Li <colyli@suse.de>
  	const unsigned long do_sync = (bio->bi_rw & REQ_SYNC);
  	const unsigned long do_flush_fua = (bio->bi_rw & (REQ_FLUSH | REQ_FUA));
  	struct md_rdev *blocked_rdev;
-@@ -1099,15 +1189,15 @@ static void raid1_make_request(struct md
+@@ -1100,15 +1190,15 @@ static void raid1_make_request(struct md
  
  	md_write_start(mddev, bio); /* wait on superblock update early */
  
@@ -152,7 +152,7 @@ Signed-off-by: Coly Li <colyli@suse.de>
  		 */
  		DEFINE_WAIT(w);
  		for (;;) {
-@@ -1118,7 +1208,8 @@ static void raid1_make_request(struct md
+@@ -1119,7 +1209,8 @@ static void raid1_make_request(struct md
  			    bio->bi_iter.bi_sector >= mddev->suspend_hi ||
  			    (mddev_is_clustered(mddev) &&
  			     !md_cluster_ops->area_resyncing(mddev, WRITE,
@@ -160,9 +160,9 @@ Signed-off-by: Coly Li <colyli@suse.de>
 +				     bio->bi_iter.bi_sector,
 +				     bio_end_sector(bio))))
  				break;
- 			schedule();
- 		}
-@@ -1127,119 +1218,6 @@ static void raid1_make_request(struct md
+ 			sigfillset(&full);
+ 			sigprocmask(SIG_BLOCK, &full, &old);
+@@ -1131,119 +1222,6 @@ static void raid1_make_request(struct md
  
  	start_next_window = wait_barrier(conf, bio);
  
@@ -282,7 +282,7 @@ Signed-off-by: Coly Li <colyli@suse.de>
  	if (conf->pending_count >= max_queued_requests) {
  		md_wakeup_thread(mddev->thread);
  		raid1_log(mddev, "wait queued");
-@@ -1283,8 +1261,7 @@ read_again:
+@@ -1287,8 +1265,7 @@ read_again:
  			int bad_sectors;
  			int is_bad;
  
@@ -292,7 +292,7 @@ Signed-off-by: Coly Li <colyli@suse.de>
  					     &first_bad, &bad_sectors);
  			if (is_bad < 0) {
  				/* mustn't write here until the bad block is
-@@ -1373,7 +1350,8 @@ read_again:
+@@ -1377,7 +1354,8 @@ read_again:
  			continue;
  
  		mbio = bio_clone_mddev(bio, GFP_NOIO, mddev);
@@ -302,7 +302,7 @@ Signed-off-by: Coly Li <colyli@suse.de>
  
  		if (first_clone) {
  			/* do behind I/O ?
-@@ -1467,6 +1445,40 @@ read_again:
+@@ -1471,6 +1449,40 @@ read_again:
  	wake_up(&conf->wait_barrier);
  }
  

@@ -9,7 +9,7 @@ Report actual number of receive queues to ethtool.
 
 Signed-off-by: Stephen Hemminger <sthemmin@microsoft.com>
 Signed-off-by: David S. Miller <davem@davemloft.net>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  drivers/net/hyperv/netvsc_drv.c | 16 ++++++++++++++++
  1 file changed, 16 insertions(+)

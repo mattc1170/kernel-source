@@ -1,8 +1,7 @@
 From: Kejian Yan <yankejian@huawei.com>
 Date: Sat, 1 Apr 2017 12:03:41 +0100
 Subject: net: hns: Remove redundant mac_get_id()
-Patch-mainline: Queued in subsystem maintainer repository
-Git-repo: git://git.kernel.org/pub/scm/linux/kernel/git/davem/net-next.git
+Patch-mainline: v4.12-rc1
 Git-commit: 20f0d4f736b7732709b8b9b25be6d88dcc3b48d3
 References: fate#322061
 

@@ -1,0 +1,54 @@
+From 86397fb1f51e35203f5d508742cb0165f92bf442 Mon Sep 17 00:00:00 2001
+From: Chun-Hao Lin <hau@realtek.com>
+Date: Tue, 29 Dec 2015 22:13:39 +0800
+Subject: [PATCH 4/7] r8169:Correct the way of setting RTL8168DP ephy
+Git-commit: 1016a4a1f4018c9a1db411b38f46bd00b96f4e83
+Patch-mainline: v4.5
+References: bsc#1050742
+
+The original way is wrong, it always writes ephy reg 0x03.
+
+Signed-off-by: Chunhao Lin <hau@realtek.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+Signed-off-by: Oliver Neukum <oneukum@suse.com>
+---
+ drivers/net/ethernet/realtek/r8169.c | 15 ++++-----------
+ 1 file changed, 4 insertions(+), 11 deletions(-)
+
+diff --git a/drivers/net/ethernet/realtek/r8169.c b/drivers/net/ethernet/realtek/r8169.c
+index a8736d4017af..1f131803fc50 100644
+--- a/drivers/net/ethernet/realtek/r8169.c
++++ b/drivers/net/ethernet/realtek/r8169.c
+@@ -5818,11 +5818,10 @@ static void rtl_hw_start_8168d_4(struct rtl8169_private *tp)
+ 	void __iomem *ioaddr = tp->mmio_addr;
+ 	struct pci_dev *pdev = tp->pci_dev;
+ 	static const struct ephy_info e_info_8168d_4[] = {
+-		{ 0x0b, ~0,	0x48 },
+-		{ 0x19, 0x20,	0x50 },
+-		{ 0x0c, ~0,	0x20 }
++		{ 0x0b, 0x0000,	0x0048 },
++		{ 0x19, 0x0020,	0x0050 },
++		{ 0x0c, 0x0100,	0x0020 }
+ 	};
+-	int i;
+ 
+ 	rtl_csi_access_enable_1(tp);
+ 
+@@ -5830,13 +5829,7 @@ static void rtl_hw_start_8168d_4(struct rtl8169_private *tp)
+ 
+ 	RTL_W8(MaxTxPacketSize, TxPacketMax);
+ 
+-	for (i = 0; i < ARRAY_SIZE(e_info_8168d_4); i++) {
+-		const struct ephy_info *e = e_info_8168d_4 + i;
+-		u16 w;
+-
+-		w = rtl_ephy_read(tp, e->offset);
+-		rtl_ephy_write(tp, 0x03, (w & e->mask) | e->bits);
+-	}
++	rtl_ephy_init(tp, e_info_8168d_4, ARRAY_SIZE(e_info_8168d_4));
+ 
+ 	rtl_enable_clock_request(pdev);
+ }
+-- 
+2.12.3
+

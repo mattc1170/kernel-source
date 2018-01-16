@@ -1,0 +1,68 @@
+From 30f8de43274c0e5d5ee70413e621de321517571b Mon Sep 17 00:00:00 2001
+From: Mian Yousaf Kaukab <yousaf.kaukab@suse.com>
+Date: Sat, 7 Oct 2017 22:41:41 +0200
+Subject: [PATCH 55/56] perf: arm: acpi: remove cpu hotplug statemachine
+ dependency
+
+Patch-mainline: Never, Workaround for missing functionality
+References: bsc#1062279
+
+By design arm_pmu_acpi_cpu_starting() is called on each cpu.
+Use smp_call_function_single() to achieve this when replacing
+cpu hotplug statemachine.
+
+Signed-off-by: Mian Yousaf Kaukab <yousaf.kaukab@suse.com>
+---
+ drivers/perf/arm_pmu_acpi.c | 22 +++++++++++++++++++---
+ 1 file changed, 19 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/perf/arm_pmu_acpi.c b/drivers/perf/arm_pmu_acpi.c
+index 3303dd8d..577255d6 100644
+--- a/drivers/perf/arm_pmu_acpi.c
++++ b/drivers/perf/arm_pmu_acpi.c
+@@ -188,6 +188,13 @@ static int arm_pmu_acpi_cpu_starting(unsigned int cpu)
+ 	return 0;
+ }
+ 
++static void arm_pmu_acpi_notify(void *hcpu)
++{
++	int cpu = (unsigned long)hcpu;
++
++	arm_pmu_acpi_cpu_starting(cpu);
++}
++
+ int arm_pmu_acpi_probe(armpmu_init_fn init_fn)
+ {
+ 	int pmu_idx = 0;
+@@ -246,6 +253,7 @@ int arm_pmu_acpi_probe(armpmu_init_fn init_fn)
+ static int arm_pmu_acpi_init(void)
+ {
+ 	int ret;
++	unsigned long cpu;
+ 
+ 	if (acpi_disabled)
+ 		return 0;
+@@ -259,9 +267,17 @@ static int arm_pmu_acpi_init(void)
+ 	if (ret)
+ 		return ret;
+ 
+-	ret = cpuhp_setup_state(CPUHP_AP_PERF_ARM_ACPI_STARTING,
+-				"perf/arm/pmu_acpi:starting",
+-				arm_pmu_acpi_cpu_starting, NULL);
++	preempt_disable();
++	/* Handle current cpu direclty */
++	arm_pmu_acpi_cpu_starting(smp_processor_id());
++
++	for_each_online_cpu(cpu) {
++		if (cpu == smp_processor_id())
++			continue;
++		smp_call_function_single(
++				cpu, arm_pmu_acpi_notify, (void *) cpu, true);
++	}
++	preempt_enable();
+ 
+ 	return ret;
+ }
+-- 
+2.11.0
+

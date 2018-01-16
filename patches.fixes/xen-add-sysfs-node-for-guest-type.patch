@@ -1,8 +1,7 @@
 From: Juergen Gross <jgross@suse.com>
 Date: Wed, 14 Jun 2017 17:12:45 +0200
 Subject: [PATCH v5] xen: add sysfs node for guest type
-Patch-mainline: Queued in subsystem maintainer repository
-Git-repo: git://git.kernel.org/pub/scm/linux/kernel/git/xen/tip
+Patch-mainline: 4.13-rc1
 Git-commit: 4a4c29c96dde0eefd69054fd9e6b4255d4717799
 References: bnc#1037840
 

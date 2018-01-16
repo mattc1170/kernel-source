@@ -1,0 +1,52 @@
+From: Eric Dumazet <edumazet@google.com>
+Date: Thu, 9 Jun 2016 07:45:12 -0700
+Patch-mainline: v4.8-rc1
+Subject: net: add netdev_lockdep_set_classes() helper
+Git-commit: d3fff6c443fe8f8a5ef2bdcea45e2ff39db948c7
+References: fate#320485
+
+It is time to add netdev_lockdep_set_classes() helper
+so that lockdep annotations per device type are easier to manage.
+
+This removes a lot of copies and missing annotations.
+
+Signed-off-by: Eric Dumazet <edumazet@google.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+Acked-by: Olaf Hering <ohering@suse.de>
+---
+ drivers/net/bonding/bond_main.c | 24 +-----------------------
+ drivers/net/ppp/ppp_generic.c   |  6 +-----
+ drivers/net/team/team.c         | 21 +--------------------
+ include/linux/netdevice.h       | 17 +++++++++++++++++
+ net/bluetooth/6lowpan.c         | 15 +--------------
+ net/ieee802154/6lowpan/core.c   | 16 +---------------
+ net/l2tp/l2tp_eth.c             |  6 +-----
+ 7 files changed, 23 insertions(+), 82 deletions(-)
+
+diff --git a/include/linux/netdevice.h b/include/linux/netdevice.h
+--- a/include/linux/netdevice.h
++++ b/include/linux/netdevice.h
+@@ -1946,6 +1946,23 @@ static inline void netdev_for_each_tx_queue(struct net_device *dev,
+ 		f(dev, &dev->_tx[i], arg);
+ }
+ 
++#define netdev_lockdep_set_classes(dev)				\
++{								\
++	static struct lock_class_key qdisc_tx_busylock_key;	\
++	/*static struct lock_class_key qdisc_running_key;*/	\
++	static struct lock_class_key qdisc_xmit_lock_key;	\
++	static struct lock_class_key dev_addr_list_lock_key;	\
++	unsigned int i;						\
++								\
++	(dev)->qdisc_tx_busylock = &qdisc_tx_busylock_key;	\
++	/*(dev)->qdisc_running_key = &qdisc_running_key;*/	\
++	lockdep_set_class(&(dev)->addr_list_lock,		\
++			  &dev_addr_list_lock_key); 		\
++	for (i = 0; i < (dev)->num_tx_queues; i++)		\
++		lockdep_set_class(&(dev)->_tx[i]._xmit_lock,	\
++				  &qdisc_xmit_lock_key);	\
++}
++
+ struct netdev_queue *netdev_pick_tx(struct net_device *dev,
+ 				    struct sk_buff *skb,
+ 				    void *accel_priv);

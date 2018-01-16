@@ -1,0 +1,29 @@
+From: Mohammed Gamal <mgamal@redhat.com>
+Date: Mon, 24 Jul 2017 10:57:26 -0700
+Patch-mainline: v4.14-rc1
+Subject: netvsc: Remove redundant use of ipv6_hdr()
+Git-commit: 37b9dfa0d833227bc65353eec9dd0b00e1545a00
+References: fate#320485
+
+This condition already uses an object of type ipv6hdr in the line above.
+Use the object directly instead of calling ipv6_hdr
+
+Signed-off-by: Mohammed Gamal <mgamal@redhat.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+Acked-by: Olaf Hering <ohering@suse.de>
+---
+ drivers/net/hyperv/netvsc_drv.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/net/hyperv/netvsc_drv.c b/drivers/net/hyperv/netvsc_drv.c
+--- a/drivers/net/hyperv/netvsc_drv.c
++++ b/drivers/net/hyperv/netvsc_drv.c
+@@ -339,7 +339,7 @@ static u32 net_checksum_info(struct sk_buff *skb)
+ 
+ 		if (ip6->nexthdr == IPPROTO_TCP)
+ 			return TRANSPORT_INFO_IPV6_TCP;
+-		else if (ipv6_hdr(skb)->nexthdr == IPPROTO_UDP)
++		else if (ip6->nexthdr == IPPROTO_UDP)
+ 			return TRANSPORT_INFO_IPV6_UDP;
+ 	}
+ 

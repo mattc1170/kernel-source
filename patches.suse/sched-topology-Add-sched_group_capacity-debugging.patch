@@ -1,0 +1,127 @@
+From: Peter Zijlstra <peterz@infradead.org>
+Date: Wed, 26 Apr 2017 17:35:35 +0200
+Subject: sched/topology: Add sched_group_capacity debugging
+Git-commit: 005f874dd2843116e2ea079e3679f4f318f12fee
+Patch-mainline: v4.13-rc1
+References: bnc#1022476
+
+Add sgc::id to easier spot domain construction issues.
+
+Take the opportunity to slightly rework the group printing, because
+adding more "(id: %d)" strings makes the entire thing very hard to
+read. Also the individual groups are very hard to separate, so add
+explicit visual grouping, which allows replacing all the "(%s: %d)"
+format things with shorter "%s=%d" variants.
+
+Then fix up some inconsistencies in surrounding prints for domains.
+
+The end result looks like:
+
+  [] CPU0 attaching sched-domain(s):
+  []  domain-0: span=0,4 level=DIE
+  []   groups: 0:{ span=0 }, 4:{ span=4 }
+  []   domain-1: span=0-1,3-5,7 level=NUMA
+  []    groups: 0:{ span=0,4 mask=0,4 cap=2048 }, 1:{ span=1,5 mask=1,5 cap=2048 }, 3:{ span=3,7 mask=3,7 cap=2048 }
+  []    domain-2: span=0-7 level=NUMA
+  []     groups: 0:{ span=0-1,3-5,7 mask=0,4 cap=6144 }, 2:{ span=1-3,5-7 mask=2,6 cap=6144 }
+
+Signed-off-by: Peter Zijlstra (Intel) <peterz@infradead.org>
+Cc: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: Mike Galbraith <efault@gmx.de>
+Cc: Peter Zijlstra <peterz@infradead.org>
+Cc: Thomas Gleixner <tglx@linutronix.de>
+Cc: linux-kernel@vger.kernel.org
+Signed-off-by: Ingo Molnar <mingo@kernel.org>
+Signed-off-by: Mike Galbraith <mgalbraith@suse.de>
+---
+ kernel/sched/core.c  |   25 +++++++++++++++----------
+ kernel/sched/sched.h |    4 ++++
+ 2 files changed, 19 insertions(+), 10 deletions(-)
+
+--- a/kernel/sched/core.c
++++ b/kernel/sched/core.c
+@@ -5951,7 +5951,7 @@ static int sched_domain_debug_one(struct
+ 
+ 	cpumask_clear(groupmask);
+ 
+-	printk(KERN_DEBUG "%*s domain %d: ", level, "", level);
++	printk(KERN_DEBUG "%*s domain-%d: ", level, "", level);
+ 
+ 	if (!(sd->flags & SD_LOAD_BALANCE)) {
+ 		printk("does not load-balance\n");
+@@ -5961,7 +5961,7 @@ static int sched_domain_debug_one(struct
+ 		return -1;
+ 	}
+ 
+-	printk(KERN_CONT "span %*pbl level %s\n",
++	printk(KERN_CONT "span=%*pbl level=%s\n",
+ 	       cpumask_pr_args(sched_domain_span(sd)), sd->name);
+ 
+ 	if (!cpumask_test_cpu(cpu, sched_domain_span(sd))) {
+@@ -5996,18 +5996,17 @@ static int sched_domain_debug_one(struct
+ 
+ 		cpumask_or(groupmask, groupmask, sched_group_cpus(group));
+ 
+-		printk(KERN_CONT " %*pbl",
+-		       cpumask_pr_args(sched_group_cpus(group)));
++		printk(KERN_CONT " %d:{ span=%*pbl",
++				group->sgc->id,
++				cpumask_pr_args(sched_group_cpus(group)));
+ 
+ 		if ((sd->flags & SD_OVERLAP) && !cpumask_full(sched_group_mask(group))) {
+-			printk(KERN_CONT " (mask: %*pbl)",
++			printk(KERN_CONT " mask=%*pbl",
+ 				cpumask_pr_args(sched_group_mask(group)));
+ 		}
+ 
+-		if (group->sgc->capacity != SCHED_CAPACITY_SCALE) {
+-			printk(KERN_CONT " (cpu_capacity: %d)",
+-				group->sgc->capacity);
+-		}
++		if (group->sgc->capacity != SCHED_CAPACITY_SCALE)
++			printk(KERN_CONT " cap=%d", group->sgc->capacity);
+ 
+ 		if (group == sd->groups && sd->child &&
+ 		    !cpumask_equal(sched_domain_span(sd->child),
+@@ -6015,6 +6014,8 @@ static int sched_domain_debug_one(struct
+ 			printk(KERN_ERR "ERROR: domain->groups does not match domain->child\n");
+ 		}
+ 
++		printk(KERN_CONT " }");
++
+ 		group = group->next;
+ 
+ 		if (group != sd->groups)
+@@ -6045,7 +6046,7 @@ static void sched_domain_debug(struct sc
+ 		return;
+ 	}
+ 
+-	printk(KERN_DEBUG "CPU%d attaching sched-domain:\n", cpu);
++	printk(KERN_DEBUG "CPU%d attaching sched-domain(s):\n", cpu);
+ 
+ 	for (;;) {
+ 		if (sched_domain_debug_one(sd, cpu, level, sched_domains_tmpmask))
+@@ -7261,6 +7262,10 @@ static int __sdt_alloc(const struct cpum
+ 			if (!sgc)
+ 				return -ENOMEM;
+ 
++#ifdef CONFIG_SCHED_DEBUG
++			sgc->id = j;
++#endif
++
+ 			*per_cpu_ptr(sdd->sgc, j) = sgc;
+ 		}
+ 	}
+--- a/kernel/sched/sched.h
++++ b/kernel/sched/sched.h
+@@ -884,6 +884,10 @@ struct sched_group_capacity {
+ 	unsigned long next_update;
+ 	int imbalance; /* XXX unrelated to capacity but shared group state */
+ 
++#if defined(CONFIG_SCHED_DEBUG) && !defined(__GENKSYMS__)
++	int id;
++#endif
++
+ 	unsigned long cpumask[0]; /* iteration mask */
+ };
+ 

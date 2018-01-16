@@ -13,7 +13,7 @@ Signed-off-by: Vitaly Kuznetsov <vkuznets@redhat.com>
 Reviewed-by: Radim Kr.má<rkrcmar@redhat.com>
 Signed-off-by: K. Y. Srinivasan <kys@microsoft.com>
 Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  drivers/hv/channel_mgmt.c | 10 +---------
  drivers/hv/hyperv_vmbus.h | 24 ++++++++++++++++++++++++

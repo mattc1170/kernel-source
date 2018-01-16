@@ -1,0 +1,53 @@
+From: James Smart <james.smart@broadcom.com>
+Date: Mon, 19 Dec 2016 15:07:25 -0800
+Subject: [PATCH] scsi: lpfc: FCoE VPort enable-disable does not bring up the
+ VPort
+Patch-mainline: 4.4.100
+References: FATE#321664 bnc#1012382 bsc#1017969
+Git-commit: 104450eb08ca662e6b1d02da11aca9598e978f3e
+
+[ Upstream commit 104450eb08ca662e6b1d02da11aca9598e978f3e ]
+
+FCoE VPort enable-disable does not bring up the VPort.
+VPI structure needed to be initialized before being re-registered.
+
+Signed-off-by: Dick Kennedy <dick.kennedy@broadcom.com>
+Signed-off-by: James Smart <james.smart@broadcom.com>
+Reviewed-by: Hannes Reinecke <hare@suse.com>
+Signed-off-by: Martin K. Petersen <martin.petersen@oracle.com>
+Signed-off-by: Sasha Levin <alexander.levin@verizon.com>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Signed-off-by: Jiri Slaby <jslaby@suse.cz>
+---
+ drivers/scsi/lpfc/lpfc_vport.c | 8 ++++++++
+ 1 file changed, 8 insertions(+)
+
+diff --git a/drivers/scsi/lpfc/lpfc_vport.c b/drivers/scsi/lpfc/lpfc_vport.c
+index 769012663a8f..861c57bc4520 100644
+--- a/drivers/scsi/lpfc/lpfc_vport.c
++++ b/drivers/scsi/lpfc/lpfc_vport.c
+@@ -528,6 +528,12 @@ enable_vport(struct fc_vport *fc_vport)
+ 
+ 	spin_lock_irq(shost->host_lock);
+ 	vport->load_flag |= FC_LOADING;
++	if (vport->fc_flag & FC_VPORT_NEEDS_INIT_VPI) {
++		spin_unlock_irq(shost->host_lock);
++		lpfc_issue_init_vpi(vport);
++		goto out;
++	}
++
+ 	vport->fc_flag |= FC_VPORT_NEEDS_REG_VPI;
+ 	spin_unlock_irq(shost->host_lock);
+ 
+@@ -548,6 +554,8 @@ enable_vport(struct fc_vport *fc_vport)
+ 	} else {
+ 		lpfc_vport_set_state(vport, FC_VPORT_FAILED);
+ 	}
++
++out:
+ 	lpfc_printf_vlog(vport, KERN_ERR, LOG_VPORT,
+ 			 "1827 Vport Enabled.\n");
+ 	return VPORT_OK;
+-- 
+2.15.0
+

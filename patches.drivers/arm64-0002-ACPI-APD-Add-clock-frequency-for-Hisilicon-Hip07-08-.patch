@@ -1,0 +1,46 @@
+From: Hanjun Guo <hanjun.guo@linaro.org>
+Date: Sat, 22 Apr 2017 11:23:43 +0800
+Subject: ACPI / APD: Add clock frequency for Hisilicon Hip07/08 I2C controller
+Git-commit: 6e14cf361a0cf3bbe0026557427a7eb2f64d3157
+Patch-mainline: v4.12-rc1
+References: bsc#1049291
+
+I2C clock frequency of Designware ip for Hisilicon Hip07 is 200M,
+but 250M for Hip08, use two ACPI IDs to differentiate them.
+
+Signed-off-by: Hanjun Guo <hanjun.guo@linaro.org>
+Reviewed-by: Kefeng Wang <wangkefeng.wang@huawei.com>
+Signed-off-by: Rafael J. Wysocki <rafael.j.wysocki@intel.com>
+Signed-off-by: Matthias Brugger <mbrugger@suse.com>
+---
+ drivers/acpi/acpi_apd.c |   12 ++++++++++++
+ 1 file changed, 12 insertions(+)
+
+--- a/drivers/acpi/acpi_apd.c
++++ b/drivers/acpi/acpi_apd.c
+@@ -93,6 +93,16 @@ static struct apd_device_desc vulcan_spi
+ 	.setup = acpi_apd_setup,
+ 	.fixed_clk_rate = 133000000,
+ };
++
++static const struct apd_device_desc hip07_i2c_desc = {
++	.setup = acpi_apd_setup,
++	.fixed_clk_rate = 200000000,
++};
++
++static const struct apd_device_desc hip08_i2c_desc = {
++	.setup = acpi_apd_setup,
++	.fixed_clk_rate = 250000000,
++};
+ #endif
+ 
+ #else
+@@ -155,6 +165,8 @@ static const struct acpi_device_id acpi_
+ 	{ "APMC0D0F", APD_ADDR(xgene_i2c_desc) },
+ 	{ "BRCM900D", APD_ADDR(vulcan_spi_desc) },
+ 	{ "CAV900D",  APD_ADDR(vulcan_spi_desc) },
++	{ "HISI0A21", APD_ADDR(hip07_i2c_desc) },
++	{ "HISI0A22", APD_ADDR(hip08_i2c_desc) },
+ #endif
+ 	{ }
+ };

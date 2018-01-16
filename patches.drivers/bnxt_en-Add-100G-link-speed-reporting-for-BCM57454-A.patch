@@ -1,8 +1,7 @@
 From: Deepak Khungar <deepak.khungar@broadcom.com>
 Date: Fri, 21 Apr 2017 20:11:24 -0400
 Subject: bnxt_en: Add 100G link speed reporting for BCM57454 ASIC in ethtool
-Patch-mainline: Queued in subsystem maintainer repository
-Git-repo: git://git.kernel.org/pub/scm/linux/kernel/git/davem/net-next.git
+Patch-mainline: v4.12-rc1
 Git-commit: 38a21b34aacd4db7b7b74c61afae42ea6718448d
 References: bsc#1020412 FATE#321671
 

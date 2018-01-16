@@ -1,0 +1,194 @@
+From: Ursula Braun <ubraun@linux.vnet.ibm.com>
+Subject: s390/qdio: avoid reschedule of outbound tasklet once killed
+Patch-mainline: v4.8-rc3
+Git-commit: 9bce8b2cbebf9f11b41021ccb98c6b18d1796edd
+References: bnc#1060249, LTC#159885
+
+Description:  qdio: avoid reschedule of outbound tasklet once killed
+Symptom:      kernel oops in qeth_switch_to_nonpacking_if_needed()
+Problem:      During qdio_shutdown the queue tasklets are killed for all
+              inbound and outbound queues. The queue structures might be
+              freed after qdio_shutdown. In certain scenarios the qdio
+              queue tasklets might be rescheduled after qdio_shutdown,
+              or outbound queue timers might be restarted after
+              qdio_shutdown.
+Solution:     It must be guaranteed that the qdio queue tasklets are not
+              rescheduled after qdio_shutdown. In addition it must be
+              guaranteed that the outbound queue timers are not restarted
+              after qdio_shutdown. Timer deletion makes use of
+              del_timer_sync() to make sure qdio_outbound_timer() is
+              finished on other CPUs as well. Queue tasklets are scheduled
+              in state QDIO_IRQ_STATE_ACTIVE only.
+Reproduction: trigger lots of qeth recoveries, but do not disable SMT2
+              (kernel parameter "nosmt")
+
+Upstream-Description:
+
+              s390/qdio: avoid reschedule of outbound tasklet once killed
+
+              During qdio_shutdown the queue tasklets are killed for all inbound and
+              outbound queues. The queue structures might be freed after
+              qdio_shutdown.
+              Thus it must be guaranteed that these queue tasklets are not rescheduled
+              after that. In addition the outbound queue timers are deleted and it
+              must
+              be guaranteed that these timers are not restarted after qdio_shutdown
+              processing. Timer deletion should make use of del_timer_sync() to make
+              sure qdio_outbound_timer() is finished on other CPUs as well. Queue
+              tasklets should be scheduled in state QDIO_IRQ_STATE_ACTIVE only.
+
+              Signed-off-by: Ursula Braun <ubraun@linux.vnet.ibm.com>
+              Reviewed-by: Benjamin Block <bblock@linux.vnet.ibm.com>
+              Signed-off-by: Martin Schwidefsky <schwidefsky@de.ibm.com>
+
+
+Signed-off-by: Ursula Braun <ubraun@linux.vnet.ibm.com>
+Acked-by: Hannes Reinecke <hare@suse.com>
+---
+ drivers/s390/cio/qdio_main.c |   49 +++++++++++++++++++++----------------------
+ 1 file changed, 25 insertions(+), 24 deletions(-)
+
+--- a/drivers/s390/cio/qdio_main.c
++++ b/drivers/s390/cio/qdio_main.c
+@@ -686,6 +686,15 @@ static void qdio_kick_handler(struct qdi
+ 	q->qdio_error = 0;
+ }
+ 
++static inline int qdio_tasklet_schedule(struct qdio_q *q)
++{
++	if (likely(q->irq_ptr->state == QDIO_IRQ_STATE_ACTIVE)) {
++		tasklet_schedule(&q->tasklet);
++		return 0;
++	}
++	return -EPERM;
++}
++
+ static void __qdio_inbound_processing(struct qdio_q *q)
+ {
+ 	qperf_inc(q, tasklet_inbound);
+@@ -698,10 +707,8 @@ static void __qdio_inbound_processing(st
+ 	if (!qdio_inbound_q_done(q)) {
+ 		/* means poll time is not yet over */
+ 		qperf_inc(q, tasklet_inbound_resched);
+-		if (likely(q->irq_ptr->state != QDIO_IRQ_STATE_STOPPED)) {
+-			tasklet_schedule(&q->tasklet);
++		if (!qdio_tasklet_schedule(q))
+ 			return;
+-		}
+ 	}
+ 
+ 	qdio_stop_polling(q);
+@@ -711,8 +718,7 @@ static void __qdio_inbound_processing(st
+ 	 */
+ 	if (!qdio_inbound_q_done(q)) {
+ 		qperf_inc(q, tasklet_inbound_resched2);
+-		if (likely(q->irq_ptr->state != QDIO_IRQ_STATE_STOPPED))
+-			tasklet_schedule(&q->tasklet);
++		qdio_tasklet_schedule(q);
+ 	}
+ }
+ 
+@@ -869,16 +875,15 @@ static void __qdio_outbound_processing(s
+ 	 * is noticed and outbound_handler is called after some time.
+ 	 */
+ 	if (qdio_outbound_q_done(q))
+-		del_timer(&q->u.out.timer);
++		del_timer_sync(&q->u.out.timer);
+ 	else
+-		if (!timer_pending(&q->u.out.timer))
++		if (!timer_pending(&q->u.out.timer) &&
++		    likely(q->irq_ptr->state == QDIO_IRQ_STATE_ACTIVE))
+ 			mod_timer(&q->u.out.timer, jiffies + 10 * HZ);
+ 	return;
+ 
+ sched:
+-	if (unlikely(q->irq_ptr->state == QDIO_IRQ_STATE_STOPPED))
+-		return;
+-	tasklet_schedule(&q->tasklet);
++	qdio_tasklet_schedule(q);
+ }
+ 
+ /* outbound tasklet */
+@@ -892,9 +897,7 @@ void qdio_outbound_timer(unsigned long d
+ {
+ 	struct qdio_q *q = (struct qdio_q *)data;
+ 
+-	if (unlikely(q->irq_ptr->state == QDIO_IRQ_STATE_STOPPED))
+-		return;
+-	tasklet_schedule(&q->tasklet);
++	qdio_tasklet_schedule(q);
+ }
+ 
+ static inline void qdio_check_outbound_after_thinint(struct qdio_q *q)
+@@ -907,7 +910,7 @@ static inline void qdio_check_outbound_a
+ 
+ 	for_each_output_queue(q->irq_ptr, out, i)
+ 		if (!qdio_outbound_q_done(out))
+-			tasklet_schedule(&out->tasklet);
++			qdio_tasklet_schedule(out);
+ }
+ 
+ static void __tiqdio_inbound_processing(struct qdio_q *q)
+@@ -929,10 +932,8 @@ static void __tiqdio_inbound_processing(
+ 
+ 	if (!qdio_inbound_q_done(q)) {
+ 		qperf_inc(q, tasklet_inbound_resched);
+-		if (likely(q->irq_ptr->state != QDIO_IRQ_STATE_STOPPED)) {
+-			tasklet_schedule(&q->tasklet);
++		if (!qdio_tasklet_schedule(q))
+ 			return;
+-		}
+ 	}
+ 
+ 	qdio_stop_polling(q);
+@@ -942,8 +943,7 @@ static void __tiqdio_inbound_processing(
+ 	 */
+ 	if (!qdio_inbound_q_done(q)) {
+ 		qperf_inc(q, tasklet_inbound_resched2);
+-		if (likely(q->irq_ptr->state != QDIO_IRQ_STATE_STOPPED))
+-			tasklet_schedule(&q->tasklet);
++		qdio_tasklet_schedule(q);
+ 	}
+ }
+ 
+@@ -977,7 +977,7 @@ static void qdio_int_handler_pci(struct
+ 	int i;
+ 	struct qdio_q *q;
+ 
+-	if (unlikely(irq_ptr->state == QDIO_IRQ_STATE_STOPPED))
++	if (unlikely(irq_ptr->state != QDIO_IRQ_STATE_ACTIVE))
+ 		return;
+ 
+ 	for_each_input_queue(irq_ptr, q, i) {
+@@ -1003,7 +1003,7 @@ static void qdio_int_handler_pci(struct
+ 			continue;
+ 		if (need_siga_sync(q) && need_siga_sync_out_after_pci(q))
+ 			qdio_siga_sync_q(q);
+-		tasklet_schedule(&q->tasklet);
++		qdio_tasklet_schedule(q);
+ 	}
+ }
+ 
+@@ -1141,7 +1141,7 @@ static void qdio_shutdown_queues(struct
+ 		tasklet_kill(&q->tasklet);
+ 
+ 	for_each_output_queue(irq_ptr, q, i) {
+-		del_timer(&q->u.out.timer);
++		del_timer_sync(&q->u.out.timer);
+ 		tasklet_kill(&q->tasklet);
+ 	}
+ }
+@@ -1585,10 +1585,11 @@ static int handle_outbound(struct qdio_q
+ 
+ 	/* in case of SIGA errors we must process the error immediately */
+ 	if (used >= q->u.out.scan_threshold || rc)
+-		tasklet_schedule(&q->tasklet);
++		qdio_tasklet_schedule(q);
+ 	else
+ 		/* free the SBALs in case of no further traffic */
+-		if (!timer_pending(&q->u.out.timer))
++		if (!timer_pending(&q->u.out.timer) &&
++		    likely(q->irq_ptr->state == QDIO_IRQ_STATE_ACTIVE))
+ 			mod_timer(&q->u.out.timer, jiffies + HZ);
+ 	return rc;
+ }

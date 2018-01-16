@@ -1,0 +1,32 @@
+From: "K. Y. Srinivasan" <kys@microsoft.com>
+Date: Fri, 24 Mar 2017 20:54:36 -0700
+Patch-mainline: v4.12-rc1
+Subject: netvsc: Fix a bug in sub-channel handling
+Git-commit: b1dd90cea725f794185a66c4e4ccfd4fb84632b5
+References: fate#320485
+
+All netvsc channels are handled via NAPI. Setup the "read mode" correctly
+for the netvsc sub-channels.
+
+Signed-off-by: K. Y. Srinivasan <kys@microsoft.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+Acked-by: Olaf Hering <ohering@suse.de>
+---
+ drivers/net/hyperv/rndis_filter.c | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/drivers/net/hyperv/rndis_filter.c b/drivers/net/hyperv/rndis_filter.c
+--- a/drivers/net/hyperv/rndis_filter.c
++++ b/drivers/net/hyperv/rndis_filter.c
+@@ -1002,6 +1002,11 @@ static void netvsc_sc_open(struct vmbus_channel *new_sc)
+ 	if (!nvchan->mrc.buf)
+ 		return;
+ 
++	/* Because the device uses NAPI, all the interrupt batching and
++	 * control is done via Net softirq, not the channel handling
++	 */
++	set_channel_read_mode(new_sc, HV_CALL_ISR);
++
+ 	ret = vmbus_open(new_sc, nvscdev->ring_size * PAGE_SIZE,
+ 			 nvscdev->ring_size * PAGE_SIZE, NULL, 0,
+ 			 netvsc_channel_cb, nvchan);

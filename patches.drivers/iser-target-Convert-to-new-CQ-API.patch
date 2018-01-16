@@ -22,15 +22,13 @@ Signed-off-by: Nicholas Bellinger <nab@linux-iscsi.org>
 
 Acked-by: Hannes Reinecke <hare@suse.de>
 ---
- drivers/infiniband/ulp/isert/ib_isert.c | 405 +++++++++++++-------------------
- drivers/infiniband/ulp/isert/ib_isert.h |  22 +-
- 2 files changed, 184 insertions(+), 243 deletions(-)
+ drivers/infiniband/ulp/isert/ib_isert.c |  415 +++++++++++++-------------------
+ drivers/infiniband/ulp/isert/ib_isert.h |   22 +
+ 2 files changed, 189 insertions(+), 248 deletions(-)
 
-diff --git a/drivers/infiniband/ulp/isert/ib_isert.c b/drivers/infiniband/ulp/isert/ib_isert.c
-index ca8853a..b7d6cc5 100644
 --- a/drivers/infiniband/ulp/isert/ib_isert.c
 +++ b/drivers/infiniband/ulp/isert/ib_isert.c
-@@ -59,13 +59,17 @@ isert_reg_rdma(struct iscsi_conn *conn, struct iscsi_cmd *cmd,
+@@ -59,13 +59,17 @@ isert_reg_rdma(struct iscsi_conn *conn,
  static int
  isert_put_response(struct iscsi_conn *conn, struct iscsi_cmd *cmd);
  static int
@@ -62,7 +60,7 @@ index ca8853a..b7d6cc5 100644
  static int
  isert_alloc_rx_descriptors(struct isert_conn *isert_conn)
  {
-@@ -213,6 +211,7 @@ isert_alloc_rx_descriptors(struct isert_conn *isert_conn)
+@@ -213,6 +211,7 @@ isert_alloc_rx_descriptors(struct isert_
  		rx_sg->addr = rx_desc->dma_addr;
  		rx_sg->length = ISER_RX_PAYLOAD_SIZE;
  		rx_sg->lkey = device->pd->local_dma_lkey;
@@ -70,7 +68,7 @@ index ca8853a..b7d6cc5 100644
  	}
  
  	return 0;
-@@ -251,9 +250,6 @@ isert_free_rx_descriptors(struct isert_conn *isert_conn)
+@@ -251,9 +250,6 @@ isert_free_rx_descriptors(struct isert_c
  	isert_conn->rx_descs = NULL;
  }
  
@@ -80,7 +78,7 @@ index ca8853a..b7d6cc5 100644
  static void
  isert_free_comps(struct isert_device *device)
  {
-@@ -262,10 +258,8 @@ isert_free_comps(struct isert_device *device)
+@@ -262,10 +258,8 @@ isert_free_comps(struct isert_device *de
  	for (i = 0; i < device->comps_used; i++) {
  		struct isert_comp *comp = &device->comps[i];
  
@@ -93,7 +91,7 @@ index ca8853a..b7d6cc5 100644
  	}
  	kfree(device->comps);
  }
-@@ -294,28 +288,17 @@ isert_alloc_comps(struct isert_device *device)
+@@ -294,28 +288,17 @@ isert_alloc_comps(struct isert_device *d
  	max_cqe = min(ISER_MAX_CQ_LEN, device->ib_device->attrs.max_cqe);
  
  	for (i = 0; i < device->comps_used; i++) {
@@ -124,7 +122,7 @@ index ca8853a..b7d6cc5 100644
  	}
  
  	return 0;
-@@ -723,7 +706,7 @@ isert_connect_request(struct rdma_cm_id *cma_id, struct rdma_cm_event *event)
+@@ -723,7 +706,7 @@ isert_connect_request(struct rdma_cm_id
  	if (ret)
  		goto out_conn_dev;
  
@@ -133,7 +131,7 @@ index ca8853a..b7d6cc5 100644
  	if (ret)
  		goto out_conn_dev;
  
-@@ -981,7 +964,8 @@ isert_post_recvm(struct isert_conn *isert_conn, u32 count)
+@@ -981,7 +964,8 @@ isert_post_recvm(struct isert_conn *iser
  
  	for (rx_wr = isert_conn->rx_wr, i = 0; i < count; i++, rx_wr++) {
  		rx_desc = &isert_conn->rx_descs[i];
@@ -143,7 +141,7 @@ index ca8853a..b7d6cc5 100644
  		rx_wr->sg_list = &rx_desc->rx_sg;
  		rx_wr->num_sge = 1;
  		rx_wr->next = rx_wr + 1;
-@@ -1003,7 +987,7 @@ isert_post_recv(struct isert_conn *isert_conn, struct iser_rx_desc *rx_desc)
+@@ -1003,7 +987,7 @@ isert_post_recv(struct isert_conn *isert
  	struct ib_recv_wr *rx_wr_failed, rx_wr;
  	int ret;
  
@@ -152,7 +150,7 @@ index ca8853a..b7d6cc5 100644
  	rx_wr.sg_list = &rx_desc->rx_sg;
  	rx_wr.num_sge = 1;
  	rx_wr.next = NULL;
-@@ -1016,7 +1000,7 @@ isert_post_recv(struct isert_conn *isert_conn, struct iser_rx_desc *rx_desc)
+@@ -1016,7 +1000,7 @@ isert_post_recv(struct isert_conn *isert
  }
  
  static int
@@ -161,7 +159,7 @@ index ca8853a..b7d6cc5 100644
  {
  	struct ib_device *ib_dev = isert_conn->cm_id->device;
  	struct ib_send_wr send_wr, *send_wr_failed;
-@@ -1025,8 +1009,10 @@ isert_post_send(struct isert_conn *isert_conn, struct iser_tx_desc *tx_desc)
+@@ -1025,8 +1009,10 @@ isert_post_send(struct isert_conn *isert
  	ib_dma_sync_single_for_device(ib_dev, tx_desc->dma_addr,
  				      ISER_HEADERS_LEN, DMA_TO_DEVICE);
  
@@ -173,7 +171,7 @@ index ca8853a..b7d6cc5 100644
  	send_wr.sg_list	= tx_desc->tx_sg;
  	send_wr.num_sge	= tx_desc->num_sge;
  	send_wr.opcode	= IB_WR_SEND;
-@@ -1096,7 +1082,8 @@ isert_init_send_wr(struct isert_conn *isert_conn, struct isert_cmd *isert_cmd,
+@@ -1096,7 +1082,8 @@ isert_init_send_wr(struct isert_conn *is
  	struct iser_tx_desc *tx_desc = &isert_cmd->tx_desc;
  
  	isert_cmd->rdma_wr.iser_ib_op = ISER_IB_SEND;
@@ -183,7 +181,7 @@ index ca8853a..b7d6cc5 100644
  
  	if (isert_conn->snd_w_inv && isert_cmd->inv_rkey) {
  		send_wr->opcode  = IB_WR_SEND_WITH_INV;
-@@ -1111,7 +1098,7 @@ isert_init_send_wr(struct isert_conn *isert_conn, struct isert_cmd *isert_cmd,
+@@ -1111,7 +1098,7 @@ isert_init_send_wr(struct isert_conn *is
  }
  
  static int
@@ -192,7 +190,7 @@ index ca8853a..b7d6cc5 100644
  {
  	struct ib_recv_wr rx_wr, *rx_wr_fail;
  	struct ib_sge sge;
-@@ -1125,8 +1112,10 @@ isert_rdma_post_recvl(struct isert_conn *isert_conn)
+@@ -1125,8 +1112,10 @@ isert_rdma_post_recvl(struct isert_conn
  	isert_dbg("Setup sge: addr: %llx length: %d 0x%08x\n",
  		sge.addr, sge.length, sge.lkey);
  
@@ -204,7 +202,7 @@ index ca8853a..b7d6cc5 100644
  	rx_wr.sg_list = &sge;
  	rx_wr.num_sge = 1;
  
-@@ -1198,12 +1187,12 @@ isert_put_login_tx(struct iscsi_conn *conn, struct iscsi_login *login,
+@@ -1198,12 +1187,12 @@ isert_put_login_tx(struct iscsi_conn *co
  			goto post_send;
  		}
  
@@ -219,7 +217,7 @@ index ca8853a..b7d6cc5 100644
  	if (ret)
  		return ret;
  
-@@ -1546,12 +1535,42 @@ isert_rx_opcode(struct isert_conn *isert_conn, struct iser_rx_desc *rx_desc,
+@@ -1546,12 +1535,42 @@ isert_rx_opcode(struct isert_conn *isert
  }
  
  static void
@@ -263,7 +261,7 @@ index ca8853a..b7d6cc5 100644
  	switch (iser_ctrl->flags & 0xF0) {
  	case ISCSI_CTRL:
  		if (iser_ctrl->flags & ISER_RSV) {
-@@ -1579,55 +1598,40 @@ isert_rx_do_work(struct iser_rx_desc *rx_desc, struct isert_conn *isert_conn)
+@@ -1579,55 +1598,40 @@ isert_rx_do_work(struct iser_rx_desc *rx
  
  	isert_rx_opcode(isert_conn, rx_desc,
  			read_stag, read_va, write_stag, write_va);
@@ -279,7 +277,7 @@ index ca8853a..b7d6cc5 100644
 +isert_login_recv_done(struct ib_cq *cq, struct ib_wc *wc)
  {
 +	struct isert_conn *isert_conn = wc->qp->qp_context;
- 	struct ib_device *ib_dev = isert_conn->cm_id->device;
+ 	struct ib_device *ib_dev = isert_conn->device->ib_device;
 -	struct iscsi_hdr *hdr;
 -	u64 rx_dma;
 -	int rx_buflen;
@@ -294,29 +292,20 @@ index ca8853a..b7d6cc5 100644
 -		rx_buflen = ISER_RX_PAYLOAD_SIZE;
 -		isert_dbg("req_buf: Using rx_dma: 0x%llx, rx_buflen: %d\n",
 -			 rx_dma, rx_buflen);
-+
-+	if (unlikely(wc->status != IB_WC_SUCCESS)) {
-+		isert_print_wc(wc, "login recv");
-+		return;
- 	}
- 
+-	}
+-
 -	ib_dma_sync_single_for_cpu(ib_dev, rx_dma, rx_buflen, DMA_FROM_DEVICE);
-+	ib_dma_sync_single_for_cpu(ib_dev, isert_conn->login_req_dma,
-+			ISER_RX_PAYLOAD_SIZE, DMA_FROM_DEVICE);
- 
+-
 -	hdr = &desc->iscsi_header;
 -	isert_dbg("iSCSI opcode: 0x%02x, ITT: 0x%08x, flags: 0x%02x dlen: %d\n",
 -		 hdr->opcode, hdr->itt, hdr->flags,
 -		 (int)(xfer_len - ISER_HEADERS_LEN));
-+	isert_conn->login_req_len = wc->byte_len - ISER_HEADERS_LEN;
- 
+-
 -	if (desc == isert_conn->login_req_buf) {
 -		isert_conn->login_req_len = xfer_len - ISER_HEADERS_LEN;
 -		if (isert_conn->conn) {
 -			struct iscsi_login *login = isert_conn->conn->conn_login;
-+	if (isert_conn->conn) {
-+		struct iscsi_login *login = isert_conn->conn->conn_login;
- 
+-
 -			if (login && !login->first_request)
 -				isert_rx_login_req(isert_conn);
 -		}
@@ -325,16 +314,30 @@ index ca8853a..b7d6cc5 100644
 -		mutex_unlock(&isert_conn->mutex);
 -	} else {
 -		isert_rx_do_work(desc, isert_conn);
-+		if (login && !login->first_request)
-+			isert_rx_login_req(isert_conn);
++
++	if (unlikely(wc->status != IB_WC_SUCCESS)) {
++		isert_print_wc(wc, "login recv");
++		return;
  	}
  
 -	ib_dma_sync_single_for_device(ib_dev, rx_dma, rx_buflen,
 -				      DMA_FROM_DEVICE);
++	ib_dma_sync_single_for_cpu(ib_dev, isert_conn->login_req_dma,
++			ISER_RX_PAYLOAD_SIZE, DMA_FROM_DEVICE);
++
++	isert_conn->login_req_len = wc->byte_len - ISER_HEADERS_LEN;
++
++	if (isert_conn->conn) {
++		struct iscsi_login *login = isert_conn->conn->conn_login;
+ 
++		if (login && !login->first_request)
++			isert_rx_login_req(isert_conn);
++	}
++
 +	mutex_lock(&isert_conn->mutex);
 +	complete(&isert_conn->login_req_comp);
 +	mutex_unlock(&isert_conn->mutex);
- 
++
 +	ib_dma_sync_single_for_device(ib_dev, isert_conn->login_req_dma,
 +				ISER_RX_PAYLOAD_SIZE, DMA_FROM_DEVICE);
  }
@@ -417,7 +420,7 @@ index ca8853a..b7d6cc5 100644
  	if (wr->fr_desc && wr->fr_desc->ind & ISERT_PROTECTED) {
  		ret = isert_check_pi_status(se_cmd,
  					    wr->fr_desc->pi_ctx->sig_mr);
-@@ -1969,167 +1992,56 @@ isert_do_control_comp(struct work_struct *work)
+@@ -1969,167 +1992,56 @@ isert_do_control_comp(struct work_struct
  }
  
  static void
@@ -615,7 +618,7 @@ index ca8853a..b7d6cc5 100644
  static int
  isert_post_response(struct isert_conn *isert_conn, struct isert_cmd *isert_cmd)
  {
-@@ -2386,7 +2298,8 @@ isert_build_rdma_wr(struct isert_conn *isert_conn, struct isert_cmd *isert_cmd,
+@@ -2386,7 +2298,8 @@ isert_build_rdma_wr(struct isert_conn *i
  	page_off = offset % PAGE_SIZE;
  
  	rdma_wr->wr.sg_list = ib_sge;
@@ -625,7 +628,7 @@ index ca8853a..b7d6cc5 100644
  	/*
  	 * Perform mapping of TCM scatterlist memory ib_sge dma_addr.
  	 */
-@@ -2469,6 +2382,8 @@ isert_map_rdma(struct iscsi_conn *conn, struct iscsi_cmd *cmd,
+@@ -2469,6 +2382,8 @@ isert_map_rdma(struct iscsi_conn *conn,
  
  		rdma_wr->wr.send_flags = 0;
  		if (wr->iser_ib_op == ISER_IB_RDMA_WRITE) {
@@ -634,7 +637,7 @@ index ca8853a..b7d6cc5 100644
  			rdma_wr->wr.opcode = IB_WR_RDMA_WRITE;
  			rdma_wr->remote_addr = isert_cmd->read_va + offset;
  			rdma_wr->rkey = isert_cmd->read_stag;
-@@ -2477,6 +2392,8 @@ isert_map_rdma(struct iscsi_conn *conn, struct iscsi_cmd *cmd,
+@@ -2477,6 +2392,8 @@ isert_map_rdma(struct iscsi_conn *conn,
  			else
  				rdma_wr->wr.next = &wr->rdma_wr[i + 1].wr;
  		} else {
@@ -643,7 +646,7 @@ index ca8853a..b7d6cc5 100644
  			rdma_wr->wr.opcode = IB_WR_RDMA_READ;
  			rdma_wr->remote_addr = isert_cmd->write_va + va_offset;
  			rdma_wr->rkey = isert_cmd->write_stag;
-@@ -2508,7 +2425,7 @@ isert_inv_rkey(struct ib_send_wr *inv_wr, struct ib_mr *mr)
+@@ -2508,7 +2425,7 @@ isert_inv_rkey(struct ib_send_wr *inv_wr
  	u32 rkey;
  
  	memset(inv_wr, 0, sizeof(*inv_wr));
@@ -652,7 +655,7 @@ index ca8853a..b7d6cc5 100644
  	inv_wr->opcode = IB_WR_LOCAL_INV;
  	inv_wr->ex.invalidate_rkey = mr->rkey;
  
-@@ -2564,7 +2481,7 @@ isert_fast_reg_mr(struct isert_conn *isert_conn,
+@@ -2564,7 +2481,7 @@ isert_fast_reg_mr(struct isert_conn *ise
  
  	reg_wr.wr.next = NULL;
  	reg_wr.wr.opcode = IB_WR_REG_MR;
@@ -661,7 +664,7 @@ index ca8853a..b7d6cc5 100644
  	reg_wr.wr.send_flags = 0;
  	reg_wr.wr.num_sge = 0;
  	reg_wr.mr = mr;
-@@ -2675,7 +2592,7 @@ isert_reg_sig_mr(struct isert_conn *isert_conn,
+@@ -2675,7 +2592,7 @@ isert_reg_sig_mr(struct isert_conn *iser
  
  	memset(&sig_wr, 0, sizeof(sig_wr));
  	sig_wr.wr.opcode = IB_WR_REG_SIG_MR;
@@ -670,7 +673,7 @@ index ca8853a..b7d6cc5 100644
  	sig_wr.wr.sg_list = &rdma_wr->ib_sg[DATA];
  	sig_wr.wr.num_sge = 1;
  	sig_wr.access_flags = IB_ACCESS_LOCAL_WRITE;
-@@ -2830,14 +2747,18 @@ isert_reg_rdma(struct iscsi_conn *conn, struct iscsi_cmd *cmd,
+@@ -2830,14 +2747,18 @@ isert_reg_rdma(struct iscsi_conn *conn,
  	rdma_wr = &isert_cmd->rdma_wr.s_rdma_wr;
  	rdma_wr->wr.sg_list = &wr->s_ib_sge;
  	rdma_wr->wr.num_sge = 1;
@@ -718,8 +721,6 @@ index ca8853a..b7d6cc5 100644
  	/* post an indication that all flush errors were consumed */
  	if (ib_post_recv(isert_conn->qp, &isert_conn->beacon, &bad_wr)) {
  		isert_err("conn %p failed to post beacon", isert_conn);
-diff --git a/drivers/infiniband/ulp/isert/ib_isert.h b/drivers/infiniband/ulp/isert/ib_isert.h
-index 6c2c5fa..5a5becd 100644
 --- a/drivers/infiniband/ulp/isert/ib_isert.h
 +++ b/drivers/infiniband/ulp/isert/ib_isert.h
 @@ -61,11 +61,10 @@
@@ -788,6 +789,3 @@ index 6c2c5fa..5a5becd 100644
  };
  
  struct isert_device {
--- 
-1.8.5.6
-

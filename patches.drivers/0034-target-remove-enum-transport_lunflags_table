@@ -30,7 +30,7 @@ Acked-by: Lee Duncan <lduncan@suse.com>
 
 --- a/drivers/target/target_core_device.c
 +++ b/drivers/target/target_core_device.c
-@@ -86,7 +86,7 @@ transport_lookup_cmd_lun(struct se_cmd *
+@@ -90,7 +90,7 @@ transport_lookup_cmd_lun(struct se_cmd *
  		se_cmd->lun_ref_active = true;
  
  		if ((se_cmd->data_direction == DMA_TO_DEVICE) &&
@@ -39,7 +39,7 @@ Acked-by: Lee Duncan <lduncan@suse.com>
  			pr_err("TARGET_CORE[%s]: Detected WRITE_PROTECTED LUN"
  				" Access for 0x%08llx\n",
  				se_cmd->se_tfo->get_fabric_name(),
-@@ -199,7 +199,7 @@ bool target_lun_is_rdonly(struct se_cmd
+@@ -204,7 +204,7 @@ bool target_lun_is_rdonly(struct se_cmd
  
  	rcu_read_lock();
  	deve = target_nacl_find_deve(se_sess->se_node_acl, cmd->orig_fe_lun);
@@ -48,7 +48,7 @@ Acked-by: Lee Duncan <lduncan@suse.com>
  	rcu_read_unlock();
  
  	return ret;
-@@ -258,22 +258,15 @@ void core_free_device_list_for_node(
+@@ -263,22 +263,15 @@ void core_free_device_list_for_node(
  
  void core_update_device_list_access(
  	u64 mapped_lun,
@@ -74,7 +74,7 @@ Acked-by: Lee Duncan <lduncan@suse.com>
  	mutex_unlock(&nacl->lun_entry_mutex);
  }
  
-@@ -319,7 +312,7 @@ int core_enable_device_list_for_node(
+@@ -324,7 +317,7 @@ int core_enable_device_list_for_node(
  	struct se_lun *lun,
  	struct se_lun_acl *lun_acl,
  	u64 mapped_lun,
@@ -83,7 +83,7 @@ Acked-by: Lee Duncan <lduncan@suse.com>
  	struct se_node_acl *nacl,
  	struct se_portal_group *tpg)
  {
-@@ -340,11 +333,7 @@ int core_enable_device_list_for_node(
+@@ -345,11 +338,7 @@ int core_enable_device_list_for_node(
  	kref_init(&new->pr_kref);
  	init_completion(&new->pr_comp);
  
@@ -96,7 +96,7 @@ Acked-by: Lee Duncan <lduncan@suse.com>
  	new->creation_time = get_jiffies_64();
  	new->attach_count++;
  
-@@ -441,7 +430,7 @@ void core_disable_device_list_for_node(
+@@ -446,7 +435,7 @@ void core_disable_device_list_for_node(
  
  	hlist_del_rcu(&orig->link);
  	clear_bit(DEF_PR_REG_ACTIVE, &orig->deve_flags);
@@ -105,7 +105,7 @@ Acked-by: Lee Duncan <lduncan@suse.com>
  	orig->creation_time = 0;
  	orig->attach_count--;
  	/*
-@@ -566,8 +555,7 @@ int core_dev_add_lun(
+@@ -571,8 +560,7 @@ int core_dev_add_lun(
  {
  	int rc;
  
@@ -115,7 +115,7 @@ Acked-by: Lee Duncan <lduncan@suse.com>
  	if (rc < 0)
  		return rc;
  
-@@ -643,7 +631,7 @@ int core_dev_add_initiator_node_lun_acl(
+@@ -648,7 +636,7 @@ int core_dev_add_initiator_node_lun_acl(
  	struct se_portal_group *tpg,
  	struct se_lun_acl *lacl,
  	struct se_lun *lun,
@@ -124,7 +124,7 @@ Acked-by: Lee Duncan <lduncan@suse.com>
  {
  	struct se_node_acl *nacl = lacl->se_lun_nacl;
  	/*
-@@ -655,20 +643,19 @@ int core_dev_add_initiator_node_lun_acl(
+@@ -660,20 +648,19 @@ int core_dev_add_initiator_node_lun_acl(
  	if (!nacl)
  		return -EINVAL;
  
@@ -160,7 +160,7 @@ Acked-by: Lee Duncan <lduncan@suse.com>
  
  	if (lun->lun_link_magic != SE_LUN_LINK_MAGIC) {
  		pr_err("Bad lun->lun_link_magic, not a valid lun_ci pointer:"
-@@ -115,19 +115,18 @@ static int target_fabric_mappedlun_link(
+@@ -120,19 +120,18 @@ static int target_fabric_mappedlun_link(
  	}
  	/*
  	 * If this struct se_node_acl was dynamically generated with
@@ -185,7 +185,7 @@ Acked-by: Lee Duncan <lduncan@suse.com>
  	rcu_read_unlock();
  	/*
  	 * Determine the actual mapped LUN value user wants..
-@@ -135,7 +134,7 @@ static int target_fabric_mappedlun_link(
+@@ -140,7 +139,7 @@ static int target_fabric_mappedlun_link(
  	 * This value is what the SCSI Initiator actually sees the
  	 * $FABRIC/$WWPN/$TPGT/lun/lun_* as on their SCSI Initiator Ports.
  	 */
@@ -194,7 +194,7 @@ Acked-by: Lee Duncan <lduncan@suse.com>
  }
  
  static void target_fabric_mappedlun_unlink(
-@@ -167,8 +166,7 @@ static ssize_t target_fabric_mappedlun_w
+@@ -172,8 +171,7 @@ static ssize_t target_fabric_mappedlun_w
  	rcu_read_lock();
  	deve = target_nacl_find_deve(se_nacl, lacl->mapped_lun);
  	if (deve) {
@@ -204,7 +204,7 @@ Acked-by: Lee Duncan <lduncan@suse.com>
  	}
  	rcu_read_unlock();
  
-@@ -181,25 +179,23 @@ static ssize_t target_fabric_mappedlun_w
+@@ -186,25 +184,23 @@ static ssize_t target_fabric_mappedlun_w
  	struct se_lun_acl *lacl = item_to_lun_acl(item);
  	struct se_node_acl *se_nacl = lacl->se_lun_nacl;
  	struct se_portal_group *se_tpg = se_nacl->se_tpg;
@@ -341,7 +341,7 @@ Acked-by: Lee Duncan <lduncan@suse.com>
  		if (ret < 0) {
  			kfree(se_tpg->tpg_virt_lun0);
  			return ret;
-@@ -616,7 +615,7 @@ struct se_lun *core_tpg_alloc_lun(
+@@ -617,7 +616,7 @@ struct se_lun *core_tpg_alloc_lun(
  int core_tpg_add_lun(
  	struct se_portal_group *tpg,
  	struct se_lun *lun,
@@ -350,7 +350,7 @@ Acked-by: Lee Duncan <lduncan@suse.com>
  	struct se_device *dev)
  {
  	int ret;
-@@ -644,9 +643,9 @@ int core_tpg_add_lun(
+@@ -645,9 +644,9 @@ int core_tpg_add_lun(
  	spin_unlock(&dev->se_port_lock);
  
  	if (dev->dev_flags & DF_READ_ONLY)
@@ -377,7 +377,7 @@ Acked-by: Lee Duncan <lduncan@suse.com>
  /*
   * Used by transport_send_check_condition_and_sense()
   * to signal which ASC/ASCQ sense payload should be built.
-@@ -643,11 +637,10 @@ struct se_lun_acl {
+@@ -644,11 +638,10 @@ struct se_lun_acl {
  };
  
  struct se_dev_entry {
@@ -390,12 +390,12 @@ Acked-by: Lee Duncan <lduncan@suse.com>
  	u32			attach_count;
  	atomic_long_t		total_cmds;
  	atomic_long_t		read_bytes;
-@@ -721,7 +714,7 @@ struct se_lun {
+@@ -722,7 +715,7 @@ struct se_lun {
  	u64			unpacked_lun;
  #define SE_LUN_LINK_MAGIC			0xffff7771
  	u32			lun_link_magic;
 -	u32			lun_access;
 +	bool			lun_access_ro;
- 	u32			lun_index;
- 
- 	/* RELATIVE TARGET PORT IDENTIFER */
+ #ifndef __GENKSYMS__
+ 	bool			lun_shutdown;
+ #endif

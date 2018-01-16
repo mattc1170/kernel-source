@@ -46,7 +46,7 @@ Acked-by: Lee Duncan <lduncan@suse.com>
  	.iscsit_setup_np	= cxgbit_setup_np,
 --- a/drivers/target/iscsi/iscsi_target.c
 +++ b/drivers/target/iscsi/iscsi_target.c
-@@ -670,6 +670,7 @@ static enum target_prot_op iscsit_get_su
+@@ -671,6 +671,7 @@ static enum target_prot_op iscsit_get_su
  static struct iscsit_transport iscsi_target_transport = {
  	.name			= "iSCSI/TCP",
  	.transport_type		= ISCSI_TCP,
@@ -54,7 +54,7 @@ Acked-by: Lee Duncan <lduncan@suse.com>
  	.owner			= NULL,
  	.iscsit_setup_np	= iscsit_setup_np,
  	.iscsit_accept_np	= iscsit_accept_np,
-@@ -4080,8 +4081,7 @@ int iscsit_close_connection(
+@@ -4118,8 +4119,7 @@ int iscsit_close_connection(
  	 * this for iser since isert_rx_opcode() does not wait on logout failure,
  	 * and to avoid iscsi_conn pointer dereference in iser-target code.
  	 */
@@ -64,26 +64,26 @@ Acked-by: Lee Duncan <lduncan@suse.com>
  		complete(&conn->conn_logout_comp);
  
  	if (!strcmp(current->comm, ISCSI_RX_THREAD_NAME)) {
-@@ -4388,8 +4388,7 @@ static void iscsit_logout_post_handler_c
+@@ -4426,8 +4426,7 @@ static void iscsit_logout_post_handler_c
  	 * always sleep waiting for RX/TX thread shutdown to complete
  	 * within iscsit_close_connection().
  	 */
 -	if ((conn->conn_transport->transport_type == ISCSI_TCP) ||
--	    (conn->conn_transport->transport_type == ISCSI_HW_OFFLOAD))
-+	if (!conn->conn_transport->rdma_shutdown)
+-	    (conn->conn_transport->transport_type == ISCSI_HW_OFFLOAD)) {
++	if (!conn->conn_transport->rdma_shutdown) {
  		sleep = cmpxchg(&conn->tx_thread_active, true, false);
- 
- 	atomic_set(&conn->conn_logout_remove, 0);
-@@ -4406,8 +4405,7 @@ static void iscsit_logout_post_handler_s
+ 		if (!sleep)
+ 			return;
+@@ -4447,8 +4446,7 @@ static void iscsit_logout_post_handler_s
  {
  	int sleep = 1;
  
 -	if ((conn->conn_transport->transport_type == ISCSI_TCP) ||
--	    (conn->conn_transport->transport_type == ISCSI_HW_OFFLOAD))
-+	if (!conn->conn_transport->rdma_shutdown)
+-	    (conn->conn_transport->transport_type == ISCSI_HW_OFFLOAD)) {
++	if (!conn->conn_transport->rdma_shutdown) {
  		sleep = cmpxchg(&conn->tx_thread_active, true, false);
- 
- 	atomic_set(&conn->conn_logout_remove, 0);
+ 		if (!sleep)
+ 			return;
 --- a/include/target/iscsi/iscsi_transport.h
 +++ b/include/target/iscsi/iscsi_transport.h
 @@ -6,6 +6,7 @@ struct iscsit_transport {

@@ -1,0 +1,32 @@
+From: Miguel Bernal Marin <miguel.bernal.marin@linux.intel.com>
+Date: Thu, 16 Mar 2017 00:59:57 -0600
+Patch-mainline: v4.12-rc1
+Subject: scsi: storvsc: remove return at end of void function
+Git-commit: 8d4208c1a73ab30e05da142e0f05b2b02fc26fc9
+References: fate#320485
+
+storvsc_on_channel_callback is a void function and the return
+statement at the end is not useful.
+
+Found with checkpatch.
+
+Signed-off-by: Miguel Bernal Marin <miguel.bernal.marin@linux.intel.com>
+Reviewed-by:  K. Y. Srinivasan <kys@microsoft.com>
+Signed-off-by: Martin K. Petersen <martin.petersen@oracle.com>
+Acked-by: Olaf Hering <ohering@suse.de>
+---
+ drivers/scsi/storvsc_drv.c | 2 --
+ 1 file changed, 2 deletions(-)
+
+diff --git a/drivers/scsi/storvsc_drv.c b/drivers/scsi/storvsc_drv.c
+--- a/drivers/scsi/storvsc_drv.c
++++ b/drivers/scsi/storvsc_drv.c
+@@ -1191,8 +1191,6 @@ static void storvsc_on_channel_callback(void *context)
+ 			break;
+ 		}
+ 	} while (1);
+-
+-	return;
+ }
+ 
+ static int storvsc_connect_to_vsp(struct hv_device *device, u32 ring_size,

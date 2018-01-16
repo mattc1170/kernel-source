@@ -15,7 +15,7 @@ Reported-by: Haiyang Zhang <haiyangz@microsoft.com>
 Signed-off-by: Long Li <longli@microsoft.com>
 Signed-off-by: Bjorn Helgaas <bhelgaas@google.com>
 Acked-by: K. Y. Srinivasan <kys@microsoft.com>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  drivers/pci/host/pci-hyperv.c | 29 +++++++++++++++++++----------
  1 file changed, 19 insertions(+), 10 deletions(-)

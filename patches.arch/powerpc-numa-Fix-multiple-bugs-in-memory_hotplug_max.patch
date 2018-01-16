@@ -1,0 +1,84 @@
+From 45b64ee64970dee9392229302efe1d1567e8d304 Mon Sep 17 00:00:00 2001
+From: Bharata B Rao <bharata@linux.vnet.ibm.com>
+Date: Thu, 12 May 2016 19:04:15 +0530
+Subject: [PATCH] powerpc/numa: Fix multiple bugs in memory_hotplug_max()
+
+References: bsc#1066223
+Patch-mainline: v4.8-rc1
+Git-commit: 45b64ee64970dee9392229302efe1d1567e8d304
+
+memory_hotplug_max() uses hot_add_drconf_memory_max() to get maxmimum
+addressable memory by referring to ibm,dyanamic-memory property. There
+are three problems with the current approach:
+
+1 hot_add_drconf_memory_max() assumes that ibm,dynamic-memory includes
+  all the LMBs of the guest, but that is not true for PowerKVM which
+  populates only DR LMBs (LMBs that can be hotplugged/removed) in that
+  property.
+2 hot_add_drconf_memory_max() multiplies lmb-size with lmb-count to arrive
+  at the max possible address. Since ibm,dynamic-memory doesn't include
+  RMA LMBs, the address thus obtained will be less than the actual max
+  address. For example, if max possible memory size is 32G, with lmb-size
+  of 256MB there can be 127 LMBs in ibm,dynamic-memory (1 LMB for RMA
+  which won't be present here).  hot_add_drconf_memory_max() would then
+  return the max addressable memory as 127 * 256MB = 31.75GB, the max
+  address should have been 32G which is what ibm,lrdr-capacity shows.
+3 In PowerKVM, there can be a gap between the end of boot time RAM and
+  beginning of hotplug RAM area. So just multiplying lmb-count with
+  lmb-size will not provide the correct max possible address for PowerKVM.
+
+This patch fixes 1 by using ibm,lrdr-capacity property to return the max
+addressable memory whenever the property is present. Then it fixes 2 & 3
+by fetching the address of the last LMB in ibm,dynamic-memory property.
+
+Fixes: cd34206e949b ("powerpc: Add memory_hotplug_max()")
+Signed-off-by: Bharata B Rao <bharata@linux.vnet.ibm.com>
+Reviewed-by: David Gibson <david@gibson.dropbear.id.au>
+Signed-off-by: Michael Ellerman <mpe@ellerman.id.au>
+Acked-by: Michal Suchanek <msuchanek@suse.de>
+---
+ arch/powerpc/mm/numa.c | 18 +++++++++++++++++-
+ 1 file changed, 17 insertions(+), 1 deletion(-)
+
+diff --git a/arch/powerpc/mm/numa.c b/arch/powerpc/mm/numa.c
+index 4a87ccb8970f..f8b1da776712 100644
+--- a/arch/powerpc/mm/numa.c
++++ b/arch/powerpc/mm/numa.c
+@@ -1164,17 +1164,33 @@ int hot_add_scn_to_nid(unsigned long scn_addr)
+ static u64 hot_add_drconf_memory_max(void)
+ {
+ 	struct device_node *memory = NULL;
++	struct device_node *dn = NULL;
+ 	unsigned int drconf_cell_cnt = 0;
+ 	u64 lmb_size = 0;
+ 	const __be32 *dm = NULL;
++	const __be64 *lrdr = NULL;
++	struct of_drconf_cell drmem;
++
++	dn = of_find_node_by_path("/rtas");
++	if (dn) {
++		lrdr = of_get_property(dn, "ibm,lrdr-capacity", NULL);
++		of_node_put(dn);
++		if (lrdr)
++			return be64_to_cpup(lrdr);
++	}
+ 
+ 	memory = of_find_node_by_path("/ibm,dynamic-reconfiguration-memory");
+ 	if (memory) {
+ 		drconf_cell_cnt = of_get_drconf_memory(memory, &dm);
+ 		lmb_size = of_get_lmb_size(memory);
++
++		/* Advance to the last cell, each cell has 6 32 bit integers */
++		dm += (drconf_cell_cnt - 1) * 6;
++		read_drconf_cell(&drmem, &dm);
+ 		of_node_put(memory);
++		return drmem.base_addr + lmb_size;
+ 	}
+-	return lmb_size * drconf_cell_cnt;
++	return 0;
+ }
+ 
+ /*
+-- 
+2.13.6
+

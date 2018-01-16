@@ -3,8 +3,7 @@ From: Jarkko Sakkinen <jarkko.sakkinen@linux.intel.com>
 Date: Wed, 25 Jan 2017 23:00:22 +0200
 Subject: [PATCH] tpm: fix RC value check in tpm2_seal_trusted
 
-References: bsc#1034048, Pending fixes 2017-04-10
-References: bsc#1020645, fate#321435, fate#321507, fate#321600, Pending fixes 2017-04-10
+References: bsc#1020645, fate#321435, fate#321507, fate#321600, bsc#1034048, git-fixes 5ca4c20cfd37
 Patch-mainline: v4.11-rc1
 Git-commit: 7d761119a914ec0ac05ec2a5378d1f86e680967d
 

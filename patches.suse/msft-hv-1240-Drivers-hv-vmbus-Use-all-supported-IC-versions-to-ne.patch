@@ -23,7 +23,7 @@ Reported-by: Rolf Neugebauer <rolf.neugebauer@docker.com>
 Signed-off-by: Alex Ng <alexng@messages.microsoft.com>
 Signed-off-by: K. Y. Srinivasan <kys@microsoft.com>
 Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  drivers/hv/channel_mgmt.c | 80 +++++++++++++++++++++++++++-------------
  drivers/hv/hv_fcopy.c     | 20 +++++++---

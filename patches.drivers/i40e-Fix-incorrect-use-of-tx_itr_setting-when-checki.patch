@@ -1,0 +1,39 @@
+From: Alexander Duyck <alexander.h.duyck@intel.com>
+Date: Fri, 20 Oct 2017 13:59:20 -0700
+Subject: i40e: Fix incorrect use of tx_itr_setting when checking for Rx
+ ITR setup
+Patch-mainline: v4.14-rc7
+Git-commit: 10781348cadebbd5291c8fb193e850365c914da8
+References: bsc#1024346 FATE#321239 bsc#1024373 FATE#321247
+
+It looks like there was either a copy/paste error or just a typo that
+resulted in the Tx ITR setting being used to determine if we were using
+adaptive Rx interrupt moderation or not.
+
+This patch fixes the typo.
+
+Fixes: 65e87c0398f5 ("i40evf: support queue-specific settings for interrupt moderation")
+Signed-off-by: Alexander Duyck <alexander.h.duyck@intel.com>
+Tested-by: Andrew Bowers <andrewx.bowers@intel.com>
+Signed-off-by: Jeff Kirsher <jeffrey.t.kirsher@intel.com>
+Acked-by: David Chang <dchang@suse.com>
+---
+ drivers/net/ethernet/intel/i40e/i40e_txrx.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/net/ethernet/intel/i40e/i40e_txrx.c b/drivers/net/ethernet/intel/i40e/i40e_txrx.c
+index 34a3c0d1469a..7a88a5969638 100644
+--- a/drivers/net/ethernet/intel/i40e/i40e_txrx.c
++++ b/drivers/net/ethernet/intel/i40e/i40e_txrx.c
+@@ -1909,7 +1909,7 @@ static inline void i40e_update_enable_itr(struct i40e_vsi *vsi,
+ 		goto enable_int;
+ 	}
+ 
+-	if (ITR_IS_DYNAMIC(tx_itr_setting)) {
++	if (ITR_IS_DYNAMIC(rx_itr_setting)) {
+ 		rx = i40e_set_new_dynamic_itr(&q_vector->rx);
+ 		rxval = i40e_buildreg_itr(I40E_RX_ITR, q_vector->rx.itr);
+ 	}
+-- 
+2.13.6
+

@@ -23,7 +23,7 @@ Signed-off-by: K. Y. Srinivasan <kys@microsoft.com>
 Tested-by: Dexuan Cui <decui@microsoft.com>
 Cc: <stable@vger.kernel.org>
 Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  drivers/hv/ring_buffer.c | 26 ++++++++++++++++++++------
  1 file changed, 20 insertions(+), 6 deletions(-)

@@ -1,0 +1,74 @@
+From e5a2ee4218ee02eaf5bce14448e00834d4d7fc65 Mon Sep 17 00:00:00 2001
+From: Goldwyn Rodrigues <rgoldwyn@suse.com>
+Date: Tue, 20 Jun 2017 07:05:41 -0500
+Subject: [PATCH 02/10] fs: Introduce filemap_range_has_page()
+References: FATE#321994
+Patch-mainline: 4.13-rc1
+Git-commit: 7fc9e4722435cd8459182c4975f48934f2bb1274
+
+filemap_range_has_page() return true if the file's mapping has
+a page within the range mentioned. This function will be used
+to check if a write() call will cause a writeback of previous
+writes.
+
+Reviewed-by: Christoph Hellwig <hch@lst.de>
+Reviewed-by: Jan Kara <jack@suse.cz>
+Signed-off-by: Goldwyn Rodrigues <rgoldwyn@suse.com>
+Signed-off-by: Jens Axboe <axboe@kernel.dk>
+---
+ include/linux/fs.h |    2 ++
+ mm/filemap.c       |   32 ++++++++++++++++++++++++++++++++
+ 2 files changed, 34 insertions(+)
+
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -2414,6 +2414,8 @@ extern int filemap_fdatawait(struct addr
+ extern void filemap_fdatawait_keep_errors(struct address_space *);
+ extern int filemap_fdatawait_range(struct address_space *, loff_t lstart,
+ 				   loff_t lend);
++extern bool filemap_range_has_page(struct address_space *, loff_t lstart,
++				  loff_t lend);
+ extern int filemap_write_and_wait(struct address_space *mapping);
+ extern int filemap_write_and_wait_range(struct address_space *mapping,
+ 				        loff_t lstart, loff_t lend);
+--- a/mm/filemap.c
++++ b/mm/filemap.c
+@@ -398,6 +398,38 @@ int filemap_flush(struct address_space *
+ }
+ EXPORT_SYMBOL(filemap_flush);
+ 
++/**
++ * filemap_range_has_page - check if a page exists in range.
++ * @mapping:           address space within which to check
++ * @start_byte:        offset in bytes where the range starts
++ * @end_byte:          offset in bytes where the range ends (inclusive)
++ *
++ * Find at least one page in the range supplied, usually used to check if
++ * direct writing in this range will trigger a writeback.
++ */
++bool filemap_range_has_page(struct address_space *mapping,
++			   loff_t start_byte, loff_t end_byte)
++{
++	pgoff_t index = start_byte >> PAGE_SHIFT;
++	pgoff_t end = end_byte >> PAGE_SHIFT;
++	struct pagevec pvec;
++	bool ret;
++
++	if (end_byte < start_byte)
++		return false;
++
++	if (mapping->nrpages == 0)
++		return false;
++
++	pagevec_init(&pvec, 0);
++	if (!pagevec_lookup(&pvec, mapping, index, 1))
++		return false;
++	ret = (pvec.pages[0]->index <= end);
++	pagevec_release(&pvec);
++	return ret;
++}
++EXPORT_SYMBOL(filemap_range_has_page);
++
+ static int __filemap_fdatawait_range(struct address_space *mapping,
+ 				     loff_t start_byte, loff_t end_byte)
+ {

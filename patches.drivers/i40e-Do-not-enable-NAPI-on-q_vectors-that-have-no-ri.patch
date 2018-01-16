@@ -1,8 +1,7 @@
 From: Alexander Duyck <alexander.h.duyck@intel.com>
 Date: Fri, 24 Mar 2017 15:01:42 -0700
 Subject: i40e: Do not enable NAPI on q_vectors that have no rings
-Patch-mainline: Queued in subsystem maintainer repository
-Git-repo: git://git.kernel.org/pub/scm/linux/kernel/git/davem/net.git
+Patch-mainline: v4.11-rc6
 Git-commit: 13a8cd191a2b470cfd435b3b57dbd21aa65ff78c
 References: bsc#1024346 FATE#321239 bsc#1024373 FATE#321247
 

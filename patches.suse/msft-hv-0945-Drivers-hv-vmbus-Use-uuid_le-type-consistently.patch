@@ -9,7 +9,7 @@ Consistently use uuid_le type in the Hyper-V driver code.
 
 Signed-off-by: K. Y. Srinivasan <kys@microsoft.com>
 Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  drivers/hv/channel_mgmt.c       |  2 +-
  drivers/hv/vmbus_drv.c          | 10 ++---

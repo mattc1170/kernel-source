@@ -1,0 +1,51 @@
+From 0bdf1dcb6c7d2278a3932a710ca799c2f043034a Mon Sep 17 00:00:00 2001
+From: Michal Hocko <mhocko@suse.com>
+Date: Wed, 11 Oct 2017 16:04:32 +0200
+Subject: [PATCH] mm: drop migrate type checks from has_unmovable_pages
+Git-commit: d7b236e10cedd95373a79fd53b7e9c105bea4f08
+Patch-mainline: 4.15-rc1
+References: bnc#1051406
+
+Michael has noticed that the memory offline tries to migrate kernel code
+pages when doing
+ echo 0 > /sys/devices/system/memory/memory0/online
+
+The current implementation will fail the operation after several failed
+page migration attempts but we shouldn't even attempt to migrate
+that memory and fail right away because this memory is clearly not
+migrateable. This will become a real problem when we drop the retry loop
+counter resp. timeout.
+
+The real problem is in has_unmovable_pages in fact. We should fail if
+there are any non migrateable pages in the area. In orther to guarantee
+that remove the migrate type checks because MIGRATE_MOVABLE is not
+guaranteed to contain only migrateable pages. It is merely a heuristic.
+Similarly MIGRATE_CMA does guarantee that the page allocator doesn't
+allocate any non-migrateable pages from the block but CMA allocations
+themselves are unlikely to migrateable. Therefore remove both checks.
+
+Reported-by: Michael Ellerman <mpe@ellerman.id.au>
+Tested-by: Michael Ellerman <mpe@ellerman.id.au>
+Signed-off-by: Michal Hocko <mhocko@suse.com>
+
+---
+ mm/page_alloc.c | 3 ---
+ 1 file changed, 3 deletions(-)
+
+diff --git a/mm/page_alloc.c b/mm/page_alloc.c
+index 3badcedf96a7..ad0294ab3e4f 100644
+--- a/mm/page_alloc.c
++++ b/mm/page_alloc.c
+@@ -7355,9 +7355,6 @@ bool has_unmovable_pages(struct zone *zone, struct page *page, int count,
+ 	 */
+ 	if (zone_idx(zone) == ZONE_MOVABLE)
+ 		return false;
+-	mt = get_pageblock_migratetype(page);
+-	if (mt == MIGRATE_MOVABLE || is_migrate_cma(mt))
+-		return false;
+ 
+ 	pfn = page_to_pfn(page);
+ 	for (found = 0, iter = 0; iter < pageblock_nr_pages; iter++) {
+-- 
+2.14.2
+

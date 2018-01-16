@@ -22,7 +22,7 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
 
 --- a/drivers/nvme/host/pci.c
 +++ b/drivers/nvme/host/pci.c
-@@ -89,13 +89,6 @@ static void nvme_process_cq(struct nvme_
+@@ -88,13 +88,6 @@ static void nvme_process_cq(struct nvme_
  static void nvme_remove_dead_ctrl(struct nvme_dev *dev);
  static void nvme_dev_shutdown(struct nvme_dev *dev);
  
@@ -36,7 +36,7 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
  /*
   * Represents an NVM Express device.  Each nvme_dev is a PCI function.
   */
-@@ -125,9 +118,11 @@ struct nvme_dev {
+@@ -124,9 +117,11 @@ struct nvme_dev {
  	u64 cmb_size;
  	u32 cmbsz;
  	unsigned long flags;
@@ -48,7 +48,7 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
  };
  
  static inline struct nvme_dev *to_nvme_dev(struct nvme_ctrl *ctrl)
-@@ -159,7 +154,6 @@ struct nvme_queue {
+@@ -158,7 +153,6 @@ struct nvme_queue {
  	u16 qid;
  	u8 cq_phase;
  	u8 cqe_seen;
@@ -56,7 +56,7 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
  };
  
  /*
-@@ -844,15 +838,6 @@ static void nvme_submit_async_event(stru
+@@ -843,15 +837,6 @@ static void nvme_submit_async_event(stru
  	__nvme_submit_cmd(dev->queues[0], &c);
  }
  
@@ -65,14 +65,14 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
 -	struct async_cmd_info *cmdinfo = req->end_io_data;
 -
 -	cmdinfo->status = req->errors;
--	queue_kthread_work(cmdinfo->worker, &cmdinfo->work);
 -	blk_mq_free_request(req);
+-	queue_kthread_work(cmdinfo->worker, &cmdinfo->work);
 -}
 -
  static int adapter_delete_queue(struct nvme_dev *dev, u8 opcode, u16 id)
  {
  	struct nvme_command c;
-@@ -1600,6 +1585,84 @@ static void nvme_dev_scan(struct work_st
+@@ -1599,6 +1584,84 @@ static void nvme_dev_scan(struct work_st
  	nvme_set_irq_hints(dev);
  }
  
@@ -157,7 +157,7 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
  /*
   * Return: error value if an error occurred setting up the queues or calling
   * Identify Device.  0 if these succeeded, even if adding some of the
-@@ -1723,159 +1786,6 @@ static void nvme_dev_unmap(struct nvme_d
+@@ -1709,159 +1772,6 @@ static void nvme_pci_disable(struct nvme
  	}
  }
  
@@ -317,7 +317,7 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
  static int nvme_dev_list_add(struct nvme_dev *dev)
  {
  	bool start_thread = false;
-@@ -2158,6 +2068,7 @@ static int nvme_probe(struct pci_dev *pd
+@@ -2169,6 +2079,7 @@ static int nvme_probe(struct pci_dev *pd
  	INIT_WORK(&dev->reset_work, nvme_reset_work);
  	INIT_WORK(&dev->remove_work, nvme_remove_dead_ctrl_work);
  	mutex_init(&dev->shutdown_lock);

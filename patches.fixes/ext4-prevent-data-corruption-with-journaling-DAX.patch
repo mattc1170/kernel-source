@@ -1,0 +1,58 @@
+From 1f67d62f6f3567437388e5cc190c65578df96e88 Mon Sep 17 00:00:00 2001
+From: Ross Zwisler <ross.zwisler@linux.intel.com>
+Date: Thu, 12 Oct 2017 11:54:08 -0400
+Subject: [PATCH] ext4: prevent data corruption with journaling + DAX
+Git-commit: e9072d859df3e0f2c3ba450f0d1739595c2d5d13
+Patch-mainline: v4.15-rc1
+References: bsc#1064591
+
+The current code has the potential for data corruption when changing an
+inode's journaling mode, as that can result in a subsequent unsafe change
+in S_DAX.
+
+I've captured an instance of this data corruption in the following fstest:
+
+https://patchwork.kernel.org/patch/9948377/
+
+Prevent this data corruption from happening by disallowing changes to the
+journaling mode if the '-o dax' mount option was used.  This means that for
+a given filesystem we could have a mix of inodes using either DAX or
+data journaling, but whatever state the inodes are in will be held for the
+duration of the mount.
+
+Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+Reviewed-by: Jan Kara <jack@suse.cz>
+Acked-by: Jan Kara <jack@suse.cz>
+
+---
+ fs/ext4/ioctl.c |   17 ++++++++++++++---
+ 1 file changed, 14 insertions(+), 3 deletions(-)
+
+--- a/fs/ext4/ioctl.c
++++ b/fs/ext4/ioctl.c
+@@ -306,10 +306,21 @@ flags_err:
+ 		if (err)
+ 			goto flags_out;
+ 
+-		if ((jflag ^ oldflags) & (EXT4_JOURNAL_DATA_FL))
++		if ((jflag ^ oldflags) & (EXT4_JOURNAL_DATA_FL)) {
++			/*
++			 * Changes to the journaling mode can cause unsafe
++			 * changes to S_DAX if we are using the DAX mount
++			 * option.
++			 */
++			if (test_opt(inode->i_sb, DAX)) {
++				err = -EBUSY;
++				goto flags_out;
++			}
++
+ 			err = ext4_change_inode_journal_flag(inode, jflag);
+-		if (err)
+-			goto flags_out;
++			if (err)
++				goto flags_out;
++		}
+ 		if (migrate) {
+ 			if (flags & EXT4_EXTENTS_FL)
+ 				err = ext4_ext_migrate(inode);

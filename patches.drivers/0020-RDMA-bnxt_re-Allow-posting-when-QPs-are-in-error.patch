@@ -3,7 +3,8 @@ From: Selvin Xavier <selvin.xavier@broadcom.com>
 Date: Wed, 21 Jun 2017 10:18:20 -0700
 Subject: RDMA/bnxt_re: Allow posting when QPs are in error
 References: bsc#1044448
-Patch-mainline: Submitted, https://patchwork.kernel.org/patch/9802363/
+Patch-mainline: v4.14-rc1
+Git-commit: f218d67ef00431728ab7317e829006d00ecd5ca4
 
 This  patch allows driver to post send and receive
 requests on QPs which are in  error state.

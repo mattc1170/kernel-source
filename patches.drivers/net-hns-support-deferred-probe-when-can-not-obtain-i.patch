@@ -1,8 +1,7 @@
 From: lipeng <lipeng321@huawei.com>
 Date: Fri, 28 Apr 2017 14:49:46 +0800
 Subject: net: hns: support deferred probe when can not obtain irq
-Patch-mainline: Queued in subsystem maintainer repository
-Git-repo: git://git.kernel.org/pub/scm/linux/kernel/git/davem/net-next.git
+Patch-mainline: v4.12-rc1
 Git-commit: 2fdd6bafe37db6b417c9609271db4ea5a92550c0
 References: bsc#1033895
 

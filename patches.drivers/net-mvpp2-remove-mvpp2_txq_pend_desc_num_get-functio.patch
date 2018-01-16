@@ -1,8 +1,7 @@
 From: Thomas Petazzoni <thomas.petazzoni@free-electrons.com>
 Date: Tue, 7 Mar 2017 16:53:03 +0100
 Subject: net: mvpp2: remove mvpp2_txq_pend_desc_num_get() function
-Patch-mainline: Queued in subsystem maintainer repository
-Git-repo: git://git.kernel.org/pub/scm/linux/kernel/git/davem/net-next.git
+Patch-mainline: v4.12-rc1
 Git-commit: 4d6c2a677fe5a903ed6483865cc14ff00a2054b5
 References: bsc#1032150
 

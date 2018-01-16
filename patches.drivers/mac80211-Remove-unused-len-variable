@@ -1,0 +1,58 @@
+From cd5861bde0299fd5189a6b9e0d1e31e205064fc6 Mon Sep 17 00:00:00 2001
+From: Kirtika Ruchandani <kirtika.ruchandani@gmail.com>
+Date: Wed, 23 Nov 2016 20:45:49 -0800
+Subject: [PATCH] mac80211: Remove unused 'len' variable
+Mime-version: 1.0
+Content-type: text/plain; charset=UTF-8
+Content-transfer-encoding: 8bit
+Git-commit: cd5861bde0299fd5189a6b9e0d1e31e205064fc6
+Patch-mainline: 4.11-rc1
+References: bsc#1031717
+
+Commit 633e27132625 (mac80211: split sched scan IEs) introduced the
+len variable to keep track of the return value of
+ieee80211_build_preq_ies() but did not use it. Compiling with W=1
+gives the following warning, fix it.
+
+Net/mac80211/scan.c: In function ‘__ieee80211_request_sched_scan_start’:
+net/mac80211/scan.c:1123:9: warning: variable ‘len’ set but not used [-Wunused-but-set-variable]
+
+This is a harmless warning and is only being fixed to reduce the noise
+with W=1 in the kernel.
+
+Fixes: 633e27132625 ("mac80211: split sched scan IEs")
+Cc: David Spinadel <david.spinadel@intel.com>
+Cc: Alexander Bondar <alexander.bondar@intel.com>
+Cc: Johannes Berg <johannes.berg@intel.com>
+Signed-off-by: Kirtika Ruchandani <kirtika@chromium.org>
+Signed-off-by: Johannes Berg <johannes.berg@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ net/mac80211/scan.c |    8 +++-----
+ 1 file changed, 3 insertions(+), 5 deletions(-)
+
+--- a/net/mac80211/scan.c
++++ b/net/mac80211/scan.c
+@@ -1084,7 +1084,6 @@ int __ieee80211_request_sched_scan_start
+ 	u32 rate_masks[IEEE80211_NUM_BANDS] = {};
+ 	u8 bands_used = 0;
+ 	u8 *ie;
+-	size_t len;
+ 
+ 	iebufsz = local->scan_ies_len + req->ie_len;
+ 
+@@ -1109,10 +1108,9 @@ int __ieee80211_request_sched_scan_start
+ 
+ 	ieee80211_prepare_scan_chandef(&chandef, req->scan_width);
+ 
+-	len = ieee80211_build_preq_ies(local, ie, num_bands * iebufsz,
+-				       &sched_scan_ies, req->ie,
+-				       req->ie_len, bands_used,
+-				       rate_masks, &chandef);
++	ieee80211_build_preq_ies(local, ie, num_bands * iebufsz,
++				 &sched_scan_ies, req->ie,
++				 req->ie_len, bands_used, rate_masks, &chandef);
+ 
+ 	ret = drv_sched_scan_start(local, sdata, req, &sched_scan_ies);
+ 	if (ret == 0) {

@@ -1,0 +1,52 @@
+From b7f2405c6bd8ae0125a974308f649637cdc81f80 Mon Sep 17 00:00:00 2001
+From: Kirtika Ruchandani <kirtika.ruchandani@gmail.com>
+Date: Wed, 23 Nov 2016 20:45:36 -0800
+Subject: [PATCH] mac80211: Remove unused 'i' variable
+Mime-version: 1.0
+Content-type: text/plain; charset=UTF-8
+Content-transfer-encoding: 8bit
+Git-commit: b7f2405c6bd8ae0125a974308f649637cdc81f80
+Patch-mainline: 4.11-rc1
+References: bsc#1031717
+
+Commit 5bcae31d9 (mac80211: implement multi-vif in-place reservations)
+introduced ieee80211_vif_use_reserved_switch() with a counter variable
+'i' that is set but not used. Compiling with W=1 gives the following
+warning, fix it.
+Net/mac80211/chan.c: In function ‘ieee80211_vif_use_reserved_switch’:
+net/mac80211/chan.c:1273:6: warning: variable ‘i’ set but not used [-Wunused-but-set-variable]
+
+This is a harmless warning, and is only being fixed to reduce the
+noise obtained with W=1 in the kernel.
+
+Fixes: 5bcae31d9 ("mac80211: implement multi-vif in-place reservations")
+Cc: Michal Kazior <michal.kazior@tieto.com>
+Cc: Johannes Berg <johannes.berg@intel.com>
+Signed-off-by: Kirtika Ruchandani <kirtika@chromium.org>
+Signed-off-by: Johannes Berg <johannes.berg@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ net/mac80211/chan.c |    4 +---
+ 1 file changed, 1 insertion(+), 3 deletions(-)
+
+--- a/net/mac80211/chan.c
++++ b/net/mac80211/chan.c
+@@ -1262,7 +1262,7 @@ static int ieee80211_vif_use_reserved_sw
+ 	struct ieee80211_sub_if_data *sdata, *sdata_tmp;
+ 	struct ieee80211_chanctx *ctx, *ctx_tmp, *old_ctx;
+ 	struct ieee80211_chanctx *new_ctx = NULL;
+-	int i, err, n_assigned, n_reserved, n_ready;
++	int err, n_assigned, n_reserved, n_ready;
+ 	int n_ctx = 0, n_vifs_switch = 0, n_vifs_assign = 0, n_vifs_ctxless = 0;
+ 
+ 	lockdep_assert_held(&local->mtx);
+@@ -1383,8 +1383,6 @@ static int ieee80211_vif_use_reserved_sw
+ 	 * Update all structures, values and pointers to point to new channel
+ 	 * context(s).
+ 	 */
+-
+-	i = 0;
+ 	list_for_each_entry(ctx, &local->chanctx_list, list) {
+ 		if (ctx->replace_state != IEEE80211_CHANCTX_REPLACES_OTHER)
+ 			continue;

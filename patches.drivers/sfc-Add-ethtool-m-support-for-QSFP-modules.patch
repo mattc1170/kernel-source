@@ -1,8 +1,7 @@
 From: Martin Habets <mhabets@solarflare.com>
 Date: Tue, 18 Jul 2017 16:43:19 +0100
 Subject: sfc: Add ethtool -m support for QSFP modules
-Patch-mainline: Queued in subsystem maintainer repository
-Git-repo: git://git.kernel.org/pub/scm/linux/kernel/git/davem/net-next.git
+Patch-mainline: v4.14-rc1
 Git-commit: 9b17010da57ae1a5d0a28c62f5e15abbce35edb0
 References: bsc#1049619
 

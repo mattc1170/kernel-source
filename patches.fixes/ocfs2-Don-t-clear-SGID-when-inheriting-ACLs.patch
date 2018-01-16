@@ -2,7 +2,8 @@ From 892d0ed91adebc66df0d0dc9884d71f276dce564 Mon Sep 17 00:00:00 2001
 From: Jan Kara <jack@suse.cz>
 Date: Thu, 22 Jun 2017 09:12:58 +0200
 Subject: [PATCH 08/11] ocfs2: Don't clear SGID when inheriting ACLs
-Patch-mainline: Submitted Jul 17 2017
+Patch-mainline: v4.13-rc4
+Git-commit: 19ec8e48582670c021e998b9deb88e39a842ff45
 References: bsc#1030552
 
 When new directory 'DIR1' is created in a directory 'DIR0' with SGID bit

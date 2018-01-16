@@ -1,8 +1,7 @@
 From: Michael Chan <michael.chan@broadcom.com>
 Date: Tue, 4 Apr 2017 18:14:07 -0400
 Subject: bnxt_en: Add basic WoL infrastructure.
-Patch-mainline: Queued in subsystem maintainer repository
-Git-repo: git://git.kernel.org/pub/scm/linux/kernel/git/davem/net-next.git
+Patch-mainline: v4.12-rc1
 Git-commit: c1ef146a5bd3b286d5c3eb2c9f631b38647c76d3
 References: bsc#1020412 FATE#321671
 

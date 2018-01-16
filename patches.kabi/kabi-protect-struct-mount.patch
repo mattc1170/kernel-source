@@ -1,0 +1,34 @@
+From: Jiri Slaby <jslaby@suse.cz>
+Subject: kABI: protect struct xfrm_dst
+Patch-mainline: never, kabi
+References: kabi
+
+In 4.4.78, commits 7cbc3955ef3b5bda9336654f1b10a803202e7ed0 (mnt: In
+umount propagation reparent in a separate pass) and
+fdb8f10499924d96b8eb60cc1354b278f6fcf0e9 (mnt: In propgate_umount handle
+visiting mounts in any order), upstream commits
+570487d3faf2a1d8a220e6ee10f472163123d7da and
+99b19d16471e9c3faa85cad38abc9cbbe04c6d55 added one member to struct
+mount.  This indeed changed the layout of the structure and the kABI
+checker now complains.
+
+Given this is only a fs/ internal structure, make the change invisible
+to the kABI checker.
+
+Signed-off-by: Jiri Slaby <jslaby@suse.cz>
+---
+ fs/mount.h |    2 ++
+ 1 file changed, 2 insertions(+)
+
+--- a/fs/mount.h
++++ b/fs/mount.h
+@@ -59,7 +59,9 @@ struct mount {
+ 	struct mnt_namespace *mnt_ns;	/* containing namespace */
+ 	struct mountpoint *mnt_mp;	/* where is it mounted */
+ 	struct hlist_node mnt_mp_list;	/* list mounts with the same mountpoint */
++#ifndef __GENKSYMS__
+ 	struct list_head mnt_umounting; /* list entry for umount propagation */
++#endif
+ #ifdef CONFIG_FSNOTIFY
+ 	struct hlist_head mnt_fsnotify_marks;
+ 	__u32 mnt_fsnotify_mask;

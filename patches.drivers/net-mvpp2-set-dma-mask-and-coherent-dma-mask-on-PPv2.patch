@@ -1,8 +1,7 @@
 From: Thomas Petazzoni <thomas.petazzoni@free-electrons.com>
 Date: Tue, 7 Mar 2017 16:53:19 +0100
 Subject: net: mvpp2: set dma mask and coherent dma mask on PPv2.2
-Patch-mainline: Queued in subsystem maintainer repository
-Git-repo: git://git.kernel.org/pub/scm/linux/kernel/git/davem/net-next.git
+Patch-mainline: v4.12-rc1
 Git-commit: 2067e0a13cfe0b1bdca7b91bc5e4f2740b07d478
 References: bsc#1032150
 

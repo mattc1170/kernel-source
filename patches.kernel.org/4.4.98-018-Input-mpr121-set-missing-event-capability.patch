@@ -1,0 +1,39 @@
+From: Akinobu Mita <akinobu.mita@gmail.com>
+Date: Sun, 15 Jan 2017 14:44:05 -0800
+Subject: [PATCH] Input: mpr121 - set missing event capability
+References: bnc#1012382
+Patch-mainline: 4.4.98
+Git-commit: 9723ddc8fe0d76ce41fe0dc16afb241ec7d0a29d
+
+[ Upstream commit 9723ddc8fe0d76ce41fe0dc16afb241ec7d0a29d ]
+
+This driver reports misc scan input events on the sensor's status
+register changes.  But the event capability for them was not set in the
+device initialization, so these events were ignored.
+
+This change adds the missing event capability.
+
+Signed-off-by: Akinobu Mita <akinobu.mita@gmail.com>
+Signed-off-by: Dmitry Torokhov <dmitry.torokhov@gmail.com>
+Signed-off-by: Sasha Levin <alexander.levin@verizon.com>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Signed-off-by: Jiri Slaby <jslaby@suse.cz>
+---
+ drivers/input/keyboard/mpr121_touchkey.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/drivers/input/keyboard/mpr121_touchkey.c b/drivers/input/keyboard/mpr121_touchkey.c
+index 088a9f7c954e..aaf43befffaa 100644
+--- a/drivers/input/keyboard/mpr121_touchkey.c
++++ b/drivers/input/keyboard/mpr121_touchkey.c
+@@ -236,6 +236,7 @@ static int mpr_touchkey_probe(struct i2c_client *client,
+ 	input_dev->id.bustype = BUS_I2C;
+ 	input_dev->dev.parent = &client->dev;
+ 	input_dev->evbit[0] = BIT_MASK(EV_KEY) | BIT_MASK(EV_REP);
++	input_set_capability(input_dev, EV_MSC, MSC_SCAN);
+ 
+ 	input_dev->keycode = mpr121->keycodes;
+ 	input_dev->keycodesize = sizeof(mpr121->keycodes[0]);
+-- 
+2.15.0
+

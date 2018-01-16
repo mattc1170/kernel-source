@@ -349,7 +349,7 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  module_phy_driver(dm91xx_driver);
 --- a/drivers/net/phy/dp83640.c
 +++ b/drivers/net/phy/dp83640.c
-@@ -1509,12 +1509,11 @@ static struct phy_driver dp83640_driver
+@@ -1507,12 +1507,11 @@ static struct phy_driver dp83640_driver
  	.hwtstamp	= dp83640_hwtstamp,
  	.rxtstamp	= dp83640_rxtstamp,
  	.txtstamp	= dp83640_txtstamp,
@@ -376,7 +376,7 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  module_phy_driver(dp83848_driver);
 --- a/drivers/net/phy/dp83867.c
 +++ b/drivers/net/phy/dp83867.c
-@@ -207,8 +207,6 @@ static struct phy_driver dp83867_driver[
+@@ -217,8 +217,6 @@ static struct phy_driver dp83867_driver[
  		.read_status	= genphy_read_status,
  		.suspend	= genphy_suspend,
  		.resume		= genphy_resume,
@@ -457,7 +457,7 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  module_phy_driver(lxt97x_driver);
 --- a/drivers/net/phy/marvell.c
 +++ b/drivers/net/phy/marvell.c
-@@ -1087,7 +1087,6 @@ static struct phy_driver marvell_drivers
+@@ -1093,7 +1093,6 @@ static struct phy_driver marvell_drivers
  		.get_sset_count = marvell_get_sset_count,
  		.get_strings = marvell_get_strings,
  		.get_stats = marvell_get_stats,
@@ -465,7 +465,7 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  	},
  	{
  		.phy_id = MARVELL_PHY_ID_88E1112,
-@@ -1106,7 +1105,6 @@ static struct phy_driver marvell_drivers
+@@ -1112,7 +1111,6 @@ static struct phy_driver marvell_drivers
  		.get_sset_count = marvell_get_sset_count,
  		.get_strings = marvell_get_strings,
  		.get_stats = marvell_get_stats,
@@ -473,7 +473,7 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  	},
  	{
  		.phy_id = MARVELL_PHY_ID_88E1111,
-@@ -1125,7 +1123,6 @@ static struct phy_driver marvell_drivers
+@@ -1131,7 +1129,6 @@ static struct phy_driver marvell_drivers
  		.get_sset_count = marvell_get_sset_count,
  		.get_strings = marvell_get_strings,
  		.get_stats = marvell_get_stats,
@@ -481,7 +481,7 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  	},
  	{
  		.phy_id = MARVELL_PHY_ID_88E1118,
-@@ -1144,7 +1141,6 @@ static struct phy_driver marvell_drivers
+@@ -1150,7 +1147,6 @@ static struct phy_driver marvell_drivers
  		.get_sset_count = marvell_get_sset_count,
  		.get_strings = marvell_get_strings,
  		.get_stats = marvell_get_stats,
@@ -489,7 +489,7 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  	},
  	{
  		.phy_id = MARVELL_PHY_ID_88E1121R,
-@@ -1163,7 +1159,6 @@ static struct phy_driver marvell_drivers
+@@ -1169,7 +1165,6 @@ static struct phy_driver marvell_drivers
  		.get_sset_count = marvell_get_sset_count,
  		.get_strings = marvell_get_strings,
  		.get_stats = marvell_get_stats,
@@ -497,7 +497,7 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  	},
  	{
  		.phy_id = MARVELL_PHY_ID_88E1318S,
-@@ -1184,7 +1179,6 @@ static struct phy_driver marvell_drivers
+@@ -1190,7 +1185,6 @@ static struct phy_driver marvell_drivers
  		.get_sset_count = marvell_get_sset_count,
  		.get_strings = marvell_get_strings,
  		.get_stats = marvell_get_stats,
@@ -505,7 +505,7 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  	},
  	{
  		.phy_id = MARVELL_PHY_ID_88E1145,
-@@ -1203,7 +1197,6 @@ static struct phy_driver marvell_drivers
+@@ -1209,7 +1203,6 @@ static struct phy_driver marvell_drivers
  		.get_sset_count = marvell_get_sset_count,
  		.get_strings = marvell_get_strings,
  		.get_stats = marvell_get_stats,
@@ -513,7 +513,7 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  	},
  	{
  		.phy_id = MARVELL_PHY_ID_88E1149R,
-@@ -1222,7 +1215,6 @@ static struct phy_driver marvell_drivers
+@@ -1228,7 +1221,6 @@ static struct phy_driver marvell_drivers
  		.get_sset_count = marvell_get_sset_count,
  		.get_strings = marvell_get_strings,
  		.get_stats = marvell_get_stats,
@@ -521,7 +521,7 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  	},
  	{
  		.phy_id = MARVELL_PHY_ID_88E1240,
-@@ -1241,7 +1233,6 @@ static struct phy_driver marvell_drivers
+@@ -1247,7 +1239,6 @@ static struct phy_driver marvell_drivers
  		.get_sset_count = marvell_get_sset_count,
  		.get_strings = marvell_get_strings,
  		.get_stats = marvell_get_stats,
@@ -529,7 +529,7 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  	},
  	{
  		.phy_id = MARVELL_PHY_ID_88E1116R,
-@@ -1260,7 +1251,6 @@ static struct phy_driver marvell_drivers
+@@ -1266,7 +1257,6 @@ static struct phy_driver marvell_drivers
  		.get_sset_count = marvell_get_sset_count,
  		.get_strings = marvell_get_strings,
  		.get_stats = marvell_get_stats,
@@ -537,7 +537,7 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  	},
  	{
  		.phy_id = MARVELL_PHY_ID_88E1510,
-@@ -1279,7 +1269,6 @@ static struct phy_driver marvell_drivers
+@@ -1285,7 +1275,6 @@ static struct phy_driver marvell_drivers
  		.get_sset_count = marvell_get_sset_count,
  		.get_strings = marvell_get_strings,
  		.get_stats = marvell_get_stats,
@@ -545,7 +545,7 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  	},
  	{
  		.phy_id = MARVELL_PHY_ID_88E1540,
-@@ -1298,7 +1287,6 @@ static struct phy_driver marvell_drivers
+@@ -1304,7 +1293,6 @@ static struct phy_driver marvell_drivers
  		.get_sset_count = marvell_get_sset_count,
  		.get_strings = marvell_get_strings,
  		.get_stats = marvell_get_stats,
@@ -553,7 +553,7 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  	},
  	{
  		.phy_id = MARVELL_PHY_ID_88E3016,
-@@ -1319,7 +1307,6 @@ static struct phy_driver marvell_drivers
+@@ -1325,7 +1313,6 @@ static struct phy_driver marvell_drivers
  		.get_sset_count = marvell_get_sset_count,
  		.get_strings = marvell_get_strings,
  		.get_stats = marvell_get_stats,
@@ -563,7 +563,7 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  
 --- a/drivers/net/phy/micrel.c
 +++ b/drivers/net/phy/micrel.c
-@@ -646,7 +646,6 @@ static struct phy_driver ksphy_driver[]
+@@ -648,7 +648,6 @@ static struct phy_driver ksphy_driver[]
  	.config_intr	= kszphy_config_intr,
  	.suspend	= genphy_suspend,
  	.resume		= genphy_resume,
@@ -571,7 +571,7 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  }, {
  	.phy_id		= PHY_ID_KSZ8021,
  	.phy_id_mask	= 0x00ffffff,
-@@ -663,7 +662,6 @@ static struct phy_driver ksphy_driver[]
+@@ -665,7 +664,6 @@ static struct phy_driver ksphy_driver[]
  	.config_intr	= kszphy_config_intr,
  	.suspend	= genphy_suspend,
  	.resume		= genphy_resume,
@@ -579,7 +579,7 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  }, {
  	.phy_id		= PHY_ID_KSZ8031,
  	.phy_id_mask	= 0x00ffffff,
-@@ -680,7 +678,6 @@ static struct phy_driver ksphy_driver[]
+@@ -682,7 +680,6 @@ static struct phy_driver ksphy_driver[]
  	.config_intr	= kszphy_config_intr,
  	.suspend	= genphy_suspend,
  	.resume		= genphy_resume,
@@ -587,7 +587,7 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  }, {
  	.phy_id		= PHY_ID_KSZ8041,
  	.phy_id_mask	= 0x00fffff0,
-@@ -697,7 +694,6 @@ static struct phy_driver ksphy_driver[]
+@@ -699,7 +696,6 @@ static struct phy_driver ksphy_driver[]
  	.config_intr	= kszphy_config_intr,
  	.suspend	= genphy_suspend,
  	.resume		= genphy_resume,
@@ -595,7 +595,7 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  }, {
  	.phy_id		= PHY_ID_KSZ8041RNLI,
  	.phy_id_mask	= 0x00fffff0,
-@@ -714,7 +710,6 @@ static struct phy_driver ksphy_driver[]
+@@ -716,7 +712,6 @@ static struct phy_driver ksphy_driver[]
  	.config_intr	= kszphy_config_intr,
  	.suspend	= genphy_suspend,
  	.resume		= genphy_resume,
@@ -603,7 +603,7 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  }, {
  	.phy_id		= PHY_ID_KSZ8051,
  	.phy_id_mask	= 0x00fffff0,
-@@ -731,7 +726,6 @@ static struct phy_driver ksphy_driver[]
+@@ -733,7 +728,6 @@ static struct phy_driver ksphy_driver[]
  	.config_intr	= kszphy_config_intr,
  	.suspend	= genphy_suspend,
  	.resume		= genphy_resume,
@@ -611,7 +611,7 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  }, {
  	.phy_id		= PHY_ID_KSZ8001,
  	.name		= "Micrel KSZ8001 or KS8721",
-@@ -747,7 +741,6 @@ static struct phy_driver ksphy_driver[]
+@@ -749,7 +743,6 @@ static struct phy_driver ksphy_driver[]
  	.config_intr	= kszphy_config_intr,
  	.suspend	= genphy_suspend,
  	.resume		= genphy_resume,
@@ -619,7 +619,7 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  }, {
  	.phy_id		= PHY_ID_KSZ8081,
  	.name		= "Micrel KSZ8081 or KSZ8091",
-@@ -763,7 +756,6 @@ static struct phy_driver ksphy_driver[]
+@@ -765,7 +758,6 @@ static struct phy_driver ksphy_driver[]
  	.config_intr	= kszphy_config_intr,
  	.suspend	= genphy_suspend,
  	.resume		= genphy_resume,
@@ -627,7 +627,7 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  }, {
  	.phy_id		= PHY_ID_KSZ8061,
  	.name		= "Micrel KSZ8061",
-@@ -777,7 +769,6 @@ static struct phy_driver ksphy_driver[]
+@@ -779,7 +771,6 @@ static struct phy_driver ksphy_driver[]
  	.config_intr	= kszphy_config_intr,
  	.suspend	= genphy_suspend,
  	.resume		= genphy_resume,
@@ -635,7 +635,7 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  }, {
  	.phy_id		= PHY_ID_KSZ9021,
  	.phy_id_mask	= 0x000ffffe,
-@@ -794,7 +785,6 @@ static struct phy_driver ksphy_driver[]
+@@ -796,7 +787,6 @@ static struct phy_driver ksphy_driver[]
  	.resume		= genphy_resume,
  	.read_mmd_indirect = ksz9021_rd_mmd_phyreg,
  	.write_mmd_indirect = ksz9021_wr_mmd_phyreg,
@@ -643,7 +643,7 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  }, {
  	.phy_id		= PHY_ID_KSZ9031,
  	.phy_id_mask	= 0x00fffff0,
-@@ -809,7 +799,6 @@ static struct phy_driver ksphy_driver[]
+@@ -811,7 +801,6 @@ static struct phy_driver ksphy_driver[]
  	.config_intr	= kszphy_config_intr,
  	.suspend	= genphy_suspend,
  	.resume		= genphy_resume,
@@ -651,7 +651,7 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  }, {
  	.phy_id		= PHY_ID_KSZ8873MLL,
  	.phy_id_mask	= 0x00fffff0,
-@@ -821,7 +810,6 @@ static struct phy_driver ksphy_driver[]
+@@ -823,7 +812,6 @@ static struct phy_driver ksphy_driver[]
  	.read_status	= ksz8873mll_read_status,
  	.suspend	= genphy_suspend,
  	.resume		= genphy_resume,
@@ -659,7 +659,7 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  }, {
  	.phy_id		= PHY_ID_KSZ886X,
  	.phy_id_mask	= 0x00fffff0,
-@@ -833,7 +821,6 @@ static struct phy_driver ksphy_driver[]
+@@ -835,7 +823,6 @@ static struct phy_driver ksphy_driver[]
  	.read_status	= genphy_read_status,
  	.suspend	= genphy_suspend,
  	.resume		= genphy_resume,
@@ -690,7 +690,7 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  module_phy_driver(dp83865_driver);
 --- a/drivers/net/phy/phy_device.c
 +++ b/drivers/net/phy/phy_device.c
-@@ -1564,8 +1564,9 @@ static int phy_remove(struct device *dev
+@@ -1566,8 +1566,9 @@ static int phy_remove(struct device *dev
  /**
   * phy_driver_register - register a phy_driver with the PHY layer
   * @new_driver: new phy_driver to register
@@ -701,7 +701,7 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  {
  	int retval;
  
-@@ -1573,6 +1574,7 @@ int phy_driver_register(struct phy_drive
+@@ -1575,6 +1576,7 @@ int phy_driver_register(struct phy_drive
  	new_driver->driver.bus = &mdio_bus_type;
  	new_driver->driver.probe = phy_probe;
  	new_driver->driver.remove = phy_remove;
@@ -709,7 +709,7 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  
  	retval = driver_register(&new_driver->driver);
  	if (retval) {
-@@ -1588,12 +1590,13 @@ int phy_driver_register(struct phy_drive
+@@ -1590,12 +1592,13 @@ int phy_driver_register(struct phy_drive
  }
  EXPORT_SYMBOL(phy_driver_register);
  
@@ -725,7 +725,7 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  		if (ret) {
  			while (i-- > 0)
  				phy_driver_unregister(new_driver + i);
-@@ -1634,7 +1637,6 @@ static struct phy_driver genphy_driver[]
+@@ -1636,7 +1639,6 @@ static struct phy_driver genphy_driver[]
  	.read_status	= genphy_read_status,
  	.suspend	= genphy_suspend,
  	.resume		= genphy_resume,
@@ -733,7 +733,7 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  }, {
  	.phy_id         = 0xffffffff,
  	.phy_id_mask    = 0xffffffff,
-@@ -1646,7 +1648,6 @@ static struct phy_driver genphy_driver[]
+@@ -1648,7 +1650,6 @@ static struct phy_driver genphy_driver[]
  	.read_status    = gen10g_read_status,
  	.suspend        = gen10g_suspend,
  	.resume         = gen10g_resume,
@@ -741,7 +741,7 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  } };
  
  static int __init phy_init(void)
-@@ -1658,7 +1659,7 @@ static int __init phy_init(void)
+@@ -1660,7 +1661,7 @@ static int __init phy_init(void)
  		return rc;
  
  	rc = phy_drivers_register(genphy_driver,
@@ -945,8 +945,8 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  module_phy_driver(vsc82xx_driver);
 --- a/include/linux/phy.h
 +++ b/include/linux/phy.h
-@@ -797,8 +797,9 @@ int genphy_resume(struct phy_device *phy
- int genphy_soft_reset(struct phy_device *phydev);
+@@ -801,8 +801,9 @@ static inline int genphy_no_soft_reset(s
+ }
  void phy_driver_unregister(struct phy_driver *drv);
  void phy_drivers_unregister(struct phy_driver *drv, int n);
 -int phy_driver_register(struct phy_driver *new_driver);
@@ -957,7 +957,7 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  void phy_state_machine(struct work_struct *work);
  void phy_change(struct work_struct *work);
  void phy_mac_interrupt(struct phy_device *phydev, int new_link);
-@@ -843,7 +844,7 @@ extern struct bus_type mdio_bus_type;
+@@ -847,7 +848,7 @@ extern struct bus_type mdio_bus_type;
  #define phy_module_driver(__phy_drivers, __count)			\
  static int __init phy_module_init(void)					\
  {									\

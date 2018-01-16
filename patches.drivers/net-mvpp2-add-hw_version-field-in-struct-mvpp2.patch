@@ -1,8 +1,7 @@
 From: Thomas Petazzoni <thomas.petazzoni@free-electrons.com>
 Date: Tue, 7 Mar 2017 16:53:06 +0100
 Subject: net: mvpp2: add hw_version field in "struct mvpp2"
-Patch-mainline: Queued in subsystem maintainer repository
-Git-repo: git://git.kernel.org/pub/scm/linux/kernel/git/davem/net-next.git
+Patch-mainline: v4.12-rc1
 Git-commit: faca9247980238f297b04f6701cb0f0f3f18b40c
 References: bsc#1032150
 

@@ -1,0 +1,41 @@
+From: James Smart <jsmart2021@gmail.com>
+Date: Tue, 16 May 2017 20:52:29 -0700
+Subject: scsi: lpfc: fix build issue if NVME_FC_TARGET is not defined
+Git-commit: eeeb51d834d76c66784e7fe1a9ace3ce3f8d2af1
+Patch-Mainline: v4.12-rc4
+References: bsc#1040073
+
+fix build issue if NVME_FC_TARGET is not defined. noop the code.  The
+code will never be invoked if target mode is not enabled.
+
+Signed-off-by: Dick Kennedy <dick.kennedy@broadcom.com>
+Signed-off-by: James Smart <james.smart@broadcom.com>
+Signed-off-by: Martin K. Petersen <martin.petersen@oracle.com>
+Acked-by: Hannes Reinecke <hare@suse.com>
+---
+ drivers/scsi/lpfc/lpfc_nvmet.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/drivers/scsi/lpfc/lpfc_nvmet.c b/drivers/scsi/lpfc/lpfc_nvmet.c
+index 312f542..f94294b 100644
+--- a/drivers/scsi/lpfc/lpfc_nvmet.c
++++ b/drivers/scsi/lpfc/lpfc_nvmet.c
+@@ -157,6 +157,7 @@ static int lpfc_nvmet_unsol_ls_issue_abort(struct lpfc_hba *,
+ void
+ lpfc_nvmet_ctxbuf_post(struct lpfc_hba *phba, struct lpfc_nvmet_ctxbuf *ctx_buf)
+ {
++#if (IS_ENABLED(CONFIG_NVME_TARGET_FC))
+ 	struct lpfc_nvmet_rcv_ctx *ctxp = ctx_buf->context;
+ 	struct lpfc_nvmet_tgtport *tgtp;
+ 	struct fc_frame_header *fc_hdr;
+@@ -260,6 +261,7 @@ static int lpfc_nvmet_unsol_ls_issue_abort(struct lpfc_hba *,
+ 		      &phba->sli4_hba.lpfc_nvmet_ctx_list);
+ 	phba->sli4_hba.nvmet_ctx_cnt++;
+ 	spin_unlock_irqrestore(&phba->sli4_hba.nvmet_io_lock, iflag);
++#endif
+ }
+ 
+ #ifdef CONFIG_SCSI_LPFC_DEBUG_FS
+-- 
+1.8.5.6
+

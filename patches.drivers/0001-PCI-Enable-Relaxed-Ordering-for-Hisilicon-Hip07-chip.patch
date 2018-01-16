@@ -1,0 +1,86 @@
+From 3191744e6c95a9bc40d4588893b479e40e694fe8 Mon Sep 17 00:00:00 2001
+From: l00180119 <lijinyue@huawei.com>
+Date: Tue, 24 Oct 2017 19:27:14 +0800
+Subject: [PATCH 1/5] PCI: Enable Relaxed Ordering for Hisilicon Hip07 chip
+
+Patch-mainline: Never, Replacement for https://lkml.org/lkml/2017/8/14/1218
+References: bsc#1056652
+
+The Hisilicon processors base on Hip07 microarchitecture Root Complex has
+a Flow Control credit issue which can cause performance problems with Upstream
+Transaction Layer Packets with Relaxed Ordering cleared, so enable it.
+
+Signed-off-by: Casey Leedom <leedom@chelsio.com>
+Signed-off-by: Ding Tianhong <dingtianhong@huawei.com>
+Acked-by: Ashok Raj <ashok.raj@intel.com>
+Acked-by: Alexander Duyck <alexander.h.duyck@intel.com>
+Acked-by: Casey Leedom <leedom@chelsio.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+Signed-off-by: Mao Wenan <maowenan@huawei.com>
+Signed-off-by: Li Jinyue <lijinyue@huawei.com>
+Signed-off-by: Mian Yousaf Kaukab <yousaf.kaukab@suse.com>
+---
+ drivers/pci/quirks.c    | 19 +++++++++++++++++++
+ include/linux/pci.h     |  2 ++
+ include/linux/pci_ids.h |  2 ++
+ 3 files changed, 23 insertions(+)
+
+diff --git a/drivers/pci/quirks.c b/drivers/pci/quirks.c
+index 280a3a594bdc..45e121a32f64 100644
+--- a/drivers/pci/quirks.c
++++ b/drivers/pci/quirks.c
+@@ -3935,6 +3935,25 @@ DECLARE_PCI_FIXUP_CLASS_EARLY(0x1797, 0x6869, PCI_CLASS_NOT_DEFINED, 8,
+ 			      quirk_tw686x_class);
+ 
+ /*
++ * Some devices have problems with Transaction Layer Packets with the Relaxed
++ * Ordering Attribute set.  Such devices should mark themselves and other
++ * Device Drivers should check before sending TLPs with RO set.
++ */
++static void quirk_relaxedordering_enable(struct pci_dev *dev)
++{
++	dev->dev_flags |= PCI_DEV_FLAGS_RELAXED_ORDERING;
++	dev_info(&dev->dev, "Enable Relaxed Ordering attribute to avoid PCIe completion erratum\n");
++}
++
++/*
++ * The Hisilicon processors base on Hip07 microarchitecture Root Complex has
++ * a Flow Control credit issue which can cause performance problems with Upstream
++ * Transaction Layer Packets with Relaxed Ordering cleared, so enable it.
++ */
++DECLARE_PCI_FIXUP_CLASS_EARLY(PCI_VENDOR_ID_HUAWEI, 0x1610, PCI_CLASS_BRIDGE_PCI, 8,
++			      quirk_relaxedordering_enable);
++
++/*
+  * Per PCIe r3.0, sec 2.2.9, "Completion headers must supply the same
+  * values for the Attribute as were supplied in the header of the
+  * corresponding Request, except as explicitly allowed when IDO is used."
+diff --git a/include/linux/pci.h b/include/linux/pci.h
+index f2fb5fff9105..50d638da3f85 100644
+--- a/include/linux/pci.h
++++ b/include/linux/pci.h
+@@ -183,6 +183,8 @@ enum pci_dev_flags {
+ 	PCI_DEV_FLAGS_VPD_REF_F0 = (__force pci_dev_flags_t) (1 << 8),
+ 	/* a non-root bridge where translation occurs, stop alias search here */
+ 	PCI_DEV_FLAGS_BRIDGE_XLATE_ROOT = (__force pci_dev_flags_t) (1 << 9),
++	/* Use Relaxed Ordering for TLPs directed at this device */
++	PCI_DEV_FLAGS_RELAXED_ORDERING = (__force pci_dev_flags_t) (1 << 10),
+ };
+ 
+ enum pci_irq_reroute_variant {
+diff --git a/include/linux/pci_ids.h b/include/linux/pci_ids.h
+index 2de3012bea5f..4a359fb22e22 100644
+--- a/include/linux/pci_ids.h
++++ b/include/linux/pci_ids.h
+@@ -2516,6 +2516,8 @@
+ #define PCI_DEVICE_ID_KORENIX_JETCARDF2	0x1700
+ #define PCI_DEVICE_ID_KORENIX_JETCARDF3	0x17ff
+ 
++#define PCI_VENDOR_ID_HUAWEI		0x19e5
++
+ #define PCI_VENDOR_ID_NETRONOME		0x19ee
+ #define PCI_DEVICE_ID_NETRONOME_NFP3200	0x3200
+ #define PCI_DEVICE_ID_NETRONOME_NFP3240	0x3240
+-- 
+2.11.0
+

@@ -1,0 +1,92 @@
+From: Jiri Slaby <jslaby@suse.cz>
+Date: Tue, 25 Jul 2017 13:36:01 +0200
+Subject: Revert "tpm: Issue a TPM2_Shutdown for TPM2 devices."
+Patch-mainline: never, kabi
+References: kabi
+
+This reverts commit 0f4fa2138e83d33468baac218c4be652f4619cb7, upstream
+commit d1bd4a792d3961a04e6154118816b00167aad91a. It depends on
+5c9a2972983fca37e73648d9a3aa62a9ad048c3c, upstream commit
+f77af15165847406b15d8f70c382c4cb15846b2a, which breaks kABI heavily.
+
+Signed-off-by: Jiri Slaby <jslaby@suse.cz>
+---
+ drivers/char/tpm/tpm-chip.c  | 36 ------------------------------------
+ drivers/char/tpm/tpm-sysfs.c |  7 -------
+ 2 files changed, 43 deletions(-)
+
+diff --git a/drivers/char/tpm/tpm-chip.c b/drivers/char/tpm/tpm-chip.c
+index 6d56877b2e0a..f3a887e4f692 100644
+--- a/drivers/char/tpm/tpm-chip.c
++++ b/drivers/char/tpm/tpm-chip.c
+@@ -124,41 +124,6 @@ static void tpm_dev_release(struct device *dev)
+ 	kfree(chip);
+ }
+ 
+-
+-/**
+- * tpm_class_shutdown() - prepare the TPM device for loss of power.
+- * @dev: device to which the chip is associated.
+- *
+- * Issues a TPM2_Shutdown command prior to loss of power, as required by the
+- * TPM 2.0 spec.
+- * Then, calls bus- and device- specific shutdown code.
+- *
+- * XXX: This codepath relies on the fact that sysfs is not enabled for
+- * TPM2: sysfs uses an implicit lock on chip->ops, so this could race if TPM2
+- * has sysfs support enabled before TPM sysfs's implicit locking is fixed.
+- */
+-static int tpm_class_shutdown(struct device *dev)
+-{
+-	struct tpm_chip *chip = container_of(dev, struct tpm_chip, dev);
+-
+-	if (chip->flags & TPM_CHIP_FLAG_TPM2) {
+-		down_write(&chip->ops_sem);
+-		tpm2_shutdown(chip, TPM2_SU_CLEAR);
+-		chip->ops = NULL;
+-		up_write(&chip->ops_sem);
+-	}
+-	/* Allow bus- and device-specific code to run. Note: since chip->ops
+-	 * is NULL, more-specific shutdown code will not be able to issue TPM
+-	 * commands.
+-	 */
+-	if (dev->bus && dev->bus->shutdown)
+-		dev->bus->shutdown(dev);
+-	else if (dev->driver && dev->driver->shutdown)
+-		dev->driver->shutdown(dev);
+-	return 0;
+-}
+-
+-
+ /**
+  * tpmm_chip_alloc() - allocate a new struct tpm_chip instance
+  * @dev: device to which the chip is associated
+@@ -201,7 +166,6 @@ struct tpm_chip *tpmm_chip_alloc(struct device *dev,
+ 	dev_set_drvdata(dev, chip);
+ 
+ 	chip->dev.class = tpm_class;
+-	chip->dev.class->shutdown = tpm_class_shutdown;
+ 	chip->dev.release = tpm_dev_release;
+ 	chip->dev.parent = dev;
+ #ifdef CONFIG_ACPI
+diff --git a/drivers/char/tpm/tpm-sysfs.c b/drivers/char/tpm/tpm-sysfs.c
+index 6a4056a3f7ee..8af4145d10c7 100644
+--- a/drivers/char/tpm/tpm-sysfs.c
++++ b/drivers/char/tpm/tpm-sysfs.c
+@@ -284,13 +284,6 @@ static const struct attribute_group tpm_dev_group = {
+ int tpm_sysfs_add_device(struct tpm_chip *chip)
+ {
+ 	int err;
+-
+-	/* XXX: If you wish to remove this restriction, you must first update
+-	 * tpm_sysfs to explicitly lock chip->ops.
+-	 */
+-	if (chip->flags & TPM_CHIP_FLAG_TPM2)
+-		return 0;
+-
+ 	err = sysfs_create_group(&chip->dev.parent->kobj,
+ 				 &tpm_dev_group);
+ 
+-- 
+2.13.3
+

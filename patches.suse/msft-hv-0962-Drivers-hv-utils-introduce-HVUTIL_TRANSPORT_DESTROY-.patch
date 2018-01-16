@@ -16,7 +16,7 @@ a proper locking.
 Signed-off-by: Vitaly Kuznetsov <vkuznets@redhat.com>
 Signed-off-by: K. Y. Srinivasan <kys@microsoft.com>
 Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  drivers/hv/hv_utils_transport.c | 71 ++++++++++++++++++++++++++++++++---------
  drivers/hv/hv_utils_transport.h |  1 +

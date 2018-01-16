@@ -35,7 +35,7 @@ explicit barriers should not cause any slowdown.
 Signed-off-by: Vitaly Kuznetsov <vkuznets@redhat.com>
 Signed-off-by: Bjorn Helgaas <bhelgaas@google.com>
 Acked-by: Jake Oshins <jakeo@microsoft.com>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  drivers/pci/host/pci-hyperv.c | 14 ++++++++++++++
  1 file changed, 14 insertions(+)

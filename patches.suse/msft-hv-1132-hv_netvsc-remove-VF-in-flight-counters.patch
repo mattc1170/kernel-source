@@ -10,7 +10,7 @@ counter and can use device flags to see whether to inject or not.
 
 Signed-off-by: Stephen Hemminger <sthemmin@microsoft.com>
 Signed-off-by: David S. Miller <davem@davemloft.net>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  drivers/net/hyperv/hyperv_net.h |  3 +-
  drivers/net/hyperv/netvsc_drv.c | 81 ++++++++++-------------------------------

@@ -1,0 +1,68 @@
+From: "Martin K. Petersen" <martin.petersen@oracle.com>
+Date: Wed, 5 Apr 2017 19:21:25
+Subject: scsi: sd: Remove LBPRZ dependency for discards
+References: bsc#1060985
+Git-commit: bcd069bb250acf6088b60d189ab3ec3ae8dd11a5
+Patch-mainline: v4.13
+
+Separating discards and zeroout operations allows us to remove the LBPRZ
+block zeroing constraints from discards and honor the device preferences
+for UNMAP commands.
+
+If supported by the device, we'll also choose UNMAP over one of the
+WRITE SAME variants for discards.
+
+Signed-off-by: Martin K. Petersen <martin.petersen@oracle.com>
+Signed-off-by: Christoph Hellwig <hch@lst.de>
+Reviewed-by: Hannes Reinecke <hare@suse.com>
+Signed-off-by: Jens Axboe <axboe@fb.com>
+---
+ drivers/scsi/sd.c | 25 ++++++-------------------
+ 1 file changed, 6 insertions(+), 19 deletions(-)
+
+diff --git a/drivers/scsi/sd.c b/drivers/scsi/sd.c
+index 413613a..831d3c5 100644
+--- a/drivers/scsi/sd.c
++++ b/drivers/scsi/sd.c
+@@ -647,24 +647,11 @@ static void sd_config_discard(struct scsi_disk *sdkp, unsigned int mode)
+ 
+ 	q->limits.discard_zeroes_data = 0;
+ 
+-	/*
+-	 * When LBPRZ is reported, discard alignment and granularity
+-	 * must be fixed to the logical block size. Otherwise the block
+-	 * layer will drop misaligned portions of the request which can
+-	 * lead to data corruption. If LBPRZ is not set, we honor the
+-	 * device preference.
+-	 */
+-	if (sdkp->lbprz) {
+-		q->limits.discard_alignment = 0;
+-		q->limits.discard_granularity = logical_block_size;
+-	} else {
+-		q->limits.discard_alignment = sdkp->unmap_alignment *
+-			logical_block_size;
+-		q->limits.discard_granularity =
+-			max(sdkp->physical_block_size,
+-			    sdkp->unmap_granularity * logical_block_size);
+-	}
+-
++	q->limits.discard_alignment =
++		sdkp->unmap_alignment * logical_block_size;
++	q->limits.discard_granularity =
++		max(sdkp->physical_block_size,
++		    sdkp->unmap_granularity * logical_block_size);
+ 	sdkp->provisioning_mode = mode;
+ 
+ 	switch (mode) {
+@@ -2881,7 +2868,7 @@ static void sd_read_block_limits(struct scsi_disk *sdkp)
+ 				sd_config_discard(sdkp, SD_LBP_WS16);
+ 
+ 		} else {	/* LBP VPD page tells us what to use */
+-			if (sdkp->lbpu && sdkp->max_unmap_blocks && !sdkp->lbprz)
++			if (sdkp->lbpu && sdkp->max_unmap_blocks)
+ 				sd_config_discard(sdkp, SD_LBP_UNMAP);
+ 			else if (sdkp->lbpws)
+ 				sd_config_discard(sdkp, SD_LBP_WS16);
+-- 
+1.7.12.4
+

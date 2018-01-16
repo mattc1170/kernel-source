@@ -10,7 +10,7 @@ For example, replacing RSS key with a symmetric hash.
 
 Signed-off-by: Stephen Hemminger <sthemmin@microsoft.com>
 Signed-off-by: David S. Miller <davem@davemloft.net>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  drivers/net/hyperv/hyperv_net.h   |  7 +++++-
  drivers/net/hyperv/netvsc_drv.c   | 46 +++++++++++++++++++++++++++++++++++++++

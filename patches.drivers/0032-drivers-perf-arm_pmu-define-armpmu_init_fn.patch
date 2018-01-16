@@ -1,0 +1,60 @@
+From 51e9f540664b1931b5efdb9430a371f2fcc68fb6 Mon Sep 17 00:00:00 2001
+From: Mark Rutland <mark.rutland@arm.com>
+Date: Tue, 11 Apr 2017 09:39:45 +0100
+Subject: [PATCH 32/56] drivers/perf: arm_pmu: define armpmu_init_fn
+
+Git-commit: 083c52144a19c69b7956aa53c913ba621f7c5ae2
+Patch-mainline: v4.12-rc1
+References: bsc#1062279
+
+We expect an ARM PMU's init function to have a particular prototype,
+which we open-code in a few places. This is less than ideal, considering
+that we cast a void value to this type in one location, and a mismatch
+could easily be missed.
+
+Add a typedef so that we can ensure this is consistent.
+
+Signed-off-by: Mark Rutland <mark.rutland@arm.com>
+Tested-by: Jeremy Linton <jeremy.linton@arm.com>
+Cc: Will Deacon <will.deacon@arm.com>
+Signed-off-by: Will Deacon <will.deacon@arm.com>
+Signed-off-by: Mian Yousaf Kaukab <yousaf.kaukab@suse.com>
+---
+ drivers/perf/arm_pmu.c       | 2 +-
+ include/linux/perf/arm_pmu.h | 4 +++-
+ 2 files changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/perf/arm_pmu.c b/drivers/perf/arm_pmu.c
+index 91edfacd..70fbfe44 100644
+--- a/drivers/perf/arm_pmu.c
++++ b/drivers/perf/arm_pmu.c
+@@ -980,7 +980,7 @@ int arm_pmu_device_probe(struct platform_device *pdev,
+ 			 const struct pmu_probe_info *probe_table)
+ {
+ 	const struct of_device_id *of_id;
+-	const int (*init_fn)(struct arm_pmu *);
++	armpmu_init_fn init_fn;
+ 	struct device_node *node = pdev->dev.of_node;
+ 	struct arm_pmu *pmu;
+ 	int ret = -ENODEV;
+diff --git a/include/linux/perf/arm_pmu.h b/include/linux/perf/arm_pmu.h
+index 1527e42e..843f05e4 100644
+--- a/include/linux/perf/arm_pmu.h
++++ b/include/linux/perf/arm_pmu.h
+@@ -191,10 +191,12 @@ int armpmu_map_event(struct perf_event *event,
+ 						[PERF_COUNT_HW_CACHE_RESULT_MAX],
+ 		     u32 raw_event_mask);
+ 
++typedef int (*armpmu_init_fn)(struct arm_pmu *);
++
+ struct pmu_probe_info {
+ 	unsigned int cpuid;
+ 	unsigned int mask;
+-	int (*init)(struct arm_pmu *);
++	armpmu_init_fn init;
+ };
+ 
+ #define PMU_PROBE(_cpuid, _mask, _fn)	\
+-- 
+2.11.0
+

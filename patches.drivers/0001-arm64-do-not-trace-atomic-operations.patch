@@ -1,0 +1,37 @@
+From 4032fe67d60d61047b4ef23ada8d4452eabae70c Mon Sep 17 00:00:00 2001
+From: Pratyush Anand <panand@redhat.com>
+Date: Mon, 6 Feb 2017 19:46:22 +0530
+Subject: [PATCH 1/2] arm64: do not trace atomic operations
+
+Git-commit: b7eed6ddaa71f1a9afe2ba481d69dea3af0e0755
+Patch-mainline: v4.11-rc1
+References: bsc#1055290
+
+Atomic operation function symbols are exported,when
+CONFIG_ARM64_LSE_ATOMICS is defined. Prefix them with notrace, so that
+an user can not trace these functions. Tracing these functions causes
+kernel crash.
+
+Signed-off-by: Pratyush Anand <panand@redhat.com>
+Signed-off-by: Will Deacon <will.deacon@arm.com>
+Signed-off-by: Mian Yousaf Kaukab <yousaf.kaukab@suse.com>
+---
+ arch/arm64/include/asm/lse.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/arch/arm64/include/asm/lse.h b/arch/arm64/include/asm/lse.h
+index 30bb05d3a9cb..285a45f8ff28 100644
+--- a/arch/arm64/include/asm/lse.h
++++ b/arch/arm64/include/asm/lse.h
+@@ -19,7 +19,7 @@
+ __asm__(".arch_extension	lse");
+ 
+ /* Move the ll/sc atomics out-of-line */
+-#define __LL_SC_INLINE
++#define __LL_SC_INLINE		notrace
+ #define __LL_SC_PREFIX(x)	__ll_sc_##x
+ #define __LL_SC_EXPORT(x)	EXPORT_SYMBOL(__LL_SC_PREFIX(x))
+ 
+-- 
+2.11.0
+

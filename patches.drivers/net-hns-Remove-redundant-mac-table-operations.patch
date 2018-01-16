@@ -1,8 +1,7 @@
 From: Kejian Yan <yankejian@huawei.com>
 Date: Sat, 1 Apr 2017 12:03:42 +0100
 Subject: net: hns: Remove redundant mac table operations
-Patch-mainline: Queued in subsystem maintainer repository
-Git-repo: git://git.kernel.org/pub/scm/linux/kernel/git/davem/net-next.git
+Patch-mainline: v4.12-rc1
 Git-commit: 9f1607b8b53ef4e706e606ab20fff5496e005151
 References: fate#322061
 

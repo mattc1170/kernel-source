@@ -1,0 +1,32 @@
+From c705a6b3aa7804d7bc6660183f51e510c61dc807 Mon Sep 17 00:00:00 2001
+From: Dan Carpenter <dan.carpenter@oracle.com>
+Date: Wed, 7 Dec 2016 14:21:22 +0300
+Subject: [PATCH] adm80211: return an error if adm8211_alloc_rings() fails
+Git-commit: c705a6b3aa7804d7bc6660183f51e510c61dc807
+Patch-mainline: 4.11-rc1
+References: bsc#1031717
+
+We accidentally return success when adm8211_alloc_rings() fails but we
+should preserve the error code.
+
+Fixes: cc0b88cf5ecf ("[PATCH] Add adm8211 802.11b wireless driver")
+Signed-off-by: Dan Carpenter <dan.carpenter@oracle.com>
+Signed-off-by: Kalle Valo <kvalo@codeaurora.org>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/adm8211.c |    3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+--- a/drivers/net/wireless/adm8211.c
++++ b/drivers/net/wireless/adm8211.c
+@@ -1843,7 +1843,8 @@ static int adm8211_probe(struct pci_dev
+ 	priv->rx_ring_size = rx_ring_size;
+ 	priv->tx_ring_size = tx_ring_size;
+ 
+-	if (adm8211_alloc_rings(dev)) {
++	err = adm8211_alloc_rings(dev);
++	if (err) {
+ 		printk(KERN_ERR "%s (adm8211): Cannot allocate TX/RX ring\n",
+ 		       pci_name(pdev));
+ 		goto err_iounmap;

@@ -1,0 +1,33 @@
+From: Eugenia Emantayev <eugenia@mellanox.com>
+Date: Thu, 25 May 2017 15:11:26 +0300
+Subject: net/mlx5: Fix mlx5_ifc_mtpps_reg_bits structure size
+Patch-mainline: v4.13-rc4
+Git-commit: 0b794ffae7afa7c4e5accac8791c4b78e8d080ce
+References: bsc#1015342
+
+Fix miscalculation in reserved_at_1a0 field.
+
+Fixes: ee7f12205abc ('net/mlx5e: Implement 1PPS support')
+Signed-off-by: Eugenia Emantayev <eugenia@mellanox.com>
+Signed-off-by: Saeed Mahameed <saeedm@mellanox.com>
+Acked-by: Thomas Bogendoerfer <tbogendoerfer@suse.de>
+---
+ include/linux/mlx5/mlx5_ifc.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/include/linux/mlx5/mlx5_ifc.h b/include/linux/mlx5/mlx5_ifc.h
+index 838242697541..e2a82176013f 100644
+--- a/include/linux/mlx5/mlx5_ifc.h
++++ b/include/linux/mlx5/mlx5_ifc.h
+@@ -8008,7 +8008,7 @@ struct mlx5_ifc_mtpps_reg_bits {
+ 	u8         out_pulse_duration[0x10];
+ 	u8         out_periodic_adjustment[0x10];
+ 
+-	u8         reserved_at_1a0[0x60];
++	u8         reserved_at_1a0[0x40];
+ };
+ 
+ struct mlx5_ifc_mtppse_reg_bits {
+-- 
+2.12.3
+

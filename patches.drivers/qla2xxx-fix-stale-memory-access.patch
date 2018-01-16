@@ -1,0 +1,323 @@
+From: Quinn Tran <quinn.tran@cavium.com>
+Date: Fri, 3 Nov 2017 19:43:07 +0530
+Subject: [PATCH] qla2xxx: fix stale memory access.
+References: bsc#1043017
+Patch-Mainline: no, SLE12-SP3 specific backport
+
+Name pointer describing each command is assigned with stack frame's memory.
+The stack frame could eventually be re-use, where name pointer
+access can get get garbage.  To fix the problem, use designated
+static memory for name pointer.
+
+Signed-off-by: Quinn Tran <quinn.tran@cavium.com>
+Signed-off-by: Sawan Chandak <sawan.chandak@cavium.com>
+Signed-off-by: Hannes Reinecke <hare@suse.de>
+---
+ drivers/scsi/qla2xxx/qla_bsg.c    |  7 ++++---
+ drivers/scsi/qla2xxx/qla_def.h    | 31 ++++++++++++++++++++++++++++
+ drivers/scsi/qla2xxx/qla_gbl.h    |  1 +
+ drivers/scsi/qla2xxx/qla_gs.c     | 43 ++++++++++++++++++++++++++++++++++++---
+ drivers/scsi/qla2xxx/qla_init.c   | 14 ++++++-------
+ drivers/scsi/qla2xxx/qla_iocb.c   |  2 +-
+ drivers/scsi/qla2xxx/qla_mbx.c    |  5 +++--
+ drivers/scsi/qla2xxx/qla_mr.c     |  2 +-
+ drivers/scsi/qla2xxx/qla_target.c |  2 +-
+ 9 files changed, 89 insertions(+), 18 deletions(-)
+
+diff --git a/drivers/scsi/qla2xxx/qla_bsg.c b/drivers/scsi/qla2xxx/qla_bsg.c
+index dc02957..00c837e 100644
+--- a/drivers/scsi/qla2xxx/qla_bsg.c
++++ b/drivers/scsi/qla2xxx/qla_bsg.c
+@@ -376,7 +376,8 @@
+ 		 SRB_ELS_CMD_RPT : SRB_ELS_CMD_HST);
+ 	sp->name =
+ 		(bsg_request->msgcode == FC_BSG_RPT_ELS ?
+-		 "bsg_els_rpt" : "bsg_els_hst");
++		 sp_to_str(SPCN_BSG_RPT) : sp_to_str(SPCN_BSG_HST));
++
+ 	sp->u.bsg_job = bsg_job;
+ 	sp->free = qla2x00_bsg_sp_free;
+ 	sp->done = qla2x00_bsg_job_done;
+@@ -522,7 +523,7 @@
+ 	}
+ 
+ 	sp->type = SRB_CT_CMD;
+-	sp->name = "bsg_ct";
++	sp->name = sp_to_str(SPCN_BSG_CT);
+ 	sp->iocbs = qla24xx_calc_ct_iocbs(req_sg_cnt + rsp_sg_cnt);
+ 	sp->u.bsg_job = bsg_job;
+ 	sp->free = qla2x00_bsg_sp_free;
+@@ -2029,7 +2030,7 @@
+ 	fcport->loop_id = piocb_rqst->dataword;
+ 
+ 	sp->type = SRB_FXIOCB_BCMD;
+-	sp->name = "bsg_fx_mgmt";
++	sp->name = sp_to_str(SPCN_BSG_FX_MGMT);
+ 	sp->iocbs = qla24xx_calc_ct_iocbs(req_sg_cnt + rsp_sg_cnt);
+ 	sp->u.bsg_job = bsg_job;
+ 	sp->free = qla2x00_bsg_sp_free;
+diff --git a/drivers/scsi/qla2xxx/qla_def.h b/drivers/scsi/qla2xxx/qla_def.h
+index 51b262b..e6f3f8c 100644
+--- a/drivers/scsi/qla2xxx/qla_def.h
++++ b/drivers/scsi/qla2xxx/qla_def.h
+@@ -417,6 +417,37 @@ struct srb_iocb {
+ 	void (*timeout)(void *);
+ };
+ 
++enum {
++	SPCN_UNKOWN,
++	SPCN_GIDPN,
++	SPCN_GPSC,
++	SPCN_GPNID,
++	SPCN_GPNFT,
++	SPCN_GNNID,
++	SPCN_GFPNID,
++	SPCN_LOGIN,
++	SPCN_LOGOUT,
++	SPCN_ADISC,
++	SPCN_GNLIST,
++	SPCN_GPDB,
++	SPCN_TMF,
++	SPCN_ABORT ,
++	SPCN_NACK,
++	SPCN_BSG_RPT,
++	SPCN_BSG_HST ,
++	SPCN_BSG_CT,
++	SPCN_BSG_FX_MGMT,
++	SPCN_ELS_DCMD,
++	SPCN_FXDISC,
++	SPCN_GIDLIST,
++	SPCN_STATS,
++	SPCN_MB_GPDB,
++};
++struct sp_name {
++        uint16_t cmd;
++        const char *str;
++};
++
+ /* Values for srb_ctx type */
+ #define SRB_LOGIN_CMD	1
+ #define SRB_LOGOUT_CMD	2
+diff --git a/drivers/scsi/qla2xxx/qla_gbl.h b/drivers/scsi/qla2xxx/qla_gbl.h
+index 5476ee7..2ce5f74 100644
+--- a/drivers/scsi/qla2xxx/qla_gbl.h
++++ b/drivers/scsi/qla2xxx/qla_gbl.h
+@@ -631,6 +631,7 @@ extern int qla2x00_chk_ms_status(scsi_qla_host_t *, ms_iocb_entry_t *,
+ int qla24xx_post_gpsc_work(struct scsi_qla_host *, fc_port_t *);
+ int qla24xx_async_gpsc(scsi_qla_host_t *, fc_port_t *);
+ int qla2x00_mgmt_svr_login(scsi_qla_host_t *);
++const char *sp_to_str(uint16_t);
+ 
+ /*
+  * Global Function Prototypes in qla_attr.c source file.
+diff --git a/drivers/scsi/qla2xxx/qla_gs.c b/drivers/scsi/qla2xxx/qla_gs.c
+index 78d4d16..2cd7cae 100644
+--- a/drivers/scsi/qla2xxx/qla_gs.c
++++ b/drivers/scsi/qla2xxx/qla_gs.c
+@@ -15,6 +15,43 @@
+ static int qla2x00_sns_rft_id(scsi_qla_host_t *);
+ static int qla2x00_sns_rnn_id(scsi_qla_host_t *);
+ 
++struct sp_name sp_str[] = {
++	{SPCN_UNKOWN, "unknown"},
++	{SPCN_GIDPN, "gidpn"},
++	{SPCN_GPSC, "gpsc"},
++	{SPCN_GPNID, "gpnid"},
++	{SPCN_GPNFT, "gpnft"},
++	{SPCN_GNNID, "gnnid"},
++	{SPCN_GFPNID, "gfpnid"},
++	{SPCN_LOGIN, "login"},
++	{SPCN_LOGOUT, "logout"},
++	{SPCN_ADISC, "adisc"},
++	{SPCN_GNLIST, "gnlist"},
++	{SPCN_GPDB, "gpdb"},
++	{SPCN_TMF, "tmf"},
++	{SPCN_ABORT, "abort"},
++	{SPCN_NACK, "nack"},
++	{SPCN_BSG_RPT, "bsg_els_rpt"},
++	{SPCN_BSG_HST, "bsg_els_hst"},
++	{SPCN_BSG_CT, "bsg_ct"},
++	{SPCN_BSG_FX_MGMT, "bsg_fx_mgmt"},
++	{SPCN_ELS_DCMD, "ELS_DCMD"},
++	{SPCN_FXDISC, "fxdisc"},
++};
++const char *sp_to_str(uint16_t cmd)
++{
++        int i;
++        struct sp_name *e;
++
++        for (i = 1; i < ARRAY_SIZE(sp_str); i++) {
++                e = sp_str + i;
++                if (cmd == e->cmd)
++                        return e->str;
++        }
++        return sp_str[0].str;
++}
++
++
+ /**
+  * qla2x00_prep_ms_iocb() - Prepare common MS/CT IOCB fields for SNS CT query.
+  * @ha: HA context
+@@ -2902,7 +2939,7 @@ int qla24xx_async_gidpn(scsi_qla_host_t *vha, fc_port_t *fcport)
+ 		goto done;
+ 
+ 	sp->type = SRB_CT_PTHRU_CMD;
+-	sp->name = "gidpn";
++	sp->name = sp_to_str(SPCN_GIDPN);
+ 	sp->gen1 = fcport->rscn_gen;
+ 	sp->gen2 = fcport->login_gen;
+ 
+@@ -3062,7 +3099,7 @@ int qla24xx_async_gpsc(scsi_qla_host_t *vha, fc_port_t *fcport)
+ 		goto done;
+ 
+ 	sp->type = SRB_CT_PTHRU_CMD;
+-	sp->name = "gpsc";
++	sp->name = sp_to_str(SPCN_GPSC);
+ 	sp->gen1 = fcport->rscn_gen;
+ 	sp->gen2 = fcport->login_gen;
+ 
+@@ -3265,7 +3302,7 @@ int qla24xx_async_gpnid(scsi_qla_host_t *vha, port_id_t *id)
+ 		goto done;
+ 
+ 	sp->type = SRB_CT_PTHRU_CMD;
+-	sp->name = "gpnid";
++	sp->name = sp_to_str(SPCN_GPNID);
+ 	qla2x00_init_timer(sp, qla2x00_get_async_timeout(vha) + 2);
+ 
+ 	sp->u.iocb_cmd.u.ctarg.req = dma_alloc_coherent(&vha->hw->pdev->dev,
+diff --git a/drivers/scsi/qla2xxx/qla_init.c b/drivers/scsi/qla2xxx/qla_init.c
+index 828bc62..2327041 100644
+--- a/drivers/scsi/qla2xxx/qla_init.c
++++ b/drivers/scsi/qla2xxx/qla_init.c
+@@ -184,7 +184,7 @@ static void qla24xx_handle_plogi_done_event(struct scsi_qla_host *,
+ 	fcport->logout_completed = 0;
+ 
+ 	sp->type = SRB_LOGIN_CMD;
+-	sp->name = "login";
++	sp->name = sp_to_str(SPCN_LOGIN);
+ 	qla2x00_init_timer(sp, qla2x00_get_async_timeout(vha) + 2);
+ 
+ 	lio = &sp->u.iocb_cmd;
+@@ -242,7 +242,7 @@ static void qla24xx_handle_plogi_done_event(struct scsi_qla_host *,
+ 		goto done;
+ 
+ 	sp->type = SRB_LOGOUT_CMD;
+-	sp->name = "logout";
++	sp->name = sp_to_str(SPCN_LOGOUT);
+ 	qla2x00_init_timer(sp, qla2x00_get_async_timeout(vha) + 2);
+ 
+ 	lio = &sp->u.iocb_cmd;
+@@ -294,7 +294,7 @@ static void qla24xx_handle_plogi_done_event(struct scsi_qla_host *,
+ 		goto done;
+ 
+ 	sp->type = SRB_ADISC_CMD;
+-	sp->name = "adisc";
++	sp->name = sp_to_str(SPCN_ADISC);
+ 	qla2x00_init_timer(sp, qla2x00_get_async_timeout(vha) + 2);
+ 
+ 	lio = &sp->u.iocb_cmd;
+@@ -573,7 +573,7 @@ int qla24xx_async_gnl(struct scsi_qla_host *vha, fc_port_t *fcport)
+ 	if (!sp)
+ 		goto done;
+ 	sp->type = SRB_MB_IOCB;
+-	sp->name = "gnlist";
++	sp->name = sp_to_str(SPCN_GNLIST);
+ 	sp->gen1 = fcport->rscn_gen;
+ 	sp->gen2 = fcport->login_gen;
+ 
+@@ -708,7 +708,7 @@ int qla24xx_async_gpdb(struct scsi_qla_host *vha, fc_port_t *fcport, u8 opt)
+ 	memset(pd, 0, max(PORT_DATABASE_SIZE, PORT_DATABASE_24XX_SIZE));
+ 
+ 	sp->type = SRB_MB_IOCB;
+-	sp->name = "gpdb";
++	sp->name = sp_to_str(SPCN_GPDB);
+ 	sp->gen1 = fcport->rscn_gen;
+ 	sp->gen2 = fcport->login_gen;
+ 	qla2x00_init_timer(sp, qla2x00_get_async_timeout(vha) + 2);
+@@ -1183,7 +1183,7 @@ void qla2x00_fcport_event_handler(scsi_qla_host_t *vha, struct event_arg *ea)
+ 
+ 	tm_iocb = &sp->u.iocb_cmd;
+ 	sp->type = SRB_TM_CMD;
+-	sp->name = "tmf";
++	sp->name = sp_to_str(SPCN_TMF);
+ 	qla2x00_init_timer(sp, qla2x00_get_async_timeout(vha));
+ 	tm_iocb->u.tmf.flags = flags;
+ 	tm_iocb->u.tmf.lun = lun;
+@@ -1261,7 +1261,7 @@ void qla2x00_fcport_event_handler(scsi_qla_host_t *vha, struct event_arg *ea)
+ 
+ 	abt_iocb = &sp->u.iocb_cmd;
+ 	sp->type = SRB_ABT_CMD;
+-	sp->name = "abort";
++	sp->name = sp_to_str(SPCN_ABORT);
+ 	qla2x00_init_timer(sp, qla2x00_get_async_timeout(vha));
+ 	abt_iocb->u.abt.cmd_hndl = cmd_sp->handle;
+ 	sp->done = qla24xx_abort_sp_done;
+diff --git a/drivers/scsi/qla2xxx/qla_iocb.c b/drivers/scsi/qla2xxx/qla_iocb.c
+index ea027f6..c826819 100644
+--- a/drivers/scsi/qla2xxx/qla_iocb.c
++++ b/drivers/scsi/qla2xxx/qla_iocb.c
+@@ -2434,7 +2434,7 @@ struct fw_dif_context {
+ 	    fcport->d_id.b.domain, fcport->d_id.b.area, fcport->d_id.b.al_pa);
+ 
+ 	sp->type = SRB_ELS_DCMD;
+-	sp->name = "ELS_DCMD";
++	sp->name = sp_to_str(SPCN_ELS_DCMD);
+ 	sp->fcport = fcport;
+ 	qla2x00_init_timer(sp, ELS_DCMD_TIMEOUT);
+ 	elsio->timeout = qla2x00_els_dcmd_iocb_timeout;
+diff --git a/drivers/scsi/qla2xxx/qla_mbx.c b/drivers/scsi/qla2xxx/qla_mbx.c
+index 9dceb01..eef78f4 100644
+--- a/drivers/scsi/qla2xxx/qla_mbx.c
++++ b/drivers/scsi/qla2xxx/qla_mbx.c
+@@ -14,6 +14,7 @@
+ 	uint16_t cmd;
+ 	const char *str;
+ } mb_str[] = {
++	{0, "unknown mb"},
+ 	{MBC_GET_PORT_DATABASE,		"GPDB"},
+ 	{MBC_GET_ID_LIST,		"GIDList"},
+ 	{MBC_GET_LINK_PRIV_STATS,	"Stats"},
+@@ -24,12 +25,12 @@ static const char *mb_to_str(uint16_t cmd)
+ 	int i;
+ 	struct mb_cmd_name *e;
+ 
+-	for (i = 0; i < ARRAY_SIZE(mb_str); i++) {
++	for (i = 1; i < ARRAY_SIZE(mb_str); i++) {
+ 		e = mb_str + i;
+ 		if (cmd == e->cmd)
+ 			return e->str;
+ 	}
+-	return "unknown";
++	return mb_str[0].str;
+ }
+ 
+ static struct rom_cmd {
+diff --git a/drivers/scsi/qla2xxx/qla_mr.c b/drivers/scsi/qla2xxx/qla_mr.c
+index 945b632..b9d1e2a 100644
+--- a/drivers/scsi/qla2xxx/qla_mr.c
++++ b/drivers/scsi/qla2xxx/qla_mr.c
+@@ -1921,7 +1921,7 @@
+ 	}
+ 
+ 	sp->type = SRB_FXIOCB_DCMD;
+-	sp->name = "fxdisc";
++	sp->name = sp_to_str(SPCN_FXDISC);
+ 	qla2x00_init_timer(sp, FXDISC_TIMEOUT);
+ 	fdisc->timeout = qla2x00_fxdisc_iocb_timeout;
+ 	fdisc->u.fxiocb.req_func_type = cpu_to_le16(fx_type);
+diff --git a/drivers/scsi/qla2xxx/qla_target.c b/drivers/scsi/qla2xxx/qla_target.c
+index 8282d8d..dc2ceaa 100644
+--- a/drivers/scsi/qla2xxx/qla_target.c
++++ b/drivers/scsi/qla2xxx/qla_target.c
+@@ -647,7 +647,7 @@ int qla24xx_async_notify_ack(scsi_qla_host_t *vha, fc_port_t *fcport,
+ 		goto done;
+ 
+ 	sp->type = type;
+-	sp->name = "nack";
++	sp->name = sp_to_str(SPCN_NACK);
+ 
+ 	qla2x00_init_timer(sp, qla2x00_get_async_timeout(vha)+2);
+ 
+-- 
+1.8.5.6
+

@@ -16,14 +16,12 @@ Reviewed-by: Alex Elder <elder@linaro.org>
 Reviewed-by: David Disseldorp <ddiss@suse.de>
 Acked-by: Luis Henriques <lhenriques@suse.com>
 ---
- drivers/block/rbd.c | 42 ++++++++++++++++++++++--------------------
+ drivers/block/rbd.c |   42 ++++++++++++++++++++++--------------------
  1 file changed, 22 insertions(+), 20 deletions(-)
 
-diff --git a/drivers/block/rbd.c b/drivers/block/rbd.c
-index 77675ac8fc4c..3218ac4f2e09 100644
 --- a/drivers/block/rbd.c
 +++ b/drivers/block/rbd.c
-@@ -2894,11 +2894,23 @@ static int rbd_img_obj_exists_submit(struct rbd_obj_request *obj_request)
+@@ -3017,11 +3017,23 @@ static int rbd_img_obj_exists_submit(str
  {
  	struct rbd_device *rbd_dev = obj_request->img_request->rbd_dev;
  	struct rbd_obj_request *stat_request;
@@ -48,10 +46,10 @@ index 77675ac8fc4c..3218ac4f2e09 100644
  	/*
  	 * The response data for a STAT call consists of:
  	 *     le64 length;
-@@ -2910,38 +2922,28 @@ static int rbd_img_obj_exists_submit(struct rbd_obj_request *obj_request)
+@@ -3033,38 +3045,28 @@ static int rbd_img_obj_exists_submit(str
  	size = sizeof (__le64) + sizeof (__le32) + sizeof (__le32);
  	page_count = (u32)calc_pages_for(0, size);
- 	pages = ceph_alloc_page_vector(page_count, GFP_KERNEL);
+ 	pages = ceph_alloc_page_vector(page_count, GFP_NOIO);
 -	if (IS_ERR(pages))
 -		return PTR_ERR(pages);
 +	if (IS_ERR(pages)) {
@@ -96,4 +94,3 @@ index 77675ac8fc4c..3218ac4f2e09 100644
  	return ret;
  }
  
-

@@ -1,8 +1,9 @@
 From: James Smart <jsmart2021@gmail.com>
-Date: Tue, 30 May 2017 22:41:08 -0700
+Date: Thu, 1 Jun 2017 21:07:04 -0700
 Subject: lpfc: Fix crash on powering off BFS VM with passthrough device
+Git-commit: ecbb227e635a61f751e8c8ad1c585a0c4ed11de1
 References: bsc#1041873
-Patch-Mainline: submitted linux-scsi 2017/06/01
+Patch-Mainline: v4.13-rc1
 
 Null pointer dereference when BFS VM is powered off
 
@@ -12,16 +13,18 @@ Use the correct ring structure based on sli_rev
 
 Signed-off-by: Dick Kennedy <dick.kennedy@broadcom.com>
 Signed-off-by: James Smart <james.smart@broadcom.com>
+Tested-by: Raphael Silva <raphasil@linux.vnet.ibm.com>
+Signed-off-by: Martin K. Petersen <martin.petersen@oracle.com>
 Acked-by: Hannes Reinecke <hare@suse.com>
 ---
- drivers/scsi/lpfc/lpfc_sli.c | 14 +++++++++++---
- 1 file changed, 11 insertions(+), 3 deletions(-)
+ drivers/scsi/lpfc/lpfc_sli.c | 12 ++++++++++--
+ 1 file changed, 10 insertions(+), 2 deletions(-)
 
 diff --git a/drivers/scsi/lpfc/lpfc_sli.c b/drivers/scsi/lpfc/lpfc_sli.c
-index 1310ab3..1ef1137 100644
+index e81fa7d..c4ceef6 100644
 --- a/drivers/scsi/lpfc/lpfc_sli.c
 +++ b/drivers/scsi/lpfc/lpfc_sli.c
-@@ -10951,6 +10951,7 @@ lpfc_sli_abort_iocb(struct lpfc_vport *vport, struct lpfc_sli_ring *pring,
+@@ -10951,6 +10951,7 @@ struct lpfc_dmabuf *
  	struct lpfc_hba *phba = vport->phba;
  	struct lpfc_iocbq *iocbq;
  	struct lpfc_iocbq *abtsiocb;
@@ -29,29 +32,24 @@ index 1310ab3..1ef1137 100644
  	IOCB_t *cmd = NULL;
  	int errcnt = 0, ret_val = 0;
  	int i;
-@@ -11005,12 +11006,19 @@ lpfc_sli_abort_iocb(struct lpfc_vport *vport, struct lpfc_sli_ring *pring,
+@@ -11004,8 +11005,15 @@ struct lpfc_dmabuf *
+ 
  		/* Setup callback routine and issue the command. */
  		abtsiocb->iocb_cmpl = lpfc_sli_abort_fcp_cmpl;
- 
--		/* In PCI hotplug remove path, pring might be NULL */
--		if (pring)
-+		ret_val = IOCB_ERROR;
+-		ret_val = lpfc_sli_issue_iocb(phba, pring->ringno,
+-					      abtsiocb, 0);
 +		if (phba->sli_rev == LPFC_SLI_REV4) {
 +			pring_s4 = lpfc_sli4_calc_ring(phba, iocbq);
-+			if (pring_s4)
-+				ret_val = lpfc_sli_issue_iocb(phba,
-+							      pring_s4->ringno,
-+							      abtsiocb, 0);
-+		} else if (pring)
-+			/* In PCI hotplug remove path, pring might be NULL */
- 			ret_val = lpfc_sli_issue_iocb(phba, pring->ringno,
- 						      abtsiocb, 0);
- 
--		if (!pring || ret_val == IOCB_ERROR) {
-+		if (ret_val == IOCB_ERROR) {
++			if (!pring_s4)
++				continue;
++			ret_val = lpfc_sli_issue_iocb(phba, pring_s4->ringno,
++						      abtsiocb, 0);
++		} else
++			ret_val = lpfc_sli_issue_iocb(phba, pring->ringno,
++						      abtsiocb, 0);
+ 		if (ret_val == IOCB_ERROR) {
  			lpfc_sli_release_iocbq(phba, abtsiocb);
  			errcnt++;
- 			continue;
 -- 
 1.8.5.6
 

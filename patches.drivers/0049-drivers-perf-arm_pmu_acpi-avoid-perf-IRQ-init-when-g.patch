@@ -1,0 +1,63 @@
+From bda7878d8d054ef14dd5833f4bb9ed372ee48f32 Mon Sep 17 00:00:00 2001
+From: Wei Huang <wei@redhat.com>
+Date: Tue, 30 May 2017 11:56:22 +0100
+Subject: [PATCH 49/56] drivers/perf: arm_pmu_acpi: avoid perf IRQ init when
+ guest PMU is off
+
+Git-commit: 477c50e8dc1c7b5004e099b8b74ca8b70be2f4fd
+Patch-mainline: v4.12-rc4
+References: bsc#1062279
+
+We saw perf IRQ init failures when running Linux kernel in an ACPI
+guest without PMU (i.e. pmu=off). This is because perf IRQ is not
+present when pmu=off, but arm_pmu_acpi still tries to register
+or unregister GSI. This patch addresses the problem by checking
+gicc->performance_interrupt. If it is 0, which is the value set
+by qemu when pmu=off, we skip the IRQ register/unregister process.
+
+[    4.069470] bc00: 0000000000040b00 ffff0000089db190
+[    4.070267] [<ffff000008134f80>] enable_percpu_irq+0xdc/0xe4
+[    4.071192] [<ffff000008667cc4>] arm_perf_starting_cpu+0x108/0x10c
+[    4.072200] [<ffff0000080cbdd4>] cpuhp_invoke_callback+0x14c/0x4ac
+[    4.073210] [<ffff0000080ccd3c>] cpuhp_thread_fun+0xd4/0x11c
+[    4.074132] [<ffff0000080f1394>] smpboot_thread_fn+0x1b4/0x1c4
+[    4.075081] [<ffff0000080ec90c>] kthread+0x10c/0x138
+[    4.075921] [<ffff0000080833c0>] ret_from_fork+0x10/0x50
+[    4.076947] genirq: Setting trigger mode 4 for irq 43 failed
+(gic_set_type+0x0/0x74)
+
+Signed-off-by: Wei Huang <wei@redhat.com>
+[will: add comment justifying deviation from ACPI spec, removed redundant hunk]
+Signed-off-by: Will Deacon <will.deacon@arm.com>
+Signed-off-by: Catalin Marinas <catalin.marinas@arm.com>
+
+Signed-off-by: Mian Yousaf Kaukab <yousaf.kaukab@suse.com>
+---
+ drivers/perf/arm_pmu_acpi.c | 11 +++++++++++
+ 1 file changed, 11 insertions(+)
+
+diff --git a/drivers/perf/arm_pmu_acpi.c b/drivers/perf/arm_pmu_acpi.c
+index 34c862f2..0a9b7870 100644
+--- a/drivers/perf/arm_pmu_acpi.c
++++ b/drivers/perf/arm_pmu_acpi.c
+@@ -29,6 +29,17 @@ static int arm_pmu_acpi_register_irq(int cpu)
+ 		return -EINVAL;
+ 
+ 	gsi = gicc->performance_interrupt;
++
++	/*
++	 * Per the ACPI spec, the MADT cannot describe a PMU that doesn't
++	 * have an interrupt. QEMU advertises this by using a GSI of zero,
++	 * which is not known to be valid on any hardware despite being
++	 * valid per the spec. Take the pragmatic approach and reject a
++	 * GSI of zero for now.
++	 */
++	if (!gsi)
++		return 0;
++
+ 	if (gicc->flags & ACPI_MADT_PERFORMANCE_IRQ_MODE)
+ 		trigger = ACPI_EDGE_SENSITIVE;
+ 	else
+-- 
+2.11.0
+

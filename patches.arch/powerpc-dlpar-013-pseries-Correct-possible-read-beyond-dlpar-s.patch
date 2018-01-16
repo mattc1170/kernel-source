@@ -1,0 +1,212 @@
+From cf8eebe036a601dc5cc9f5a2041d77b36c0a53cd Mon Sep 17 00:00:00 2001
+From: Nathan Fontenot <nfont@linux.vnet.ibm.com>
+Date: Thu, 17 Nov 2016 11:38:10 -0500
+Subject: [PATCH] powerpc/pseries: Correct possible read beyond dlpar sysfs
+ buffer
+
+References: FATE#322022
+Patch-mainline: v4.10-rc1
+Git-commit: 25b587fba9a4198e7ea2e2319d62e219d1a4ca2c
+
+The pasrsing of data written to the dlpar file in sysfs does not correctly
+account for the possibility of reading past the end of the buffer. The code
+assumes that all pieces of the command witten to the sysfs file are present
+in the form "<resource> <action> <id_type> <id>".
+
+Correct this by updating the buffer parsing code to make a local copy and
+use the strsep() and sysfs_streq() routines to parse the buffer. This patch
+also separates the parsing code into subroutines for each piece of the
+command.
+
+Signed-off-by: Nathan Fontenot <nfont@linux.vnet.ibm.com>
+Signed-off-by: Michael Ellerman <mpe@ellerman.id.au>
+Acked-by: Michal Suchanek <msuchanek@suse.de>
+---
+ arch/powerpc/platforms/pseries/dlpar.c | 138 +++++++++++++++++++++++----------
+ 1 file changed, 96 insertions(+), 42 deletions(-)
+
+diff --git a/arch/powerpc/platforms/pseries/dlpar.c b/arch/powerpc/platforms/pseries/dlpar.c
+index b6e865018596..ffe0e155da8c 100644
+--- a/arch/powerpc/platforms/pseries/dlpar.c
++++ b/arch/powerpc/platforms/pseries/dlpar.c
+@@ -629,81 +629,135 @@ void queue_hotplug_event(struct pseries_hp_errorlog *hp_errlog,
+ 	}
+ }
+ 
+-static ssize_t dlpar_store(struct class *class, struct class_attribute *attr,
+-			   const char *buf, size_t count)
++static int dlpar_parse_resource(char **cmd, struct pseries_hp_errorlog *hp_elog)
+ {
+-	struct pseries_hp_errorlog *hp_elog;
+-	struct completion hotplug_done;
+-	const char *arg;
+-	int rc;
++	char *arg;
+ 
+-	hp_elog = kzalloc(sizeof(*hp_elog), GFP_KERNEL);
+-	if (!hp_elog) {
+-		rc = -ENOMEM;
+-		goto dlpar_store_out;
+-	}
++	arg = strsep(cmd, " ");
++	if (!arg)
++		return -EINVAL;
+ 
+-	/* Parse out the request from the user, this will be in the form
+-	 * <resource> <action> <id_type> <id>
+-	 */
+-	arg = buf;
+-	if (!strncmp(arg, "memory", 6)) {
++	if (sysfs_streq(arg, "memory")) {
+ 		hp_elog->resource = PSERIES_HP_ELOG_RESOURCE_MEM;
+ 		arg += strlen("memory ");
+ 	} else {
+-		pr_err("Invalid resource specified: \"%s\"\n", buf);
+-		rc = -EINVAL;
+-		goto dlpar_store_out;
++		pr_err("Invalid resource specified.\n");
++		return -EINVAL;
+ 	}
+ 
+-	if (!strncmp(arg, "add", 3)) {
++	return 0;
++}
++
++static int dlpar_parse_action(char **cmd, struct pseries_hp_errorlog *hp_elog)
++{
++	char *arg;
++
++	arg = strsep(cmd, " ");
++	if (!arg)
++		return -EINVAL;
++
++	if (sysfs_streq(arg, "add")) {
+ 		hp_elog->action = PSERIES_HP_ELOG_ACTION_ADD;
+-		arg += strlen("add ");
+-	} else if (!strncmp(arg, "remove", 6)) {
++	} else if (sysfs_streq(arg, "remove")) {
+ 		hp_elog->action = PSERIES_HP_ELOG_ACTION_REMOVE;
+-		arg += strlen("remove ");
+ 	} else {
+-		pr_err("Invalid action specified: \"%s\"\n", buf);
+-		rc = -EINVAL;
+-		goto dlpar_store_out;
++		pr_err("Invalid action specified.\n");
++		return -EINVAL;
+ 	}
+ 
+-	if (!strncmp(arg, "index", 5)) {
+-		u32 index;
++	return 0;
++}
++
++static int dlpar_parse_id_type(char **cmd, struct pseries_hp_errorlog *hp_elog)
++{
++	char *arg;
++	u32 count, index;
++
++	arg = strsep(cmd, " ");
++	if (!arg)
++		return -EINVAL;
+ 
++	if (sysfs_streq(arg, "index")) {
+ 		hp_elog->id_type = PSERIES_HP_ELOG_ID_DRC_INDEX;
+-		arg += strlen("index ");
++		arg = strsep(cmd, " ");
++		if (!arg) {
++			pr_err("No DRC Index specified.\n");
++			return -EINVAL;
++		}
++
+ 		if (kstrtou32(arg, 0, &index)) {
+-			rc = -EINVAL;
+-			pr_err("Invalid drc_index specified: \"%s\"\n", buf);
+-			goto dlpar_store_out;
++			pr_err("Invalid DRC Index specified.\n");
++			return -EINVAL;
+ 		}
+ 
+ 		hp_elog->_drc_u.drc_index = cpu_to_be32(index);
+-	} else if (!strncmp(arg, "count", 5)) {
+-		u32 count;
+-
++	} else if (sysfs_streq(arg, "count")) {
+ 		hp_elog->id_type = PSERIES_HP_ELOG_ID_DRC_COUNT;
+-		arg += strlen("count ");
++		arg = strsep(cmd, " ");
++		if (!arg) {
++			pr_err("No DRC count specified.\n");
++			return -EINVAL;
++		}
++
+ 		if (kstrtou32(arg, 0, &count)) {
+-			rc = -EINVAL;
+-			pr_err("Invalid count specified: \"%s\"\n", buf);
+-			goto dlpar_store_out;
++			pr_err("Invalid DRC count specified.\n");
++			return -EINVAL;
+ 		}
+ 
+ 		hp_elog->_drc_u.drc_count = cpu_to_be32(count);
+ 	} else {
+-		pr_err("Invalid id_type specified: \"%s\"\n", buf);
+-		rc = -EINVAL;
+-		goto dlpar_store_out;
++		pr_err("Invalid id_type specified.\n");
++		return -EINVAL;
++	}
++
++	return 0;
++}
++
++static ssize_t dlpar_store(struct class *class, struct class_attribute *attr,
++			   const char *buf, size_t count)
++{
++	struct pseries_hp_errorlog *hp_elog;
++	struct completion hotplug_done;
++	char *argbuf;
++	char *args;
++	int rc;
++
++	args = argbuf = kstrdup(buf, GFP_KERNEL);
++	hp_elog = kzalloc(sizeof(*hp_elog), GFP_KERNEL);
++	if (!hp_elog || !argbuf) {
++		pr_info("Could not allocate resources for DLPAR operation\n");
++		kfree(argbuf);
++		kfree(hp_elog);
++		return -ENOMEM;
+ 	}
+ 
++	/*
++	 * Parse out the request from the user, this will be in the form:
++	 * <resource> <action> <id_type> <id>
++	 */
++	rc = dlpar_parse_resource(&args, hp_elog);
++	if (rc)
++		goto dlpar_store_out;
++
++	rc = dlpar_parse_action(&args, hp_elog);
++	if (rc)
++		goto dlpar_store_out;
++
++	rc = dlpar_parse_id_type(&args, hp_elog);
++	if (rc)
++		goto dlpar_store_out;
++
+ 	init_completion(&hotplug_done);
+ 	queue_hotplug_event(hp_elog, &hotplug_done, &rc);
+ 	wait_for_completion(&hotplug_done);
+ 
+ dlpar_store_out:
++	kfree(argbuf);
+ 	kfree(hp_elog);
++
++	if (rc)
++		pr_err("Could not handle DLPAR request \"%s\"\n", buf);
++
+ 	return rc ? rc : count;
+ }
+ 
+-- 
+2.10.2
+

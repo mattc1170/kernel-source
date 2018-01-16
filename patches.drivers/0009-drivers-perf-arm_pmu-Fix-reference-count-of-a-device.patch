@@ -1,0 +1,58 @@
+From ccba0664254044e06f0db671a06f4714e2e88bd5 Mon Sep 17 00:00:00 2001
+From: Julien Grall <julien.grall@arm.com>
+Date: Tue, 31 May 2016 12:41:21 +0100
+Subject: [PATCH 09/56] drivers/perf: arm_pmu: Fix reference count of a
+ device_node in of_pmu_irq_cfg
+
+Git-commit: 121323ae668e456d0ed328f5b77c22bf5dd8e4de
+Patch-mainline: v4.7-rc2
+References: bsc#1062279
+
+The only function called by of_pmu_irq_cfg that will increment the
+reference count on dn is of_parse_phandle.
+
+Each time we successfully parse a possible CPU from an
+interrupt-affinity property, we increment the refcount of that CPU node
+once via of_parse_handle. After validating the CPU is possible, we
+decrement the refcount once. Subsequently, we decrement the refcount
+again, either as part of an early break if we don't have a matching SPI,
+or as part of the end of the loop body.
+
+This will lead to decrementing twice the refcounnt.
+Remove the second pairs of call to of_node_put as nobody is using dn
+between the first and second call to of_node_put.
+
+Signed-off-by: Julien Grall <julien.grall@arm.com>
+Acked-by: Mark Rutland <mark.rutland@arm.com>
+Signed-off-by: Will Deacon <will.deacon@arm.com>
+Signed-off-by: Mian Yousaf Kaukab <yousaf.kaukab@suse.com>
+---
+ drivers/perf/arm_pmu.c | 5 +----
+ 1 file changed, 1 insertion(+), 4 deletions(-)
+
+diff --git a/drivers/perf/arm_pmu.c b/drivers/perf/arm_pmu.c
+index 2d70d9fc..9b2e216d 100644
+--- a/drivers/perf/arm_pmu.c
++++ b/drivers/perf/arm_pmu.c
+@@ -943,17 +943,14 @@ static int of_pmu_irq_cfg(struct arm_pmu *pmu)
+ 
+ 		/* For SPIs, we need to track the affinity per IRQ */
+ 		if (using_spi) {
+-			if (i >= pdev->num_resources) {
+-				of_node_put(dn);
++			if (i >= pdev->num_resources)
+ 				break;
+-			}
+ 
+ 			irqs[i] = cpu;
+ 		}
+ 
+ 		/* Keep track of the CPUs containing this PMU type */
+ 		cpumask_set_cpu(cpu, &pmu->supported_cpus);
+-		of_node_put(dn);
+ 		i++;
+ 	} while (1);
+ 
+-- 
+2.11.0
+

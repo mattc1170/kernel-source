@@ -1,0 +1,44 @@
+From 802a345183c0308aa64969cca62c23961bf86a44 Mon Sep 17 00:00:00 2001
+From: Alexey Kardashevskiy <aik@ozlabs.ru>
+Date: Wed, 20 Jul 2016 14:26:51 +1000
+Subject: [PATCH] powerpc/powernv/ioda: Fix endianness when reading TCEs
+
+References: bsc#1066223
+Patch-mainline: v4.8-rc1
+Git-commit: 802a345183c0308aa64969cca62c23961bf86a44
+
+The iommu_table_ops::exchange() callback writes new TCE to the table and
+returns old value and permission mask. The old TCE value is correctly
+converted from BE to CPU endian; however permission mask was calculated
+from BE value and therefore always returned DMA_NONE which could cause
+memory leak on LE systems using VFIO SPAPR TCE IOMMU v1 driver.
+
+This fixes pnv_tce_xchg() to have @oldtce a CPU endian.
+
+Fixes: 05c6cfb9dce0 ("powerpc/iommu/powernv: Release replaced TCE")
+Signed-off-by: Alexey Kardashevskiy <aik@ozlabs.ru>
+Reviewed-by: David Gibson <david@gibson.dropbear.id.au>
+Signed-off-by: Michael Ellerman <mpe@ellerman.id.au>
+Acked-by: Michal Suchanek <msuchanek@suse.de>
+---
+ arch/powerpc/platforms/powernv/pci.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/arch/powerpc/platforms/powernv/pci.c b/arch/powerpc/platforms/powernv/pci.c
+index 4617ea221881..6701dd5ded20 100644
+--- a/arch/powerpc/platforms/powernv/pci.c
++++ b/arch/powerpc/platforms/powernv/pci.c
+@@ -737,8 +737,8 @@ int pnv_tce_xchg(struct iommu_table *tbl, long index,
+ 	if (newtce & TCE_PCI_WRITE)
+ 		newtce |= TCE_PCI_READ;
+ 
+-	oldtce = xchg(pnv_tce(tbl, idx), cpu_to_be64(newtce));
+-	*hpa = be64_to_cpu(oldtce) & ~(TCE_PCI_READ | TCE_PCI_WRITE);
++	oldtce = be64_to_cpu(xchg(pnv_tce(tbl, idx), cpu_to_be64(newtce)));
++	*hpa = oldtce & ~(TCE_PCI_READ | TCE_PCI_WRITE);
+ 	*direction = iommu_tce_direction(oldtce);
+ 
+ 	return 0;
+-- 
+2.13.6
+

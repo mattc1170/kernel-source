@@ -16,16 +16,14 @@ on the flushing list. We do not wake up waiters in this case, set
 Signed-off-by: Yan, Zheng <zyan@redhat.com>
 Acked-by: Luis Henriques <lhenriques@suse.com>
 ---
- fs/ceph/caps.c       | 91 ++++++++++++++++++++++++++++++++++++----------------
- fs/ceph/mds_client.c |  8 +++++
- fs/ceph/super.h      |  1 +
+ fs/ceph/caps.c       |   91 +++++++++++++++++++++++++++++++++++----------------
+ fs/ceph/mds_client.c |    8 ++++
+ fs/ceph/super.h      |    1 
  3 files changed, 73 insertions(+), 27 deletions(-)
 
-diff --git a/fs/ceph/caps.c b/fs/ceph/caps.c
-index 736e1c86bcf3..99115cae1652 100644
 --- a/fs/ceph/caps.c
 +++ b/fs/ceph/caps.c
-@@ -1474,13 +1474,44 @@ static u64 __get_oldest_flush_tid(struct ceph_mds_client *mdsc)
+@@ -1474,13 +1474,44 @@ static u64 __get_oldest_flush_tid(struct
  }
  
  /*
@@ -71,7 +69,7 @@ index 736e1c86bcf3..99115cae1652 100644
  				u64 *flush_tid, u64 *oldest_flush_tid)
  {
  	struct ceph_mds_client *mdsc = ceph_sb_to_client(inode->i_sb)->mdsc;
-@@ -1503,6 +1534,7 @@ static int __mark_caps_flushing(struct inode *inode,
+@@ -1503,6 +1534,7 @@ static int __mark_caps_flushing(struct i
  
  	swap(cf, ci->i_prealloc_cap_flush);
  	cf->caps = flushing;
@@ -79,7 +77,7 @@ index 736e1c86bcf3..99115cae1652 100644
  
  	spin_lock(&mdsc->cap_dirty_lock);
  	list_del_init(&ci->i_dirty_item);
-@@ -1808,7 +1840,7 @@ void ceph_check_caps(struct ceph_inode_info *ci, int flags,
+@@ -1808,7 +1840,7 @@ ack:
  		}
  
  		if (cap == ci->i_auth_cap && ci->i_dirty_caps) {
@@ -88,9 +86,9 @@ index 736e1c86bcf3..99115cae1652 100644
  							&flush_tid,
  							&oldest_flush_tid);
  		} else {
-@@ -1885,8 +1917,8 @@ static int try_flush_caps(struct inode *inode, u64 *ptid)
- 		if (cap->session->s_state < CEPH_MDS_SESSION_OPEN)
+@@ -1888,8 +1920,8 @@ retry:
  			goto out;
+ 		}
  
 -		flushing = __mark_caps_flushing(inode, session, &flush_tid,
 -						&oldest_flush_tid);
@@ -99,7 +97,7 @@ index 736e1c86bcf3..99115cae1652 100644
  
  		/* __send_cap drops i_ceph_lock */
  		delayed = __send_cap(mdsc, cap, CEPH_CAP_OP_FLUSH, used, want,
-@@ -1902,7 +1934,8 @@ static int try_flush_caps(struct inode *inode, u64 *ptid)
+@@ -1905,7 +1937,8 @@ retry:
  		if (!list_empty(&ci->i_cap_flush_list)) {
  			struct ceph_cap_flush *cf =
  				list_last_entry(&ci->i_cap_flush_list,
@@ -109,7 +107,7 @@ index 736e1c86bcf3..99115cae1652 100644
  			flush_tid = cf->tid;
  		}
  		flushing = ci->i_flushing_caps;
-@@ -3022,7 +3055,9 @@ static void handle_cap_flush_ack(struct inode *inode, u64 flush_tid,
+@@ -3025,7 +3058,9 @@ static void handle_cap_flush_ack(struct
  	unsigned seq = le32_to_cpu(m->seq);
  	int dirty = le32_to_cpu(m->dirty);
  	int cleaned = 0;
@@ -120,7 +118,7 @@ index 736e1c86bcf3..99115cae1652 100644
  
  	list_for_each_entry_safe(cf, tmp_cf, &ci->i_cap_flush_list, i_list) {
  		if (cf->tid == flush_tid)
-@@ -3030,7 +3065,8 @@ static void handle_cap_flush_ack(struct inode *inode, u64 flush_tid,
+@@ -3033,7 +3068,8 @@ static void handle_cap_flush_ack(struct
  		if (cf->caps == 0) /* capsnap */
  			continue;
  		if (cf->tid <= flush_tid) {
@@ -130,7 +128,7 @@ index 736e1c86bcf3..99115cae1652 100644
  			list_add_tail(&cf->i_list, &to_remove);
  		} else {
  			cleaned &= ~cf->caps;
-@@ -3052,14 +3088,9 @@ static void handle_cap_flush_ack(struct inode *inode, u64 flush_tid,
+@@ -3055,14 +3091,9 @@ static void handle_cap_flush_ack(struct
  
  	spin_lock(&mdsc->cap_dirty_lock);
  
@@ -148,7 +146,7 @@ index 736e1c86bcf3..99115cae1652 100644
  	}
  
  	if (ci->i_flushing_caps == 0) {
-@@ -3079,7 +3110,7 @@ static void handle_cap_flush_ack(struct inode *inode, u64 flush_tid,
+@@ -3082,7 +3113,7 @@ static void handle_cap_flush_ack(struct
  		if (ci->i_dirty_caps == 0) {
  			dout(" inode %p now clean\n", inode);
  			BUG_ON(!list_empty(&ci->i_dirty_item));
@@ -157,7 +155,7 @@ index 736e1c86bcf3..99115cae1652 100644
  			if (ci->i_wr_ref == 0 &&
  			    ci->i_wrbuffer_ref_head == 0) {
  				BUG_ON(!ci->i_head_snapc);
-@@ -3091,7 +3122,6 @@ static void handle_cap_flush_ack(struct inode *inode, u64 flush_tid,
+@@ -3094,7 +3125,6 @@ static void handle_cap_flush_ack(struct
  		}
  	}
  	spin_unlock(&mdsc->cap_dirty_lock);
@@ -165,7 +163,7 @@ index 736e1c86bcf3..99115cae1652 100644
  
  out:
  	spin_unlock(&ci->i_ceph_lock);
-@@ -3102,6 +3132,11 @@ static void handle_cap_flush_ack(struct inode *inode, u64 flush_tid,
+@@ -3105,6 +3135,11 @@ out:
  		list_del(&cf->i_list);
  		ceph_free_cap_flush(cf);
  	}
@@ -177,7 +175,7 @@ index 736e1c86bcf3..99115cae1652 100644
  	if (drop)
  		iput(inode);
  }
-@@ -3120,7 +3155,9 @@ static void handle_cap_flushsnap_ack(struct inode *inode, u64 flush_tid,
+@@ -3123,7 +3158,9 @@ static void handle_cap_flushsnap_ack(str
  	struct ceph_mds_client *mdsc = ceph_sb_to_client(inode->i_sb)->mdsc;
  	u64 follows = le64_to_cpu(m->snap_follows);
  	struct ceph_cap_snap *capsnap;
@@ -188,7 +186,7 @@ index 736e1c86bcf3..99115cae1652 100644
  
  	dout("handle_cap_flushsnap_ack inode %p ci %p mds%d follows %lld\n",
  	     inode, ci, session->s_mds, follows);
-@@ -3134,7 +3171,7 @@ static void handle_cap_flushsnap_ack(struct inode *inode, u64 flush_tid,
+@@ -3137,7 +3174,7 @@ static void handle_cap_flushsnap_ack(str
  				     flush_tid, capsnap->cap_flush.tid);
  				break;
  			}
@@ -197,7 +195,7 @@ index 736e1c86bcf3..99115cae1652 100644
  			break;
  		} else {
  			dout(" skipping cap_snap %p follows %lld\n",
-@@ -3142,31 +3179,31 @@ static void handle_cap_flushsnap_ack(struct inode *inode, u64 flush_tid,
+@@ -3145,31 +3182,31 @@ static void handle_cap_flushsnap_ack(str
  		}
  	}
  	if (flushed) {
@@ -237,11 +235,9 @@ index 736e1c86bcf3..99115cae1652 100644
  		iput(inode);
  	}
  }
-diff --git a/fs/ceph/mds_client.c b/fs/ceph/mds_client.c
-index fa9036af5445..cdc6a17f5867 100644
 --- a/fs/ceph/mds_client.c
 +++ b/fs/ceph/mds_client.c
-@@ -1212,6 +1212,8 @@ static void remove_session_caps(struct ceph_mds_session *session)
+@@ -1215,6 +1215,8 @@ static void remove_session_caps(struct c
  	dout("remove_session_caps on %p\n", session);
  	iterate_session_caps(session, remove_session_caps_cb, fsc);
  
@@ -250,7 +246,7 @@ index fa9036af5445..cdc6a17f5867 100644
  	spin_lock(&session->s_cap_lock);
  	if (session->s_nr_caps > 0) {
  		struct inode *inode;
-@@ -3536,6 +3538,12 @@ void ceph_mdsc_sync(struct ceph_mds_client *mdsc)
+@@ -3543,6 +3545,12 @@ void ceph_mdsc_sync(struct ceph_mds_clie
  	ceph_flush_dirty_caps(mdsc);
  	spin_lock(&mdsc->cap_dirty_lock);
  	want_flush = mdsc->last_cap_flush_tid;
@@ -263,8 +259,6 @@ index fa9036af5445..cdc6a17f5867 100644
  	spin_unlock(&mdsc->cap_dirty_lock);
  
  	dout("sync want tid %lld flush_seq %lld\n",
-diff --git a/fs/ceph/super.h b/fs/ceph/super.h
-index b097d474f888..3e3fa9163059 100644
 --- a/fs/ceph/super.h
 +++ b/fs/ceph/super.h
 @@ -150,6 +150,7 @@ struct ceph_cap {
@@ -275,4 +269,3 @@ index b097d474f888..3e3fa9163059 100644
  	struct list_head g_list; // global
  	struct list_head i_list; // per inode
  };
-

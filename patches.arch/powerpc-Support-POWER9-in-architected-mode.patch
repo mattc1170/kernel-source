@@ -1,0 +1,68 @@
+From edb4a8cd84c97279f3cda6fd9124ac17b0a95353 Mon Sep 17 00:00:00 2001
+From: Mauricio Faria de Oliveira <mauricfo@br.ibm.com>
+Date: Tue, 25 Jul 2017 15:26:15 +0200
+Subject: [PATCH] powerpc: Support POWER9 in architected mode
+
+This is much reduced subset of cc3d2940133d24000e2866b21e03ce32adfead0a
+which adds only the minimum entries for POWER9 CPU support inside LPAR.
+
+References: bsc#1048916, fate#321439
+Patch-mainline: v4.11-rc1
+Git-commit: cc3d2940133d24000e2866b21e03ce32adfead0a (partial)
+Acked-by: Michal Suchanek <msuchanek@suse.de>
+---
+ arch/powerpc/include/asm/prom.h | 2 ++
+ arch/powerpc/kernel/prom_init.c | 7 +++++--
+ 2 files changed, 7 insertions(+), 2 deletions(-)
+
+diff --git a/arch/powerpc/include/asm/prom.h b/arch/powerpc/include/asm/prom.h
+index 7f436ba1b56f..785bc6b47120 100644
+--- a/arch/powerpc/include/asm/prom.h
++++ b/arch/powerpc/include/asm/prom.h
+@@ -121,6 +121,8 @@ struct of_drconf_cell {
+ #define OV1_PPC_2_06		0x02	/* set if we support PowerPC 2.06 */
+ #define OV1_PPC_2_07		0x01	/* set if we support PowerPC 2.07 */
+ 
++#define OV1_PPC_3_00		0x80	/* set if we support PowerPC 3.00 */
++
+ /* Option vector 2: Open Firmware options supported */
+ #define OV2_REAL_MODE		0x20	/* set if we want OF in real mode */
+ 
+diff --git a/arch/powerpc/kernel/prom_init.c b/arch/powerpc/kernel/prom_init.c
+index d8200f8443d9..8cfb5cadde39 100644
+--- a/arch/powerpc/kernel/prom_init.c
++++ b/arch/powerpc/kernel/prom_init.c
+@@ -666,6 +666,8 @@ unsigned char ibm_architecture_vec[] = {
+ 	W(0xffff0000), W(0x004b0000),	/* POWER8E */
+ 	W(0xffff0000), W(0x004c0000),   /* POWER8NVL */
+ 	W(0xffff0000), W(0x004d0000),	/* POWER8 */
++	W(0xffff0000), W(0x004e0000),	/* POWER9 */
++	W(0xffffffff), W(0x0f000005),	/* all 3.00-compliant */
+ 	W(0xffffffff), W(0x0f000004),	/* all 2.07-compliant */
+ 	W(0xffffffff), W(0x0f000003),	/* all 2.06-compliant */
+ 	W(0xffffffff), W(0x0f000002),	/* all 2.05-compliant */
+@@ -673,10 +675,11 @@ unsigned char ibm_architecture_vec[] = {
+ 	NUM_VECTORS(6),			/* 6 option vectors */
+ 
+ 	/* option vector 1: processor architectures supported */
+-	VECTOR_LENGTH(2),		/* length */
++	VECTOR_LENGTH(3),		/* length */
+ 	0,				/* don't ignore, don't halt */
+ 	OV1_PPC_2_00 | OV1_PPC_2_01 | OV1_PPC_2_02 | OV1_PPC_2_03 |
+ 	OV1_PPC_2_04 | OV1_PPC_2_05 | OV1_PPC_2_06 | OV1_PPC_2_07,
++	OV1_PPC_3_00,
+ 
+ 	/* option vector 2: Open Firmware options supported */
+ 	VECTOR_LENGTH(33),		/* length */
+@@ -727,7 +730,7 @@ unsigned char ibm_architecture_vec[] = {
+ 	 * must match by the macro below. Update the definition if
+ 	 * the structure layout changes.
+ 	 */
+-#define IBM_ARCH_VEC_NRCORES_OFFSET	133
++#define IBM_ARCH_VEC_NRCORES_OFFSET	150
+ 	W(NR_CPUS),			/* number of cores supported */
+ 	0,
+ 	0,
+-- 
+2.10.2
+

@@ -1,21 +1,24 @@
 From: James Smart <jsmart2021@gmail.com>
-Date: Tue, 30 May 2017 22:38:52 -0700
-Subject: lpfc: Fix nvme port role handling in sysfs and debugfs handlers.
+Date: Thu, 1 Jun 2017 21:06:57 -0700
+Subject: scsi: lpfc: Fix nvme port role handling in sysfs and debugfs
+ handlers.
+Git-commit: 7d790f04d7e4759da238cc6c46796f917af4cec2
 References: bsc#1041873
-Patch-Mainline: submitted linux-scsi 2017/06/01
+Patch-Mainline: v4.13-rc1
 
-While debugging Devloss and recovery, debugfs and sysfs
-were found to not show the NVME port roles consistently.
+While debugging Devloss and recovery, debugfs and sysfs were found to
+not show the NVME port roles consistently.
 
-The port role FC_PORT_ROLE_NVME_DISCOVERY was added with
-the devloss bringup and the other issues were just oversight.
+The port role FC_PORT_ROLE_NVME_DISCOVERY was added with the devloss
+bringup and the other issues were just oversight.
 
-Add NVME Target and DISCSRVC to debugfs nodeinfo and sysfs
-nvme info handlers. The full port role was added to the NVME
-data only not the generic nodelist.
+Add NVME Target and DISCSRVC to debugfs nodeinfo and sysfs nvme info
+handlers. The full port role was added to the NVME data only not the
+generic nodelist.
 
 Signed-off-by: Dick Kennedy <dick.kennedy@broadcom.com>
 Signed-off-by: James Smart <james.smart@broadcom.com>
+Signed-off-by: Martin K. Petersen <martin.petersen@oracle.com>
 Acked-by: Hannes Reinecke <hare@suse.com>
 ---
  drivers/scsi/lpfc/lpfc_attr.c    | 22 ++++++++++------------
@@ -23,10 +26,10 @@ Acked-by: Hannes Reinecke <hare@suse.com>
  2 files changed, 28 insertions(+), 26 deletions(-)
 
 diff --git a/drivers/scsi/lpfc/lpfc_attr.c b/drivers/scsi/lpfc/lpfc_attr.c
-index 4d80411..77fd108 100644
+index 6d9b83c..200a614 100644
 --- a/drivers/scsi/lpfc/lpfc_attr.c
 +++ b/drivers/scsi/lpfc/lpfc_attr.c
-@@ -312,25 +312,23 @@ lpfc_nvme_info_show(struct device *dev, struct device_attribute *attr,
+@@ -312,25 +312,23 @@
  		len += snprintf(buf + len, PAGE_SIZE - len, "DID x%06x ",
  				nrport->port_id);
  
@@ -63,10 +66,10 @@ index 4d80411..77fd108 100644
  		/* Terminate the string. */
  		len +=  snprintf(buf + len, PAGE_SIZE - len, "\n");
 diff --git a/drivers/scsi/lpfc/lpfc_debugfs.c b/drivers/scsi/lpfc/lpfc_debugfs.c
-index c0a70b3..36d0ba1 100644
+index e288e59..fe32152 100644
 --- a/drivers/scsi/lpfc/lpfc_debugfs.c
 +++ b/drivers/scsi/lpfc/lpfc_debugfs.c
-@@ -621,6 +621,13 @@ lpfc_debugfs_nodelist_data(struct lpfc_vport *vport, char *buf, int size)
+@@ -621,6 +621,13 @@
  				ndlp->nlp_sid);
  		if (ndlp->nlp_type & NLP_FCP_INITIATOR)
  			len += snprintf(buf+len, size-len, "FCP_INITIATOR ");
@@ -80,7 +83,7 @@ index c0a70b3..36d0ba1 100644
  		len += snprintf(buf+len, size-len, "usgmap:%x ",
  			ndlp->nlp_usg_map);
  		len += snprintf(buf+len, size-len, "refcnt:%x",
-@@ -698,26 +705,23 @@ lpfc_debugfs_nodelist_data(struct lpfc_vport *vport, char *buf, int size)
+@@ -698,26 +705,23 @@
  				nrport->port_name);
  		len += snprintf(buf + len, size - len, "WWNN x%llx ",
  				nrport->node_name);

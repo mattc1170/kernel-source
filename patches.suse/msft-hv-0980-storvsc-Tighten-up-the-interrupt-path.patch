@@ -22,7 +22,7 @@ Reviewed-by: Johannes Thumshirn <jthumshirn@suse.de>
 Reviewed-by: Hannes Reinecke <hare@suse.com>
 Tested-by: Alex Ng <alexng@microsoft.com>
 Signed-off-by: Martin K. Petersen <martin.petersen@oracle.com>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  drivers/scsi/storvsc_drv.c |   23 ++++++++---------------
  1 file changed, 8 insertions(+), 15 deletions(-)

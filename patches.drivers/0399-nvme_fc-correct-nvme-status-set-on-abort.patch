@@ -1,23 +1,26 @@
 From: James Smart <jsmart2021@gmail.com>
-Date: Sat, 13 May 2017 12:03:09 -0700
+Date: Mon, 15 May 2017 17:10:24 -0700
 Subject: nvme_fc: correct nvme status set on abort
+Git-commit: e392e1f1f408fe8baf1046c970d05cbf1f0ec945
 References: bsc#1037838
-Patch-Mainline: submitted to linux-scsi 2017/05/16
+Patch-Mainline: v4.12-rc3
 
 correct nvme status set on abort. Patch that changed status to being actual
 nvme status crossed in the night with the patch that added abort values.
 
 Signed-off-by: James Smart <james.smart@broadcom.com>
 Reviewed-by: Hannes Reinecke <hare@suse.com>
+Reviewed-by: Johannes Thumshirn <jthumshirn@suse.de>
+Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
  drivers/nvme/host/fc.c | 4 ++--
  1 file changed, 2 insertions(+), 2 deletions(-)
 
 diff --git a/drivers/nvme/host/fc.c b/drivers/nvme/host/fc.c
-index a6b2912..2a52ed3 100644
+index e4817f9..775869c 100644
 --- a/drivers/nvme/host/fc.c
 +++ b/drivers/nvme/host/fc.c
-@@ -1375,9 +1375,9 @@ done:
+@@ -1372,9 +1372,9 @@ enum {
  	complete_rq = __nvme_fc_fcpop_chk_teardowns(ctrl, op);
  	if (!complete_rq) {
  		if (unlikely(op->flags & FCOP_FLAGS_TERMIO)) {

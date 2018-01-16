@@ -23,7 +23,7 @@ acting under rtnl lock this is legitimate.
 Signed-off-by: Vitaly Kuznetsov <vkuznets@redhat.com>
 Acked-by: Haiyang Zhang <haiyangz@microsoft.com>
 Signed-off-by: David S. Miller <davem@davemloft.net>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  drivers/net/hyperv/hyperv_net.h |  7 -------
  drivers/net/hyperv/netvsc_drv.c | 33 +++++----------------------------

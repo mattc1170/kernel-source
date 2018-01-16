@@ -1,0 +1,32 @@
+From: Quinn Tran <quinn.tran@cavium.com>
+Date: Thu, 9 Nov 2017 16:27:36 +0530
+Subject: [PATCH] qla2xxx: Fix notify ack without timeout handling.
+References: bsc#1043017
+Patch-Mainline: no, SLE12-SP3 specific backport
+
+Notify Ack handling code does not have timeout handling
+routine. System crash due to null pointer call back.
+
+Signed-off-by: Quinn Tran <quinn.tran@cavium.com>
+Signed-off-by: Sawan Chandak <sawan.chandak@cavium.com>
+Signed-off-by: Hannes Reinecke <hare@suse.de>
+---
+ drivers/scsi/qla2xxx/qla_target.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/scsi/qla2xxx/qla_target.c b/drivers/scsi/qla2xxx/qla_target.c
+index 3cdffdd..8282d8d 100644
+--- a/drivers/scsi/qla2xxx/qla_target.c
++++ b/drivers/scsi/qla2xxx/qla_target.c
+@@ -652,7 +652,7 @@ int qla24xx_async_notify_ack(scsi_qla_host_t *vha, fc_port_t *fcport,
+ 	qla2x00_init_timer(sp, qla2x00_get_async_timeout(vha)+2);
+ 
+ 	sp->u.iocb_cmd.u.nack.ntfy = ntfy;
+-
++	sp->u.iocb_cmd.timeout = qla2x00_async_iocb_timeout;
+ 	sp->done = qla2x00_async_nack_sp_done;
+ 
+ 	rval = qla2x00_start_sp(sp);
+-- 
+1.8.5.6
+

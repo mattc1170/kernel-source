@@ -14,6 +14,8 @@ http://lists.infradead.org/pipermail/linux-nvme/2017-May/010380.html
 The upstream patch, due to overall dislike of of the workqueue use by
 Christoph, has not yet been pulled in upstream, but is needed for SLES12SP3.
 
+[hare: fixup for 0395-nvmet_fc-Reduce-work_q-count.patch]
+
 Signed-off-by: James Smart <james.smart@broadcom.com>
 Signed-off-by: Johannes Thumshirn <jthumshirn@suse.de>
 

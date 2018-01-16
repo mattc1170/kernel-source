@@ -1,8 +1,7 @@
 From: "Chopra, Manish" <Manish.Chopra@cavium.com>
 Date: Fri, 2 Jun 2017 06:52:54 -0700
 Subject: qlcnic: Fix tunnel offload for 82xx adapters
-Patch-mainline: Queued in subsystem maintainer repository
-Git-repo: git://git.kernel.org/pub/scm/linux/kernel/git/davem/net.git
+Patch-mainline: v4.12-rc5
 Git-commit: 4bd7ef0b033721b659b9357057e76d1ced95c1da
 References: bsc#1019717 FATE#321698
 

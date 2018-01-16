@@ -1,0 +1,32 @@
+From: Jiri Slaby <jslaby@suse.cz>
+Subject: kABI: protect typedef rds_rdma_cookie_t
+Patch-mainline: never, kabi
+References: kabi
+
+In 4.4.100, commit 834a5d880a54008e62ba501785337b7f51c43b39 (uapi: fix
+linux/rds.h userspace compilation errors), upstream commit
+feb0869d90e51ce8b6fd8a46588465b1b5a26d09 changed type of
+rds_rdma_cookie_t from uint64_t to __u64. This made the kABI checker to
+complain.
+
+Pretend nothing happenned as the types are identical.
+
+Signed-off-by: Jiri Slaby <jslaby@suse.cz>
+---
+ include/uapi/linux/rds.h |    4 ++++
+ 1 file changed, 4 insertions(+)
+
+--- a/include/uapi/linux/rds.h
++++ b/include/uapi/linux/rds.h
+@@ -210,7 +210,11 @@ struct rds_info_rdma_connection {
+  * (so that the application does not have to worry about
+  * alignment).
+  */
++#ifdef __GENKSYMS__
++typedef uint64_t	rds_rdma_cookie_t;
++#else
+ typedef __u64		rds_rdma_cookie_t;
++#endif
+ 
+ struct rds_iovec {
+ 	__u64		addr;

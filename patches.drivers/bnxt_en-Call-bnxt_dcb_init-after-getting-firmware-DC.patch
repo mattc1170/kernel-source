@@ -1,0 +1,39 @@
+From: Michael Chan <michael.chan@broadcom.com>
+Date: Tue, 16 May 2017 16:39:43 -0400
+Subject: bnxt_en: Call bnxt_dcb_init() after getting firmware DCBX
+ configuration.
+Patch-mainline: v4.12-rc2
+Git-commit: 87fe603274aa9889c05cca3c3e45675e1997cb13
+References: bsc#1053309
+
+In the current code, bnxt_dcb_init() is called too early before we
+determine if the firmware DCBX agent is running or not.  As a result,
+we are not setting the DCB_CAP_DCBX_HOST and DCB_CAP_DCBX_LLD_MANAGED
+flags properly to report to DCBNL.
+
+Signed-off-by: Michael Chan <michael.chan@broadcom.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+Acked-by: Benjamin Poirier <bpoirier@suse.com>
+---
+ drivers/net/ethernet/broadcom/bnxt/bnxt.c |    3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
+
+--- a/drivers/net/ethernet/broadcom/bnxt/bnxt.c
++++ b/drivers/net/ethernet/broadcom/bnxt/bnxt.c
+@@ -7523,8 +7523,6 @@ static int bnxt_init_one(struct pci_dev
+ 	dev->min_mtu = ETH_ZLEN;
+ 	dev->max_mtu = BNXT_MAX_MTU;
+ 
+-	bnxt_dcb_init(bp);
+-
+ #ifdef CONFIG_BNXT_SRIOV
+ 	init_waitqueue_head(&bp->sriov_cfg_wait);
+ #endif
+@@ -7562,6 +7560,7 @@ static int bnxt_init_one(struct pci_dev
+ 	bnxt_hwrm_func_qcfg(bp);
+ 	bnxt_hwrm_port_led_qcaps(bp);
+ 	bnxt_ethtool_init(bp);
++	bnxt_dcb_init(bp);
+ 
+ 	bnxt_set_rx_skb_mode(bp, false);
+ 	bnxt_set_tpa_flags(bp);

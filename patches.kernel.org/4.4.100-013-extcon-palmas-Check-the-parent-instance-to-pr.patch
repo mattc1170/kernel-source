@@ -1,0 +1,43 @@
+From: Roger Quadros <rogerq@ti.com>
+Date: Thu, 8 Dec 2016 10:45:31 +0200
+Subject: [PATCH] extcon: palmas: Check the parent instance to prevent the NULL
+References: bnc#1012382
+Patch-mainline: 4.4.100
+Git-commit: 9fe172b9be532acc23e35ba693700383ab775e66
+
+[ Upstream commit 9fe172b9be532acc23e35ba693700383ab775e66 ]
+
+extcon-palmas must be child of palmas and expects parent's
+drvdata to be valid. Check for non NULL parent drvdata and
+fail if it is NULL. Not doing so will result in a NULL
+pointer dereference later in the probe() parent drvdata
+is NULL (e.g. misplaced extcon-palmas node in device tree).
+
+Signed-off-by: Roger Quadros <rogerq@ti.com>
+Signed-off-by: Chanwoo Choi <cw00.choi@samsung.com>
+Signed-off-by: Sasha Levin <alexander.levin@verizon.com>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Signed-off-by: Jiri Slaby <jslaby@suse.cz>
+---
+ drivers/extcon/extcon-palmas.c | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/drivers/extcon/extcon-palmas.c b/drivers/extcon/extcon-palmas.c
+index 93c30a885740..aa2f6bb82b32 100644
+--- a/drivers/extcon/extcon-palmas.c
++++ b/drivers/extcon/extcon-palmas.c
+@@ -190,6 +190,11 @@ static int palmas_usb_probe(struct platform_device *pdev)
+ 	struct palmas_usb *palmas_usb;
+ 	int status;
+ 
++	if (!palmas) {
++		dev_err(&pdev->dev, "failed to get valid parent\n");
++		return -EINVAL;
++	}
++
+ 	palmas_usb = devm_kzalloc(&pdev->dev, sizeof(*palmas_usb), GFP_KERNEL);
+ 	if (!palmas_usb)
+ 		return -ENOMEM;
+-- 
+2.15.0
+

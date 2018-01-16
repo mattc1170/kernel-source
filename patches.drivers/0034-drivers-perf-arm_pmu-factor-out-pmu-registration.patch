@@ -1,0 +1,93 @@
+From 48f29b4f9e22865c551ab9b58a62d88fa0344459 Mon Sep 17 00:00:00 2001
+From: Mark Rutland <mark.rutland@arm.com>
+Date: Tue, 11 Apr 2017 09:39:47 +0100
+Subject: [PATCH 34/56] drivers/perf: arm_pmu: factor out pmu registration
+
+Git-commit: 74a2b3ea2d8c6c1f73103a0fcb50b5c214c0d864
+Patch-mainline: v4.12-rc1
+References: bsc#1062279
+
+Currently arm_pmu_device_probe contains probing logic specific to the
+platform_device infrastructure, and some logic required to safely
+register the PMU with various systems.
+
+This patch factors out the logic relating to the registration of the
+PMU. This makes arm_pmu_device_probe a little easier to read, and will
+make it easier to reuse the logic for an ACPI-specific probing
+mechanism.
+
+Signed-off-by: Mark Rutland <mark.rutland@arm.com>
+Tested-by: Jeremy Linton <jeremy.linton@arm.com>
+Cc: Will Deacon <will.deacon@arm.com>
+Signed-off-by: Will Deacon <will.deacon@arm.com>
+Signed-off-by: Mian Yousaf Kaukab <yousaf.kaukab@suse.com>
+---
+ drivers/perf/arm_pmu.c | 40 ++++++++++++++++++++++++++--------------
+ 1 file changed, 26 insertions(+), 14 deletions(-)
+
+diff --git a/drivers/perf/arm_pmu.c b/drivers/perf/arm_pmu.c
+index 51ecf3c7..cc786d15 100644
+--- a/drivers/perf/arm_pmu.c
++++ b/drivers/perf/arm_pmu.c
+@@ -984,6 +984,31 @@ static void armpmu_free(struct arm_pmu *pmu)
+ 	kfree(pmu);
+ }
+ 
++int armpmu_register(struct arm_pmu *pmu)
++{
++	int ret;
++
++	ret = cpu_pmu_init(pmu);
++	if (ret)
++		return ret;
++
++	ret = perf_pmu_register(&pmu->pmu, pmu->name, -1);
++	if (ret)
++		goto out_destroy;
++
++	if (!__oprofile_cpu_pmu)
++		__oprofile_cpu_pmu = pmu;
++
++	pr_info("enabled with %s PMU driver, %d counters available\n",
++		pmu->name, pmu->num_events);
++
++	return 0;
++
++out_destroy:
++	cpu_pmu_destroy(pmu);
++	return ret;
++}
++
+ int arm_pmu_device_probe(struct platform_device *pdev,
+ 			 const struct of_device_id *of_table,
+ 			 const struct pmu_probe_info *probe_table)
+@@ -1018,25 +1043,12 @@ int arm_pmu_device_probe(struct platform_device *pdev,
+ 		goto out_free;
+ 	}
+ 
+-
+-	ret = cpu_pmu_init(pmu);
++	ret = armpmu_register(pmu);
+ 	if (ret)
+ 		goto out_free;
+ 
+-	ret = perf_pmu_register(&pmu->pmu, pmu->name, -1);
+-	if (ret)
+-		goto out_destroy;
+-
+-	if (!__oprofile_cpu_pmu)
+-		__oprofile_cpu_pmu = pmu;
+-
+-	pr_info("enabled with %s PMU driver, %d counters available\n",
+-			pmu->name, pmu->num_events);
+-
+ 	return 0;
+ 
+-out_destroy:
+-	cpu_pmu_destroy(pmu);
+ out_free:
+ 	pr_info("%s: failed to register PMU devices!\n",
+ 		of_node_full_name(node));
+-- 
+2.11.0
+

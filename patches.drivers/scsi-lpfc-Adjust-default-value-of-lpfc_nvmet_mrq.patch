@@ -1,0 +1,190 @@
+From: James Smart <jsmart2021@gmail.com>
+Date: Mon, 20 Nov 2017 16:00:36 -0800
+Subject: scsi: lpfc: Adjust default value of lpfc_nvmet_mrq
+References: bsc#1067735
+Patch-mainline: Queued in subsystem maintainer repository
+Git-commit: 681a78c1fa368455f2de3d2de6d3775c870f20f4
+Git-repo: https://git.kernel.org/pub/scm/linux/kernel/git/mkp/scsi.git
+
+The current default for async hw receive queues is 1, which presents
+issues under heavy load as number of queues influence the available
+async receive buffer limits.
+
+Raise the default to the either the current hw limit (16) or the number
+of hw qs configured (io channel value).
+
+Revise the attribute definition for mrq to better reflect what we do for
+hw queues. E.g. 0 means default to optimal (# of cpus), non-zero
+specifies a specific limit. Before this change, mrq=0 meant target mode
+was disabled. As 0 now has a different meaning, rework the if tests to
+use the better nvmet_support check.
+
+Signed-off-by: Dick Kennedy <dick.kennedy@broadcom.com>
+Signed-off-by: James Smart <james.smart@broadcom.com>
+Reviewed-by: Hannes Reinecke <hare@suse.com>
+Signed-off-by: Martin K. Petersen <martin.petersen@oracle.com>
+---
+ drivers/scsi/lpfc/lpfc_attr.c    | 11 ++++++++--
+ drivers/scsi/lpfc/lpfc_debugfs.c |  2 +-
+ drivers/scsi/lpfc/lpfc_init.c    | 47 ++++++++++++++++++++++++----------------
+ drivers/scsi/lpfc/lpfc_nvmet.h   |  4 ++++
+ 4 files changed, 42 insertions(+), 22 deletions(-)
+
+diff --git a/drivers/scsi/lpfc/lpfc_attr.c b/drivers/scsi/lpfc/lpfc_attr.c
+index 82f6e21..5d83734 100644
+--- a/drivers/scsi/lpfc/lpfc_attr.c
++++ b/drivers/scsi/lpfc/lpfc_attr.c
+@@ -3366,12 +3366,13 @@ static DEVICE_ATTR(lpfc_devloss_tmo, S_IRUGO | S_IWUSR,
+ 
+ /*
+  * lpfc_nvmet_mrq: Specify number of RQ pairs for processing NVMET cmds
++ * lpfc_nvmet_mrq = 0  driver will calcualte optimal number of RQ pairs
+  * lpfc_nvmet_mrq = 1  use a single RQ pair
+  * lpfc_nvmet_mrq >= 2  use specified RQ pairs for MRQ
+  *
+  */
+ LPFC_ATTR_R(nvmet_mrq,
+-	    1, 1, 16,
++	    LPFC_NVMET_MRQ_AUTO, LPFC_NVMET_MRQ_AUTO, LPFC_NVMET_MRQ_MAX,
+ 	    "Specify number of RQ pairs for processing NVMET cmds");
+ 
+ /*
+@@ -6362,6 +6363,9 @@ struct fc_function_template lpfc_vport_transport_functions = {
+ 				phba->cfg_nvmet_fb_size = LPFC_NVMET_FB_SZ_MAX;
+ 		}
+ 
++		if (!phba->cfg_nvmet_mrq)
++			phba->cfg_nvmet_mrq = phba->cfg_nvme_io_channel;
++
+ 		/* Adjust lpfc_nvmet_mrq to avoid running out of WQE slots */
+ 		if (phba->cfg_nvmet_mrq > phba->cfg_nvme_io_channel) {
+ 			phba->cfg_nvmet_mrq = phba->cfg_nvme_io_channel;
+@@ -6369,10 +6373,13 @@ struct fc_function_template lpfc_vport_transport_functions = {
+ 					"6018 Adjust lpfc_nvmet_mrq to %d\n",
+ 					phba->cfg_nvmet_mrq);
+ 		}
++		if (phba->cfg_nvmet_mrq > LPFC_NVMET_MRQ_MAX)
++			phba->cfg_nvmet_mrq = LPFC_NVMET_MRQ_MAX;
++
+ 	} else {
+ 		/* Not NVME Target mode.  Turn off Target parameters. */
+ 		phba->nvmet_support = 0;
+-		phba->cfg_nvmet_mrq = 0;
++		phba->cfg_nvmet_mrq = LPFC_NVMET_MRQ_OFF;
+ 		phba->cfg_nvmet_fb_size = 0;
+ 	}
+ 
+diff --git a/drivers/scsi/lpfc/lpfc_debugfs.c b/drivers/scsi/lpfc/lpfc_debugfs.c
+index 4df5a21..b7f5749 100644
+--- a/drivers/scsi/lpfc/lpfc_debugfs.c
++++ b/drivers/scsi/lpfc/lpfc_debugfs.c
+@@ -3213,7 +3213,7 @@ static int lpfc_idiag_cmd_get(const char __user *buf, size_t nbytes,
+ 			return 1;
+ 	}
+ 
+-	if (eqidx < phba->cfg_nvmet_mrq) {
++	if ((eqidx < phba->cfg_nvmet_mrq) && phba->nvmet_support) {
+ 		/* NVMET CQset */
+ 		qp = phba->sli4_hba.nvmet_cqset[eqidx];
+ 		*len = __lpfc_idiag_print_cq(qp, "NVMET CQset", pbuffer, *len);
+diff --git a/drivers/scsi/lpfc/lpfc_init.c b/drivers/scsi/lpfc/lpfc_init.c
+index dc7a5ad..a6111c6 100644
+--- a/drivers/scsi/lpfc/lpfc_init.c
++++ b/drivers/scsi/lpfc/lpfc_init.c
+@@ -7933,8 +7933,12 @@ struct lpfc_rpi_hdr *
+ 		phba->cfg_fcp_io_channel = io_channel;
+ 	if (phba->cfg_nvme_io_channel > io_channel)
+ 		phba->cfg_nvme_io_channel = io_channel;
+-	if (phba->cfg_nvme_io_channel < phba->cfg_nvmet_mrq)
+-		phba->cfg_nvmet_mrq = phba->cfg_nvme_io_channel;
++	if (phba->nvmet_support) {
++		if (phba->cfg_nvme_io_channel < phba->cfg_nvmet_mrq)
++			phba->cfg_nvmet_mrq = phba->cfg_nvme_io_channel;
++	}
++	if (phba->cfg_nvmet_mrq > LPFC_NVMET_MRQ_MAX)
++		phba->cfg_nvmet_mrq = LPFC_NVMET_MRQ_MAX;
+ 
+ 	lpfc_printf_log(phba, KERN_ERR, LOG_INIT,
+ 			"2574 IO channels: irqs %d fcp %d nvme %d MRQ: %d\n",
+@@ -8448,13 +8452,15 @@ struct lpfc_rpi_hdr *
+ 	/* Release NVME CQ mapping array */
+ 	lpfc_sli4_release_queue_map(&phba->sli4_hba.nvme_cq_map);
+ 
+-	lpfc_sli4_release_queues(&phba->sli4_hba.nvmet_cqset,
+-					phba->cfg_nvmet_mrq);
++	if (phba->nvmet_support) {
++		lpfc_sli4_release_queues(&phba->sli4_hba.nvmet_cqset,
++					 phba->cfg_nvmet_mrq);
+ 
+-	lpfc_sli4_release_queues(&phba->sli4_hba.nvmet_mrq_hdr,
+-					phba->cfg_nvmet_mrq);
+-	lpfc_sli4_release_queues(&phba->sli4_hba.nvmet_mrq_data,
+-					phba->cfg_nvmet_mrq);
++		lpfc_sli4_release_queues(&phba->sli4_hba.nvmet_mrq_hdr,
++					 phba->cfg_nvmet_mrq);
++		lpfc_sli4_release_queues(&phba->sli4_hba.nvmet_mrq_data,
++					 phba->cfg_nvmet_mrq);
++	}
+ 
+ 	/* Release mailbox command work queue */
+ 	__lpfc_sli4_release_queue(&phba->sli4_hba.mbx_wq);
+@@ -9009,19 +9015,22 @@ struct lpfc_rpi_hdr *
+ 		for (qidx = 0; qidx < phba->cfg_nvme_io_channel; qidx++)
+ 			lpfc_cq_destroy(phba, phba->sli4_hba.nvme_cq[qidx]);
+ 
+-	/* Unset NVMET MRQ queue */
+-	if (phba->sli4_hba.nvmet_mrq_hdr) {
+-		for (qidx = 0; qidx < phba->cfg_nvmet_mrq; qidx++)
+-			lpfc_rq_destroy(phba,
++	if (phba->nvmet_support) {
++		/* Unset NVMET MRQ queue */
++		if (phba->sli4_hba.nvmet_mrq_hdr) {
++			for (qidx = 0; qidx < phba->cfg_nvmet_mrq; qidx++)
++				lpfc_rq_destroy(
++					phba,
+ 					phba->sli4_hba.nvmet_mrq_hdr[qidx],
+ 					phba->sli4_hba.nvmet_mrq_data[qidx]);
+-	}
++		}
+ 
+-	/* Unset NVMET CQ Set complete queue */
+-	if (phba->sli4_hba.nvmet_cqset) {
+-		for (qidx = 0; qidx < phba->cfg_nvmet_mrq; qidx++)
+-			lpfc_cq_destroy(phba,
+-					phba->sli4_hba.nvmet_cqset[qidx]);
++		/* Unset NVMET CQ Set complete queue */
++		if (phba->sli4_hba.nvmet_cqset) {
++			for (qidx = 0; qidx < phba->cfg_nvmet_mrq; qidx++)
++				lpfc_cq_destroy(
++					phba, phba->sli4_hba.nvmet_cqset[qidx]);
++		}
+ 	}
+ 
+ 	/* Unset FCP response complete queue */
+@@ -10397,7 +10406,7 @@ struct lpfc_cq_event *
+ 	    !phba->nvme_support) {
+ 		phba->nvme_support = 0;
+ 		phba->nvmet_support = 0;
+-		phba->cfg_nvmet_mrq = 0;
++		phba->cfg_nvmet_mrq = LPFC_NVMET_MRQ_OFF;
+ 		phba->cfg_nvme_io_channel = 0;
+ 		phba->io_channel_irqs = phba->cfg_fcp_io_channel;
+ 		lpfc_printf_log(phba, KERN_ERR, LOG_INIT | LOG_NVME,
+diff --git a/drivers/scsi/lpfc/lpfc_nvmet.h b/drivers/scsi/lpfc/lpfc_nvmet.h
+index 25a65b0..6723e7b 100644
+--- a/drivers/scsi/lpfc/lpfc_nvmet.h
++++ b/drivers/scsi/lpfc/lpfc_nvmet.h
+@@ -25,6 +25,10 @@
+ #define LPFC_NVMET_RQE_DEF_COUNT	512
+ #define LPFC_NVMET_SUCCESS_LEN	12
+ 
++#define LPFC_NVMET_MRQ_OFF		0xffff
++#define LPFC_NVMET_MRQ_AUTO		0
++#define LPFC_NVMET_MRQ_MAX		16
++
+ /* Used for NVME Target */
+ struct lpfc_nvmet_tgtport {
+ 	struct lpfc_hba *phba;
+-- 
+1.8.5.6
+

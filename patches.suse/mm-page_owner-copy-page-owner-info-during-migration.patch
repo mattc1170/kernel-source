@@ -32,8 +32,8 @@ Signed-off-by: Linus Torvalds <torvalds@linux-foundation.org>
 ---
  include/linux/page_owner.h |   10 +++++++++-
  mm/migrate.c               |    3 +++
- mm/page_owner.c            |   25 +++++++++++++++++++++++++
- 3 files changed, 37 insertions(+), 1 deletion(-)
+ mm/page_owner.c            |   28 ++++++++++++++++++++++++++++
+ 3 files changed, 40 insertions(+), 1 deletion(-)
 
 --- a/include/linux/page_owner.h
 +++ b/include/linux/page_owner.h
@@ -74,10 +74,10 @@ Signed-off-by: Linus Torvalds <torvalds@linux-foundation.org>
  #include <linux/mmu_notifier.h>
  #include <linux/page_idle.h>
 +#include <linux/page_owner.h>
+ #include <linux/ptrace.h>
  
  #include <asm/tlbflush.h>
- 
-@@ -579,6 +580,8 @@ void migrate_page_copy(struct page *newp
+@@ -580,6 +581,8 @@ void migrate_page_copy(struct page *newp
  	 */
  	if (PageWriteback(newpage))
  		end_page_writeback(newpage);
@@ -88,7 +88,7 @@ Signed-off-by: Linus Torvalds <torvalds@linux-foundation.org>
  
 --- a/mm/page_owner.c
 +++ b/mm/page_owner.c
-@@ -84,6 +84,31 @@ gfp_t __get_page_owner_gfp(struct page *
+@@ -96,6 +96,34 @@ gfp_t __get_page_owner_gfp(struct page *
  	return page_ext->gfp_mask;
  }
  
@@ -97,6 +97,9 @@ Signed-off-by: Linus Torvalds <torvalds@linux-foundation.org>
 +	struct page_ext *old_ext = lookup_page_ext(oldpage);
 +	struct page_ext *new_ext = lookup_page_ext(newpage);
 +	int i;
++
++	if (unlikely(!old_ext || !new_ext))
++		return;
 +
 +	new_ext->order = old_ext->order;
 +	new_ext->gfp_mask = old_ext->gfp_mask;

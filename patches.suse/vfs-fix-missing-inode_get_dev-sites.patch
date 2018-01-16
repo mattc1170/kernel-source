@@ -1,0 +1,75 @@
+From: Jeff Mahoney <jeffm@suse.com>
+Subject: vfs: fix missing inode_get_dev sites
+References: bsc#1052049
+Patch-mainline: Never, correct fix is for btrfs to use separate superblocks
+
+There were several sites in the audit and mountinfo code that were
+still using inode->i_sb->s_dev instead of inode_get_dev.  In the audit case,
+that caused names to fail to match, resulting in returning (null).  In
+the mountinfo case, it would display the anonymous dev for the superblock
+rather than the subvolume, if any.
+
+Signed-off-by: Jeff Mahoney <jeffm@suse.com>
+---
+ fs/proc_namespace.c     |    3 ++-
+ kernel/audit_fsnotify.c |    2 +-
+ kernel/audit_watch.c    |    2 +-
+ kernel/auditsc.c        |    4 ++--
+ 4 files changed, 6 insertions(+), 5 deletions(-)
+
+--- a/fs/proc_namespace.c
++++ b/fs/proc_namespace.c
+@@ -132,9 +132,10 @@ static int show_mountinfo(struct seq_fil
+ 	struct super_block *sb = mnt->mnt_sb;
+ 	struct path mnt_path = { .dentry = mnt->mnt_root, .mnt = mnt };
+ 	int err = 0;
++	dev_t dev = inode_get_dev(mnt->mnt_root->d_inode);
+ 
+ 	seq_printf(m, "%i %i %u:%u ", r->mnt_id, r->mnt_parent->mnt_id,
+-		   MAJOR(sb->s_dev), MINOR(sb->s_dev));
++		   MAJOR(dev), MINOR(dev));
+ 	if (sb->s_op->show_path)
+ 		err = sb->s_op->show_path(m, mnt->mnt_root);
+ 	else
+--- a/kernel/audit_fsnotify.c
++++ b/kernel/audit_fsnotify.c
+@@ -76,7 +76,7 @@ int audit_mark_compare(struct audit_fsno
+ static void audit_update_mark(struct audit_fsnotify_mark *audit_mark,
+ 			     struct inode *inode)
+ {
+-	audit_mark->dev = inode ? inode->i_sb->s_dev : AUDIT_DEV_UNSET;
++	audit_mark->dev = inode ? inode_get_dev(inode) : AUDIT_DEV_UNSET;
+ 	audit_mark->ino = inode ? inode->i_ino : AUDIT_INO_UNSET;
+ }
+ 
+--- a/kernel/audit_watch.c
++++ b/kernel/audit_watch.c
+@@ -549,7 +549,7 @@ int audit_exe_compare(struct task_struct
+ 	if (!exe_file)
+ 		return 0;
+ 	ino = exe_file->f_inode->i_ino;
+-	dev = exe_file->f_inode->i_sb->s_dev;
++	dev = inode_get_dev(exe_file->f_inode);
+ 	fput(exe_file);
+ 	return audit_mark_compare(mark, ino, dev);
+ }
+--- a/kernel/auditsc.c
++++ b/kernel/auditsc.c
+@@ -1780,7 +1780,7 @@ void __audit_inode(struct filename *name
+ 		if (n->ino) {
+ 			/* valid inode number, use that for the comparison */
+ 			if (n->ino != inode->i_ino ||
+-			    n->dev != inode->i_sb->s_dev)
++			    n->dev != inode_get_dev(inode))
+ 				continue;
+ 		} else if (n->name) {
+ 			/* inode number has not been set, check the name */
+@@ -1866,7 +1866,7 @@ void __audit_inode_child(const struct in
+ 		     n->type != AUDIT_TYPE_UNKNOWN))
+ 			continue;
+ 
+-		if (n->ino == parent->i_ino && n->dev == parent->i_sb->s_dev &&
++		if (n->ino == parent->i_ino && n->dev == inode_get_dev(parent) &&
+ 		    !audit_compare_dname_path(dname,
+ 					      n->name->name, n->name_len)) {
+ 			if (n->type == AUDIT_TYPE_UNKNOWN)

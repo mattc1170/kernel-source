@@ -1,0 +1,358 @@
+From: Al Viro <viro@zeniv.linux.org.uk>
+Date: Thu, 24 Dec 2015 00:13:10 -0500
+Subject: [PATCH 02/14] kernel/*: switch to memdup_user_nul()
+Git-commit: 70f6cbb6f9c95535acd327d1ac1ce5fd078cff1e
+Patch-mainline: v4.5-rc1
+References: bsc#1048893
+
+Signed-off-by: Al Viro <viro@zeniv.linux.org.uk>
+Signed-off-by: Luis R. Rodriguez <mcgrof@suse.com>
+---
+ kernel/sysctl.c                     | 79 +++++++++++++------------------------
+ kernel/trace/trace_events.c         | 28 ++++---------
+ kernel/trace/trace_events_trigger.c | 15 +++----
+ kernel/user_namespace.c             | 21 ++++------
+ 4 files changed, 48 insertions(+), 95 deletions(-)
+
+diff --git a/kernel/sysctl.c b/kernel/sysctl.c
+index 54126549baf1..8a7a2a083d97 100644
+--- a/kernel/sysctl.c
++++ b/kernel/sysctl.c
+@@ -2158,9 +2158,8 @@ static int __do_proc_dointvec(void *tbl_data, struct ctl_table *table,
+ 		  void *data)
+ {
+ 	int *i, vleft, first = 1, err = 0;
+-	unsigned long page = 0;
+ 	size_t left;
+-	char *kbuf;
++	char *kbuf = NULL, *p;
+ 	
+ 	if (!tbl_data || !table->maxlen || !*lenp || (*ppos && !write)) {
+ 		*lenp = 0;
+@@ -2189,15 +2188,9 @@ static int __do_proc_dointvec(void *tbl_data, struct ctl_table *table,
+ 
+ 		if (left > PAGE_SIZE - 1)
+ 			left = PAGE_SIZE - 1;
+-		page = __get_free_page(GFP_TEMPORARY);
+-		kbuf = (char *) page;
+-		if (!kbuf)
+-			return -ENOMEM;
+-		if (copy_from_user(kbuf, buffer, left)) {
+-			err = -EFAULT;
+-			goto free;
+-		}
+-		kbuf[left] = 0;
++		p = kbuf = memdup_user_nul(buffer, left);
++		if (IS_ERR(kbuf))
++			return PTR_ERR(kbuf);
+ 	}
+ 
+ 	for (; left && vleft--; i++, first=0) {
+@@ -2205,11 +2198,11 @@ static int __do_proc_dointvec(void *tbl_data, struct ctl_table *table,
+ 		bool neg;
+ 
+ 		if (write) {
+-			left -= proc_skip_spaces(&kbuf);
++			left -= proc_skip_spaces(&p);
+ 
+ 			if (!left)
+ 				break;
+-			err = proc_get_long(&kbuf, &left, &lval, &neg,
++			err = proc_get_long(&p, &left, &lval, &neg,
+ 					     proc_wspace_sep,
+ 					     sizeof(proc_wspace_sep), NULL);
+ 			if (err)
+@@ -2236,10 +2229,9 @@ static int __do_proc_dointvec(void *tbl_data, struct ctl_table *table,
+ 	if (!write && !first && left && !err)
+ 		err = proc_put_char(&buffer, &left, '\n');
+ 	if (write && !err && left)
+-		left -= proc_skip_spaces(&kbuf);
+-free:
++		left -= proc_skip_spaces(&p);
+ 	if (write) {
+-		free_page(page);
++		kfree(kbuf);
+ 		if (first)
+ 			return err ? : -EINVAL;
+ 	}
+@@ -2452,9 +2444,8 @@ static int __do_proc_doulongvec_minmax(void *data, struct ctl_table *table, int
+ {
+ 	unsigned long *i, *min, *max;
+ 	int vleft, first = 1, err = 0;
+-	unsigned long page = 0;
+ 	size_t left;
+-	char *kbuf;
++	char *kbuf = NULL, *p;
+ 
+ 	if (!data || !table->maxlen || !*lenp || (*ppos && !write)) {
+ 		*lenp = 0;
+@@ -2482,15 +2473,9 @@ static int __do_proc_doulongvec_minmax(void *data, struct ctl_table *table, int
+ 
+ 		if (left > PAGE_SIZE - 1)
+ 			left = PAGE_SIZE - 1;
+-		page = __get_free_page(GFP_TEMPORARY);
+-		kbuf = (char *) page;
+-		if (!kbuf)
+-			return -ENOMEM;
+-		if (copy_from_user(kbuf, buffer, left)) {
+-			err = -EFAULT;
+-			goto free;
+-		}
+-		kbuf[left] = 0;
++		p = kbuf = memdup_user_nul(buffer, left);
++		if (IS_ERR(kbuf))
++			return PTR_ERR(kbuf);
+ 	}
+ 
+ 	for (; left && vleft--; i++, first = 0) {
+@@ -2499,9 +2484,9 @@ static int __do_proc_doulongvec_minmax(void *data, struct ctl_table *table, int
+ 		if (write) {
+ 			bool neg;
+ 
+-			left -= proc_skip_spaces(&kbuf);
++			left -= proc_skip_spaces(&p);
+ 
+-			err = proc_get_long(&kbuf, &left, &val, &neg,
++			err = proc_get_long(&p, &left, &val, &neg,
+ 					     proc_wspace_sep,
+ 					     sizeof(proc_wspace_sep), NULL);
+ 			if (err)
+@@ -2528,10 +2513,9 @@ static int __do_proc_doulongvec_minmax(void *data, struct ctl_table *table, int
+ 	if (!write && !first && left && !err)
+ 		err = proc_put_char(&buffer, &left, '\n');
+ 	if (write && !err)
+-		left -= proc_skip_spaces(&kbuf);
+-free:
++		left -= proc_skip_spaces(&p);
+ 	if (write) {
+-		free_page(page);
++		kfree(kbuf);
+ 		if (first)
+ 			return err ? : -EINVAL;
+ 	}
+@@ -2793,34 +2777,27 @@ int proc_do_large_bitmap(struct ctl_table *table, int write,
+ 	}
+ 
+ 	if (write) {
+-		unsigned long page = 0;
+-		char *kbuf;
++		char *kbuf, *p;
+ 
+ 		if (left > PAGE_SIZE - 1)
+ 			left = PAGE_SIZE - 1;
+ 
+-		page = __get_free_page(GFP_TEMPORARY);
+-		kbuf = (char *) page;
+-		if (!kbuf)
+-			return -ENOMEM;
+-		if (copy_from_user(kbuf, buffer, left)) {
+-			free_page(page);
+-			return -EFAULT;
+-                }
+-		kbuf[left] = 0;
++		p = kbuf = memdup_user_nul(buffer, left);
++		if (IS_ERR(kbuf))
++			return PTR_ERR(kbuf);
+ 
+ 		tmp_bitmap = kzalloc(BITS_TO_LONGS(bitmap_len) * sizeof(unsigned long),
+ 				     GFP_KERNEL);
+ 		if (!tmp_bitmap) {
+-			free_page(page);
++			kfree(kbuf);
+ 			return -ENOMEM;
+ 		}
+-		proc_skip_char(&kbuf, &left, '\n');
++		proc_skip_char(&p, &left, '\n');
+ 		while (!err && left) {
+ 			unsigned long val_a, val_b;
+ 			bool neg;
+ 
+-			err = proc_get_long(&kbuf, &left, &val_a, &neg, tr_a,
++			err = proc_get_long(&p, &left, &val_a, &neg, tr_a,
+ 					     sizeof(tr_a), &c);
+ 			if (err)
+ 				break;
+@@ -2831,12 +2808,12 @@ int proc_do_large_bitmap(struct ctl_table *table, int write,
+ 
+ 			val_b = val_a;
+ 			if (left) {
+-				kbuf++;
++				p++;
+ 				left--;
+ 			}
+ 
+ 			if (c == '-') {
+-				err = proc_get_long(&kbuf, &left, &val_b,
++				err = proc_get_long(&p, &left, &val_b,
+ 						     &neg, tr_b, sizeof(tr_b),
+ 						     &c);
+ 				if (err)
+@@ -2847,16 +2824,16 @@ int proc_do_large_bitmap(struct ctl_table *table, int write,
+ 					break;
+ 				}
+ 				if (left) {
+-					kbuf++;
++					p++;
+ 					left--;
+ 				}
+ 			}
+ 
+ 			bitmap_set(tmp_bitmap, val_a, val_b - val_a + 1);
+ 			first = 0;
+-			proc_skip_char(&kbuf, &left, '\n');
++			proc_skip_char(&p, &left, '\n');
+ 		}
+-		free_page(page);
++		kfree(kbuf);
+ 	} else {
+ 		unsigned long bit_a, bit_b = 0;
+ 
+diff --git a/kernel/trace/trace_events.c b/kernel/trace/trace_events.c
+index 7ca856077038..6f9cac642adf 100644
+--- a/kernel/trace/trace_events.c
++++ b/kernel/trace/trace_events.c
+@@ -1343,15 +1343,9 @@ event_filter_write(struct file *filp, const char __user *ubuf, size_t cnt,
+ 	if (cnt >= PAGE_SIZE)
+ 		return -EINVAL;
+ 
+-	buf = (char *)__get_free_page(GFP_TEMPORARY);
+-	if (!buf)
+-		return -ENOMEM;
+-
+-	if (copy_from_user(buf, ubuf, cnt)) {
+-		free_page((unsigned long) buf);
+-		return -EFAULT;
+-	}
+-	buf[cnt] = '\0';
++	buf = memdup_user_nul(ubuf, cnt);
++	if (IS_ERR(buf))
++		return PTR_ERR(buf);
+ 
+ 	mutex_lock(&event_mutex);
+ 	file = event_file_data(filp);
+@@ -1359,7 +1353,7 @@ event_filter_write(struct file *filp, const char __user *ubuf, size_t cnt,
+ 		err = apply_event_filter(file, buf);
+ 	mutex_unlock(&event_mutex);
+ 
+-	free_page((unsigned long) buf);
++	kfree(buf);
+ 	if (err < 0)
+ 		return err;
+ 
+@@ -1510,18 +1504,12 @@ subsystem_filter_write(struct file *filp, const char __user *ubuf, size_t cnt,
+ 	if (cnt >= PAGE_SIZE)
+ 		return -EINVAL;
+ 
+-	buf = (char *)__get_free_page(GFP_TEMPORARY);
+-	if (!buf)
+-		return -ENOMEM;
+-
+-	if (copy_from_user(buf, ubuf, cnt)) {
+-		free_page((unsigned long) buf);
+-		return -EFAULT;
+-	}
+-	buf[cnt] = '\0';
++	buf = memdup_user_nul(ubuf, cnt);
++	if (IS_ERR(buf))
++		return PTR_ERR(buf);
+ 
+ 	err = apply_subsystem_event_filter(dir, buf);
+-	free_page((unsigned long) buf);
++	kfree(buf);
+ 	if (err < 0)
+ 		return err;
+ 
+diff --git a/kernel/trace/trace_events_trigger.c b/kernel/trace/trace_events_trigger.c
+index 42a4009fd75a..4b5e8ed68d77 100644
+--- a/kernel/trace/trace_events_trigger.c
++++ b/kernel/trace/trace_events_trigger.c
+@@ -237,28 +237,23 @@ static ssize_t event_trigger_regex_write(struct file *file,
+ 	if (cnt >= PAGE_SIZE)
+ 		return -EINVAL;
+ 
+-	buf = (char *)__get_free_page(GFP_TEMPORARY);
+-	if (!buf)
+-		return -ENOMEM;
++	buf = memdup_user_nul(ubuf, cnt);
++	if (IS_ERR(buf))
++		return PTR_ERR(buf);
+ 
+-	if (copy_from_user(buf, ubuf, cnt)) {
+-		free_page((unsigned long)buf);
+-		return -EFAULT;
+-	}
+-	buf[cnt] = '\0';
+ 	strim(buf);
+ 
+ 	mutex_lock(&event_mutex);
+ 	event_file = event_file_data(file);
+ 	if (unlikely(!event_file)) {
+ 		mutex_unlock(&event_mutex);
+-		free_page((unsigned long)buf);
++		kfree(buf);
+ 		return -ENODEV;
+ 	}
+ 	ret = trigger_process_regex(event_file, buf);
+ 	mutex_unlock(&event_mutex);
+ 
+-	free_page((unsigned long)buf);
++	kfree(buf);
+ 	if (ret < 0)
+ 		goto out;
+ 
+diff --git a/kernel/user_namespace.c b/kernel/user_namespace.c
+index 88fefa68c516..9bafc211930c 100644
+--- a/kernel/user_namespace.c
++++ b/kernel/user_namespace.c
+@@ -602,8 +602,7 @@ static ssize_t map_write(struct file *file, const char __user *buf,
+ 	struct uid_gid_map new_map;
+ 	unsigned idx;
+ 	struct uid_gid_extent *extent = NULL;
+-	unsigned long page = 0;
+-	char *kbuf, *pos, *next_line;
++	char *kbuf = NULL, *pos, *next_line;
+ 	ssize_t ret = -EINVAL;
+ 
+ 	/*
+@@ -638,23 +637,18 @@ static ssize_t map_write(struct file *file, const char __user *buf,
+ 	if (cap_valid(cap_setid) && !file_ns_capable(file, ns, CAP_SYS_ADMIN))
+ 		goto out;
+ 
+-	/* Get a buffer */
+-	ret = -ENOMEM;
+-	page = __get_free_page(GFP_TEMPORARY);
+-	kbuf = (char *) page;
+-	if (!page)
+-		goto out;
+-
+ 	/* Only allow < page size writes at the beginning of the file */
+ 	ret = -EINVAL;
+ 	if ((*ppos != 0) || (count >= PAGE_SIZE))
+ 		goto out;
+ 
+ 	/* Slurp in the user data */
+-	ret = -EFAULT;
+-	if (copy_from_user(kbuf, buf, count))
++	kbuf = memdup_user_nul(buf, count);
++	if (IS_ERR(kbuf)) {
++		ret = PTR_ERR(kbuf);
++		kbuf = NULL;
+ 		goto out;
+-	kbuf[count] = '\0';
++	}
+ 
+ 	/* Parse the user data */
+ 	ret = -EINVAL;
+@@ -756,8 +750,7 @@ static ssize_t map_write(struct file *file, const char __user *buf,
+ 	ret = count;
+ out:
+ 	mutex_unlock(&userns_state_mutex);
+-	if (page)
+-		free_page(page);
++	kfree(kbuf);
+ 	return ret;
+ }
+ 
+-- 
+2.11.0
+

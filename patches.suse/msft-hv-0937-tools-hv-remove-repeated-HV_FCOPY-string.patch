@@ -10,7 +10,7 @@ HV_FCOPY is already used as identifier in syslog.
 Signed-off-by: Olaf Hering <olaf@aepfle.de>
 Signed-off-by: K. Y. Srinivasan <kys@microsoft.com>
 Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  tools/hv/hv_fcopy_daemon.c | 4 ++--
  1 file changed, 2 insertions(+), 2 deletions(-)

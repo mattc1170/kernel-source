@@ -1,0 +1,105 @@
+From a7163de783f906151a3bf8b361ab03b792f8fe41 Mon Sep 17 00:00:00 2001
+From: Goldwyn Rodrigues <rgoldwyn@suse.com>
+Date: Tue, 7 Feb 2017 06:03:59 -0600
+Subject: [PATCH 08/10] btrfs: nowait aio support
+References: FATE#321994
+Patch-mainline: 4.13-rc1
+Git-commit: edf064e7c6fec3646b06c944a8e35d1a3de5c2c3
+
+Return EAGAIN if any of the following checks fail
+ + i_rwsem is not lockable
+ + NODATACOW or PREALLOC is not set
+ + Cannot nocow at the desired location
+ + Writing beyond end of file which is not allocated
+
+Signed-off-by: Goldwyn Rodrigues <rgoldwyn@suse.com>
+Acked-by: David Sterba <dsterba@suse.com>
+---
+ fs/btrfs/file.c  | 33 +++++++++++++++++++++++++++------
+ fs/btrfs/inode.c |  3 +++
+ 2 files changed, 30 insertions(+), 6 deletions(-)
+
+diff --git a/fs/btrfs/file.c b/fs/btrfs/file.c
+index d361f9472942..1378a79112cf 100644
+--- a/fs/btrfs/file.c
++++ b/fs/btrfs/file.c
+@@ -1805,12 +1805,29 @@ static ssize_t btrfs_file_write_iter(struct kiocb *iocb,
+ 	ssize_t num_written = 0;
+ 	bool sync = (file->f_flags & O_DSYNC) || IS_SYNC(file->f_mapping->host);
+ 	ssize_t err;
+-	loff_t pos;
+-	size_t count;
++	loff_t pos = iocb->ki_pos;
++	size_t count = iov_iter_count(from);
+ 	loff_t oldsize;
+ 	int clean_page = 0;
+ 
+-	mutex_lock(&inode->i_mutex);
++	if ((iocb->ki_flags & IOCB_NOWAIT) &&
++			(iocb->ki_flags & IOCB_DIRECT)) {
++		/* Don't sleep on inode rwsem */
++		if (!mutex_trylock(&inode->i_mutex))
++			return -EAGAIN;
++		/*
++		 * We will allocate space in case nodatacow is not set,
++		 * so bail
++		 */
++		if (!(BTRFS_I(inode)->flags & (BTRFS_INODE_NODATACOW |
++					      BTRFS_INODE_PREALLOC)) ||
++		    check_can_nocow(inode, pos, &count) <= 0) {
++			mutex_unlock(&inode->i_mutex);
++			return -EAGAIN;
++		}
++	} else
++		mutex_lock(&inode->i_mutex);
++
+ 	err = generic_write_checks(iocb, from);
+ 	if (err <= 0) {
+ 		mutex_unlock(&inode->i_mutex);
+@@ -1844,8 +1861,6 @@ static ssize_t btrfs_file_write_iter(struct kiocb *iocb,
+ 	 */
+ 	update_time_for_write(inode);
+ 
+-	pos = iocb->ki_pos;
+-	count = iov_iter_count(from);
+ 	start_pos = round_down(pos, root->sectorsize);
+ 	oldsize = i_size_read(inode);
+ 	if (start_pos > oldsize) {
+@@ -2985,13 +3000,19 @@ out:
+ 	return offset;
+ }
+ 
++static int btrfs_file_open(struct inode *inode, struct file *filp)
++{
++	filp->f_mode |= FMODE_AIO_NOWAIT;
++	return generic_file_open(inode, filp);
++}
++
+ const struct file_operations btrfs_file_operations = {
+ 	.llseek		= btrfs_file_llseek,
+ 	.read_iter      = generic_file_read_iter,
+ 	.splice_read	= generic_file_splice_read,
+ 	.write_iter	= btrfs_file_write_iter,
+ 	.mmap		= btrfs_file_mmap,
+-	.open		= generic_file_open,
++	.open		= btrfs_file_open,
+ 	.release	= btrfs_release_file,
+ 	.fsync		= btrfs_sync_file,
+ 	.fallocate	= btrfs_fallocate,
+diff --git a/fs/btrfs/inode.c b/fs/btrfs/inode.c
+index 8016385c172a..e2b30d55c677 100644
+--- a/fs/btrfs/inode.c
++++ b/fs/btrfs/inode.c
+@@ -8666,6 +8666,9 @@ static ssize_t btrfs_direct_IO(struct kiocb *iocb, struct iov_iter *iter)
+ 		if (offset + count <= inode->i_size) {
+ 			mutex_unlock(&inode->i_mutex);
+ 			relock = true;
++		} else if (iocb->ki_flags & IOCB_NOWAIT) {
++			ret = -EAGAIN;
++			goto out;
+ 		}
+ 		ret = btrfs_delalloc_reserve_space(inode, offset, count);
+ 		if (ret)
+-- 
+2.13.1
+

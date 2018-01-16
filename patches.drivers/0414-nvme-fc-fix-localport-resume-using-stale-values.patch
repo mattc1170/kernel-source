@@ -1,0 +1,68 @@
+From: James Smart <jsmart2021@gmail.com>
+Date: Fri, 3 Nov 2017 08:13:16 -0700
+Subject: [PATCH] nvme-fc: fix localport resume using stale values
+References: bsc#1067734
+Git-commit: c5760f300e25f7d2cea9a9002b1e058a5c18b73f
+Patch-Mainline: v4.15-rc1
+
+The localport resume was not updating the lldd ops structure. If the
+lldd is unloaded and reloaded, the ops pointers will differ.
+
+Additionally, as there are device references taken by the localport,
+ensure that resume only resumes if the device matches as well.
+
+Signed-off-by: James Smart <james.smart@broadcom.com>
+Signed-off-by: Christoph Hellwig <hch@lst.de>
+Signed-off-by: Jens Axboe <axboe@kernel.dk>
+Signed-off-by: Hannes Reinecke <hare@suse.de>
+---
+ drivers/nvme/host/fc.c | 12 ++++++++++--
+ 1 file changed, 10 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/nvme/host/fc.c b/drivers/nvme/host/fc.c
+index cf6bacb..3b99a4db 100644
+--- a/drivers/nvme/host/fc.c
++++ b/drivers/nvme/host/fc.c
+@@ -274,7 +274,9 @@ static void __nvme_fc_delete_hw_queue(struct nvme_fc_ctrl *,
+ 
+ 
+ static struct nvme_fc_lport *
+-nvme_fc_attach_to_unreg_lport(struct nvme_fc_port_info *pinfo)
++nvme_fc_attach_to_unreg_lport(struct nvme_fc_port_info *pinfo,
++			struct nvme_fc_port_template *ops,
++			struct device *dev)
+ {
+ 	struct nvme_fc_lport *lport;
+ 	unsigned long flags;
+@@ -286,6 +288,11 @@ static void __nvme_fc_delete_hw_queue(struct nvme_fc_ctrl *,
+ 		    lport->localport.port_name != pinfo->port_name)
+ 			continue;
+ 
++		if (lport->dev != dev) {
++			lport = ERR_PTR(-EXDEV);
++			goto out_done;
++		}
++
+ 		if (lport->localport.port_state != FC_OBJSTATE_DELETED) {
+ 			lport = ERR_PTR(-EEXIST);
+ 			goto out_done;
+@@ -302,6 +309,7 @@ static void __nvme_fc_delete_hw_queue(struct nvme_fc_ctrl *,
+ 
+ 		/* resume the lport */
+ 
++		lport->ops = ops;
+ 		lport->localport.port_role = pinfo->port_role;
+ 		lport->localport.port_id = pinfo->port_id;
+ 		lport->localport.port_state = FC_OBJSTATE_ONLINE;
+@@ -362,7 +370,7 @@ static void __nvme_fc_delete_hw_queue(struct nvme_fc_ctrl *,
+ 	 * expired, we can simply re-enable the localport. Remoteports
+ 	 * and controller reconnections should resume naturally.
+ 	 */
+-	newrec = nvme_fc_attach_to_unreg_lport(pinfo);
++	newrec = nvme_fc_attach_to_unreg_lport(pinfo, template, dev);
+ 
+ 	/* found an lport, but something about its state is bad */
+ 	if (IS_ERR(newrec)) {
+-- 
+1.8.5.6
+

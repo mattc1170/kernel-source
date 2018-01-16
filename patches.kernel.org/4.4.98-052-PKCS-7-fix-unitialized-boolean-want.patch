@@ -1,0 +1,39 @@
+From: Colin Ian King <colin.king@canonical.com>
+Date: Sat, 27 Feb 2016 12:45:26 +0000
+Subject: [PATCH] PKCS#7: fix unitialized boolean 'want'
+References: bnc#1012382
+Patch-mainline: 4.4.98
+Git-commit: 06aae592425701851e02bb850cb9f4997f0ae163
+
+commit 06aae592425701851e02bb850cb9f4997f0ae163 upstream.
+
+The boolean want is not initialized and hence garbage. The default should
+be false (later it is only set to true on tne sinfo->authattrs check).
+
+Found with static analysis using CoverityScan
+
+Signed-off-by: Colin Ian King <colin.king@canonical.com>
+Signed-off-by: David Howells <dhowells@redhat.com>
+Cc: Ben Hutchings <ben.hutchings@codethink.co.uk>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Signed-off-by: Jiri Slaby <jslaby@suse.cz>
+---
+ crypto/asymmetric_keys/pkcs7_parser.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/crypto/asymmetric_keys/pkcs7_parser.c b/crypto/asymmetric_keys/pkcs7_parser.c
+index 2516e97c58f1..5e5a8adac0ba 100644
+--- a/crypto/asymmetric_keys/pkcs7_parser.c
++++ b/crypto/asymmetric_keys/pkcs7_parser.c
+@@ -87,7 +87,7 @@ EXPORT_SYMBOL_GPL(pkcs7_free_message);
+ static int pkcs7_check_authattrs(struct pkcs7_message *msg)
+ {
+ 	struct pkcs7_signed_info *sinfo;
+-	bool want;
++	bool want = false;
+ 
+ 	sinfo = msg->signed_infos;
+ 	if (!sinfo)
+-- 
+2.15.0
+

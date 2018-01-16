@@ -1,0 +1,28 @@
+From: Luis Henriques <lhenriques@suse.com>
+Subject: kABI: protect struct regulator_dev
+Patch-mainline: never, kabi
+References: kabi
+
+Commit fd086045559d ("regulator: core: Limit propagation of parent voltage
+count and list") changes struct regulater_dev by adding a new bit field.
+Since the previous field is also a bit field, the overall struct size
+shouldn't change.  Use __GENKSYMS__ to protect the kABI breakage.
+
+Signed-off-by: Luis Henriques <lhenriques@suse.com>
+
+---
+ include/linux/regulator/driver.h |    2 ++
+ 1 file changed, 2 insertions(+)
+
+--- a/include/linux/regulator/driver.h
++++ b/include/linux/regulator/driver.h
+@@ -397,7 +397,9 @@ struct regulator_dev {
+ 	struct regulator_enable_gpio *ena_pin;
+ 	unsigned int ena_gpio_state:1;
+ 
++#ifndef __GENKSYMS__
+ 	unsigned int is_switch:1;
++#endif
+ 
+ 	/* time when this regulator was disabled last time */
+ 	unsigned long last_off_jiffy;

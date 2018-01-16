@@ -1,0 +1,46 @@
+From: Martin Wilck <mwilck@suse.com>
+Date: Thu, 20 Jul 2017 22:30:38 +0200
+Subject: nvmet: identify controller: improve standard compliance
+Patch-mainline: Submitted linux-nvme 2017/07/20
+References: bsc#1048146
+
+The NVME standard mandates that the SN, MN, and FR fields of
+the Indentify Controller Data Structure be "ASCII strings".
+That means that they may not contain 0-bytes, not even string
+terminators.
+
+Signed-off-by: Martin Wilck <mwilck@suse.com>
+---
+ drivers/nvme/target/admin-cmd.c |   13 ++++++-------
+ 1 file changed, 6 insertions(+), 7 deletions(-)
+
+--- a/drivers/nvme/target/admin-cmd.c
++++ b/drivers/nvme/target/admin-cmd.c
+@@ -171,6 +171,7 @@ static void nvmet_execute_identify_ctrl(
+ 	struct nvmet_ctrl *ctrl = req->sq->ctrl;
+ 	struct nvme_id_ctrl *id;
+ 	u16 status = 0;
++	const char MODEL[] = "Linux";
+ 
+ 	id = kzalloc(sizeof(*id), GFP_KERNEL);
+ 	if (!id) {
+@@ -182,14 +183,12 @@ static void nvmet_execute_identify_ctrl(
+ 	id->vid = 0;
+ 	id->ssvid = 0;
+ 
+-	memset(id->sn, ' ', sizeof(id->sn));
+-	snprintf(id->sn, sizeof(id->sn), "%llx", ctrl->serial);
++	bin2hex(id->sn, &ctrl->serial, min(sizeof(ctrl->serial),
++					   sizeof(id->sn) / 2));
+ 
+-	memset(id->mn, ' ', sizeof(id->mn));
+-	strncpy((char *)id->mn, "Linux", sizeof(id->mn));
+-
+-	memset(id->fr, ' ', sizeof(id->fr));
+-	strncpy((char *)id->fr, UTS_RELEASE, sizeof(id->fr));
++	memcpy_and_pad(id->mn, sizeof(id->mn), MODEL, sizeof(MODEL) - 1, ' ');
++	memcpy_and_pad(id->fr, sizeof(id->fr),
++		       UTS_RELEASE, strlen(UTS_RELEASE), ' ');
+ 
+ 	id->rab = 6;
+ 

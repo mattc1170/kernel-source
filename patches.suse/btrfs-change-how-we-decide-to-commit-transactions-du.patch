@@ -1,0 +1,113 @@
+From 6e16a1eb2630c034fd6469760d38d30a7b925c82 Mon Sep 17 00:00:00 2001
+From: Josef Bacik <jbacik@fb.com>
+Date: Tue, 22 Aug 2017 16:00:39 -0400
+Subject: [PATCH] btrfs: change how we decide to commit transactions during
+ flushing
+Patch-mainline: Submitted on 21.08.2017, https://patchwork.kernel.org/patch/9912831/
+References: bsc#1060197
+
+Nikolay reported that generic/273 was failing currently with ENOSPC.
+Turns out this is because we get to the point where the outstanding
+reservations are greater than the pinned space on the fs.  This is a
+mistake, previously we used the current reservation amount in
+may_commit_transaction, not the entire outstanding reservation amount.
+Fix this to find the minimum byte size needed to make progress in
+flushing, and pass that into may_commit_transaction.  From there we can
+make a smarter decision on whether to commit the transaction or not.
+This fixes the failure in generic/273.
+
+Reported-by: Nikolay Borisov <nborisov@suse.com>
+Signed-off-by: Josef Bacik <jbacik@fb.com>
+Acked-by: Nikolay Borisov <nborisov@suse.com>
+---
+ fs/btrfs/extent-tree.c |   42 +++++++++++++++++++++++++++++-------------
+ 1 file changed, 29 insertions(+), 13 deletions(-)
+
+--- a/fs/btrfs/extent-tree.c
++++ b/fs/btrfs/extent-tree.c
+@@ -4778,6 +4778,13 @@ skip_async:
+ 	}
+ }
+ 
++struct reserve_ticket {
++	u64 bytes;
++	int error;
++	struct list_head list;
++	wait_queue_head_t wait;
++};
++
+ /**
+  * maybe_commit_transaction - possibly commit the transaction if its ok to
+  * @root - the root we're allocating for
+@@ -4789,18 +4796,29 @@ skip_async:
+  * will return -ENOSPC.
+  */
+ static int may_commit_transaction(struct btrfs_root *root,
+-				  struct btrfs_space_info *space_info,
+-				  u64 bytes, int force)
++				  struct btrfs_space_info *space_info)
+ {
++	struct reserve_ticket *ticket = NULL;
+ 	struct btrfs_block_rsv *delayed_rsv = &root->fs_info->delayed_block_rsv;
+ 	struct btrfs_trans_handle *trans;
++	u64 bytes;
+ 
+ 	trans = (struct btrfs_trans_handle *)current->journal_info;
+ 	if (trans)
+ 		return -EAGAIN;
+ 
+-	if (force)
+-		goto commit;
++	spin_lock(&space_info->lock);
++	if (!list_empty(&space_info->priority_tickets))
++		ticket = list_first_entry(&space_info->priority_tickets,
++					  struct reserve_ticket, list);
++	else if (!list_empty(&space_info->tickets))
++		ticket = list_first_entry(&space_info->tickets,
++					  struct reserve_ticket, list);
++	bytes = ticket ? ticket->bytes : 0;
++	spin_unlock(&space_info->lock);
++
++	if (!bytes)
++		return 0;
+ 
+ 	/* See if there is enough pinned space to make this reservation */
+ 	if (percpu_counter_compare(&space_info->total_bytes_pinned,
+@@ -4815,8 +4833,13 @@ static int may_commit_transaction(struct
+ 		return -ENOSPC;
+ 
+ 	spin_lock(&delayed_rsv->lock);
++	if (delayed_rsv->size > bytes)
++		bytes = 0;
++	else
++		bytes -= delayed_rsv->size;
++
+ 	if (percpu_counter_compare(&space_info->total_bytes_pinned,
+-				   bytes - delayed_rsv->size) < 0) {
++				   bytes) < 0) {
+ 		spin_unlock(&delayed_rsv->lock);
+ 		return -ENOSPC;
+ 	}
+@@ -4830,13 +4853,6 @@ commit:
+ 	return btrfs_commit_transaction(trans, root);
+ }
+ 
+-struct reserve_ticket {
+-	u64 bytes;
+-	int error;
+-	struct list_head list;
+-	wait_queue_head_t wait;
+-};
+-
+ static int flush_space(struct btrfs_root *root,
+ 		       struct btrfs_space_info *space_info, u64 num_bytes,
+ 		       u64 orig_bytes, int state)
+@@ -4880,7 +4896,7 @@ static int flush_space(struct btrfs_root
+ 			ret = 0;
+ 		break;
+ 	case COMMIT_TRANS:
+-		ret = may_commit_transaction(root, space_info, orig_bytes, 0);
++		ret = may_commit_transaction(root, space_info);
+ 		break;
+ 	default:
+ 		ret = -ENOSPC;

@@ -74,7 +74,7 @@ index 5f65897..4304215 100644
 --- a/fs/cifs/file.c
 +++ b/fs/cifs/file.c
 @@ -2697,11 +2697,8 @@ cifs_writev(struct kiocb *iocb, struct iov_iter *from)
- out:
+ 	up_read(&cinode->lock_sem);
  	mutex_unlock(&inode->i_mutex);
  
 -	if (rc > 0) {
@@ -84,9 +84,9 @@ index 5f65897..4304215 100644
 -	}
 +	if (rc > 0)
 +		rc = generic_write_sync(iocb, rc);
- 	up_read(&cinode->lock_sem);
  	return rc;
  }
+ 
 diff --git a/fs/direct-io.c b/fs/direct-io.c
 index bb7d018..1083daf 100644
 --- a/fs/direct-io.c

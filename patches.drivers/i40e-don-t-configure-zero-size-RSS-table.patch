@@ -1,8 +1,7 @@
 From: Mitch Williams <mitch.a.williams@intel.com>
 Date: Mon, 12 Sep 2016 14:18:43 -0700
 Subject: [PATCH] i40e: don't configure zero-size RSS table
-Patch-mainline: Queued in subsystem maintainer repository
-Git-repo: git://git.kernel.org/pub/scm/linux/kernel/git/davem/net-next.git
+Patch-mainline: v4.9-rc1
 Git-commit: a4fa59cc5bb028ebb8048e8dcb6f92b2a1ea07f6
 References: bsc#998216
 

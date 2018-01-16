@@ -10,7 +10,7 @@ The callback is done via tasklet not workqueue.
 Signed-off-by: Stephen Hemminger <sthemmin@microsoft.com>
 Signed-off-by: K. Y. Srinivasan <kys@microsoft.com>
 Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  include/linux/hyperv.h | 5 +----
  1 file changed, 1 insertion(+), 4 deletions(-)

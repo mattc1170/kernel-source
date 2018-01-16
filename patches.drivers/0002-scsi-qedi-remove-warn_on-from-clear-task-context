@@ -1,0 +1,30 @@
+From: Manish Rangankar <manish.rangankar@cavium.com>
+Date: Thu, 15 Jun 2017 00:10:40 -0700
+Subject: scsi: qedi: Remove WARN_ON from clear task context.
+Git-commit: 02d94e04747c5df55410c7b19f3cf72a1a11899b
+Patch-mainline: v4.12-rc7
+References: bsc#1044443
+
+Signed-off-by: Manish Rangankar <manish.rangankar@cavium.com>
+Reviewed-by: Lee Duncan <lduncan@suse.com>
+Signed-off-by: Martin K. Petersen <martin.petersen@oracle.com>
+Acked-by: Lee Duncan <lduncan@suse.com>
+---
+ drivers/scsi/qedi/qedi_main.c |    4 +---
+ 1 file changed, 1 insertion(+), 3 deletions(-)
+
+--- a/drivers/scsi/qedi/qedi_main.c
++++ b/drivers/scsi/qedi/qedi_main.c
+@@ -1530,11 +1530,9 @@ err_idx:
+ 
+ void qedi_clear_task_idx(struct qedi_ctx *qedi, int idx)
+ {
+-	if (!test_and_clear_bit(idx, qedi->task_idx_map)) {
++	if (!test_and_clear_bit(idx, qedi->task_idx_map))
+ 		QEDI_ERR(&qedi->dbg_ctx,
+ 			 "FW task context, already cleared, tid=0x%x\n", idx);
+-		WARN_ON(1);
+-	}
+ }
+ 
+ void qedi_update_itt_map(struct qedi_ctx *qedi, u32 tid, u32 proto_itt,

@@ -1,0 +1,155 @@
+From: Jiri Slaby <jslaby@suse.cz>
+Date: Mon, 2 Oct 2017 14:29:05 +0200
+Subject: Revert "ipv6: add rcu grace period before freeing fib6_node"
+Patch-mainline: never, kabi
+References: kabi
+
+This reverts commit e51bf99be7cc95db97d9fa9031ab09ea037a5c7a, upstream
+commit c5cff8561d2d0006e972bd114afd51f082fee77c. It breaks kABI and
+cannot be worked around because the structure is used in linline
+functions called from various places.
+
+Signed-off-by: Jiri Slaby <jslaby@suse.cz>
+---
+ include/net/ip6_fib.h | 30 +-----------------------------
+ net/ipv6/ip6_fib.c    | 20 ++++----------------
+ net/ipv6/route.c      | 14 +++-----------
+ 3 files changed, 8 insertions(+), 56 deletions(-)
+
+diff --git a/include/net/ip6_fib.h b/include/net/ip6_fib.h
+index f57321248be2..fb961a576abe 100644
+--- a/include/net/ip6_fib.h
++++ b/include/net/ip6_fib.h
+@@ -68,7 +68,6 @@ struct fib6_node {
+ 	__u16			fn_flags;
+ 	int			fn_sernum;
+ 	struct rt6_info		*rr_ptr;
+-	struct rcu_head		rcu;
+ };
+ 
+ #ifndef CONFIG_IPV6_SUBTREES
+@@ -166,40 +165,13 @@ static inline void rt6_update_expires(struct rt6_info *rt0, int timeout)
+ 	rt0->rt6i_flags |= RTF_EXPIRES;
+ }
+ 
+-/* Function to safely get fn->sernum for passed in rt
+- * and store result in passed in cookie.
+- * Return true if we can get cookie safely
+- * Return false if not
+- */
+-static inline bool rt6_get_cookie_safe(const struct rt6_info *rt,
+-				       u32 *cookie)
+-{
+-	struct fib6_node *fn;
+-	bool status = false;
+-
+-	rcu_read_lock();
+-	fn = rcu_dereference(rt->rt6i_node);
+-
+-	if (fn) {
+-		*cookie = fn->fn_sernum;
+-		status = true;
+-	}
+-
+-	rcu_read_unlock();
+-	return status;
+-}
+-
+ static inline u32 rt6_get_cookie(const struct rt6_info *rt)
+ {
+-	u32 cookie = 0;
+-
+ 	if (rt->rt6i_flags & RTF_PCPU ||
+ 	    (unlikely(rt->dst.flags & DST_NOCACHE) && rt->dst.from))
+ 		rt = (struct rt6_info *)(rt->dst.from);
+ 
+-	rt6_get_cookie_safe(rt, &cookie);
+-
+-	return cookie;
++	return rt->rt6i_node ? rt->rt6i_node->fn_sernum : 0;
+ }
+ 
+ static inline void ip6_rt_put(struct rt6_info *rt)
+diff --git a/net/ipv6/ip6_fib.c b/net/ipv6/ip6_fib.c
+index 9190c529c8b1..b1be49c89a12 100644
+--- a/net/ipv6/ip6_fib.c
++++ b/net/ipv6/ip6_fib.c
+@@ -150,21 +150,9 @@ static struct fib6_node *node_alloc(void)
+ 	return fn;
+ }
+ 
+-static void node_free_immediate(struct fib6_node *fn)
+-{
+-	kmem_cache_free(fib6_node_kmem, fn);
+-}
+-
+-static void node_free_rcu(struct rcu_head *head)
+-{
+-	struct fib6_node *fn = container_of(head, struct fib6_node, rcu);
+-
+-	kmem_cache_free(fib6_node_kmem, fn);
+-}
+-
+ static void node_free(struct fib6_node *fn)
+ {
+-	call_rcu(&fn->rcu, node_free_rcu);
++	kmem_cache_free(fib6_node_kmem, fn);
+ }
+ 
+ static void rt6_rcu_free(struct rt6_info *rt)
+@@ -606,9 +594,9 @@ insert_above:
+ 
+ 		if (!in || !ln) {
+ 			if (in)
+-				node_free_immediate(in);
++				node_free(in);
+ 			if (ln)
+-				node_free_immediate(ln);
++				node_free(ln);
+ 			return ERR_PTR(-ENOMEM);
+ 		}
+ 
+@@ -1033,7 +1021,7 @@ int fib6_add(struct fib6_node *root, struct rt6_info *rt,
+ 				   root, and then (in failure) stale node
+ 				   in main tree.
+ 				 */
+-				node_free_immediate(sfn);
++				node_free(sfn);
+ 				err = PTR_ERR(sn);
+ 				goto failure;
+ 			}
+diff --git a/net/ipv6/route.c b/net/ipv6/route.c
+index 0e91fbf67200..ef335070e98a 100644
+--- a/net/ipv6/route.c
++++ b/net/ipv6/route.c
+@@ -1248,9 +1248,7 @@ static void rt6_dst_from_metrics_check(struct rt6_info *rt)
+ 
+ static struct dst_entry *rt6_check(struct rt6_info *rt, u32 cookie)
+ {
+-	u32 rt_cookie;
+-
+-	if (!rt6_get_cookie_safe(rt, &rt_cookie) || rt_cookie != cookie)
++	if (!rt->rt6i_node || (rt->rt6i_node->fn_sernum != cookie))
+ 		return NULL;
+ 
+ 	if (rt6_check_expired(rt))
+@@ -1318,14 +1316,8 @@ static void ip6_link_failure(struct sk_buff *skb)
+ 		if (rt->rt6i_flags & RTF_CACHE) {
+ 			dst_hold(&rt->dst);
+ 			ip6_del_rt(rt);
+-		} else {
+-			struct fib6_node *fn;
+-
+-			rcu_read_lock();
+-			fn = rcu_dereference(rt->rt6i_node);
+-			if (fn && (rt->rt6i_flags & RTF_DEFAULT))
+-				fn->fn_sernum = -1;
+-			rcu_read_unlock();
++		} else if (rt->rt6i_node && (rt->rt6i_flags & RTF_DEFAULT)) {
++			rt->rt6i_node->fn_sernum = -1;
+ 		}
+ 	}
+ }
+-- 
+2.14.2
+

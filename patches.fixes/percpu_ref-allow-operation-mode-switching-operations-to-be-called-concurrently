@@ -1,0 +1,147 @@
+From: Tejun Heo <tj@kernel.org>
+Date: Tue, 29 Sep 2015 17:47:20 -0400
+Subject: percpu_ref: allow operation mode switching operations to be called
+ concurrently
+Git-commit: 33e465ce7cb30b71c113a26f36d293b545a28e12
+Patch-mainline: v4.9-rc1
+References: bsc#1055096
+
+percpu_ref initially didn't have explicit mode switching operations.
+It started out in percpu mode and switched to atomic mode on kill and
+then released.  Ensuring that kill operation is initiated only after
+init completes was naturally the caller's responsibility.
+
+percpu_ref_reinit() was introduced later but it didn't shift the
+synchronization responsibility.  Reinit can't be performed until kill
+is confirmed, so there was nothing to worry about
+synchronization-wise.  Also, as both reinit and kill manipulate the
+base reference, invocations of the same function couldn't be allowed
+to race each other.
+
+The latest additions of percpu_ref_switch_to_atomic/percpu() changed
+the situation.  These two functions can be called any time as long as
+the percpu_ref is between init and exit and thus there are valid valid
+usage scenarios where these new functions race with each other or
+against reinit/kill.  Mostly from inertia, f47ad4578461 ("percpu_ref:
+decouple switching to percpu mode and reinit") still left
+synchronization among percpu mode switching operations to its users.
+
+That the new switch functions can be freely mixed with kill/reinit but
+the operations themselves should be synchronized is too subtle a
+requirement and led to a very subtle race condition in blk-mq freezing
+path.
+
+This patch fixes the situation by introducing percpu_ref_switch_lock
+to protect mode switching operations.  This ensures that percpu-ref
+users don't have to worry about mode changing operations racing
+against each other, e.g. switch_to_percpu against kill, as long as the
+sequence of operations is valid.
+
+Signed-off-by: Tejun Heo <tj@kernel.org>
+Reported-by: Akinobu Mita <akinobu.mita@gmail.com>
+Link: http://lkml.kernel.org/g/1443287365-4244-7-git-send-email-akinobu.mita@gmail.com
+Fixes: f47ad4578461 ("percpu_ref: decouple switching to percpu mode and reinit")
+Acked-by: Lee Duncan <lduncan@suse.com>
+---
+ lib/percpu-refcount.c | 33 +++++++++++++++++++++++++++++----
+ 1 file changed, 29 insertions(+), 4 deletions(-)
+
+diff --git a/lib/percpu-refcount.c b/lib/percpu-refcount.c
+index f3ff793691ac..c69938e4b0d5 100644
+--- a/lib/percpu-refcount.c
++++ b/lib/percpu-refcount.c
+@@ -33,6 +33,7 @@
+ 
+ #define PERCPU_COUNT_BIAS	(1LU << (BITS_PER_LONG - 1))
+ 
++static DEFINE_SPINLOCK(percpu_ref_switch_lock);
+ static DECLARE_WAIT_QUEUE_HEAD(percpu_ref_switch_waitq);
+ 
+ static unsigned long __percpu *percpu_count_ptr(struct percpu_ref *ref)
+@@ -208,15 +209,15 @@ static void __percpu_ref_switch_to_percpu(struct percpu_ref *ref)
+ static void __percpu_ref_switch_mode(struct percpu_ref *ref,
+ 				     percpu_ref_func_t *confirm_switch)
+ {
++	lockdep_assert_held(&percpu_ref_switch_lock);
++
+ 	/*
+ 	 * If the previous ATOMIC switching hasn't finished yet, wait for
+ 	 * its completion.  If the caller ensures that ATOMIC switching
+ 	 * isn't in progress, this function can be called from any context.
+-	 * Do an extra confirm_switch test to circumvent the unconditional
+-	 * might_sleep() in wait_event().
+ 	 */
+-	if (ref->confirm_switch)
+-		wait_event(percpu_ref_switch_waitq, !ref->confirm_switch);
++	wait_event_lock_irq(percpu_ref_switch_waitq, !ref->confirm_switch,
++			    percpu_ref_switch_lock);
+ 
+ 	if (ref->force_atomic || (ref->percpu_count_ptr & __PERCPU_REF_DEAD))
+ 		__percpu_ref_switch_to_atomic(ref, confirm_switch);
+@@ -247,8 +248,14 @@ static void __percpu_ref_switch_mode(struct percpu_ref *ref,
+ void percpu_ref_switch_to_atomic(struct percpu_ref *ref,
+ 				 percpu_ref_func_t *confirm_switch)
+ {
++	unsigned long flags;
++
++	spin_lock_irqsave(&percpu_ref_switch_lock, flags);
++
+ 	ref->force_atomic = true;
+ 	__percpu_ref_switch_mode(ref, confirm_switch);
++
++	spin_unlock_irqrestore(&percpu_ref_switch_lock, flags);
+ }
+ 
+ /**
+@@ -271,8 +278,14 @@ void percpu_ref_switch_to_atomic(struct percpu_ref *ref,
+  */
+ void percpu_ref_switch_to_percpu(struct percpu_ref *ref)
+ {
++	unsigned long flags;
++
++	spin_lock_irqsave(&percpu_ref_switch_lock, flags);
++
+ 	ref->force_atomic = false;
+ 	__percpu_ref_switch_mode(ref, NULL);
++
++	spin_unlock_irqrestore(&percpu_ref_switch_lock, flags);
+ }
+ 
+ /**
+@@ -293,12 +306,18 @@ void percpu_ref_switch_to_percpu(struct percpu_ref *ref)
+ void percpu_ref_kill_and_confirm(struct percpu_ref *ref,
+ 				 percpu_ref_func_t *confirm_kill)
+ {
++	unsigned long flags;
++
++	spin_lock_irqsave(&percpu_ref_switch_lock, flags);
++
+ 	WARN_ONCE(ref->percpu_count_ptr & __PERCPU_REF_DEAD,
+ 		  "%s called more than once on %pf!", __func__, ref->release);
+ 
+ 	ref->percpu_count_ptr |= __PERCPU_REF_DEAD;
+ 	__percpu_ref_switch_mode(ref, confirm_kill);
+ 	percpu_ref_put(ref);
++
++	spin_unlock_irqrestore(&percpu_ref_switch_lock, flags);
+ }
+ EXPORT_SYMBOL_GPL(percpu_ref_kill_and_confirm);
+ 
+@@ -315,10 +334,16 @@ void percpu_ref_kill_and_confirm(struct percpu_ref *ref,
+  */
+ void percpu_ref_reinit(struct percpu_ref *ref)
+ {
++	unsigned long flags;
++
++	spin_lock_irqsave(&percpu_ref_switch_lock, flags);
++
+ 	WARN_ON_ONCE(!percpu_ref_is_zero(ref));
+ 
+ 	ref->percpu_count_ptr &= ~__PERCPU_REF_DEAD;
+ 	percpu_ref_get(ref);
+ 	__percpu_ref_switch_mode(ref, NULL);
++
++	spin_unlock_irqrestore(&percpu_ref_switch_lock, flags);
+ }
+ EXPORT_SYMBOL_GPL(percpu_ref_reinit);
+

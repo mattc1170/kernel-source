@@ -22,10 +22,10 @@ Signed-off-by: Jens Axboe <axboe@fb.com>
 Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
 ---
  drivers/nvme/host/core.c |   10 +-
- drivers/nvme/host/nvme.h |   61 +++++----------
- drivers/nvme/host/pci.c  |  189 +++++++++++++++++++++++++++++++----------------
+ drivers/nvme/host/nvme.h |   62 +++++----------
+ drivers/nvme/host/pci.c  |  190 +++++++++++++++++++++++++++++++----------------
  drivers/nvme/host/scsi.c |   89 +++++++++-------------
- 4 files changed, 192 insertions(+), 157 deletions(-)
+ 4 files changed, 193 insertions(+), 158 deletions(-)
 
 --- a/drivers/nvme/host/core.c
 +++ b/drivers/nvme/host/core.c
@@ -76,7 +76,7 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
  	int error;
 --- a/drivers/nvme/host/nvme.h
 +++ b/drivers/nvme/host/nvme.h
-@@ -37,46 +37,16 @@ enum {
+@@ -38,47 +38,16 @@ enum {
   */
  #define NVME_QUIRK_DELAY_AMOUNT		2000
  
@@ -110,6 +110,7 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
 -	struct work_struct reset_work;
 -	struct work_struct probe_work;
 -	struct work_struct scan_work;
+-	struct mutex shutdown_lock;
 +
  	char name[12];
  	char serial[20];
@@ -126,7 +127,7 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
  	u16 oncs;
  	u16 abort_limit;
  	u8 event_limit;
-@@ -89,7 +59,7 @@ struct nvme_dev {
+@@ -91,7 +60,7 @@ struct nvme_dev {
  struct nvme_ns {
  	struct list_head list;
  
@@ -135,7 +136,7 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
  	struct request_queue *queue;
  	struct gendisk *disk;
  	struct kref kref;
-@@ -104,6 +74,19 @@ struct nvme_ns {
+@@ -106,6 +75,19 @@ struct nvme_ns {
  	u32 mode_select_block_len;
  };
  
@@ -155,7 +156,7 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
  static inline u64 nvme_block_nr(struct nvme_ns *ns, sector_t sector)
  {
  	return (sector >> (ns->lba_shift - 9));
-@@ -114,13 +97,13 @@ int nvme_submit_sync_cmd(struct request_
+@@ -116,13 +98,13 @@ int nvme_submit_sync_cmd(struct request_
  int __nvme_submit_sync_cmd(struct request_queue *q, struct nvme_command *cmd,
  		void *buffer, void __user *ubuffer, unsigned bufflen,
  		u32 *result, unsigned timeout);
@@ -186,7 +187,7 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
  static int __nvme_reset(struct nvme_dev *dev);
  static int nvme_reset(struct nvme_dev *dev);
  static void nvme_process_cq(struct nvme_queue *nvmeq);
-@@ -102,6 +105,49 @@ struct async_cmd_info {
+@@ -102,6 +105,50 @@ struct async_cmd_info {
  };
  
  /*
@@ -215,6 +216,7 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
 +	struct work_struct reset_work;
 +	struct work_struct probe_work;
 +	struct work_struct scan_work;
++	struct mutex shutdown_lock;
 +	bool subsystem;
 +	u32 max_hw_sectors;
 +	u32 stripe_size;
@@ -236,7 +238,7 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
   * An NVM Express queue.  Each device has at least two (one for admin
   * commands and one for I/O commands).
   */
-@@ -333,7 +379,7 @@ static void async_req_completion(struct
+@@ -333,7 +380,7 @@ static void async_req_completion(struct
  	u16 status = le16_to_cpup(&cqe->status) >> 1;
  
  	if (status == NVME_SC_SUCCESS || status == NVME_SC_ABORT_REQ)
@@ -245,7 +247,7 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
  	if (status != NVME_SC_SUCCESS)
  		return;
  
-@@ -357,7 +403,7 @@ static void abort_completion(struct nvme
+@@ -357,7 +404,7 @@ static void abort_completion(struct nvme
  	blk_mq_free_request(req);
  
  	dev_warn(nvmeq->q_dmadev, "Abort status:%x result:%x", status, result);
@@ -254,7 +256,7 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
  }
  
  static void async_completion(struct nvme_queue *nvmeq, void *ctx,
-@@ -1051,7 +1097,7 @@ static int nvme_submit_async_admin_req(s
+@@ -1051,7 +1098,7 @@ static int nvme_submit_async_admin_req(s
  	struct nvme_cmd_info *cmd_info;
  	struct request *req;
  
@@ -263,7 +265,7 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
  			BLK_MQ_REQ_NOWAIT | BLK_MQ_REQ_RESERVED);
  	if (IS_ERR(req))
  		return PTR_ERR(req);
-@@ -1077,7 +1123,7 @@ static int nvme_submit_admin_async_cmd(s
+@@ -1077,7 +1124,7 @@ static int nvme_submit_admin_async_cmd(s
  	struct request *req;
  	struct nvme_cmd_info *cmd_rq;
  
@@ -272,7 +274,7 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
  	if (IS_ERR(req))
  		return PTR_ERR(req);
  
-@@ -1101,7 +1147,7 @@ static int adapter_delete_queue(struct n
+@@ -1101,7 +1148,7 @@ static int adapter_delete_queue(struct n
  	c.delete_queue.opcode = opcode;
  	c.delete_queue.qid = cpu_to_le16(id);
  
@@ -281,7 +283,7 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
  }
  
  static int adapter_alloc_cq(struct nvme_dev *dev, u16 qid,
-@@ -1122,7 +1168,7 @@ static int adapter_alloc_cq(struct nvme_
+@@ -1122,7 +1169,7 @@ static int adapter_alloc_cq(struct nvme_
  	c.create_cq.cq_flags = cpu_to_le16(flags);
  	c.create_cq.irq_vector = cpu_to_le16(nvmeq->cq_vector);
  
@@ -290,7 +292,7 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
  }
  
  static int adapter_alloc_sq(struct nvme_dev *dev, u16 qid,
-@@ -1143,7 +1189,7 @@ static int adapter_alloc_sq(struct nvme_
+@@ -1143,7 +1190,7 @@ static int adapter_alloc_sq(struct nvme_
  	c.create_sq.sq_flags = cpu_to_le16(flags);
  	c.create_sq.cqid = cpu_to_le16(qid);
  
@@ -299,7 +301,7 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
  }
  
  static int adapter_delete_cq(struct nvme_dev *dev, u16 cqid)
-@@ -1182,10 +1228,10 @@ static void nvme_abort_req(struct reques
+@@ -1182,10 +1229,10 @@ static void nvme_abort_req(struct reques
  		return;
  	}
  
@@ -312,7 +314,7 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
  			BLK_MQ_REQ_NOWAIT);
  	if (IS_ERR(abort_req))
  		return;
-@@ -1199,7 +1245,7 @@ static void nvme_abort_req(struct reques
+@@ -1199,7 +1246,7 @@ static void nvme_abort_req(struct reques
  	cmd.abort.sqid = cpu_to_le16(nvmeq->qid);
  	cmd.abort.command_id = abort_req->tag;
  
@@ -321,7 +323,7 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
  	cmd_rq->aborted = 1;
  
  	dev_warn(nvmeq->q_dmadev, "Aborting I/O %d QID %d\n", req->tag,
-@@ -1294,8 +1340,8 @@ static int nvme_suspend_queue(struct nvm
+@@ -1294,8 +1341,8 @@ static int nvme_suspend_queue(struct nvm
  	nvmeq->cq_vector = -1;
  	spin_unlock_irq(&nvmeq->q_lock);
  
@@ -332,7 +334,7 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
  
  	irq_set_affinity_hint(vector, NULL);
  	free_irq(vector, nvmeq);
-@@ -1391,7 +1437,7 @@ static struct nvme_queue *nvme_alloc_que
+@@ -1391,7 +1438,7 @@ static struct nvme_queue *nvme_alloc_que
  	nvmeq->q_dmadev = dev->dev;
  	nvmeq->dev = dev;
  	snprintf(nvmeq->irqname, sizeof(nvmeq->irqname), "nvme%dq%d",
@@ -341,7 +343,7 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
  	spin_lock_init(&nvmeq->q_lock);
  	nvmeq->cq_head = 0;
  	nvmeq->cq_phase = 1;
-@@ -1564,15 +1610,15 @@ static struct blk_mq_ops nvme_mq_ops = {
+@@ -1564,15 +1611,15 @@ static struct blk_mq_ops nvme_mq_ops = {
  
  static void nvme_dev_remove_admin(struct nvme_dev *dev)
  {
@@ -360,7 +362,7 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
  		dev->admin_tagset.ops = &nvme_mq_admin_ops;
  		dev->admin_tagset.nr_hw_queues = 1;
  		dev->admin_tagset.queue_depth = NVME_AQ_DEPTH - 1;
-@@ -1585,18 +1631,18 @@ static int nvme_alloc_admin_tags(struct
+@@ -1585,18 +1632,18 @@ static int nvme_alloc_admin_tags(struct
  		if (blk_mq_alloc_tag_set(&dev->admin_tagset))
  			return -ENOMEM;
  
@@ -384,7 +386,7 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
  
  	return 0;
  }
-@@ -1675,7 +1721,7 @@ static int nvme_configure_admin_queue(st
+@@ -1675,7 +1722,7 @@ static int nvme_configure_admin_queue(st
  
  static int nvme_submit_io(struct nvme_ns *ns, struct nvme_user_io __user *uio)
  {
@@ -393,7 +395,7 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
  	struct nvme_user_io io;
  	struct nvme_command c;
  	unsigned length, meta_len;
-@@ -1750,7 +1796,7 @@ static int nvme_submit_io(struct nvme_ns
+@@ -1750,7 +1797,7 @@ static int nvme_submit_io(struct nvme_ns
  	return status;
  }
  
@@ -402,7 +404,7 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
  			struct nvme_passthru_cmd __user *ucmd)
  {
  	struct nvme_passthru_cmd cmd;
-@@ -1779,7 +1825,7 @@ static int nvme_user_cmd(struct nvme_dev
+@@ -1779,7 +1826,7 @@ static int nvme_user_cmd(struct nvme_dev
  	if (cmd.timeout_ms)
  		timeout = msecs_to_jiffies(cmd.timeout_ms);
  
@@ -411,7 +413,7 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
  			NULL, (void __user *)(uintptr_t)cmd.addr, cmd.data_len,
  			&cmd.result, timeout);
  	if (status >= 0) {
-@@ -1809,9 +1855,9 @@ static int nvme_ioctl(struct block_devic
+@@ -1809,9 +1856,9 @@ static int nvme_ioctl(struct block_devic
  		force_successful_syscall_return();
  		return ns->ns_id;
  	case NVME_IOCTL_ADMIN_CMD:
@@ -423,7 +425,7 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
  	case NVME_IOCTL_SUBMIT_IO:
  		return nvme_submit_io(ns, (void __user *)arg);
  	case SG_GET_VERSION_NUM:
-@@ -1841,6 +1887,7 @@ static void nvme_free_dev(struct kref *k
+@@ -1841,6 +1888,7 @@ static void nvme_free_dev(struct kref *k
  static void nvme_free_ns(struct kref *kref)
  {
  	struct nvme_ns *ns = container_of(kref, struct nvme_ns, kref);
@@ -431,7 +433,7 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
  
  	if (ns->type == NVME_NS_LIGHTNVM)
  		nvme_nvm_unregister(ns->queue, ns->disk->disk_name);
-@@ -1849,7 +1896,7 @@ static void nvme_free_ns(struct kref *kr
+@@ -1849,7 +1897,7 @@ static void nvme_free_ns(struct kref *kr
  	ns->disk->private_data = NULL;
  	spin_unlock(&dev_list_lock);
  
@@ -440,7 +442,7 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
  	put_disk(ns->disk);
  	kfree(ns);
  }
-@@ -1898,15 +1945,15 @@ static void nvme_config_discard(struct n
+@@ -1898,15 +1946,15 @@ static void nvme_config_discard(struct n
  static int nvme_revalidate_disk(struct gendisk *disk)
  {
  	struct nvme_ns *ns = disk->private_data;
@@ -459,7 +461,7 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
  		return -ENODEV;
  	}
  	if (id->ncap == 0) {
-@@ -1962,7 +2009,7 @@ static int nvme_revalidate_disk(struct g
+@@ -1962,7 +2010,7 @@ static int nvme_revalidate_disk(struct g
  	else
  		set_capacity(disk, le64_to_cpup(&id->nsze) << (ns->lba_shift - 9));
  
@@ -468,7 +470,7 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
  		nvme_config_discard(ns);
  	blk_mq_unfreeze_queue(disk->queue);
  
-@@ -2100,10 +2147,10 @@ static int nvme_kthread(void *data)
+@@ -2100,10 +2148,10 @@ static int nvme_kthread(void *data)
  				spin_lock_irq(&nvmeq->q_lock);
  				nvme_process_cq(nvmeq);
  
@@ -481,7 +483,7 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
  				}
  				spin_unlock_irq(&nvmeq->q_lock);
  			}
-@@ -2129,7 +2176,7 @@ static void nvme_alloc_ns(struct nvme_de
+@@ -2129,7 +2177,7 @@ static void nvme_alloc_ns(struct nvme_de
  		goto out_free_ns;
  	queue_flag_set_unlocked(QUEUE_FLAG_NOMERGES, ns->queue);
  	queue_flag_set_unlocked(QUEUE_FLAG_NONROT, ns->queue);
@@ -490,7 +492,7 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
  	ns->queue->queuedata = ns;
  
  	disk = alloc_disk_node(0, node);
-@@ -2150,7 +2197,7 @@ static void nvme_alloc_ns(struct nvme_de
+@@ -2150,7 +2198,7 @@ static void nvme_alloc_ns(struct nvme_de
  	}
  	if (dev->stripe_size)
  		blk_queue_chunk_sectors(ns->queue, dev->stripe_size >> 9);
@@ -499,7 +501,7 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
  		blk_queue_flush(ns->queue, REQ_FLUSH | REQ_FUA);
  	blk_queue_virt_boundary(ns->queue, dev->page_size - 1);
  
-@@ -2161,7 +2208,7 @@ static void nvme_alloc_ns(struct nvme_de
+@@ -2161,7 +2209,7 @@ static void nvme_alloc_ns(struct nvme_de
  	disk->queue = ns->queue;
  	disk->driverfs_dev = dev->device;
  	disk->flags = GENHD_FL_EXT_DEVT;
@@ -508,7 +510,7 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
  
  	/*
  	 * Initialize capacity to 0 until we establish the namespace format and
-@@ -2226,7 +2273,7 @@ static int set_queue_count(struct nvme_d
+@@ -2226,7 +2274,7 @@ static int set_queue_count(struct nvme_d
  	u32 result;
  	u32 q_count = (count - 1) | ((count - 1) << 16);
  
@@ -517,7 +519,7 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
  								&result);
  	if (status < 0)
  		return status;
-@@ -2410,7 +2457,8 @@ static inline bool nvme_io_incapable(str
+@@ -2410,7 +2458,8 @@ static inline bool nvme_io_incapable(str
  
  static void nvme_ns_remove(struct nvme_ns *ns)
  {
@@ -527,7 +529,7 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
  
  	if (kill) {
  		blk_set_queue_dying(ns->queue);
-@@ -2476,7 +2524,7 @@ static void nvme_dev_scan(struct work_st
+@@ -2476,7 +2525,7 @@ static void nvme_dev_scan(struct work_st
  
  	if (!dev->tagset.tags)
  		return;
@@ -536,7 +538,7 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
  		return;
  	nvme_scan_namespaces(dev, le32_to_cpup(&ctrl->nn));
  	kfree(ctrl);
-@@ -2496,18 +2544,18 @@ static int nvme_dev_add(struct nvme_dev
+@@ -2496,18 +2545,18 @@ static int nvme_dev_add(struct nvme_dev
  	struct nvme_id_ctrl *ctrl;
  	int shift = NVME_CAP_MPSMIN(lo_hi_readq(dev->bar + NVME_REG_CAP)) + 12;
  
@@ -562,7 +564,7 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
  	if (ctrl->mdts)
  		dev->max_hw_sectors = 1 << (ctrl->mdts + shift - 9);
  	else
-@@ -2741,7 +2789,7 @@ static void nvme_disable_io_queues(struc
+@@ -2741,7 +2790,7 @@ static void nvme_disable_io_queues(struc
  	DEFINE_KTHREAD_WORKER_ONSTACK(worker);
  	struct nvme_delq_ctx dq;
  	struct task_struct *kworker_task = kthread_run(kthread_worker_fn,
@@ -571,7 +573,7 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
  
  	if (IS_ERR(kworker_task)) {
  		dev_err(dev->dev,
-@@ -2901,14 +2949,14 @@ static int nvme_set_instance(struct nvme
+@@ -2903,14 +2952,14 @@ static int nvme_set_instance(struct nvme
  	if (error)
  		return -ENODEV;
  
@@ -588,7 +590,7 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
  	spin_unlock(&dev_list_lock);
  }
  
-@@ -2921,8 +2969,8 @@ static void nvme_free_dev(struct kref *k
+@@ -2923,8 +2972,8 @@ static void nvme_free_dev(struct kref *k
  	nvme_release_instance(dev);
  	if (dev->tagset.tags)
  		blk_mq_free_tag_set(&dev->tagset);
@@ -599,7 +601,7 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
  	kfree(dev->queues);
  	kfree(dev->entry);
  	kfree(dev);
-@@ -2936,8 +2984,8 @@ static int nvme_dev_open(struct inode *i
+@@ -2938,8 +2987,8 @@ static int nvme_dev_open(struct inode *i
  
  	spin_lock(&dev_list_lock);
  	list_for_each_entry(dev, &dev_list, node) {
@@ -610,7 +612,7 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
  				ret = -EWOULDBLOCK;
  				break;
  			}
-@@ -2967,12 +3015,12 @@ static long nvme_dev_ioctl(struct file *
+@@ -2969,12 +3018,12 @@ static long nvme_dev_ioctl(struct file *
  
  	switch (cmd) {
  	case NVME_IOCTL_ADMIN_CMD:
@@ -625,7 +627,7 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
  	case NVME_IOCTL_RESET:
  		dev_warn(dev->dev, "resetting controller\n");
  		return nvme_reset(dev);
-@@ -3033,7 +3081,7 @@ static void nvme_probe_work(struct work_
+@@ -3035,7 +3084,7 @@ static void nvme_probe_work(struct work_
  	if (result)
  		goto free_tags;
  
@@ -634,7 +636,7 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
  
  	/*
  	 * Keep the controller around but remove all namespaces if we don't have
-@@ -3051,8 +3099,8 @@ static void nvme_probe_work(struct work_
+@@ -3053,8 +3102,8 @@ static void nvme_probe_work(struct work_
  
   free_tags:
  	nvme_dev_remove_admin(dev);
@@ -645,7 +647,7 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
  	dev->queues[0]->tags = NULL;
   disable:
  	nvme_disable_queue(dev, 0);
-@@ -3080,7 +3128,7 @@ static void nvme_dead_ctrl(struct nvme_d
+@@ -3082,7 +3131,7 @@ static void nvme_dead_ctrl(struct nvme_d
  	dev_warn(dev->dev, "Device failed to resume\n");
  	kref_get(&dev->kref);
  	if (IS_ERR(kthread_run(nvme_remove_dead_ctrl, dev, "nvme%d",
@@ -654,7 +656,7 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
  		dev_err(dev->dev,
  			"Failed to start controller remove task\n");
  		kref_put(&dev->kref, nvme_free_dev);
-@@ -3122,7 +3170,7 @@ static int nvme_reset(struct nvme_dev *d
+@@ -3124,7 +3173,7 @@ static int nvme_reset(struct nvme_dev *d
  {
  	int ret;
  
@@ -663,7 +665,7 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
  		return -ENODEV;
  
  	spin_lock(&dev_list_lock);
-@@ -3153,6 +3201,16 @@ static ssize_t nvme_sysfs_reset(struct d
+@@ -3155,6 +3204,16 @@ static ssize_t nvme_sysfs_reset(struct d
  }
  static DEVICE_ATTR(reset_controller, S_IWUSR, NULL, nvme_sysfs_reset);
  
@@ -680,7 +682,7 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
  static int nvme_dev_map(struct nvme_dev *dev)
  {
  	int bars;
-@@ -3204,6 +3262,9 @@ static int nvme_probe(struct pci_dev *pd
+@@ -3207,6 +3266,9 @@ static int nvme_probe(struct pci_dev *pd
  	if (result)
  		goto free;
  
@@ -690,7 +692,7 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
  	result = nvme_set_instance(dev);
  	if (result)
  		goto put_pci;
-@@ -3214,8 +3275,8 @@ static int nvme_probe(struct pci_dev *pd
+@@ -3217,8 +3279,8 @@ static int nvme_probe(struct pci_dev *pd
  
  	kref_init(&dev->kref);
  	dev->device = device_create(nvme_class, &pdev->dev,
@@ -701,7 +703,7 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
  	if (IS_ERR(dev->device)) {
  		result = PTR_ERR(dev->device);
  		goto release_pools;
-@@ -3234,7 +3295,7 @@ static int nvme_probe(struct pci_dev *pd
+@@ -3237,7 +3299,7 @@ static int nvme_probe(struct pci_dev *pd
  	return 0;
  
   put_dev:
@@ -710,7 +712,7 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
  	put_device(dev->device);
   release_pools:
  	nvme_release_prp_pools(dev);
-@@ -3282,7 +3343,7 @@ static void nvme_remove(struct pci_dev *
+@@ -3285,7 +3347,7 @@ static void nvme_remove(struct pci_dev *
  	nvme_dev_remove(dev);
  	nvme_dev_shutdown(dev);
  	nvme_dev_remove_admin(dev);

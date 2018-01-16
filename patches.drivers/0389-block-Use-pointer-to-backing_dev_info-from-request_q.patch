@@ -102,7 +102,7 @@ Signed-off-by: Hannes Reinecke <hare@suse.de>
  }
  EXPORT_SYMBOL(blk_get_backing_dev_info);
  
-@@ -584,7 +584,7 @@ void blk_cleanup_queue(struct request_qu
+@@ -585,7 +585,7 @@ void blk_cleanup_queue(struct request_qu
  	blk_flush_integrity();
  
  	/* @q won't process any more request, flush async actions */
@@ -111,7 +111,7 @@ Signed-off-by: Hannes Reinecke <hare@suse.de>
  	blk_sync_queue(q);
  
  	if (q->mq_ops)
-@@ -596,7 +596,7 @@ void blk_cleanup_queue(struct request_qu
+@@ -597,7 +597,7 @@ void blk_cleanup_queue(struct request_qu
  		q->queue_lock = &q->__queue_lock;
  	spin_unlock_irq(lock);
  
@@ -120,7 +120,7 @@ Signed-off-by: Hannes Reinecke <hare@suse.de>
  
  	/* @q is and will stay empty, shutdown and put */
  	blk_put_queue(q);
-@@ -708,17 +708,18 @@ struct request_queue *blk_alloc_queue_no
+@@ -709,17 +709,18 @@ struct request_queue *blk_alloc_queue_no
  	if (!q->bio_split)
  		goto fail_id;
  
@@ -143,8 +143,8 @@ Signed-off-by: Hannes Reinecke <hare@suse.de>
 +	setup_timer(&q->backing_dev_info->laptop_mode_wb_timer,
  		    laptop_mode_timer_fn, (unsigned long) q);
  	setup_timer(&q->timeout, blk_rq_timed_out_timer, (unsigned long) q);
- 	INIT_LIST_HEAD(&q->queue_head);
-@@ -768,7 +769,7 @@ struct request_queue *blk_alloc_queue_no
+ 	INIT_WORK(&q->timeout_work, NULL);
+@@ -770,7 +771,7 @@ struct request_queue *blk_alloc_queue_no
  fail_ref:
  	percpu_ref_exit(&q->q_usage_counter);
  fail_bdi:
@@ -153,7 +153,7 @@ Signed-off-by: Hannes Reinecke <hare@suse.de>
  fail_split:
  	bioset_free(q->bio_split);
  fail_id:
-@@ -1195,7 +1196,7 @@ fail_elvpriv:
+@@ -1197,7 +1198,7 @@ fail_elvpriv:
  	 * disturb iosched and blkcg but weird is bettern than dead.
  	 */
  	printk_ratelimited(KERN_WARNING "%s: dev %s: request aux data allocation failed, iosched may be disturbed\n",
@@ -162,7 +162,7 @@ Signed-off-by: Hannes Reinecke <hare@suse.de>
  
  	rq->rq_flags &= ~RQF_ELVPRIV;
  	rq->elv.icq = NULL;
-@@ -2713,7 +2714,7 @@ void blk_finish_request(struct request *
+@@ -2715,7 +2716,7 @@ void blk_finish_request(struct request *
  	BUG_ON(blk_queued_rq(req));
  
  	if (unlikely(laptop_mode) && req->cmd_type == REQ_TYPE_FS)
@@ -173,7 +173,7 @@ Signed-off-by: Hannes Reinecke <hare@suse.de>
  
 --- a/block/blk-integrity.c
 +++ b/block/blk-integrity.c
-@@ -417,7 +417,7 @@ void blk_integrity_register(struct gendi
+@@ -418,7 +418,7 @@ void blk_integrity_register(struct gendi
  	bi->tuple_size = template->tuple_size;
  	bi->tag_size = template->tag_size;
  
@@ -182,7 +182,7 @@ Signed-off-by: Hannes Reinecke <hare@suse.de>
  }
  EXPORT_SYMBOL(blk_integrity_register);
  
-@@ -430,7 +430,7 @@ EXPORT_SYMBOL(blk_integrity_register);
+@@ -431,7 +431,7 @@ EXPORT_SYMBOL(blk_integrity_register);
   */
  void blk_integrity_unregister(struct gendisk *disk)
  {
@@ -388,7 +388,7 @@ Signed-off-by: Hannes Reinecke <hare@suse.de>
  			congestion_wait(BLK_RW_ASYNC, HZ);
 --- a/drivers/block/rbd.c
 +++ b/drivers/block/rbd.c
-@@ -4057,7 +4057,7 @@ static int rbd_init_disk(struct rbd_devi
+@@ -3950,7 +3950,7 @@ static int rbd_init_disk(struct rbd_devi
  	q->limits.discard_zeroes_data = 1;
  
  	if (!ceph_test_opt(rbd_dev->rbd_client->client, NOCRC))
@@ -399,7 +399,7 @@ Signed-off-by: Hannes Reinecke <hare@suse.de>
  
 --- a/drivers/md/bcache/request.c
 +++ b/drivers/md/bcache/request.c
-@@ -1009,7 +1009,7 @@ static int cached_dev_congested(void *da
+@@ -1012,7 +1012,7 @@ static int cached_dev_congested(void *da
  	struct request_queue *q = bdev_get_queue(dc->bdev);
  	int ret = 0;
  
@@ -408,7 +408,7 @@ Signed-off-by: Hannes Reinecke <hare@suse.de>
  		return 1;
  
  	if (cached_dev_get(dc)) {
-@@ -1018,7 +1018,7 @@ static int cached_dev_congested(void *da
+@@ -1021,7 +1021,7 @@ static int cached_dev_congested(void *da
  
  		for_each_cache(ca, d->c, i) {
  			q = bdev_get_queue(ca->bdev);
@@ -417,7 +417,7 @@ Signed-off-by: Hannes Reinecke <hare@suse.de>
  		}
  
  		cached_dev_put(dc);
-@@ -1032,7 +1032,7 @@ void bch_cached_dev_request_init(struct
+@@ -1035,7 +1035,7 @@ void bch_cached_dev_request_init(struct
  	struct gendisk *g = dc->disk.disk;
  
  	g->queue->make_request_fn		= cached_dev_make_request;
@@ -426,7 +426,7 @@ Signed-off-by: Hannes Reinecke <hare@suse.de>
  	dc->disk.cache_miss			= cached_dev_cache_miss;
  	dc->disk.ioctl				= cached_dev_ioctl;
  }
-@@ -1125,7 +1125,7 @@ static int flash_dev_congested(void *dat
+@@ -1128,7 +1128,7 @@ static int flash_dev_congested(void *dat
  
  	for_each_cache(ca, d->c, i) {
  		q = bdev_get_queue(ca->bdev);
@@ -435,7 +435,7 @@ Signed-off-by: Hannes Reinecke <hare@suse.de>
  	}
  
  	return ret;
-@@ -1136,7 +1136,7 @@ void bch_flash_dev_request_init(struct b
+@@ -1139,7 +1139,7 @@ void bch_flash_dev_request_init(struct b
  	struct gendisk *g = d->disk;
  
  	g->queue->make_request_fn		= flash_dev_make_request;
@@ -446,7 +446,7 @@ Signed-off-by: Hannes Reinecke <hare@suse.de>
  }
 --- a/drivers/md/bcache/super.c
 +++ b/drivers/md/bcache/super.c
-@@ -807,7 +807,7 @@ static int bcache_device_init(struct bca
+@@ -809,7 +809,7 @@ static int bcache_device_init(struct bca
  	blk_queue_make_request(q, NULL);
  	d->disk->queue			= q;
  	q->queuedata			= d;
@@ -455,7 +455,7 @@ Signed-off-by: Hannes Reinecke <hare@suse.de>
  	q->limits.max_hw_sectors	= UINT_MAX;
  	q->limits.max_sectors		= UINT_MAX;
  	q->limits.max_segment_size	= UINT_MAX;
-@@ -1132,9 +1132,9 @@ static int cached_dev_init(struct cached
+@@ -1136,9 +1136,9 @@ static int cached_dev_init(struct cached
  	set_capacity(dc->disk.disk,
  		     dc->bdev->bd_part->nr_sects - dc->sb.data_offset);
  
@@ -554,7 +554,7 @@ Signed-off-by: Hannes Reinecke <hare@suse.de>
  	rcu_read_unlock();
 --- a/drivers/md/md.c
 +++ b/drivers/md/md.c
-@@ -5502,8 +5502,8 @@ int md_run(struct mddev *mddev)
+@@ -5409,8 +5409,8 @@ int md_run(struct mddev *mddev)
  			queue_flag_set_unlocked(QUEUE_FLAG_NONROT, mddev->queue);
  		else
  			queue_flag_clear_unlocked(QUEUE_FLAG_NONROT, mddev->queue);
@@ -565,7 +565,7 @@ Signed-off-by: Hannes Reinecke <hare@suse.de>
  	}
  	if (pers->sync_request) {
  		if (mddev->kobj.sd &&
-@@ -5851,7 +5851,7 @@ static int do_md_stop(struct mddev *mdde
+@@ -5763,7 +5763,7 @@ static int do_md_stop(struct mddev *mdde
  
  		__md_stop_writes(mddev);
  		__md_stop(mddev);
@@ -632,7 +632,7 @@ Signed-off-by: Hannes Reinecke <hare@suse.de>
  		}
  	}
  	rcu_read_unlock();
-@@ -3829,8 +3829,8 @@ static int raid10_run(struct mddev *mdde
+@@ -3842,8 +3842,8 @@ static int raid10_run(struct mddev *mdde
  		 * maybe...
  		 */
  		stripe /= conf->geo.near_copies;
@@ -643,7 +643,7 @@ Signed-off-by: Hannes Reinecke <hare@suse.de>
  	}
  
  	if (md_integrity_register(mddev))
-@@ -4627,8 +4627,8 @@ static void end_reshape(struct r10conf *
+@@ -4640,8 +4640,8 @@ static void end_reshape(struct r10conf *
  		int stripe = conf->geo.raid_disks *
  			((conf->mddev->chunk_sectors << 9) / PAGE_SIZE);
  		stripe /= conf->geo.near_copies;
@@ -656,7 +656,7 @@ Signed-off-by: Hannes Reinecke <hare@suse.de>
  }
 --- a/drivers/md/raid5.c
 +++ b/drivers/md/raid5.c
-@@ -6413,10 +6413,10 @@ raid5_store_skip_copy(struct mddev *mdde
+@@ -6375,10 +6375,10 @@ raid5_store_skip_copy(struct mddev *mdde
  		mddev_suspend(mddev);
  		conf->skip_copy = new;
  		if (new)
@@ -669,7 +669,7 @@ Signed-off-by: Hannes Reinecke <hare@suse.de>
  				~BDI_CAP_STABLE_WRITES;
  		mddev_resume(mddev);
  	}
-@@ -7285,8 +7285,8 @@ static int raid5_run(struct mddev *mddev
+@@ -7237,8 +7237,8 @@ static int raid5_run(struct mddev *mddev
  		int data_disks = conf->previous_raid_disks - conf->max_degraded;
  		int stripe = data_disks *
  			((mddev->chunk_sectors << 9) / PAGE_SIZE);
@@ -680,7 +680,7 @@ Signed-off-by: Hannes Reinecke <hare@suse.de>
  
  		chunk_size = mddev->chunk_sectors << 9;
  		blk_queue_io_min(mddev->queue, chunk_size);
-@@ -7890,8 +7890,8 @@ static void end_reshape(struct r5conf *c
+@@ -7843,8 +7843,8 @@ static void end_reshape(struct r5conf *c
  			int data_disks = conf->raid_disks - conf->max_degraded;
  			int stripe = data_disks * ((conf->chunk_sectors << 9)
  						   / PAGE_SIZE);

@@ -16,11 +16,9 @@ Signed-off-by: Ard Biesheuvel <ard.biesheuvel@linaro.org>
 Signed-off-by: Catalin Marinas <catalin.marinas@arm.com>
 Signed-off-by: Mian Yousaf Kaukab <yousaf.kaukab@suse.com>
 ---
- arch/arm64/include/asm/elf.h | 22 +++++++++++++---------
+ arch/arm64/include/asm/elf.h |   22 +++++++++++++---------
  1 file changed, 13 insertions(+), 9 deletions(-)
 
-diff --git a/arch/arm64/include/asm/elf.h b/arch/arm64/include/asm/elf.h
-index 703487d..1abe6eb 100644
 --- a/arch/arm64/include/asm/elf.h
 +++ b/arch/arm64/include/asm/elf.h
 @@ -24,15 +24,6 @@
@@ -39,9 +37,9 @@ index 703487d..1abe6eb 100644
  /*
   * AArch64 static relocation types.
   */
-@@ -127,6 +118,17 @@ typedef struct user_fpsimd_state elf_fpregset_t;
+@@ -126,6 +117,17 @@ typedef struct user_fpsimd_state elf_fpr
   */
- #define ELF_ET_DYN_BASE	(2 * TASK_SIZE_64 / 3)
+ #define ELF_ET_DYN_BASE		(2 * TASK_SIZE_64 / 3)
  
 +#ifndef __ASSEMBLY__
 +
@@ -57,13 +55,10 @@ index 703487d..1abe6eb 100644
  /*
   * When the program starts, a1 contains a pointer to a function to be
   * registered with atexit, as per the SVR4 ABI.  A value of 0 means we have no
-@@ -188,4 +190,6 @@ extern int aarch32_setup_vectors_page(struct linux_binprm *bprm,
+@@ -188,4 +190,6 @@ extern int aarch32_setup_vectors_page(st
  
  #endif /* CONFIG_COMPAT */
  
 +#endif /* !__ASSEMBLY__ */
 +
  #endif
--- 
-2.11.0
-

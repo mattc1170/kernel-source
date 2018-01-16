@@ -10,7 +10,7 @@ vendor/device tuple to discover the RDMA device.
 
 Signed-off-by: K. Y. Srinivasan <kys@microsoft.com>
 Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  Documentation/ABI/stable/sysfs-bus-vmbus |  14 +++
  drivers/hv/channel_mgmt.c                | 166 +++++++++++++++++++++++--------

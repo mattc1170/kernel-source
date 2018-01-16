@@ -1,0 +1,61 @@
+From: James Smart <jsmart2021@gmail.com>
+Date: Mon, 20 Nov 2017 16:00:35 -0800
+Subject: scsi: lpfc: Fix display for debugfs queInfo
+References: bsc#1067735
+Patch-mainline: Queued in subsystem maintainer repository
+Git-commit: 09975eaecb260fb45b034615047ef92db8918d4a
+Git-repo: https://git.kernel.org/pub/scm/linux/kernel/git/mkp/scsi.git
+
+Display for lpfc/fnX/iDiag/queInfo isn't formatted perfectly.  Corrected
+the format strings for the queue info debug messages.
+
+Signed-off-by: Dick Kennedy <dick.kennedy@broadcom.com>
+Signed-off-by: James Smart <james.smart@broadcom.com>
+Reviewed-by: Hannes Reinecke <hare@suse.com>
+Signed-off-by: Martin K. Petersen <martin.petersen@oracle.com>
+---
+ drivers/scsi/lpfc/lpfc_debugfs.c | 14 +++++++-------
+ 1 file changed, 7 insertions(+), 7 deletions(-)
+
+diff --git a/drivers/scsi/lpfc/lpfc_debugfs.c b/drivers/scsi/lpfc/lpfc_debugfs.c
+index 2bf5ad3..4df5a21 100644
+--- a/drivers/scsi/lpfc/lpfc_debugfs.c
++++ b/drivers/scsi/lpfc/lpfc_debugfs.c
+@@ -3246,7 +3246,7 @@ static int lpfc_idiag_cmd_get(const char __user *buf, size_t nbytes,
+ 
+ 	len += snprintf(pbuffer + len, LPFC_QUE_INFO_GET_BUF_SIZE - len,
+ 			"\n%s EQ info: EQ-STAT[max:x%x noE:x%x "
+-			"bs:x%x proc:x%llx eqd %d]\n",
++			"cqe_proc:x%x eqe_proc:x%llx eqd %d]\n",
+ 			eqtype, qp->q_cnt_1, qp->q_cnt_2, qp->q_cnt_3,
+ 			(unsigned long long)qp->q_cnt_4, qp->q_mode);
+ 	len += snprintf(pbuffer + len, LPFC_QUE_INFO_GET_BUF_SIZE - len,
+@@ -3366,6 +3366,12 @@ static int lpfc_idiag_cmd_get(const char __user *buf, size_t nbytes,
+ 		if (len >= max_cnt)
+ 			goto too_big;
+ 
++		qp = phba->sli4_hba.hdr_rq;
++		len = __lpfc_idiag_print_rqpair(qp, phba->sli4_hba.dat_rq,
++						"ELS RQpair", pbuffer, len);
++		if (len >= max_cnt)
++			goto too_big;
++
+ 		/* Slow-path NVME LS response CQ */
+ 		qp = phba->sli4_hba.nvmels_cq;
+ 		len = __lpfc_idiag_print_cq(qp, "NVME LS",
+@@ -3383,12 +3389,6 @@ static int lpfc_idiag_cmd_get(const char __user *buf, size_t nbytes,
+ 		if (len >= max_cnt)
+ 			goto too_big;
+ 
+-		qp = phba->sli4_hba.hdr_rq;
+-		len = __lpfc_idiag_print_rqpair(qp, phba->sli4_hba.dat_rq,
+-				"RQpair", pbuffer, len);
+-		if (len >= max_cnt)
+-			goto too_big;
+-
+ 		goto out;
+ 	}
+ 
+-- 
+1.8.5.6
+

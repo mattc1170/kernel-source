@@ -13,7 +13,7 @@ net device in netvsc_recv_callback() causing kernel to crash.
 Signed-off-by: Vitaly Kuznetsov <vkuznets@redhat.com>
 Acked-by: Haiyang Zhang <haiyangz@microsoft.com>
 Signed-off-by: David S. Miller <davem@davemloft.net>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  drivers/net/hyperv/netvsc_drv.c | 26 ++++++++++++++++----------
  1 file changed, 16 insertions(+), 10 deletions(-)

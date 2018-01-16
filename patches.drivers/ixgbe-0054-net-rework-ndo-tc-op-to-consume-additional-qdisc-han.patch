@@ -48,7 +48,7 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
 
 --- a/drivers/net/ethernet/amd/xgbe/xgbe-drv.c
 +++ b/drivers/net/ethernet/amd/xgbe/xgbe-drv.c
-@@ -1626,12 +1626,15 @@ static void xgbe_poll_controller(struct
+@@ -1628,12 +1628,15 @@ static void xgbe_poll_controller(struct
  }
  #endif /* End CONFIG_NET_POLL_CONTROLLER */
  
@@ -104,7 +104,7 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  	.ndo_set_vf_vlan	= bnx2x_set_vf_vlan,
 --- a/drivers/net/ethernet/broadcom/bnxt/bnxt.c
 +++ b/drivers/net/ethernet/broadcom/bnxt/bnxt.c
-@@ -5278,10 +5278,13 @@ static int bnxt_change_mtu(struct net_de
+@@ -5277,10 +5277,13 @@ static int bnxt_change_mtu(struct net_de
  	return 0;
  }
  
@@ -147,7 +147,7 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  	.ndo_set_vf_rate	= fm10k_ndo_set_vf_bw,
 --- a/drivers/net/ethernet/intel/i40e/i40e.h
 +++ b/drivers/net/ethernet/intel/i40e/i40e.h
-@@ -772,7 +772,7 @@ struct i40e_mac_filter *i40e_find_mac(st
+@@ -774,7 +774,7 @@ struct i40e_mac_filter *i40e_find_mac(st
  				      bool is_vf, bool is_netdev);
  #ifdef I40E_FCOE
  int i40e_close(struct net_device *netdev);
@@ -169,7 +169,7 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  	.ndo_poll_controller	= i40e_netpoll,
 --- a/drivers/net/ethernet/intel/i40e/i40e_main.c
 +++ b/drivers/net/ethernet/intel/i40e/i40e_main.c
-@@ -5207,11 +5207,7 @@ void i40e_down(struct i40e_vsi *vsi)
+@@ -5242,11 +5242,7 @@ void i40e_down(struct i40e_vsi *vsi)
   * @netdev: net device to configure
   * @tc: number of traffic classes to enable
   **/
@@ -181,7 +181,7 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  {
  	struct i40e_netdev_priv *np = netdev_priv(netdev);
  	struct i40e_vsi *vsi = np->vsi;
-@@ -5264,6 +5260,17 @@ exit:
+@@ -5299,6 +5295,17 @@ exit:
  	return ret;
  }
  
@@ -199,7 +199,7 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  /**
   * i40e_open - Called when a network interface is made active
   * @netdev: network interface device structure
-@@ -8583,7 +8590,7 @@ static const struct net_device_ops i40e_
+@@ -8633,7 +8640,7 @@ static const struct net_device_ops i40e_
  #ifdef CONFIG_NET_POLL_CONTROLLER
  	.ndo_poll_controller	= i40e_netpoll,
  #endif
@@ -332,7 +332,7 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  
  struct netpoll_info;
  struct device;
-@@ -1149,7 +1150,7 @@ struct net_device_ops {
+@@ -1148,7 +1149,7 @@ struct net_device_ops {
  	int			(*ndo_set_vf_rss_query_en)(
  						   struct net_device *dev,
  						   int vf, bool setting);
@@ -352,7 +352,7 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  	else
  		netdev_set_num_tc(dev, 0);
  }
-@@ -141,7 +141,8 @@ static int mqprio_init(struct Qdisc *sch
+@@ -138,7 +138,8 @@ static int mqprio_init(struct Qdisc *sch
  	 */
  	if (qopt->hw) {
  		priv->hw_owned = 1;
@@ -360,5 +360,5 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
 +		err = dev->netdev_ops->ndo_setup_tc(dev, sch->handle,
 +						    qopt->num_tc);
  		if (err)
- 			goto err;
+ 			return err;
  	} else {

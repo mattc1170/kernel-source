@@ -14,7 +14,7 @@ returns without freeing int_desc as part of hv_int_desc_free().
 Signed-off-by: Cathy Avery <cavery@redhat.com>
 Signed-off-by: Bjorn Helgaas <bhelgaas@google.com>
 Acked-by: Jake Oshins <jakeo@microsoft.com>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  drivers/pci/host/pci-hyperv.c | 14 ++++++++------
  1 file changed, 8 insertions(+), 6 deletions(-)

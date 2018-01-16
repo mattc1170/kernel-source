@@ -1,0 +1,46 @@
+From 872684b1f7de40b95dac51245f3aad208528a6c3 Mon Sep 17 00:00:00 2001
+From: Kirtika Ruchandani <kirtika.ruchandani@gmail.com>
+Date: Mon, 21 Nov 2016 22:04:46 -0800
+Subject: [PATCH] mac80211: Remove unused 'rates_idx' variable
+Mime-version: 1.0
+Content-type: text/plain; charset=UTF-8
+Content-transfer-encoding: 8bit
+Git-commit: 872684b1f7de40b95dac51245f3aad208528a6c3
+Patch-mainline: 4.11-rc1
+References: bsc#1031717
+
+Commit f027c2aca0cf introduced 'rates_idx' in
+ieee80211_tx_status_noskb but did not use it. Compiling with W=1
+gives the following warning, fix it.
+
+Mac80211/status.c: In function ‘ieee80211_tx_status_noskb’:
+mac80211/status.c:636:6: warning: variable ‘rates_idx’ set but not used [-Wunused-but-set-variable]
+
+This is a harmless warning, and is only being fixed to reduce the
+noise generated with W=1.
+
+Fixes: f027c2aca0cf ("mac80211: add ieee80211_tx_status_noskb")
+Cc: Johannes Berg <johannes.berg@intel.com>
+Cc: Felix Fietkau <nbd@openwrt.org>
+Signed-off-by: Kirtika Ruchandani <kirtika@google.com>
+Signed-off-by: Johannes Berg <johannes.berg@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ net/mac80211/status.c |    3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
+
+--- a/net/mac80211/status.c
++++ b/net/mac80211/status.c
+@@ -622,10 +622,9 @@ void ieee80211_tx_status_noskb(struct ie
+ 	struct ieee80211_local *local = hw_to_local(hw);
+ 	struct ieee80211_supported_band *sband;
+ 	int retry_count;
+-	int rates_idx;
+ 	bool acked, noack_success;
+ 
+-	rates_idx = ieee80211_tx_get_rates(hw, info, &retry_count);
++	ieee80211_tx_get_rates(hw, info, &retry_count);
+ 
+ 	sband = hw->wiphy->bands[info->band];
+ 

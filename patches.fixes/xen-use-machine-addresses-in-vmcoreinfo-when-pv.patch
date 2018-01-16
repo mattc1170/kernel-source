@@ -1,7 +1,8 @@
 From: Juergen Gross <jgross@suse.com>
 Subject: Xen: Use machine addresses in /sys/kernel/vmcoreinfo when PV
 References: bsc#1014136
-Patch-mainline: not yet, patch posted
+Patch-mainline: 4.12
+Git-commit: 29985b09613ba106a1ed0496988636d288600515
 
 The values from the sysfs kernel/vmcoreinfo file are used to construct
 ELF headers which are used by the kexec'ed kernel, i.e. after the Xen

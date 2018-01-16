@@ -1,0 +1,42 @@
+From 95ef8b20815e81fe6845f3e504a419e25029c22b Mon Sep 17 00:00:00 2001
+From: Mian Yousaf Kaukab <yousaf.kaukab@suse.com>
+Date: Sat, 7 Oct 2017 11:52:18 +0200
+Subject: [PATCH 53/56] perf: arm: replace irq_get_percpu_devid_partition call
+
+Patch-mainline: Never, Workaround for missing functionality
+References: bsc#1062279
+
+Replace irq_get_percpu_devid_partition since partitionned percpu
+interrupts are not supported in v4.4 kernel.
+
+Signed-off-by: Mian Yousaf Kaukab <yousaf.kaukab@suse.com>
+---
+ drivers/perf/arm_pmu_platform.c | 10 ++++++----
+ 1 file changed, 6 insertions(+), 4 deletions(-)
+
+diff --git a/drivers/perf/arm_pmu_platform.c b/drivers/perf/arm_pmu_platform.c
+index 9b80c007..a48b85ce 100644
+--- a/drivers/perf/arm_pmu_platform.c
++++ b/drivers/perf/arm_pmu_platform.c
+@@ -43,12 +43,14 @@ static int probe_current_pmu(struct arm_pmu *pmu,
+ 
+ static int pmu_parse_percpu_irq(struct arm_pmu *pmu, int irq)
+ {
+-	int cpu, ret;
++	int cpu;
+ 	struct pmu_hw_events __percpu *hw_events = pmu->hw_events;
+ 
+-	ret = irq_get_percpu_devid_partition(irq, &pmu->supported_cpus);
+-	if (ret)
+-		return ret;
++	/*
++	 * Replace irq_get_percpu_devid_partition since partitionned percpu
++	 * interrupts are not supported
++	 */
++	cpumask_setall(&pmu->supported_cpus);
+ 
+ 	for_each_cpu(cpu, &pmu->supported_cpus)
+ 		per_cpu(hw_events->irq, cpu) = irq;
+-- 
+2.11.0
+

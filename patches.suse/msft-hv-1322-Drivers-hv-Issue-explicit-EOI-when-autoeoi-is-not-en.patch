@@ -12,7 +12,7 @@ Fixes: 6c248aad81c8 ("Drivers: hv: Base autoeoi enablement based on hypervisor h
 
 Signed-off-by: K. Y. Srinivasan <kys@microsoft.com>
 Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  arch/x86/kernel/cpu/mshyperv.c | 3 +++
  1 file changed, 3 insertions(+)

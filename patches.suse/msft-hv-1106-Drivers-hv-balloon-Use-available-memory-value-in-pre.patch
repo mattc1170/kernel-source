@@ -11,7 +11,7 @@ The previous freeram value does not include available page cache memory.
 Signed-off-by: Alex Ng <alexng@messages.microsoft.com>
 Signed-off-by: K. Y. Srinivasan <kys@microsoft.com>
 Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  drivers/hv/hv_balloon.c | 13 +++++--------
  1 file changed, 5 insertions(+), 8 deletions(-)

@@ -1,0 +1,39 @@
+From: James Smart <james.smart@broadcom.com>
+Date: Mon, 19 Dec 2016 15:07:23 -0800
+Subject: [PATCH] scsi: lpfc: Correct issue leading to oops during link reset
+Patch-mainline: 4.4.100
+References: FATE#321664 bnc#1012382 bsc#1017969
+Git-commit: e6c6acc0e0223ddaf867628d420ee196349c6fae
+
+[ Upstream commit e6c6acc0e0223ddaf867628d420ee196349c6fae ]
+
+Correct issue leading to oops during link reset. Missing vport pointer.
+
+[mkp: fixed typo]
+
+Signed-off-by: Dick Kennedy <dick.kennedy@broadcom.com>
+Signed-off-by: James Smart <james.smart@broadcom.com>
+Reviewed-by: Hannes Reinecke <hare@suse.com>
+Signed-off-by: Martin K. Petersen <martin.petersen@oracle.com>
+Signed-off-by: Sasha Levin <alexander.levin@verizon.com>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Signed-off-by: Jiri Slaby <jslaby@suse.cz>
+---
+ drivers/scsi/lpfc/lpfc_sli.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/drivers/scsi/lpfc/lpfc_sli.c b/drivers/scsi/lpfc/lpfc_sli.c
+index abba562cf145..8379fbbc60db 100644
+--- a/drivers/scsi/lpfc/lpfc_sli.c
++++ b/drivers/scsi/lpfc/lpfc_sli.c
+@@ -9807,6 +9807,7 @@ lpfc_sli_abort_iotag_issue(struct lpfc_hba *phba, struct lpfc_sli_ring *pring,
+ 		iabt->ulpCommand = CMD_CLOSE_XRI_CN;
+ 
+ 	abtsiocbp->iocb_cmpl = lpfc_sli_abort_els_cmpl;
++	abtsiocbp->vport = vport;
+ 
+ 	lpfc_printf_vlog(vport, KERN_INFO, LOG_SLI,
+ 			 "0339 Abort xri x%x, original iotag x%x, "
+-- 
+2.15.0
+

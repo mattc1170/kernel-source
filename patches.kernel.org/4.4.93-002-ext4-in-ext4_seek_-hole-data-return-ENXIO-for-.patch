@@ -1,0 +1,48 @@
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Date: Thu, 24 Aug 2017 13:22:06 -0400
+Subject: [PATCH] ext4: in ext4_seek_{hole,data}, return -ENXIO for negative
+ offsets
+References: bnc#1012382
+Patch-mainline: 4.4.93
+Git-commit: 1bd8d6cd3e413d64e543ec3e69ff43e75a1cf1ea
+
+commit 1bd8d6cd3e413d64e543ec3e69ff43e75a1cf1ea upstream.
+
+In the ext4 implementations of SEEK_HOLE and SEEK_DATA, make sure we
+return -ENXIO for negative offsets instead of banging around inside
+the extent code and returning -EFSCORRUPTED.
+
+Reported-by: Mateusz S <muttdini@gmail.com>
+Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Signed-off-by: Jiri Slaby <jslaby@suse.cz>
+---
+ fs/ext4/file.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+index 45ef9975caec..a8b1749d79a8 100644
+--- a/fs/ext4/file.c
++++ b/fs/ext4/file.c
+@@ -559,7 +559,7 @@ static loff_t ext4_seek_data(struct file *file, loff_t offset, loff_t maxsize)
+ 	mutex_lock(&inode->i_mutex);
+ 
+ 	isize = i_size_read(inode);
+-	if (offset >= isize) {
++	if (offset < 0 || offset >= isize) {
+ 		mutex_unlock(&inode->i_mutex);
+ 		return -ENXIO;
+ 	}
+@@ -632,7 +632,7 @@ static loff_t ext4_seek_hole(struct file *file, loff_t offset, loff_t maxsize)
+ 	mutex_lock(&inode->i_mutex);
+ 
+ 	isize = i_size_read(inode);
+-	if (offset >= isize) {
++	if (offset < 0 || offset >= isize) {
+ 		mutex_unlock(&inode->i_mutex);
+ 		return -ENXIO;
+ 	}
+-- 
+2.14.2
+

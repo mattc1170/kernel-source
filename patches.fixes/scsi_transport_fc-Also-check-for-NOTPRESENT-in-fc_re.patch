@@ -1,0 +1,38 @@
+From: Hannes Reinecke <hare@suse.de>
+Date: Mon, 25 Sep 2017 13:47:23 +0200
+Subject: [PATCH] scsi: scsi_transport_fc: Also check for NOTPRESENT in
+ fc_remote_port_add()
+References: bsc#1037890
+Git-commit: f091fb8c344ce13cbf058d304c6cbb042be97058
+Patch-Mainline: v4.14
+
+During failover there is a small race window between fc_remote_port_add()
+and fc_timeout_deleted_rport(); the latter drops the lock after setting the
+port to NOTPRESENT, so if fc_remote_port_add() is called right at that time
+it will fail to detect the existing rport and happily adding a new
+structure, causing rports to get registered twice.
+
+Signed-off-by: Hannes Reinecke <hare@suse.com>
+Reviewed-by: Johannes Thumshirn <jthumshirn@suse.de>
+Signed-off-by: Martin K. Petersen <martin.petersen@oracle.com>
+---
+ drivers/scsi/scsi_transport_fc.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/scsi/scsi_transport_fc.c b/drivers/scsi/scsi_transport_fc.c
+index e74fffc..cbd4495 100644
+--- a/drivers/scsi/scsi_transport_fc.c
++++ b/drivers/scsi/scsi_transport_fc.c
+@@ -2739,7 +2739,8 @@ struct fc_rport *
+ 
+ 	list_for_each_entry(rport, &fc_host->rports, peers) {
+ 
+-		if ((rport->port_state == FC_PORTSTATE_BLOCKED) &&
++		if ((rport->port_state == FC_PORTSTATE_BLOCKED ||
++		     rport->port_state == FC_PORTSTATE_NOTPRESENT) &&
+ 			(rport->channel == channel)) {
+ 
+ 			switch (fc_host->tgtid_bind_type) {
+-- 
+1.8.5.6
+

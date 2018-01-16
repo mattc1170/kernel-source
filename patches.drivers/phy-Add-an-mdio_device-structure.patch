@@ -39,14 +39,14 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  drivers/net/phy/mdio_bus.c                       |   12 ++--
  drivers/net/phy/micrel.c                         |   12 ++--
  drivers/net/phy/microchip.c                      |    4 -
- drivers/net/phy/phy.c                            |   25 ++++-----
+ drivers/net/phy/phy.c                            |   27 +++++-----
  drivers/net/phy/phy_device.c                     |   62 +++++++++++------------
  drivers/net/phy/smsc.c                           |    2 
  drivers/of/of_mdio.c                             |    6 +-
  include/linux/mdio.h                             |    9 +++
  include/linux/phy.h                              |   26 ++++-----
  net/dsa/dsa.c                                    |    2 
- 33 files changed, 159 insertions(+), 145 deletions(-)
+ 33 files changed, 160 insertions(+), 146 deletions(-)
 
 --- a/drivers/net/ethernet/agere/et131x.c
 +++ b/drivers/net/ethernet/agere/et131x.c
@@ -152,7 +152,7 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  
 --- a/drivers/net/ethernet/broadcom/genet/bcmmii.c
 +++ b/drivers/net/ethernet/broadcom/genet/bcmmii.c
-@@ -401,7 +401,7 @@ int bcmgenet_mii_probe(struct net_device
+@@ -386,7 +386,7 @@ int bcmgenet_mii_probe(struct net_device
  	 * Ethernet MAC ISRs
  	 */
  	if (priv->internal_phy)
@@ -249,7 +249,7 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  
 --- a/drivers/net/ethernet/marvell/mvneta.c
 +++ b/drivers/net/ethernet/marvell/mvneta.c
-@@ -3714,7 +3714,7 @@ static int mvneta_probe(struct platform_
+@@ -3712,7 +3712,7 @@ static int mvneta_probe(struct platform_
  
  		mvneta_fixed_link_update(pp, phy);
  
@@ -336,7 +336,7 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  	}
 --- a/drivers/net/ethernet/xilinx/xilinx_emaclite.c
 +++ b/drivers/net/ethernet/xilinx/xilinx_emaclite.c
-@@ -827,7 +827,7 @@ static int xemaclite_mdio_setup(struct n
+@@ -839,7 +839,7 @@ static int xemaclite_mdio_setup(struct n
  			dev_info(dev,
  				 "MDIO of the phy is not registered yet\n");
  		else
@@ -452,7 +452,7 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  	enable_status_frames(phydev, false);
 --- a/drivers/net/phy/dp83867.c
 +++ b/drivers/net/phy/dp83867.c
-@@ -102,7 +102,7 @@ static int dp83867_config_intr(struct ph
+@@ -105,7 +105,7 @@ static int dp83867_config_intr(struct ph
  static int dp83867_of_init(struct phy_device *phydev)
  {
  	struct dp83867_private *dp83867 = phydev->priv;
@@ -461,7 +461,7 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  	struct device_node *of_node = dev->of_node;
  	int ret;
  
-@@ -130,7 +130,7 @@ static int dp83867_config_init(struct ph
+@@ -133,7 +133,7 @@ static int dp83867_config_init(struct ph
  	u16 val, delay;
  
  	if (!phydev->priv) {
@@ -582,7 +582,7 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  	return 0;
 --- a/drivers/net/phy/marvell.c
 +++ b/drivers/net/phy/marvell.c
-@@ -300,10 +300,11 @@ static int marvell_of_reg_init(struct ph
+@@ -308,10 +308,11 @@ static int marvell_of_reg_init(struct ph
  	const __be32 *paddr;
  	int len, i, saved_page, current_page, page_changed, ret;
  
@@ -596,7 +596,7 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  	if (!paddr || len < (4 * sizeof(*paddr)))
  		return 0;
  
-@@ -1060,7 +1061,7 @@ static int marvell_probe(struct phy_devi
+@@ -1066,7 +1067,7 @@ static int marvell_probe(struct phy_devi
  {
  	struct marvell_priv *priv;
  
@@ -675,7 +675,7 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  	const struct device_node *of_node = dev->of_node;
  	static const char *clk_skews[2] = {"rxc-skew-ps", "txc-skew-ps"};
  	static const char *rx_data_skews[4] = {
-@@ -573,12 +573,12 @@ ksz9021_wr_mmd_phyreg(struct phy_device
+@@ -575,12 +575,12 @@ ksz9021_wr_mmd_phyreg(struct phy_device
  static int kszphy_probe(struct phy_device *phydev)
  {
  	const struct kszphy_type *type = phydev->drv->driver_data;
@@ -690,7 +690,7 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  	if (!priv)
  		return -ENOMEM;
  
-@@ -601,7 +601,7 @@ static int kszphy_probe(struct phy_devic
+@@ -603,7 +603,7 @@ static int kszphy_probe(struct phy_devic
  		priv->led_mode = -1;
  	}
  
@@ -773,7 +773,7 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  		    mii_data->reg_num == MII_BMCR &&
  		    val & BMCR_RESET)
  			return phy_init_hw(phydev);
-@@ -645,7 +646,7 @@ int phy_start_interrupts(struct phy_devi
+@@ -648,7 +649,7 @@ int phy_start_interrupts(struct phy_devi
  				"phy_interrupt",
  				phydev) < 0) {
  		pr_warn("%s: Can't get IRQ %d (PHY)\n",
@@ -782,7 +782,16 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  		phydev->irq = PHY_POLL;
  		return 0;
  	}
-@@ -1043,11 +1044,11 @@ static inline void mmd_phy_indirect(stru
+@@ -928,7 +929,7 @@ void phy_state_machine(struct work_struc
+ 		 */
+ 		if (!phydev->link && phydev->state == PHY_RUNNING) {
+ 			phydev->state = PHY_CHANGELINK;
+-			dev_err(&phydev->dev, "no link in PHY_RUNNING\n");
++			dev_err(&phydev->mdio.dev, "no link in PHY_RUNNING\n");
+ 		}
+ 		break;
+ 	case PHY_CHANGELINK:
+@@ -1055,11 +1056,11 @@ static inline void mmd_phy_indirect(stru
  int phy_read_mmd_indirect(struct phy_device *phydev, int prtad, int devad)
  {
  	struct phy_driver *phydrv = phydev->drv;
@@ -796,7 +805,7 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  
  		mutex_lock(&bus->mdio_lock);
  		mmd_phy_indirect(bus, prtad, devad, addr);
-@@ -1081,10 +1082,10 @@ void phy_write_mmd_indirect(struct phy_d
+@@ -1093,10 +1094,10 @@ void phy_write_mmd_indirect(struct phy_d
  				   int devad, u32 data)
  {
  	struct phy_driver *phydrv = phydev->drv;

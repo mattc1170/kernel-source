@@ -340,7 +340,7 @@ Acked-by: Hannes Reinecke <hare@suse.de>
 --- a/drivers/md/bcache/request.c
 +++ b/drivers/md/bcache/request.c
 @@ -203,10 +203,10 @@ static void bch_data_insert_start(struct
- 		return bch_data_invalidate(cl);
+ 		wake_up_gc(op->c);
  
  	/*
 -	 * Journal writes are marked REQ_FLUSH; if the original write was a
@@ -361,7 +361,7 @@ Acked-by: Hannes Reinecke <hare@suse.de>
  	s->iop.wq		= bcache_wq;
  
  	return s;
-@@ -918,7 +918,7 @@ static void cached_dev_write(struct cach
+@@ -921,7 +921,7 @@ static void cached_dev_write(struct cach
  		bch_writeback_add(dc);
  		s->iop.bio = bio;
  
@@ -650,7 +650,7 @@ Acked-by: Hannes Reinecke <hare@suse.de>
  	}
 --- a/drivers/md/md.c
 +++ b/drivers/md/md.c
-@@ -427,7 +427,7 @@ static void md_submit_flush_data(struct
+@@ -445,7 +445,7 @@ static void md_submit_flush_data(struct
  		/* an empty barrier - all done */
  		bio_endio(bio);
  	else {
@@ -694,7 +694,7 @@ Acked-by: Hannes Reinecke <hare@suse.de>
  	}
 --- a/drivers/md/raid1.c
 +++ b/drivers/md/raid1.c
-@@ -1554,7 +1554,7 @@ static void raid1_make_request(struct md
+@@ -1557,7 +1557,7 @@ static void raid1_make_request(struct md
  	struct bio *split;
  	sector_t sectors;
  
@@ -727,7 +727,7 @@ Acked-by: Hannes Reinecke <hare@suse.de>
  		if (bio->bi_iter.bi_size == 0) {
 --- a/drivers/md/raid5.c
 +++ b/drivers/md/raid5.c
-@@ -5392,7 +5392,7 @@ static void raid5_make_request(struct md
+@@ -5398,7 +5398,7 @@ static void raid5_make_request(struct md
  	bool do_prepare;
  	bool do_flush = false;
  

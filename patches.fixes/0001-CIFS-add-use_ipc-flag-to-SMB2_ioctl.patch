@@ -1,0 +1,191 @@
+From fc4fffca11e6df4339cd344c24c3f5e88c7a8990 Mon Sep 17 00:00:00 2001
+From: Aurelien Aptel <aaptel@suse.com>
+Date: Tue, 28 Feb 2017 15:08:41 +0100
+Subject: [PATCH] CIFS: add use_ipc flag to SMB2_ioctl()
+Git-commit: 51146625f34b348c15d55c378b5ae5c2fb963fc8
+Patch-mainline: 4.11
+References: fate#323482
+
+when set, use the session IPC tree id instead of the tid in the provided
+tcon.
+
+Signed-off-by: Aurelien Aptel <aaptel@suse.com>
+Reviewed-by: Pavel Shilovsky <pshilov@microsoft.com>
+Signed-off-by: Steve French <smfrench@gmail.com>
+Acked-by: Aurelien Aptel <aaptel@suse.com>
+
+---
+ fs/cifs/smb2file.c  |  3 ++-
+ fs/cifs/smb2ops.c   | 21 +++++++++++++++------
+ fs/cifs/smb2pdu.c   | 17 +++++++++++++++--
+ fs/cifs/smb2proto.h |  3 ++-
+ 4 files changed, 34 insertions(+), 10 deletions(-)
+
+diff --git a/fs/cifs/smb2file.c b/fs/cifs/smb2file.c
+index b2aff0c6f22c..b4b1f0305f29 100644
+--- a/fs/cifs/smb2file.c
++++ b/fs/cifs/smb2file.c
+@@ -73,7 +73,8 @@ smb2_open_file(const unsigned int xid, struct cifs_open_parms *oparms,
+ 		nr_ioctl_req.Timeout = 0; /* use server default (120 seconds) */
+ 		nr_ioctl_req.Reserved = 0;
+ 		rc = SMB2_ioctl(xid, oparms->tcon, fid->persistent_fid,
+-			fid->volatile_fid, FSCTL_LMR_REQUEST_RESILIENCY, true,
++			fid->volatile_fid, FSCTL_LMR_REQUEST_RESILIENCY,
++			true /* is_fsctl */, false /* use_ipc */,
+ 			(char *)&nr_ioctl_req, sizeof(nr_ioctl_req),
+ 			NULL, NULL /* no return info */);
+ 		if (rc == -EOPNOTSUPP) {
+diff --git a/fs/cifs/smb2ops.c b/fs/cifs/smb2ops.c
+index 4238e90be939..1df7f2bf976a 100644
+--- a/fs/cifs/smb2ops.c
++++ b/fs/cifs/smb2ops.c
+@@ -30,6 +30,7 @@
+ #include "cifs_unicode.h"
+ #include "smb2status.h"
+ #include "smb2glob.h"
++#include "cifs_ioctl.h"
+ 
+ static int
+ change_conf(struct TCP_Server_Info *server)
+@@ -277,6 +278,7 @@ SMB3_request_interfaces(const unsigned int xid, struct cifs_tcon *tcon)
+ 
+ 	rc = SMB2_ioctl(xid, tcon, NO_FILE_ID, NO_FILE_ID,
+ 			FSCTL_QUERY_NETWORK_INTERFACE_INFO, true /* is_fsctl */,
++			false /* use_ipc */,
+ 			NULL /* no data input */, 0 /* no data input */,
+ 			(char **)&out_buf, &ret_data_len);
+ 	if (rc != 0)
+@@ -566,6 +568,7 @@ SMB2_request_res_key(const unsigned int xid, struct cifs_tcon *tcon,
+ 
+ 	rc = SMB2_ioctl(xid, tcon, persistent_fid, volatile_fid,
+ 			FSCTL_SRV_REQUEST_RESUME_KEY, true /* is_fsctl */,
++			false /* use_ipc */,
+ 			NULL, 0 /* no input */,
+ 			(char **)&res_key, &ret_data_len);
+ 
+@@ -630,7 +633,8 @@ smb2_clone_range(const unsigned int xid,
+ 		/* Request server copy to target from src identified by key */
+ 		rc = SMB2_ioctl(xid, tcon, trgtfile->fid.persistent_fid,
+ 			trgtfile->fid.volatile_fid, FSCTL_SRV_COPYCHUNK_WRITE,
+-			true /* is_fsctl */, (char *)pcchunk,
++			true /* is_fsctl */, false /* use_ipc */,
++			(char *)pcchunk,
+ 			sizeof(struct copychunk_ioctl),	(char **)&retbuf,
+ 			&ret_data_len);
+ 		if (rc == 0) {
+@@ -782,7 +786,8 @@ static bool smb2_set_sparse(const unsigned int xid, struct cifs_tcon *tcon,
+ 
+ 	rc = SMB2_ioctl(xid, tcon, cfile->fid.persistent_fid,
+ 			cfile->fid.volatile_fid, FSCTL_SET_SPARSE,
+-			true /* is_fctl */, &setsparse, 1, NULL, NULL);
++			true /* is_fctl */, false /* use_ipc */,
++			&setsparse, 1, NULL, NULL);
+ 	if (rc) {
+ 		tcon->broken_sparse_sup = true;
+ 		cifs_dbg(FYI, "set sparse rc = %d\n", rc);
+@@ -852,7 +857,8 @@ smb2_duplicate_extents(const unsigned int xid,
+ 	rc = SMB2_ioctl(xid, tcon, trgtfile->fid.persistent_fid,
+ 			trgtfile->fid.volatile_fid,
+ 			FSCTL_DUPLICATE_EXTENTS_TO_FILE,
+-			true /* is_fsctl */, (char *)&dup_ext_buf,
++			true /* is_fsctl */, false /* use_ipc */,
++			(char *)&dup_ext_buf,
+ 			sizeof(struct duplicate_extents_to_file),
+ 			NULL,
+ 			&ret_data_len);
+@@ -886,7 +892,8 @@ smb3_set_integrity(const unsigned int xid, struct cifs_tcon *tcon,
+ 	return SMB2_ioctl(xid, tcon, cfile->fid.persistent_fid,
+ 			cfile->fid.volatile_fid,
+ 			FSCTL_SET_INTEGRITY_INFORMATION,
+-			true /* is_fsctl */, (char *)&integr_info,
++			true /* is_fsctl */, false /* use_ipc */,
++			(char *)&integr_info,
+ 			sizeof(struct fsctl_set_integrity_information_req),
+ 			NULL,
+ 			&ret_data_len);
+@@ -1171,7 +1178,8 @@ static long smb3_zero_range(struct file *file, struct cifs_tcon *tcon,
+ 
+ 	rc = SMB2_ioctl(xid, tcon, cfile->fid.persistent_fid,
+ 			cfile->fid.volatile_fid, FSCTL_SET_ZERO_DATA,
+-			true /* is_fctl */, (char *)&fsctl_buf,
++			true /* is_fctl */, false /* use_ipc */,
++			(char *)&fsctl_buf,
+ 			sizeof(struct file_zero_data_information), NULL, NULL);
+ 	free_xid(xid);
+ 	return rc;
+@@ -1205,7 +1213,8 @@ static long smb3_punch_hole(struct file *file, struct cifs_tcon *tcon,
+ 
+ 	rc = SMB2_ioctl(xid, tcon, cfile->fid.persistent_fid,
+ 			cfile->fid.volatile_fid, FSCTL_SET_ZERO_DATA,
+-			true /* is_fctl */, (char *)&fsctl_buf,
++			true /* is_fctl */, false /* use_ipc */,
++			(char *)&fsctl_buf,
+ 			sizeof(struct file_zero_data_information), NULL, NULL);
+ 	free_xid(xid);
+ 	return rc;
+diff --git a/fs/cifs/smb2pdu.c b/fs/cifs/smb2pdu.c
+index 7b0b48a02378..82df1632fa05 100644
+--- a/fs/cifs/smb2pdu.c
++++ b/fs/cifs/smb2pdu.c
+@@ -612,6 +612,7 @@ int smb3_validate_negotiate(const unsigned int xid, struct cifs_tcon *tcon)
+ 
+ 	rc = SMB2_ioctl(xid, tcon, NO_FILE_ID, NO_FILE_ID,
+ 		FSCTL_VALIDATE_NEGOTIATE_INFO, true /* is_fsctl */,
++		false /* use_ipc */,
+ 		(char *)&vneg_inbuf, sizeof(struct validate_negotiate_info_req),
+ 		(char **)&pneg_rsp, &rsplen);
+ 
+@@ -1540,8 +1541,9 @@ creat_exit:
+  */
+ int
+ SMB2_ioctl(const unsigned int xid, struct cifs_tcon *tcon, u64 persistent_fid,
+-	   u64 volatile_fid, u32 opcode, bool is_fsctl, char *in_data,
+-	   u32 indatalen, char **out_data, u32 *plen /* returned data len */)
++	   u64 volatile_fid, u32 opcode, bool is_fsctl, bool use_ipc,
++	   char *in_data, u32 indatalen,
++	   char **out_data, u32 *plen /* returned data len */)
+ {
+ 	struct smb2_ioctl_req *req;
+ 	struct smb2_ioctl_rsp *rsp;
+@@ -1578,6 +1580,16 @@ SMB2_ioctl(const unsigned int xid, struct cifs_tcon *tcon, u64 persistent_fid,
+ 	if (rc)
+ 		return rc;
+ 
++	if (use_ipc) {
++		if (ses->ipc_tid == 0) {
++			cifs_small_buf_release(req);
++			return -ENOTCONN;
++		}
++
++		cifs_dbg(FYI, "replacing tid 0x%x with IPC tid 0x%x\n",
++			 req->hdr.sync_hdr.TreeId, ses->ipc_tid);
++		req->hdr.sync_hdr.TreeId = ses->ipc_tid;
++	}
+ 	if (encryption_required(tcon))
+ 		flags |= CIFS_TRANSFORM_REQ;
+ 
+@@ -1704,6 +1716,7 @@ SMB2_set_compression(const unsigned int xid, struct cifs_tcon *tcon,
+ 
+ 	rc = SMB2_ioctl(xid, tcon, persistent_fid, volatile_fid,
+ 			FSCTL_SET_COMPRESSION, true /* is_fsctl */,
++			false /* use_ipc */,
+ 			(char *)&fsctl_input /* data input */,
+ 			2 /* in data len */, &ret_data /* out data */, NULL);
+ 
+diff --git a/fs/cifs/smb2proto.h b/fs/cifs/smb2proto.h
+index 5f4a089eb63d..4f69f6313021 100644
+--- a/fs/cifs/smb2proto.h
++++ b/fs/cifs/smb2proto.h
+@@ -125,7 +125,8 @@ extern int SMB2_open(const unsigned int xid, struct cifs_open_parms *oparms,
+ 		     struct smb2_err_rsp **err_buf);
+ extern int SMB2_ioctl(const unsigned int xid, struct cifs_tcon *tcon,
+ 		     u64 persistent_fid, u64 volatile_fid, u32 opcode,
+-		     bool is_fsctl, char *in_data, u32 indatalen,
++		     bool is_fsctl, bool use_ipc,
++		     char *in_data, u32 indatalen,
+ 		     char **out_data, u32 *plen /* returned data len */);
+ extern int SMB2_close(const unsigned int xid, struct cifs_tcon *tcon,
+ 		      u64 persistent_file_id, u64 volatile_file_id);
+-- 
+2.12.3
+

@@ -1,0 +1,57 @@
+From 909f90318c36316a2451eb6f7c5a5e27ee6b21cb Mon Sep 17 00:00:00 2001
+From: Dirk Behme <dirk.behme@de.bosch.com>
+Date: Thu, 4 Feb 2016 18:06:10 +0100
+Subject: [PATCH 03/56] drivers/perf: arm_pmu: make info messages more verbose
+
+Git-commit: c6b90653f1f7ea383734f8ce9e8df285a0c23f5b
+Patch-mainline: v4.6-rc1
+References: bsc#1062279
+
+On a big.LITTLE system e.g. with Cortex A57 and A53 in case not all cores
+are online at PMU probe time we might get
+
+hw perfevents: failed to probe PMU!
+hw perfevents: failed to register PMU devices!
+
+making it unclear which cores failed, here.
+
+Add the device tree full name which failed and the error value resulting
+in a more verbose and helpful message like
+
+hw perfevents: /soc/pmu_a53: failed to probe PMU! Error -6
+hw perfevents: /soc/pmu_a53: failed to register PMU devices! Error -6
+
+Signed-off-by: Dirk Behme <dirk.behme@de.bosch.com>
+Signed-off-by: Will Deacon <will.deacon@arm.com>
+Signed-off-by: Mian Yousaf Kaukab <yousaf.kaukab@suse.com>
+---
+ drivers/perf/arm_pmu.c | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/perf/arm_pmu.c b/drivers/perf/arm_pmu.c
+index 8c40f6f4..a3d05873 100644
+--- a/drivers/perf/arm_pmu.c
++++ b/drivers/perf/arm_pmu.c
+@@ -899,7 +899,8 @@ int arm_pmu_device_probe(struct platform_device *pdev,
+ 	}
+ 
+ 	if (ret) {
+-		pr_info("failed to probe PMU!\n");
++		pr_info("%s: failed to probe PMU! Error %i\n",
++			node->full_name, ret);
+ 		goto out_free;
+ 	}
+ 
+@@ -919,7 +920,8 @@ int arm_pmu_device_probe(struct platform_device *pdev,
+ out_destroy:
+ 	cpu_pmu_destroy(pmu);
+ out_free:
+-	pr_info("failed to register PMU devices!\n");
++	pr_info("%s: failed to register PMU devices! Error %i\n",
++		node->full_name, ret);
+ 	kfree(pmu);
+ 	return ret;
+ }
+-- 
+2.11.0
+

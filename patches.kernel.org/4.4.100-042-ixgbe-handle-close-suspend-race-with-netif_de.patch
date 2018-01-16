@@ -1,0 +1,84 @@
+From: Emil Tantilov <emil.s.tantilov@intel.com>
+Date: Fri, 11 Nov 2016 10:07:47 -0800
+Subject: [PATCH] ixgbe: handle close/suspend race with
+ netif_device_detach/present
+References: bnc#1012382
+Patch-mainline: 4.4.100
+Git-commit: f7f37e7ff2b9b7eff7fbd035569cab35896869a3
+
+[ Upstream commit f7f37e7ff2b9b7eff7fbd035569cab35896869a3 ]
+
+When an interface is part of a namespace it is possible that
+ixgbe_close() may be called while __ixgbe_shutdown() is running
+which ends up in a double free WARN and/or a BUG in free_msi_irqs().
+
+To handle this situation we extend the rtnl_lock() to protect the
+call to netif_device_detach() and ixgbe_clear_interrupt_scheme()
+in __ixgbe_shutdown() and check for netif_device_present()
+to avoid clearing the interrupts second time in ixgbe_close();
+
+Also extend the rtnl lock in ixgbe_resume() to netif_device_attach().
+
+Signed-off-by: Emil Tantilov <emil.s.tantilov@intel.com>
+Tested-by: Andrew Bowers <andrewx.bowers@intel.com>
+Signed-off-by: Jeff Kirsher <jeffrey.t.kirsher@intel.com>
+Signed-off-by: Sasha Levin <alexander.levin@verizon.com>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Signed-off-by: Jiri Slaby <jslaby@suse.cz>
+---
+ drivers/net/ethernet/intel/ixgbe/ixgbe_main.c | 17 ++++++++---------
+ 1 file changed, 8 insertions(+), 9 deletions(-)
+
+diff --git a/drivers/net/ethernet/intel/ixgbe/ixgbe_main.c b/drivers/net/ethernet/intel/ixgbe/ixgbe_main.c
+index 13723fa32efc..83645d8503d4 100644
+--- a/drivers/net/ethernet/intel/ixgbe/ixgbe_main.c
++++ b/drivers/net/ethernet/intel/ixgbe/ixgbe_main.c
+@@ -5878,7 +5878,8 @@ static int ixgbe_close(struct net_device *netdev)
+ 
+ 	ixgbe_ptp_stop(adapter);
+ 
+-	ixgbe_close_suspend(adapter);
++	if (netif_device_present(netdev))
++		ixgbe_close_suspend(adapter);
+ 
+ 	ixgbe_fdir_filter_exit(adapter);
+ 
+@@ -5923,14 +5924,12 @@ static int ixgbe_resume(struct pci_dev *pdev)
+ 	if (!err && netif_running(netdev))
+ 		err = ixgbe_open(netdev);
+ 
+-	rtnl_unlock();
+ 
+-	if (err)
+-		return err;
+-
+-	netif_device_attach(netdev);
++	if (!err)
++		netif_device_attach(netdev);
++	rtnl_unlock();
+ 
+-	return 0;
++	return err;
+ }
+ #endif /* CONFIG_PM */
+ 
+@@ -5945,14 +5944,14 @@ static int __ixgbe_shutdown(struct pci_dev *pdev, bool *enable_wake)
+ 	int retval = 0;
+ #endif
+ 
++	rtnl_lock();
+ 	netif_device_detach(netdev);
+ 
+-	rtnl_lock();
+ 	if (netif_running(netdev))
+ 		ixgbe_close_suspend(adapter);
+-	rtnl_unlock();
+ 
+ 	ixgbe_clear_interrupt_scheme(adapter);
++	rtnl_unlock();
+ 
+ #ifdef CONFIG_PM
+ 	retval = pci_save_state(pdev);
+-- 
+2.15.0
+

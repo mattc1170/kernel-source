@@ -1,8 +1,7 @@
 From: lipeng <lipeng321@huawei.com>
 Date: Sat, 1 Apr 2017 12:03:37 +0100
 Subject: net: hns: Fix to adjust buf_size of ring according to mtu
-Patch-mainline: Queued in subsystem maintainer repository
-Git-repo: git://git.kernel.org/pub/scm/linux/kernel/git/davem/net-next.git
+Patch-mainline: v4.12-rc1
 Git-commit: b29bd41259f38fc1a22735cd69b374a75d6a213c
 References: fate#322061
 

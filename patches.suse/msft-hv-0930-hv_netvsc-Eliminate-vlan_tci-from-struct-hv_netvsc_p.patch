@@ -9,7 +9,7 @@ Eliminate vlan_tci from struct hv_netvsc_packet.
 
 Signed-off-by: K. Y. Srinivasan <kys@microsoft.com>
 Signed-off-by: David S. Miller <davem@davemloft.net>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  drivers/net/hyperv/hyperv_net.h   |  4 ++--
  drivers/net/hyperv/netvsc_drv.c   | 14 +++++++-------

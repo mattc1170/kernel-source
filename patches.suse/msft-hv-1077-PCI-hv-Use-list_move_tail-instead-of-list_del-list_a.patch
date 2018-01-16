@@ -10,7 +10,7 @@ functional change intended
 
 Signed-off-by: Wei Yongjun <weiyj.lk@gmail.com>
 Signed-off-by: Bjorn Helgaas <bhelgaas@google.com>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  drivers/pci/host/pci-hyperv.c | 3 +--
  1 file changed, 1 insertion(+), 2 deletions(-)

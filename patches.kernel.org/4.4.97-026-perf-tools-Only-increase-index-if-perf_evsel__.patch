@@ -1,0 +1,44 @@
+From: Taeung Song <treeze.taeung@gmail.com>
+Date: Sat, 7 Oct 2017 22:37:46 +0000
+Subject: [PATCH] perf tools: Only increase index if perf_evsel__new_idx()
+ succeeds
+References: bnc#1012382
+Patch-mainline: 4.4.97
+Git-commit: 75fc5ae5cc53fff71041ecadeb3354a2b4c9fe42
+
+[ Upstream commit 75fc5ae5cc53fff71041ecadeb3354a2b4c9fe42 ]
+
+Signed-off-by: Taeung Song <treeze.taeung@gmail.com>
+Cc: Jiri Olsa <jolsa@kernel.org>
+Cc: Namhyung Kim <namhyung@kernel.org>
+Cc: Peter Zijlstra <peterz@infradead.org>
+Cc: Wang Nan <wangnan0@huawei.com>
+Link: http://lkml.kernel.org/r/1485952447-7013-2-git-send-email-treeze.taeung@gmail.com
+Signed-off-by: Arnaldo Carvalho de Melo <acme@redhat.com>
+Signed-off-by: Sasha Levin <alexander.levin@verizon.com>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Signed-off-by: Jiri Slaby <jslaby@suse.cz>
+---
+ tools/perf/util/parse-events.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/tools/perf/util/parse-events.c b/tools/perf/util/parse-events.c
+index 38304b7e4f81..e81dfb2e239c 100644
+--- a/tools/perf/util/parse-events.c
++++ b/tools/perf/util/parse-events.c
+@@ -291,10 +291,11 @@ __add_event(struct list_head *list, int *idx,
+ 
+ 	event_attr_init(attr);
+ 
+-	evsel = perf_evsel__new_idx(attr, (*idx)++);
++	evsel = perf_evsel__new_idx(attr, *idx);
+ 	if (!evsel)
+ 		return NULL;
+ 
++	(*idx)++;
+ 	evsel->cpus     = cpu_map__get(cpus);
+ 	evsel->own_cpus = cpu_map__get(cpus);
+ 
+-- 
+2.15.0
+

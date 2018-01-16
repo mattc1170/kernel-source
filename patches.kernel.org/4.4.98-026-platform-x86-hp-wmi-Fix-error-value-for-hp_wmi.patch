@@ -1,0 +1,41 @@
+From: Carlo Caione <carlo@endlessm.com>
+Date: Sun, 9 Apr 2017 15:56:07 +0200
+Subject: [PATCH] platform/x86: hp-wmi: Fix error value for hp_wmi_tablet_state
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+References: bnc#1012382
+Patch-mainline: 4.4.98
+Git-commit: c7dfc2facbd69dad89b75e13c608da709668dcd0
+
+commit c7dfc2facbd69dad89b75e13c608da709668dcd0 upstream.
+
+hp_wmi_tablet_state() fails to return the correct error code when
+hp_wmi_perform_query() returns the HP WMI query specific error code
+that is a positive value.
+
+Signed-off-by: Carlo Caione <carlo@endlessm.com>
+Signed-off-by: Darren Hart (VMware) <dvhart@infradead.org>
+Cc: Philip Müller <philm@manjaro.org>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Signed-off-by: Jiri Slaby <jslaby@suse.cz>
+---
+ drivers/platform/x86/hp-wmi.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/platform/x86/hp-wmi.c b/drivers/platform/x86/hp-wmi.c
+index 056a671165d1..7703e22aa7e5 100644
+--- a/drivers/platform/x86/hp-wmi.c
++++ b/drivers/platform/x86/hp-wmi.c
+@@ -291,7 +291,7 @@ static int hp_wmi_tablet_state(void)
+ 	int ret = hp_wmi_perform_query(HPWMI_HARDWARE_QUERY, 0, &state,
+ 				       sizeof(state), sizeof(state));
+ 	if (ret)
+-		return ret;
++		return -EINVAL;
+ 
+ 	return (state & 0x4) ? 1 : 0;
+ }
+-- 
+2.15.0
+

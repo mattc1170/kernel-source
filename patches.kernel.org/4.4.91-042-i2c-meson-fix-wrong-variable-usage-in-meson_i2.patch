@@ -1,0 +1,38 @@
+From: Heiner Kallweit <hkallweit1@gmail.com>
+Date: Tue, 7 Mar 2017 21:06:38 +0100
+Subject: [PATCH] i2c: meson: fix wrong variable usage in meson_i2c_put_data
+References: bnc#1012382
+Patch-mainline: 4.4.91
+Git-commit: 3b0277f198ac928f323c42e180680d2f79aa980d
+
+[ Upstream commit 3b0277f198ac928f323c42e180680d2f79aa980d ]
+
+Most likely a copy & paste error.
+
+Signed-off-by: Heiner Kallweit <hkallweit1@gmail.com>
+Acked-by: Jerome Brunet <jbrunet@baylibre.com>
+Signed-off-by: Wolfram Sang <wsa@the-dreams.de>
+Fixes: 30021e3707a7 ("i2c: add support for Amlogic Meson I2C controller")
+Signed-off-by: Sasha Levin <alexander.levin@verizon.com>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Signed-off-by: Jiri Slaby <jslaby@suse.cz>
+---
+ drivers/i2c/busses/i2c-meson.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/i2c/busses/i2c-meson.c b/drivers/i2c/busses/i2c-meson.c
+index 71d3929adf54..8d65f33af5da 100644
+--- a/drivers/i2c/busses/i2c-meson.c
++++ b/drivers/i2c/busses/i2c-meson.c
+@@ -175,7 +175,7 @@ static void meson_i2c_put_data(struct meson_i2c *i2c, char *buf, int len)
+ 		wdata1 |= *buf++ << ((i - 4) * 8);
+ 
+ 	writel(wdata0, i2c->regs + REG_TOK_WDATA0);
+-	writel(wdata0, i2c->regs + REG_TOK_WDATA1);
++	writel(wdata1, i2c->regs + REG_TOK_WDATA1);
+ 
+ 	dev_dbg(i2c->dev, "%s: data %08x %08x len %d\n", __func__,
+ 		wdata0, wdata1, len);
+-- 
+2.14.2
+

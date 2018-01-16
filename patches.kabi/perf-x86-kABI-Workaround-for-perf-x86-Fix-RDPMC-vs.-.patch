@@ -1,0 +1,151 @@
+From: Joerg Roedel <jroedel@suse.de>
+Date: Thu, 5 Oct 2017 16:38:49 +0200
+Subject: [PATCH] perf/x86: kABI Workaround for 'perf/x86: Fix RDPMC vs.
+ mm_struct tracking'
+Patch-mainline: never, kabi fix
+References: bsc#1061831
+
+Signed-off-by: Joerg Roedel <jroedel@suse.de>
+---
+ arch/x86/kernel/cpu/perf_event.c | 18 +++++++++++++++---
+ include/linux/perf_event.h       |  7 +++++--
+ kernel/events/core.c             | 17 ++++++++++++++---
+ 3 files changed, 34 insertions(+), 8 deletions(-)
+
+diff --git a/arch/x86/kernel/cpu/perf_event.c b/arch/x86/kernel/cpu/perf_event.c
+index cbec5e9..537d204 100644
+--- a/arch/x86/kernel/cpu/perf_event.c
++++ b/arch/x86/kernel/cpu/perf_event.c
+@@ -39,6 +39,9 @@
+ 
+ #include "perf_event.h"
+ 
++static void x86_pmu_event_mapped(struct perf_event *event, struct mm_struct *mm);
++static void x86_pmu_event_unmapped(struct perf_event *event, struct mm_struct *mm);
++
+ struct x86_pmu x86_pmu __read_mostly;
+ 
+ DEFINE_PER_CPU(struct cpu_hw_events, cpu_hw_events) = {
+@@ -1751,6 +1754,9 @@ static int __init init_hw_perf_events(void)
+ 	pr_info("... fixed-purpose events:   %d\n",     x86_pmu.num_counters_fixed);
+ 	pr_info("... event mask:             %016Lx\n", x86_pmu.intel_ctrl);
+ 
++	kabi_perf_event_mapped = x86_pmu_event_mapped;
++	kabi_perf_event_unmapped = x86_pmu_event_unmapped;
++
+ 	perf_pmu_register(&pmu, "cpu", PERF_TYPE_RAW);
+ 	perf_cpu_notifier(x86_pmu_notifier);
+ 
+@@ -2008,6 +2014,10 @@ static void refresh_pce(void *ignored)
+ 
+ static void x86_pmu_event_mapped(struct perf_event *event, struct mm_struct *mm)
+ {
++	/* Its called for every pmu - need to check if it is for us */
++	if (event->pmu != &pmu)
++		return;
++
+ 	if (!(event->hw.flags & PERF_X86_EVENT_RDPMC_ALLOWED))
+ 		return;
+ 
+@@ -2015,8 +2025,13 @@ static void x86_pmu_event_mapped(struct perf_event *event, struct mm_struct *mm)
+ 		on_each_cpu_mask(mm_cpumask(mm), refresh_pce, NULL, 1);
+ }
+ 
++//static void x86_pmu_event_mapped(struct perf_event *event, struct mm_struct *mm)
+ static void x86_pmu_event_unmapped(struct perf_event *event, struct mm_struct *mm)
+ {
++	/* Its called for every pmu - need to check if it is for us */
++	if (event->pmu != &pmu)
++		return;
++
+ 	if (!(event->hw.flags & PERF_X86_EVENT_RDPMC_ALLOWED))
+ 		return;
+ 
+@@ -2120,9 +2135,6 @@ static struct pmu pmu = {
+ 
+ 	.event_init		= x86_pmu_event_init,
+ 
+-	.event_mapped		= x86_pmu_event_mapped,
+-	.event_unmapped		= x86_pmu_event_unmapped,
+-
+ 	.add			= x86_pmu_add,
+ 	.del			= x86_pmu_del,
+ 	.start			= x86_pmu_start,
+diff --git a/include/linux/perf_event.h b/include/linux/perf_event.h
+index e42e7ad..3efe539 100644
+--- a/include/linux/perf_event.h
++++ b/include/linux/perf_event.h
+@@ -265,8 +265,8 @@ struct pmu {
+ 	 * Notification that the event was mapped or unmapped.  Called
+ 	 * in the context of the mapping task.
+ 	 */
+-	void (*event_mapped)		(struct perf_event *event, struct mm_struct *mm); /* optional */
+-	void (*event_unmapped)		(struct perf_event *event, struct mm_struct *mm); /* optional */
++	void (*event_mapped)		(struct perf_event *event); /* optional */
++	void (*event_unmapped)		(struct perf_event *event); /* optional */
+ 
+ 	/*
+ 	 * Flags for ->add()/->del()/ ->start()/->stop(). There are
+@@ -394,6 +394,9 @@ struct pmu {
+ 	int (*filter_match)		(struct perf_event *event); /* optional */
+ };
+ 
++extern void (*kabi_perf_event_mapped)(struct perf_event *event, struct mm_struct *mm);
++extern void (*kabi_perf_event_unmapped)(struct perf_event *event, struct mm_struct *mm);
++
+ /**
+  * enum perf_event_active_state - the states of a event
+  */
+diff --git a/kernel/events/core.c b/kernel/events/core.c
+index f54ff05..b35c7ee 100644
+--- a/kernel/events/core.c
++++ b/kernel/events/core.c
+@@ -49,6 +49,9 @@
+ 
+ #include <asm/irq_regs.h>
+ 
++void (*kabi_perf_event_mapped)(struct perf_event *event, struct mm_struct *mm);
++void (*kabi_perf_event_unmapped)(struct perf_event *event, struct mm_struct *mm);
++
+ static struct workqueue_struct *perf_wq;
+ 
+ typedef int (*remote_function_f)(void *);
+@@ -4648,7 +4651,10 @@ static void perf_mmap_open(struct vm_area_struct *vma)
+ 		atomic_inc(&event->rb->aux_mmap_count);
+ 
+ 	if (event->pmu->event_mapped)
+-		event->pmu->event_mapped(event, vma->vm_mm);
++		event->pmu->event_mapped(event);
++
++	if (kabi_perf_event_mapped)
++		kabi_perf_event_mapped(event, vma->vm_mm);
+ }
+ 
+ /*
+@@ -4669,8 +4675,10 @@ static void perf_mmap_close(struct vm_area_struct *vma)
+ 	unsigned long size = perf_data_size(rb);
+ 
+ 	if (event->pmu->event_unmapped)
+-		event->pmu->event_unmapped(event, vma->vm_mm);
++		event->pmu->event_unmapped(event);
+ 
++	if (kabi_perf_event_unmapped)
++		kabi_perf_event_unmapped(event, vma->vm_mm);
+ 	/*
+ 	 * rb->aux_mmap_count will always drop before rb->mmap_count and
+ 	 * event->mmap_count, so it is ok to use event->mmap_mutex to
+@@ -4955,7 +4963,10 @@ aux_unlock:
+ 	vma->vm_ops = &perf_mmap_vmops;
+ 
+ 	if (event->pmu->event_mapped)
+-		event->pmu->event_mapped(event, vma->vm_mm);
++		event->pmu->event_mapped(event);
++
++	if (kabi_perf_event_mapped)
++		kabi_perf_event_mapped(event, vma->vm_mm);
+ 
+ 	return ret;
+ }
+-- 
+1.8.5.6
+

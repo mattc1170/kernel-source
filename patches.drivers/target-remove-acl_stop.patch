@@ -12,16 +12,14 @@ Signed-off-by: Christoph Hellwig <hch@lst.de>
 Signed-off-by: Nicholas Bellinger <nab@linux-iscsi.org>
 Signed-off-by: Hannes Reinecke <hare@suse.de>
 ---
- drivers/target/target_core_tpg.c       | 13 +++++--------
- drivers/target/target_core_transport.c |  4 ++--
- include/target/target_core_base.h      |  1 -
+ drivers/target/target_core_tpg.c       |   13 +++++--------
+ drivers/target/target_core_transport.c |    4 ++--
+ include/target/target_core_base.h      |    1 -
  3 files changed, 7 insertions(+), 11 deletions(-)
 
-diff --git a/drivers/target/target_core_tpg.c b/drivers/target/target_core_tpg.c
-index f128a59..c1198e0 100644
 --- a/drivers/target/target_core_tpg.c
 +++ b/drivers/target/target_core_tpg.c
-@@ -336,30 +336,27 @@ struct se_node_acl *core_tpg_add_initiator_node_acl(
+@@ -336,30 +336,27 @@ struct se_node_acl *core_tpg_add_initiat
  	return acl;
  }
  
@@ -55,8 +53,8 @@ index f128a59..c1198e0 100644
  		goto restart;
  	}
  	spin_unlock_irqrestore(&acl->nacl_sess_lock, flags);
-@@ -375,7 +372,7 @@ void core_tpg_del_initiator_node_acl(struct se_node_acl *acl)
- 	list_del(&acl->acl_list);
+@@ -375,7 +372,7 @@ void core_tpg_del_initiator_node_acl(str
+ 	list_del_init(&acl->acl_list);
  	mutex_unlock(&tpg->acl_node_mutex);
  
 -	target_shutdown_sessions(acl, true);
@@ -64,7 +62,7 @@ index f128a59..c1198e0 100644
  
  	target_put_nacl(acl);
  	/*
-@@ -415,7 +412,7 @@ int core_tpg_set_initiator_node_queue_depth(
+@@ -415,7 +412,7 @@ int core_tpg_set_initiator_node_queue_de
  	/*
  	 * Shutdown all pending sessions to force session reinstatement.
  	 */
@@ -73,11 +71,9 @@ index f128a59..c1198e0 100644
  
  	pr_debug("Successfully changed queue depth to: %d for Initiator"
  		" Node: %s on %s Target Portal Group: %u\n", acl->queue_depth,
-diff --git a/drivers/target/target_core_transport.c b/drivers/target/target_core_transport.c
-index 5398dbf..9199f08 100644
 --- a/drivers/target/target_core_transport.c
 +++ b/drivers/target/target_core_transport.c
-@@ -511,8 +511,8 @@ void transport_deregister_session_configfs(struct se_session *se_sess)
+@@ -511,8 +511,8 @@ void transport_deregister_session_config
  	se_nacl = se_sess->se_node_acl;
  	if (se_nacl) {
  		spin_lock_irqsave(&se_nacl->nacl_sess_lock, flags);
@@ -88,11 +84,9 @@ index 5398dbf..9199f08 100644
  		/*
  		 * If the session list is empty, then clear the pointer.
  		 * Otherwise, set the struct se_session pointer from the tail
-diff --git a/include/target/target_core_base.h b/include/target/target_core_base.h
-index a0f3069..e77ae48 100644
 --- a/include/target/target_core_base.h
 +++ b/include/target/target_core_base.h
-@@ -546,7 +546,6 @@ struct se_node_acl {
+@@ -547,7 +547,6 @@ struct se_node_acl {
  	char			initiatorname[TRANSPORT_IQN_LEN];
  	/* Used to signal demo mode created ACL, disabled by default */
  	bool			dynamic_node_acl;
@@ -100,6 +94,3 @@ index a0f3069..e77ae48 100644
  	bool			dynamic_stop;
  	u32			queue_depth;
  	u32			acl_index;
--- 
-1.8.5.6
-

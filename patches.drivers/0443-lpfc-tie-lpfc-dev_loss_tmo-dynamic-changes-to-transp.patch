@@ -1,59 +1,38 @@
 From: James Smart <jsmart2021@gmail.com>
-Date: Tue, 30 May 2017 22:46:29 -0700
-Subject: lpfc: tie lpfc dev_loss_tmo dynamic changes to transport
+Date: Fri, 3 Nov 2017 09:33:30 -0700
+Subject: lpfc: tie in to new dev_loss_tmo interface in nvme transport
+Git-commit: 6ddcf0a30adc5080504ca66f474101e7ad247dd7
 References: bsc#1041873
-Patch-Mainline: No, dependent on a suse-specific patch
+Patch-Mainline: v4.15-rc1
 
-When dev_loss_tmo is changed for a remote port, call the nvme_fc
-transport to communicate the change.
+This patch calls the new nvme transport routine for dev_loss_tmo
+whenever the SCSI fc transport calls the lldd to make a dynamic
+change to a remote ports dev_loss_tmo.
 
-This patch is dependent upon the dev_loss api routine
-nvme_fc_set_remoteport_devloss() introduced in this patch:
-http://lists.infradead.org/pipermail/linux-nvme/2017-May/010173.html
-as well as the 11.4.0.0 lpfc patch set:
-http://marc.info/?l=linux-scsi&m=149621069110277&w=2
-
-Signed-off-by: Dick Kennedy <dick.kennedy@broadcom.com>
 Signed-off-by: James Smart <james.smart@broadcom.com>
+Signed-off-by: Christoph Hellwig <hch@lst.de>
+Signed-off-by: Jens Axboe <axboe@kernel.dk>
 Acked-by: Hannes Reinecke <hare@suse.com>
 ---
- drivers/scsi/lpfc/lpfc_attr.c | 3 +++
- drivers/scsi/lpfc/lpfc_nvme.c | 8 ++++++++
- 2 files changed, 11 insertions(+)
+ drivers/scsi/lpfc/lpfc_attr.c | 5 +++++
+ 1 file changed, 5 insertions(+)
 
 diff --git a/drivers/scsi/lpfc/lpfc_attr.c b/drivers/scsi/lpfc/lpfc_attr.c
-index c507686..503315b 100644
+index c17677f..3e02bc3 100644
 --- a/drivers/scsi/lpfc/lpfc_attr.c
 +++ b/drivers/scsi/lpfc/lpfc_attr.c
-@@ -3214,6 +3214,9 @@ lpfc_update_rport_devloss_tmo(struct lpfc_vport *vport)
+@@ -3246,6 +3246,11 @@ static DEVICE_ATTR(txcmplq_hw, S_IRUGO,
  			continue;
  		if (ndlp->rport)
  			ndlp->rport->dev_loss_tmo = vport->cfg_devloss_tmo;
++#if (IS_ENABLED(CONFIG_NVME_FC))
 +		if (ndlp->nrport)
 +			nvme_fc_set_remoteport_devloss(ndlp->nrport->remoteport,
 +						       vport->cfg_devloss_tmo);
++#endif
  	}
  	spin_unlock_irq(shost->host_lock);
  }
-diff --git a/drivers/scsi/lpfc/lpfc_nvme.c b/drivers/scsi/lpfc/lpfc_nvme.c
-index 8206aa5..912bfd3 100644
---- a/drivers/scsi/lpfc/lpfc_nvme.c
-+++ b/drivers/scsi/lpfc/lpfc_nvme.c
-@@ -2451,6 +2451,14 @@ lpfc_nvme_unregister_port(struct lpfc_vport *vport, struct lpfc_nodelist *ndlp)
- 	if (ndlp->nlp_type & (NLP_NVME_TARGET | NLP_NVME_INITIATOR)) {
- 		init_completion(&rport->rport_unreg_done);
- 
-+		if (vport->load_flag & FC_UNLOADING) {
-+			/* Driver is unloading - clear devloss so that
-+			 * the transport completes the rport unreg
-+			 * immediately.
-+			 */
-+			nvme_fc_set_remoteport_devloss(remoteport, 0);
-+		}
-+
- 		/* No concern about the role change on the nvme remoteport.
- 		 * The transport will update it.
- 		 */
 -- 
 1.8.5.6
 

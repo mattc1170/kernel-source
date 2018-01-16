@@ -1,8 +1,9 @@
 From: James Smart <jsmart2021@gmail.com>
-Date: Sat, 13 May 2017 12:03:01 -0700
+Date: Mon, 15 May 2017 17:10:16 -0700
 Subject: nvme_fc: Support ctrl_loss_tmo
+Git-commit: 5bbecdbc8e7ffaaf47ac1f02014bf3bedda3fd11
 References: bsc#1037838
-Patch-Mainline: submitted to linux-scsi 2017/05/16
+Patch-Mainline: v4.12-rc3
 
 Sync with Sagi's recent addition of ctrl_loss_tmo in the core fabrics
 layer.
@@ -16,12 +17,14 @@ http://lists.infradead.org/pipermail/linux-nvme/2017-April/009261.html
 
 Signed-off-by: James Smart <james.smart@broadcom.com>
 Reviewed-by: Hannes Reinecke <hare@suse.com>
+Reviewed-by: Johannes Thumshirn <jthumshirn@suse.de>
+Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
  drivers/nvme/host/fc.c | 116 +++++++++++++++++++++----------------------------
  1 file changed, 49 insertions(+), 67 deletions(-)
 
 diff --git a/drivers/nvme/host/fc.c b/drivers/nvme/host/fc.c
-index 80a3a36..7e3afb7 100644
+index c3ab1043..a0f05d5 100644
 --- a/drivers/nvme/host/fc.c
 +++ b/drivers/nvme/host/fc.c
 @@ -45,8 +45,6 @@ enum nvme_fc_queue_flags {
@@ -41,7 +44,7 @@ index 80a3a36..7e3afb7 100644
  
  	struct kref		ref;
  	u32			flags;
-@@ -2307,7 +2304,7 @@ nvme_fc_create_association(struct nvme_fc_ctrl *ctrl)
+@@ -2305,7 +2302,7 @@ enum {
  	int ret;
  	bool changed;
  
@@ -50,7 +53,7 @@ index 80a3a36..7e3afb7 100644
  
  	/*
  	 * Create the admin queue
-@@ -2404,7 +2401,7 @@ nvme_fc_create_association(struct nvme_fc_ctrl *ctrl)
+@@ -2402,7 +2399,7 @@ enum {
  	changed = nvme_change_ctrl_state(&ctrl->ctrl, NVME_CTRL_LIVE);
  	WARN_ON_ONCE(!changed);
  
@@ -59,7 +62,7 @@ index 80a3a36..7e3afb7 100644
  
  	kref_get(&ctrl->ctrl.kref);
  
-@@ -2547,16 +2544,22 @@ nvme_fc_delete_ctrl_work(struct work_struct *work)
+@@ -2545,16 +2542,22 @@ enum {
  	nvme_put_ctrl(&ctrl->ctrl);
  }
  
@@ -87,7 +90,7 @@ index 80a3a36..7e3afb7 100644
  }
  
  /*
-@@ -2582,6 +2585,35 @@ nvme_fc_del_nvme_ctrl(struct nvme_ctrl *nctrl)
+@@ -2580,6 +2583,35 @@ enum {
  }
  
  static void
@@ -123,7 +126,7 @@ index 80a3a36..7e3afb7 100644
  nvme_fc_reset_ctrl_work(struct work_struct *work)
  {
  	struct nvme_fc_ctrl *ctrl =
-@@ -2592,34 +2624,9 @@ nvme_fc_reset_ctrl_work(struct work_struct *work)
+@@ -2590,34 +2622,9 @@ enum {
  	nvme_fc_delete_association(ctrl);
  
  	ret = nvme_fc_create_association(ctrl);
@@ -161,7 +164,7 @@ index 80a3a36..7e3afb7 100644
  		dev_info(ctrl->ctrl.device,
  			"NVME-FC{%d}: controller reset complete\n", ctrl->cnum);
  }
-@@ -2672,34 +2679,9 @@ nvme_fc_connect_ctrl_work(struct work_struct *work)
+@@ -2670,34 +2677,9 @@ enum {
  				struct nvme_fc_ctrl, connect_work);
  
  	ret = nvme_fc_create_association(ctrl);
@@ -199,7 +202,7 @@ index 80a3a36..7e3afb7 100644
  		dev_info(ctrl->ctrl.device,
  			"NVME-FC{%d}: controller reconnect complete\n",
  			ctrl->cnum);
-@@ -2971,7 +2953,7 @@ nvme_fc_create_ctrl(struct device *dev, struct nvmf_ctrl_options *opts)
+@@ -2969,7 +2951,7 @@ struct nvmet_fc_traddr {
  static struct nvmf_transport_ops nvme_fc_transport = {
  	.name		= "fc",
  	.required_opts	= NVMF_OPT_TRADDR | NVMF_OPT_HOST_TRADDR,

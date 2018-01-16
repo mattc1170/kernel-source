@@ -1,9 +1,8 @@
 From: Johannes Thumshirn <jthumshirn@suse.de>
 Date: Tue, 20 Jun 2017 12:29:01 +0200
 Subject: nvme: add hostid token to fabric options
-Git-commit: f8c4dfbf19ab0cfce0063cdf2ecb1c7735dfb6e0
-Patch-mainline: Queued in subsystem maintainer repository
-Git-repo: git://git.infradead.org/nvme.git
+Git-commit: 6bfe04255d5ed5643ee4c2d9b09b337398f8cb6a
+Patch-mainline: v4.13-rc1
 References: bsc#1045293
 
 Currently we have no way to define a stable host-id but always use the one

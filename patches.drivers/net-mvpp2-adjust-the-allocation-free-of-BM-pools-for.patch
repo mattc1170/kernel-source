@@ -1,8 +1,7 @@
 From: Thomas Petazzoni <thomas.petazzoni@free-electrons.com>
 Date: Tue, 7 Mar 2017 16:53:09 +0100
 Subject: net: mvpp2: adjust the allocation/free of BM pools for PPv2.2
-Patch-mainline: Queued in subsystem maintainer repository
-Git-repo: git://git.kernel.org/pub/scm/linux/kernel/git/davem/net-next.git
+Patch-mainline: v4.12-rc1
 Git-commit: d01524d8abab00e3688c7435bcae4aeb461b51f7
 References: bsc#1032150
 

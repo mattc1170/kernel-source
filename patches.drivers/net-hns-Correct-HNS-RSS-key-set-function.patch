@@ -1,8 +1,7 @@
 From: lipeng <lipeng321@huawei.com>
 Date: Sat, 1 Apr 2017 12:03:39 +0100
 Subject: net: hns: Correct HNS RSS key set function
-Patch-mainline: Queued in subsystem maintainer repository
-Git-repo: git://git.kernel.org/pub/scm/linux/kernel/git/davem/net-next.git
+Patch-mainline: v4.12-rc1
 Git-commit: 64ec10dc2ab8ef5bc6e76b1d4bc8203c08a6da1e
 References: fate#322061
 

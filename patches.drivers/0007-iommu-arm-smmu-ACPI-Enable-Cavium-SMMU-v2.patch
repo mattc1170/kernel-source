@@ -1,7 +1,7 @@
-From a5776e71847e1989da82e2e0857bd912382ef459 Mon Sep 17 00:00:00 2001
+From 28cdad79cc567be530b7514fab8513625ae51abb Mon Sep 17 00:00:00 2001
 From: Robert Richter <rrichter@cavium.com>
 Date: Thu, 16 Mar 2017 18:01:59 +0100
-Subject: [PATCH 7/9] iommu/arm-smmu, ACPI: Enable Cavium SMMU-v2
+Subject: [PATCH 13/18] iommu/arm-smmu, ACPI: Enable Cavium SMMU-v2
 
 Patch-mainline: Never, Update after IORT spec release
 References: bsc#1035479
@@ -18,7 +18,7 @@ Signed-off-by: Mian Yousaf Kaukab <yousaf.kaukab@suse.com>
  1 file changed, 21 insertions(+), 1 deletion(-)
 
 diff --git a/drivers/iommu/arm-smmu.c b/drivers/iommu/arm-smmu.c
-index a65583c9..7f5d2058 100644
+index 89cf03f..ba8af2f 100644
 --- a/drivers/iommu/arm-smmu.c
 +++ b/drivers/iommu/arm-smmu.c
 @@ -53,6 +53,8 @@
@@ -30,7 +30,7 @@ index a65583c9..7f5d2058 100644
  #include "io-pgtable.h"
  
  /* Maximum number of context banks per SMMU */
-@@ -1987,6 +1989,24 @@ static const struct of_device_id arm_smmu_of_match[] = {
+@@ -1995,6 +1997,24 @@ static const struct of_device_id arm_smmu_of_match[] = {
  MODULE_DEVICE_TABLE(of, arm_smmu_of_match);
  
  #ifdef CONFIG_ACPI
@@ -55,7 +55,7 @@ index a65583c9..7f5d2058 100644
  static int acpi_smmu_get_data(u32 model, struct arm_smmu_device *smmu)
  {
  	int ret = 0;
-@@ -2009,7 +2029,7 @@ static int acpi_smmu_get_data(u32 model, struct arm_smmu_device *smmu)
+@@ -2025,7 +2045,7 @@ static int acpi_smmu_get_data(u32 model, struct arm_smmu_device *smmu)
  		ret = -ENODEV;
  	}
  
@@ -65,5 +65,5 @@ index a65583c9..7f5d2058 100644
  
  static int arm_smmu_device_acpi_probe(struct platform_device *pdev,
 -- 
-2.11.0
+2.6.2
 

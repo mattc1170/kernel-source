@@ -1,0 +1,51 @@
+From: Jiri Slaby <jslaby@suse.cz>
+Subject: kABI: protect structs rt_rq+root_domain
+Patch-mainline: never, kabi
+References: kabi
+
+In 4.4.103, commit cb1831a83e54cd3269a2420fce81c4fd8ae6f667 (sched/rt:
+Simplify the IPI based RT balancing logic), upstream commit
+4bdced5c9a2922521e325896a7bbbf0132c94e56 moved some members from struct
+rt_rq to struct root_domain. It indeed made the kABI checker to complain.
+
+But given these are scheduler-internal structures, protect the changes
+by GENKSYMS.
+
+Signed-off-by: Jiri Slaby <jslaby@suse.cz>
+---
+ kernel/sched/sched.h |   10 ++++++++++
+ 1 file changed, 10 insertions(+)
+
+--- a/kernel/sched/sched.h
++++ b/kernel/sched/sched.h
+@@ -470,6 +470,14 @@ struct rt_rq {
+ 	unsigned long rt_nr_total;
+ 	int overloaded;
+ 	struct plist_head pushable_tasks;
++#ifdef __GENKSYMS__
++#ifdef HAVE_RT_PUSH_IPI
++	int push_flags;
++	int push_cpu;
++	struct irq_work push_work;
++	raw_spinlock_t push_lock;
++#endif
++#endif
+ #endif /* CONFIG_SMP */
+ 	int rt_queued;
+ 
+@@ -551,6 +559,7 @@ struct root_domain {
+ 	struct dl_bw dl_bw;
+ 	struct cpudl cpudl;
+ 
++#ifndef __GENKSYMS__
+ #ifdef HAVE_RT_PUSH_IPI
+ 	/*
+ 	 * For IPI pull requests, loop across the rto_mask.
+@@ -564,6 +573,7 @@ struct root_domain {
+ 	atomic_t rto_loop_next;
+ 	atomic_t rto_loop_start;
+ #endif
++#endif
+ 	/*
+ 	 * The "RT overload" flag: it gets set if a CPU has more than
+ 	 * one runnable RT task.

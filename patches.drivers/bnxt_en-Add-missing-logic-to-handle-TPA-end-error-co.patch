@@ -1,0 +1,57 @@
+From: Michael Chan <michael.chan@broadcom.com>
+Date: Fri, 23 Jun 2017 14:01:00 -0400
+Subject: bnxt_en: Add missing logic to handle TPA end error conditions.
+Patch-mainline: v4.12
+Git-commit: 69c149e2e39e8d66437c9034bb4926ef2c1f7c23
+References: bsc#1053309
+
+When we get a TPA_END completion to handle a completed LRO packet, it
+is possible that hardware would indicate errors.  The current code is
+not checking for the error condition.  Define the proper error bits and
+the macro to check for this error and abort properly.
+
+Signed-off-by: Michael Chan <michael.chan@broadcom.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+Acked-by: Benjamin Poirier <bpoirier@suse.com>
+---
+ drivers/net/ethernet/broadcom/bnxt/bnxt.c |    7 ++++---
+ drivers/net/ethernet/broadcom/bnxt/bnxt.h |    6 +++++-
+ 2 files changed, 9 insertions(+), 4 deletions(-)
+
+--- a/drivers/net/ethernet/broadcom/bnxt/bnxt.c
++++ b/drivers/net/ethernet/broadcom/bnxt/bnxt.c
+@@ -1312,10 +1312,11 @@ static inline struct sk_buff *bnxt_tpa_e
+ 		cp_cons = NEXT_CMP(cp_cons);
+ 	}
+ 
+-	if (unlikely(agg_bufs > MAX_SKB_FRAGS)) {
++	if (unlikely(agg_bufs > MAX_SKB_FRAGS || TPA_END_ERRORS(tpa_end1))) {
+ 		bnxt_abort_tpa(bp, bnapi, cp_cons, agg_bufs);
+-		netdev_warn(bp->dev, "TPA frags %d exceeded MAX_SKB_FRAGS %d\n",
+-			    agg_bufs, (int)MAX_SKB_FRAGS);
++		if (agg_bufs > MAX_SKB_FRAGS)
++			netdev_warn(bp->dev, "TPA frags %d exceeded MAX_SKB_FRAGS %d\n",
++				    agg_bufs, (int)MAX_SKB_FRAGS);
+ 		return NULL;
+ 	}
+ 
+--- a/drivers/net/ethernet/broadcom/bnxt/bnxt.h
++++ b/drivers/net/ethernet/broadcom/bnxt/bnxt.h
+@@ -374,12 +374,16 @@ struct rx_tpa_end_cmp_ext {
+ 
+ 	__le32 rx_tpa_end_cmp_errors_v2;
+ 	#define RX_TPA_END_CMP_V2				(0x1 << 0)
+-	#define RX_TPA_END_CMP_ERRORS				(0x7fff << 1)
++	#define RX_TPA_END_CMP_ERRORS				(0x3 << 1)
+ 	#define RX_TPA_END_CMPL_ERRORS_SHIFT			 1
+ 
+ 	u32 rx_tpa_end_cmp_start_opaque;
+ };
+ 
++#define TPA_END_ERRORS(rx_tpa_end_ext)					\
++	((rx_tpa_end_ext)->rx_tpa_end_cmp_errors_v2 &			\
++	 cpu_to_le32(RX_TPA_END_CMP_ERRORS))
++
+ #define DB_IDX_MASK						0xffffff
+ #define DB_IDX_VALID						(0x1 << 26)
+ #define DB_IRQ_DIS						(0x1 << 27)

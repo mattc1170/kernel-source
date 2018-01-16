@@ -2,8 +2,7 @@ From: Jia-Ju Bai <baijiaju1990@163.com>
 Date: Thu, 1 Jun 2017 16:18:10 +0800
 Subject: qlcnic: Fix a sleep-in-atomic bug in qlcnic_82xx_hw_write_wx_2M and
  qlcnic_82xx_hw_read_wx_2M
-Patch-mainline: Queued in subsystem maintainer repository
-Git-repo: git://git.kernel.org/pub/scm/linux/kernel/git/davem/net.git
+Patch-mainline: v4.12-rc5
 Git-commit: 5ea6d691aac6c93b790f0905e3460d44cc4c449b
 References: bsc#1019717 FATE#321698
 

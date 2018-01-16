@@ -10,7 +10,7 @@ hypercall page setup to an architecture specific file.
 
 Signed-off-by: K. Y. Srinivasan <kys@microsoft.com>
 Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  MAINTAINERS                     |  1 +
  arch/x86/Kbuild                 |  3 ++

@@ -1,0 +1,163 @@
+From: Quinn Tran <quinn.tran@cavium.com>
+Date: Thu, 9 Nov 2017 16:24:54 +0530
+Subject: [PATCH] qla2xxx: Fix re-login for Nport Handle in use.
+References: bsc#1043017
+Patch-Mainline: no, SLE12-SP3 specific backport
+
+When NPort Handle is in use, driver needs to mark the handle
+as used and pick another.  Instead, the code clear the handle
+and re-pick the same handle.
+
+Signed-off-by: Quinn Tran <quinn.tran@cavium.com>
+Signed-off-by: Sawan Chandak <sawan.chandak@cavium.com>
+Signed-off-by: Hannes Reinecke <hare@suse.de>
+---
+ drivers/scsi/qla2xxx/qla_gs.c   | 16 +++++++++----
+ drivers/scsi/qla2xxx/qla_init.c | 53 +++++++++++++++++++++++++++++------------
+ drivers/scsi/qla2xxx/qla_isr.c  |  5 ----
+ 3 files changed, 49 insertions(+), 25 deletions(-)
+
+diff --git a/drivers/scsi/qla2xxx/qla_gs.c b/drivers/scsi/qla2xxx/qla_gs.c
+index 19f8894..d656d46 100644
+--- a/drivers/scsi/qla2xxx/qla_gs.c
++++ b/drivers/scsi/qla2xxx/qla_gs.c
+@@ -2805,7 +2805,7 @@ void qla24xx_handle_gidpn_event(scsi_qla_host_t *vha, struct event_arg *ea)
+ 				}
+ 			} else { /* fcport->d_id.b24 != ea->id.b24 */
+ 				fcport->d_id.b24 = ea->id.b24;
+-				if (fcport->deleted == QLA_SESS_DELETED) {
++				if (fcport->deleted != QLA_SESS_DELETED) {
+ 					ql_dbg(ql_dbg_disc, vha, 0x2021,
+ 					    "%s %d %8phC post del sess\n",
+ 					    __func__, __LINE__, fcport->port_name);
+@@ -3178,10 +3178,16 @@ static void qla2x00_async_gpnid_sp_done(void *s, int res)
+ 	struct event_arg ea;
+ 	struct qla_work_evt *e;
+ 
+-	ql_dbg(ql_dbg_disc, vha, 0x2066,
+-	    "Async done-%s res %x ID %3phC. %8phC\n",
+-	    sp->name, res, ct_req->req.port_id.port_id,
+-	    ct_rsp->rsp.gpn_id.port_name);
++	if (res)
++		ql_dbg(ql_dbg_disc, vha, 0x2066,
++		    "Async done-%s fail res %x ID %3phC. %8phC\n",
++		    sp->name, res, ct_req->req.port_id.port_id,
++		    ct_rsp->rsp.gpn_id.port_name);
++	else
++		ql_dbg(ql_dbg_disc, vha, 0x2066,
++		    "Async done-%s good ID %3phC. %8phC\n",
++		    sp->name, ct_req->req.port_id.port_id,
++		    ct_rsp->rsp.gpn_id.port_name);
+ 
+ 	memset(&ea, 0, sizeof(ea));
+ 	memcpy(ea.port_name, ct_rsp->rsp.gpn_id.port_name, WWN_SIZE);
+diff --git a/drivers/scsi/qla2xxx/qla_init.c b/drivers/scsi/qla2xxx/qla_init.c
+index 42c8b2e..a09fb07 100644
+--- a/drivers/scsi/qla2xxx/qla_init.c
++++ b/drivers/scsi/qla2xxx/qla_init.c
+@@ -1311,6 +1311,8 @@ void qla2x00_fcport_event_handler(scsi_qla_host_t *vha, struct event_arg *ea)
+ qla24xx_handle_plogi_done_event(struct scsi_qla_host *vha, struct event_arg *ea)
+ {
+ 	port_id_t cid;	/* conflict Nport id */
++	u16 lid;
++	struct fc_port *conflict_fcport;
+ 
+ 	switch (ea->data[0]) {
+ 	case MBS_COMMAND_COMPLETE:
+@@ -1345,27 +1347,48 @@ void qla2x00_fcport_event_handler(scsi_qla_host_t *vha, struct event_arg *ea)
+ 		cid.b.rsvd_1 = 0;
+ 
+ 		ql_dbg(ql_dbg_disc, vha, 0x20ec,
+-		    "%s %d %8phC LoopID 0x%x in use post gnl\n",
++		    "%s %d %8phC LoopID 0x%x in use with %06x. post gnl\n",
+ 		    __func__, __LINE__, ea->fcport->port_name,
+-		    ea->fcport->loop_id);
++		    ea->fcport->loop_id, cid.b24);
++
++		set_bit(ea->fcport->loop_id, vha->hw->loop_id_map);
++		ea->fcport->loop_id = FC_NO_LOOP_ID;
+ 
+-		if (IS_SW_RESV_ADDR(cid)) {
+-			set_bit(ea->fcport->loop_id, vha->hw->loop_id_map);
+-			ea->fcport->loop_id = FC_NO_LOOP_ID;
+-		} else {
+-			qla2x00_clear_loop_id(ea->fcport);
+-		}
+ 		qla24xx_post_gnl_work(vha, ea->fcport);
+ 		break;
+ 	case MBS_PORT_ID_USED:
+-		ql_dbg(ql_dbg_disc, vha, 0x20ed,
+-		    "%s %d %8phC NPortId %02x%02x%02x inuse post gidpn\n",
+-		    __func__, __LINE__, ea->fcport->port_name,
+-		    ea->fcport->d_id.b.domain, ea->fcport->d_id.b.area,
+-		    ea->fcport->d_id.b.al_pa);
++		lid = ea->iop[1] & 0xffff;
++		qlt_find_sess_invalidate_other(vha,
++		wwn_to_u64(ea->fcport->port_name),
++		ea->fcport->d_id, lid, &conflict_fcport);
+ 
+-		qla2x00_clear_loop_id(ea->fcport);
+-		qla24xx_post_gidpn_work(vha, ea->fcport);
++		if (conflict_fcport) {
++			/* Another fcport share the same loop_id/nport id.
++			   Conflict fcport needs to finish cleanup before this
++			   fcport can proceed to login.
++			*/
++			conflict_fcport->conflict = ea->fcport;
++			ea->fcport->login_pause = 1;
++
++			ql_dbg(ql_dbg_disc, vha, 0x20ed,
++				"%s %d %8phC NPortId %06x inuse with loopid 0x%x. post gidpn\n",
++				__func__, __LINE__, ea->fcport->port_name,
++				ea->fcport->d_id.b24, lid);
++
++			qla2x00_clear_loop_id(ea->fcport);
++			qla24xx_post_gidpn_work(vha, ea->fcport);
++		} else {
++			ql_dbg(ql_dbg_disc, vha, 0x20ed,
++				"%s %d %8phC NPortId %06x inuse with loopid 0x%x. sched delete\n",
++				__func__, __LINE__, ea->fcport->port_name,
++                           ea->fcport->d_id.b24, lid);
++
++                       qla2x00_clear_loop_id(ea->fcport);
++                       set_bit(lid, vha->hw->loop_id_map);
++                       ea->fcport->loop_id = lid;
++                       ea->fcport->keep_nport_handle = 0;
++                       qlt_schedule_sess_for_deletion(ea->fcport, false);
++               }
+ 		break;
+ 	}
+ 	return;
+diff --git a/drivers/scsi/qla2xxx/qla_isr.c b/drivers/scsi/qla2xxx/qla_isr.c
+index 5189c16..dc7293e 100644
+--- a/drivers/scsi/qla2xxx/qla_isr.c
++++ b/drivers/scsi/qla2xxx/qla_isr.c
+@@ -2229,7 +2229,6 @@ struct scsi_dif_tuple {
+ 	int res = 0;
+ 	uint16_t state_flags = 0;
+ 	uint16_t retry_delay = 0;
+-	uint8_t no_logout = 0;
+ 
+ 	sts = (sts_entry_t *) pkt;
+ 	sts24 = (struct sts_entry_24xx *) pkt;
+@@ -2486,7 +2485,6 @@ struct scsi_dif_tuple {
+ 		break;
+ 
+ 	case CS_PORT_LOGGED_OUT:
+-		no_logout = 1;
+ 	case CS_PORT_CONFIG_CHG:
+ 	case CS_PORT_BUSY:
+ 	case CS_INCOMPLETE:
+@@ -2517,9 +2515,6 @@ struct scsi_dif_tuple {
+ 				port_state_str[atomic_read(&fcport->state)],
+ 				comp_status);
+ 
+-			if (no_logout)
+-				fcport->logout_on_delete = 0;
+-
+ 			qla2x00_mark_device_lost(fcport->vha, fcport, 1, 1);
+ 			qlt_schedule_sess_for_deletion_lock(fcport);
+ 		}
+-- 
+1.8.5.6
+

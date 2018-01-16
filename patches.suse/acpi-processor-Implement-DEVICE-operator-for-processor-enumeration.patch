@@ -1,0 +1,96 @@
+From 168314134daea0defb6717749a486688b4400429 Mon Sep 17 00:00:00 2001
+From: Dou Liyang <douly.fnst@cn.fujitsu.com>
+Date: Fri, 3 Mar 2017 16:02:26 +0800
+Subject: [PATCH] acpi/processor: Implement DEVICE operator for processor
+ enumeration
+
+References: bnc#1056230
+Patch-mainline: v4.11
+Git-commit: 8c8cb30f49b86333d8e036e1945cf1a78c03577e
+
+ACPI allows to declare processors either with the PROCESSOR or with the
+DEVICE operator. The current implementation handles only the PROCESSOR
+operator.
+
+On a system which uses the DEVICE operator for processor enumeration the
+evaluation fails.
+
+Check for the ACPI type of the ACPI handle and evaluate PROCESSOR and
+DEVICE types separately.
+
+Signed-off-by: Dou Liyang <douly.fnst@cn.fujitsu.com>
+Tested-by: Xiaolong Ye <xiaolong.ye@intel.com>
+Cc: rjw@rjwysocki.net
+Cc: linux-acpi@vger.kernel.org
+Cc: guzheng1@huawei.com
+Cc: izumi.taku@jp.fujitsu.com
+Cc: lenb@kernel.org
+Link: http://lkml.kernel.org/r/1488528147-2279-5-git-send-email-douly.fnst@cn.fujitsu.com
+Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
+Signed-off-by: Mel Gorman <mgorman@suse.de>
+---
+ drivers/acpi/acpi_processor.c | 39 ++++++++++++++++++++++++++++++++-------
+ 1 file changed, 32 insertions(+), 7 deletions(-)
+
+diff --git a/drivers/acpi/acpi_processor.c b/drivers/acpi/acpi_processor.c
+index 4d163e239105..f0de4ae8360e 100644
+--- a/drivers/acpi/acpi_processor.c
++++ b/drivers/acpi/acpi_processor.c
+@@ -617,25 +617,50 @@ static acpi_status __init acpi_processor_ids_walk(acpi_handle handle,
+ 						  void **rv)
+ {
+ 	acpi_status status;
++	acpi_object_type acpi_type;
++	unsigned long long uid;
+ 	union acpi_object object = { 0 };
+ 	struct acpi_buffer buffer = { sizeof(union acpi_object), &object };
+ 
+-	status = acpi_evaluate_object(handle, NULL, NULL, &buffer);
++	status = acpi_get_type(handle, &acpi_type);
+ 	if (ACPI_FAILURE(status))
+-		acpi_handle_info(handle, "Not get the processor object\n");
+-	else
+-		processor_validated_ids_update(object.processor.proc_id);
++		return false;
++
++	switch (acpi_type) {
++	case ACPI_TYPE_PROCESSOR:
++		status = acpi_evaluate_object(handle, NULL, NULL, &buffer);
++		if (ACPI_FAILURE(status))
++			goto err;
++		uid = object.processor.proc_id;
++		break;
++
++	case ACPI_TYPE_DEVICE:
++		status = acpi_evaluate_integer(handle, "_UID", NULL, &uid);
++		if (ACPI_FAILURE(status))
++			goto err;
++		break;
++	default:
++		goto err;
++	}
++
++	processor_validated_ids_update(uid);
++	return true;
++
++err:
++	acpi_handle_info(handle, "Invalid processor object\n");
++	return false;
+ 
+-	return AE_OK;
+ }
+ 
+-static void __init acpi_processor_check_duplicates(void)
++void __init acpi_processor_check_duplicates(void)
+ {
+-	/* Search all processor nodes in ACPI namespace */
++	/* check the correctness for all processors in ACPI namespace */
+ 	acpi_walk_namespace(ACPI_TYPE_PROCESSOR, ACPI_ROOT_OBJECT,
+ 						ACPI_UINT32_MAX,
+ 						acpi_processor_ids_walk,
+ 						NULL, NULL, NULL);
++	acpi_get_devices(ACPI_PROCESSOR_DEVICE_HID, acpi_processor_ids_walk,
++						NULL, NULL);
+ }
+ 
+ bool __init acpi_processor_validate_proc_id(int proc_id)

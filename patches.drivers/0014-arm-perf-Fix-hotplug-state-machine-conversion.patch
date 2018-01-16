@@ -1,0 +1,163 @@
+From 2b76eef2a0329c92260af9306e599a1efbb6e9eb Mon Sep 17 00:00:00 2001
+From: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
+Date: Wed, 20 Jul 2016 09:51:11 +0200
+Subject: [PATCH 14/56] arm/perf: Fix hotplug state machine conversion
+
+Git-commit: 37b502f121adab26ccc2769c3063f0e1272be7de
+Patch-mainline: v4.8-rc1
+References: bsc#1062279
+
+Mark Rutland pointed out that this commit is incomplete:
+
+  7d88eb695a1f ("arm/perf: Convert to hotplug state machine")
+
+The problem is that:
+
+ > We may have multiple PMUs (e.g. two in big.LITTLE systems), and
+ > __oprofile_cpu_pmu only contains one of these. So this conversion is not
+ > correct.
+ >
+ > We were relying on the notifier list implicitly containing a list of
+ > those PMUs. It seems like we need an explicit list here.
+ >
+ > We keep __oprofile_cpu_pmu around for legacy 32-bit users of OProfile
+ > (on non-hetereogeneous systems), and that's all that the variable should
+ > be used for.
+
+Introduce arm_pmu_list to correctly handle multiple PMUs in the system.
+
+Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
+Acked-by: Mark Rutland <mark.rutland@arm.com>
+Cc: Anna-Maria Gleixner <anna-maria@linutronix.de>
+Cc: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: Peter Zijlstra <peterz@infradead.org>
+Cc: Thomas Gleixner <tglx@linutronix.de>
+Cc: Will Deacon <will.deacon@arm.com>
+Cc: linux-tip-commits@vger.kernel.org
+Cc: rt@linutronix.de
+Link: http://lkml.kernel.org/r/20160719111733.GA22911@linutronix.de
+Signed-off-by: Ingo Molnar <mingo@kernel.org>
+Signed-off-by: Mian Yousaf Kaukab <yousaf.kaukab@suse.com>
+---
+ drivers/perf/arm_pmu.c       | 53 +++++++++++++++++++++++++++++++-------------
+ include/linux/perf/arm_pmu.h |  1 +
+ 2 files changed, 38 insertions(+), 16 deletions(-)
+
+diff --git a/drivers/perf/arm_pmu.c b/drivers/perf/arm_pmu.c
+index 6222abf4..ab03e708 100644
+--- a/drivers/perf/arm_pmu.c
++++ b/drivers/perf/arm_pmu.c
+@@ -688,6 +688,9 @@ static int cpu_pmu_request_irq(struct arm_pmu *cpu_pmu, irq_handler_t handler)
+ 	return 0;
+ }
+ 
++static DEFINE_MUTEX(arm_pmu_mutex);
++static LIST_HEAD(arm_pmu_list);
++
+ /*
+  * PMU hardware loses all context when a CPU goes offline.
+  * When a CPU is hotplugged back in, since some hardware registers are
+@@ -696,12 +699,17 @@ static int cpu_pmu_request_irq(struct arm_pmu *cpu_pmu, irq_handler_t handler)
+  */
+ static int arm_perf_starting_cpu(unsigned int cpu)
+ {
+-	if (!__oprofile_cpu_pmu)
+-		return 0;
+-	if (!cpumask_test_cpu(cpu, &__oprofile_cpu_pmu->supported_cpus))
+-		return 0;
+-	if (__oprofile_cpu_pmu->reset)
+-		__oprofile_cpu_pmu->reset(__oprofile_cpu_pmu);
++	struct arm_pmu *pmu;
++
++	mutex_lock(&arm_pmu_mutex);
++	list_for_each_entry(pmu, &arm_pmu_list, entry) {
++
++		if (!cpumask_test_cpu(cpu, &pmu->supported_cpus))
++			continue;
++		if (pmu->reset)
++			pmu->reset(pmu);
++	}
++	mutex_unlock(&arm_pmu_mutex);
+ 	return 0;
+ }
+ 
+@@ -813,11 +821,9 @@ static int cpu_pmu_init(struct arm_pmu *cpu_pmu)
+ 	if (!cpu_hw_events)
+ 		return -ENOMEM;
+ 
+-	err = cpuhp_setup_state_nocalls(CPUHP_AP_PERF_ARM_STARTING,
+-					"AP_PERF_ARM_STARTING",
+-					arm_perf_starting_cpu, NULL);
+-	if (err)
+-		goto out_hw_events;
++	mutex_lock(&arm_pmu_mutex);
++	list_add_tail(&cpu_pmu->entry, &arm_pmu_list);
++	mutex_unlock(&arm_pmu_mutex);
+ 
+ 	err = cpu_pm_pmu_register(cpu_pmu);
+ 	if (err)
+@@ -845,8 +851,9 @@ static int cpu_pmu_init(struct arm_pmu *cpu_pmu)
+ 	return 0;
+ 
+ out_unregister:
+-	cpuhp_remove_state_nocalls(CPUHP_AP_PERF_ARM_STARTING);
+-out_hw_events:
++	mutex_lock(&arm_pmu_mutex);
++	list_del(&cpu_pmu->entry);
++	mutex_unlock(&arm_pmu_mutex);
+ 	free_percpu(cpu_hw_events);
+ 	return err;
+ }
+@@ -854,7 +861,9 @@ out_hw_events:
+ static void cpu_pmu_destroy(struct arm_pmu *cpu_pmu)
+ {
+ 	cpu_pm_pmu_unregister(cpu_pmu);
+-	cpuhp_remove_state_nocalls(CPUHP_AP_PERF_ARM_STARTING);
++	mutex_lock(&arm_pmu_mutex);
++	list_del(&cpu_pmu->entry);
++	mutex_unlock(&arm_pmu_mutex);
+ 	free_percpu(cpu_pmu->hw_events);
+ }
+ 
+@@ -1020,8 +1029,6 @@ int arm_pmu_device_probe(struct platform_device *pdev,
+ 	if (ret)
+ 		goto out_destroy;
+ 
+-	WARN(__oprofile_cpu_pmu, "%s(): missing PMU strucure for CPU-hotplug\n",
+-	     __func__);
+ 	if (!__oprofile_cpu_pmu)
+ 		__oprofile_cpu_pmu = pmu;
+ 
+@@ -1039,3 +1046,17 @@ out_free:
+ 	kfree(pmu);
+ 	return ret;
+ }
++
++static int arm_pmu_hp_init(void)
++{
++	int ret;
++
++	ret = cpuhp_setup_state_nocalls(CPUHP_AP_PERF_ARM_STARTING,
++					"AP_PERF_ARM_STARTING",
++					arm_perf_starting_cpu, NULL);
++	if (ret)
++		pr_err("CPU hotplug notifier for ARM PMU could not be registered: %d\n",
++		       ret);
++	return ret;
++}
++subsys_initcall(arm_pmu_hp_init);
+diff --git a/include/linux/perf/arm_pmu.h b/include/linux/perf/arm_pmu.h
+index 042d5c7b..d1e530c7 100644
+--- a/include/linux/perf/arm_pmu.h
++++ b/include/linux/perf/arm_pmu.h
+@@ -168,6 +168,7 @@ struct arm_pmu {
+ 	DECLARE_BITMAP(pmceid_bitmap, ARMV8_PMUV3_MAX_COMMON_EVENTS);
+ 	struct platform_device	*plat_device;
+ 	struct pmu_hw_events	__percpu *hw_events;
++	struct list_head	entry;
+ 	struct notifier_block	cpu_pm_nb;
+ };
+ 
+-- 
+2.11.0
+

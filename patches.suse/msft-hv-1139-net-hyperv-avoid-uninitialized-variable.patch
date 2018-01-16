@@ -24,7 +24,7 @@ checks.
 
 Signed-off-by: Arnd Bergmann <arnd@arndb.de>
 Signed-off-by: David S. Miller <davem@davemloft.net>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  drivers/net/hyperv/netvsc_drv.c | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)

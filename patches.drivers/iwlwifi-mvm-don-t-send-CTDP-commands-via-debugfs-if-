@@ -1,0 +1,41 @@
+From 0bef1b83d35566e9bc757469c823c126862a65d3 Mon Sep 17 00:00:00 2001
+From: Matt Chen <matt.chen@intel.com>
+Date: Fri, 23 Jun 2017 17:50:18 +0800
+Subject: [PATCH] iwlwifi: mvm: don't send CTDP commands via debugfs if not supported
+Git-commit: 0bef1b83d35566e9bc757469c823c126862a65d3
+Patch-mainline: 4.14-rc1
+References: bsc#1031717
+
+Fix this issue if it is not supported by the firmware.
+
+Fixes: 00f481bd895a ("iwlwifi: mvm: add ctdp operations to debugfs")
+Signed-off-by: Matt Chen <matt.chen@intel.com>
+Signed-off-by: Luca Coelho <luciano.coelho@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/iwlwifi/mvm/debugfs.c |    6 ++++++
+ 1 file changed, 6 insertions(+)
+
+--- a/drivers/net/wireless/iwlwifi/mvm/debugfs.c
++++ b/drivers/net/wireless/iwlwifi/mvm/debugfs.c
+@@ -80,6 +80,9 @@ static ssize_t iwl_dbgfs_ctdp_budget_rea
+ 	char buf[16];
+ 	int pos, budget;
+ 
++	if (!iwl_mvm_is_ctdp_supported(mvm))
++		return -EOPNOTSUPP;
++
+ 	if (!mvm->ucode_loaded || mvm->cur_ucode != IWL_UCODE_REGULAR)
+ 		return -EIO;
+ 
+@@ -100,6 +103,9 @@ static ssize_t iwl_dbgfs_stop_ctdp_write
+ {
+ 	int ret;
+ 
++	if (!iwl_mvm_is_ctdp_supported(mvm))
++		return -EOPNOTSUPP;
++
+ 	if (!mvm->ucode_loaded || mvm->cur_ucode != IWL_UCODE_REGULAR)
+ 		return -EIO;
+ 

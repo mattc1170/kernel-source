@@ -1,0 +1,43 @@
+From 6683ead428b172f3ce5f5bcd3643cbeca50b7fd6 Mon Sep 17 00:00:00 2001
+From: Stefan Wahren <stefan.wahren@i2se.com>
+Date: Sat, 27 Aug 2016 16:19:50 +0000
+Subject: [PATCH 18/56] drivers/perf: arm_pmu: Fix NULL pointer dereference
+ during probe
+
+Git-commit: 63fb0a9516b2c4e23293d7253c14c40aa9c2b7d1
+Patch-mainline: v4.8-rc5
+References: bsc#1062279
+
+Patch 7f1d642fbb5c ("drivers/perf: arm-pmu: Fix handling of SPI lacking
+interrupt-affinity property") unintended also fixes perf_event support
+for bcm2835 which doesn't have PMU interrupts. Unfortunately this change
+introduce a NULL pointer dereference on bcm2835, because irq_is_percpu
+always expected to be called with a valid IRQ. So fix this regression
+by validating the IRQ before.
+
+Tested-by: Kevin Hilman <khilman@baylibre.com>
+Signed-off-by: Stefan Wahren <stefan.wahren@i2se.com>
+Fixes: 7f1d642fbb5c ("drivers/perf: arm-pmu: Fix handling of SPI lacking "interrupt-affinity" property")
+Signed-off-by: Will Deacon <will.deacon@arm.com>
+Signed-off-by: Catalin Marinas <catalin.marinas@arm.com>
+Signed-off-by: Mian Yousaf Kaukab <yousaf.kaukab@suse.com>
+---
+ drivers/perf/arm_pmu.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/perf/arm_pmu.c b/drivers/perf/arm_pmu.c
+index 7971370b..2dee7d8c 100644
+--- a/drivers/perf/arm_pmu.c
++++ b/drivers/perf/arm_pmu.c
+@@ -962,7 +962,7 @@ static int of_pmu_irq_cfg(struct arm_pmu *pmu)
+ 	if (cpumask_weight(&pmu->supported_cpus) == 0) {
+ 		int irq = platform_get_irq(pdev, 0);
+ 
+-		if (irq_is_percpu(irq)) {
++		if (irq >= 0 && irq_is_percpu(irq)) {
+ 			/* If using PPIs, check the affinity of the partition */
+ 			int ret;
+ 
+-- 
+2.11.0
+

@@ -22,7 +22,7 @@ Check that send_section_map is allocated in netvsc_send().
 
 Signed-off-by: Vitaly Kuznetsov <vkuznets@redhat.com>
 Signed-off-by: David S. Miller <davem@davemloft.net>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  drivers/net/hyperv/netvsc.c | 7 +++++++
  1 file changed, 7 insertions(+)

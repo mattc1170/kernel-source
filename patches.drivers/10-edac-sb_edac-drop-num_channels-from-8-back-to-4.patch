@@ -1,0 +1,33 @@
+From: Qiuxu Zhuo <qiuxu.zhuo@intel.com>
+Date: Tue, 23 May 2017 08:08:34 +0800
+Subject: EDAC, sb_edac: Drop NUM_CHANNELS from 8 back to 4
+Git-commit: 3286d3eb906cbac832884dda8ce2fdc7acb17a65
+Patch-mainline: v4.13-rc1
+References: bsc#1061721
+
+We don't need this quirk anymore now that the EDAC memory controller
+representation matches the hardware.
+
+Signed-off-by: Qiuxu Zhuo <qiuxu.zhuo@intel.com>
+Cc: linux-edac <linux-edac@vger.kernel.org>
+Link: http://lkml.kernel.org/r/20170523000834.87881-1-qiuxu.zhuo@intel.com
+[ Commit message. ]
+Signed-off-by: Borislav Petkov <bp@suse.de>
+---
+ drivers/edac/sb_edac.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/edac/sb_edac.c b/drivers/edac/sb_edac.c
+index fad5c79741d2..b9564f767269 100644
+--- a/drivers/edac/sb_edac.c
++++ b/drivers/edac/sb_edac.c
+@@ -279,7 +279,7 @@ static inline int sad_pkg(const struct interleave_pkg *table, u32 reg,
+  * sbridge structs
+  */
+ 
+-#define NUM_CHANNELS		8	/* 2MC per socket, four chan per MC */
++#define NUM_CHANNELS		4	/* Max channels per MC */
+ #define MAX_DIMMS		3	/* Max DIMMS per channel */
+ #define KNL_MAX_CHAS		38	/* KNL max num. of Cache Home Agents */
+ #define KNL_MAX_CHANNELS	6	/* KNL max num. of PCI channels */
+

@@ -3,7 +3,7 @@ Date: Fri, 29 Jan 2016 05:59:46 -0500
 Subject: workqueue: skip flush dependency checks for legacy workqueues
 Git-commit: 23d11a58a9a60dcb52c8fc6494efce908b24c295
 Patch-mainline: v4.5-rc5
-References:
+References: js has no idea
 
 fca839c00a12 ("workqueue: warn if memory reclaim tries to flush
 !WQ_MEM_RECLAIM workqueue") implemented flush dependency warning which
@@ -73,11 +73,11 @@ Signed-off-by: Mike Galbraith <mgalbraith@suse.de>
  	__WQ_DRAINING		= 1 << 16, /* internal: workqueue is draining */
  	__WQ_ORDERED		= 1 << 17, /* internal: workqueue is ordered */
 +	__WQ_LEGACY		= 1 << 18, /* internal: create*_workqueue() */
+ 	__WQ_ORDERED_EXPLICIT	= 1 << 19, /* internal: alloc_ordered_workqueue() */
  
  	WQ_MAX_ACTIVE		= 512,	  /* I like 512, better ideas? */
- 	WQ_MAX_UNBOUND_PER_CPU	= 4,	  /* 4 * #cpus for unbound wq */
-@@ -411,12 +412,12 @@ __alloc_workqueue_key(const char *fmt, u
- 	alloc_workqueue(fmt, WQ_UNBOUND | __WQ_ORDERED | (flags), 1, ##args)
+@@ -413,12 +414,12 @@ __alloc_workqueue_key(const char *fmt, u
+ 			__WQ_ORDERED_EXPLICIT | (flags), 1, ##args)
  
  #define create_workqueue(name)						\
 -	alloc_workqueue("%s", WQ_MEM_RECLAIM, 1, (name))
@@ -95,7 +95,7 @@ Signed-off-by: Mike Galbraith <mgalbraith@suse.de>
  
 --- a/kernel/workqueue.c
 +++ b/kernel/workqueue.c
-@@ -2364,7 +2364,8 @@ static void check_flush_dependency(struc
+@@ -2403,7 +2403,8 @@ static void check_flush_dependency(struc
  	WARN_ONCE(current->flags & PF_MEMALLOC,
  		  "workqueue: PF_MEMALLOC task %d(%s) is flushing !WQ_MEM_RECLAIM %s:%pf",
  		  current->pid, current->comm, target_wq->name, target_func);

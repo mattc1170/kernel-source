@@ -1,8 +1,7 @@
 From: Thomas Petazzoni <thomas.petazzoni@free-electrons.com>
 Date: Tue, 7 Mar 2017 16:53:01 +0100
 Subject: net: mvpp2: remove support for buffer header
-Patch-mainline: Queued in subsystem maintainer repository
-Git-repo: git://git.kernel.org/pub/scm/linux/kernel/git/davem/net-next.git
+Patch-mainline: v4.12-rc1
 Git-commit: aeb3d1109afad0f4ebb5c9e27bbb67b755c5f47d
 References: bsc#1032150
 

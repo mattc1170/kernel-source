@@ -1,0 +1,48 @@
+From: Jiri Slaby <jslaby@suse.cz>
+Subject: kABI: uninline task_tgid_nr_nr
+Patch-mainline: never, kabi
+References: kabi
+
+In 4.4.84, commit b4cf49024cf412a94121e61f8056636c557ead98 (pids: make
+task_tgid_nr_ns() safe), upstream commit
+dd1c1f2f2028a7b851f701fc6a8ebe39dcb95e7c changed task_tgid_nr_nr to be
+an inline in linux/sched.h. kABI checker obviously does not like the
+change.
+
+So switch this back and export the symbol again.
+
+Signed-off-by: Jiri Slaby <jslaby@suse.cz>
+---
+ include/linux/sched.h |    5 +----
+ kernel/pid.c          |    6 ++++++
+ 2 files changed, 7 insertions(+), 4 deletions(-)
+
+--- a/include/linux/sched.h
++++ b/include/linux/sched.h
+@@ -2056,10 +2056,7 @@ static inline pid_t task_session_vnr(str
+ 	return __task_pid_nr_ns(tsk, PIDTYPE_SID, NULL);
+ }
+ 
+-static inline pid_t task_tgid_nr_ns(struct task_struct *tsk, struct pid_namespace *ns)
+-{
+-	return __task_pid_nr_ns(tsk, __PIDTYPE_TGID, ns);
+-}
++pid_t task_tgid_nr_ns(struct task_struct *tsk, struct pid_namespace *ns);
+ 
+ static inline pid_t task_tgid_vnr(struct task_struct *tsk)
+ {
+--- a/kernel/pid.c
++++ b/kernel/pid.c
+@@ -511,6 +511,12 @@ pid_t pid_nr_ns(struct pid *pid, struct
+ }
+ EXPORT_SYMBOL_GPL(pid_nr_ns);
+ 
++pid_t task_tgid_nr_ns(struct task_struct *tsk, struct pid_namespace *ns)
++{
++	return __task_pid_nr_ns(tsk, __PIDTYPE_TGID, ns);
++}
++EXPORT_SYMBOL(task_tgid_nr_ns);
++
+ pid_t pid_vnr(struct pid *pid)
+ {
+ 	return pid_nr_ns(pid, task_active_pid_ns(current));

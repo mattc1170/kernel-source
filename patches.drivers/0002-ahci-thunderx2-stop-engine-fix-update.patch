@@ -1,0 +1,53 @@
+From 20add85bb6caba74669171794ad804fd7a7e8537 Mon Sep 17 00:00:00 2001
+From: Jayachandran C <jnair@caviumnetworks.com>
+Date: Sun, 22 Feb 1998 18:42:42 -0800
+Subject: [PATCH] ahci: thunderx2: stop engine fix update
+
+Patch-mainline: Never, Early silicon errata
+References: bsc#1057031
+
+The current reset fix fails during continuous reboot test. The failure
+happens when both the on-board SATA slots are used and when one of the
+controllers are reset.
+
+The latest ThunderX2 firmware (3.1) enables hardware error interrupts and
+when the reset fix fails, we get a hang with the print:
+[   14.839308] sd 1:0:0:0: [sdb] 468862128 512-byte logical blocks: (240 GB/224 GiB)
+[   14.846796] sd 1:0:0:0: [sdb] 4096-byte physical blocks
+[   14.852036] sd 1:0:0:0: [sdb] Write Protect is off
+[   14.856843] sd 1:0:0:0: [sdb] Write cache: enabled, read cache: enabled, doesn't support DPO or FUA
+[   14.866022] ata2.00: Enabling discard_zeroes_data
+
+        *** NBU BAR Error 0x1e25c ***
+         AddrLo 0x1d80180 AddrHi 0x0
+
+To fix this issue, update the SATA reset fix to increase the delays between register writes.
+
+Signed-off-by: Jayachandran C <jnair@caviumnetworks.com>
+Signed-off-by: Robert Richter <rrichter@cavium.com>
+Signed-off-by: Mian Yousaf Kaukab <yousaf.kaukab@suse.com>
+---
+ drivers/ata/libahci.c | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/ata/libahci.c b/drivers/ata/libahci.c
+index 2d052078f7b7..e1f4ff2b9329 100644
+--- a/drivers/ata/libahci.c
++++ b/drivers/ata/libahci.c
+@@ -674,10 +674,11 @@ int ahci_stop_engine(struct ata_port *ap)
+ 			MIDR_CPU_VAR_REV(0, 0),
+ 			MIDR_CPU_VAR_REV(0, MIDR_REVISION_MASK))) {
+ 		tmp = readl(hpriv->mmio + 0x8000);
++		udelay(100);
+ 		writel(tmp | (1 << 26), hpriv->mmio + 0x8000);
+-		udelay(1);
++		udelay(100);
+ 		writel(tmp & ~(1 << 26), hpriv->mmio + 0x8000);
+-		dev_warn(ap->host->dev, "CN99XX stop engine fix applied!\n");
++		dev_warn(ap->host->dev, "CN99XX SATA reset workaround applied\n");
+ 	}
+ #endif
+ 
+-- 
+2.11.0
+

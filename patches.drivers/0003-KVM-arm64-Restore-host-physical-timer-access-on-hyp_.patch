@@ -1,0 +1,43 @@
+From 8d699b03c4d44445d81dae836ec8096b0bb37d53 Mon Sep 17 00:00:00 2001
+From: James Morse <james.morse@arm.com>
+Date: Tue, 25 Apr 2017 18:02:45 +0100
+Subject: [PATCH 3/4] KVM: arm64: Restore host physical timer access on
+ hyp_panic()
+
+Git-commit: e8ec032b182cd4841605de4fc297a8edffe55972
+Patch-mainline: v4.13-rc1
+References: bsc#1054082
+
+When KVM panics, it hurridly restores the host context and parachutes
+into the host's panic() code. At some point panic() touches the physical
+timer/counter. Unless we are an arm64 system with VHE, this traps back
+to EL2. If we're lucky, we panic again.
+
+Add a __timer_save_state() call to KVMs hyp_panic() path, this saves the
+guest registers and disables the traps for the host.
+
+Fixes: 53fd5b6487e4 ("arm64: KVM: Add panic handling")
+Signed-off-by: James Morse <james.morse@arm.com>
+Reviewed-by: Marc Zyngier <marc.zyngier@arm.com>
+Reviewed-by: Christoffer Dall <cdall@linaro.org>
+Signed-off-by: Christoffer Dall <cdall@linaro.org>
+Signed-off-by: Mian Yousaf Kaukab <yousaf.kaukab@suse.com>
+---
+ arch/arm64/kvm/hyp/switch.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/arch/arm64/kvm/hyp/switch.c b/arch/arm64/kvm/hyp/switch.c
+index 69c4d1cf06ac..2f86fbb2c8bc 100644
+--- a/arch/arm64/kvm/hyp/switch.c
++++ b/arch/arm64/kvm/hyp/switch.c
+@@ -433,6 +433,7 @@ void __hyp_text __noreturn __hyp_panic(void)
+ 
+ 		vcpu = (struct kvm_vcpu *)read_sysreg(tpidr_el2);
+ 		host_ctxt = kern_hyp_va(vcpu->arch.host_cpu_context);
++		__timer_save_state(vcpu);
+ 		__deactivate_traps(vcpu);
+ 		__deactivate_vm(vcpu);
+ 		__sysreg_restore_host_state(host_ctxt);
+-- 
+2.11.0
+

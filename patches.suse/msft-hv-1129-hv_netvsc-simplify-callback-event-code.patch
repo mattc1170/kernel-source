@@ -11,7 +11,7 @@ The callback handler for netlink events can be simplified:
 
 Signed-off-by: Stephen Hemminger <sthemmin@microsoft.com>
 Signed-off-by: David S. Miller <davem@davemloft.net>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  drivers/net/hyperv/netvsc_drv.c | 28 ++++++++++------------------
  1 file changed, 10 insertions(+), 18 deletions(-)

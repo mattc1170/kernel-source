@@ -1,0 +1,140 @@
+From 53a5d24bf7f06e1b194ac68fa83054fae0de2e0e Mon Sep 17 00:00:00 2001
+From: Davidlohr Bueso <dave@stgolabs.net>
+Date: Tue, 10 Oct 2017 08:58:24 -0700
+Subject: [PATCH] fs/epoll: cache leftmost node
+Git-commit: b2ac2ea6296e7dd779168eb085b09d0fab9d1294 
+Patch-mainline: v4.14-rc1
+References: bsc#1056427
+
+...  such that we can avoid the tree walks to get the node with the
+smallest key.  Semantically the same, as the previously used rb_first(),
+but O(1).  The main overhead is the extra footprint for the cached rb_node
+pointer, which should not matter for epoll.
+
+SLE: This patch is a SLE12-SP2 backport for upstream (as we don't have the
+     new rbtree cached interfaces, so we do it manually):
+     b2ac2ea6296 (fs/epoll: use faster rb_first_cached())
+
+Link: http://lkml.kernel.org/r/20170719014603.19029-15-dave@stgolabs.net
+Signed-off-by: Davidlohr Bueso <dbueso@suse.de>
+Acked-by: Peter Zijlstra (Intel) <peterz@infradead.org>
+Cc: Jan Kara <jack@suse.cz>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+Signed-off-by: Linus Torvalds <torvalds@linux-foundation.org>
+
+---
+ fs/eventpoll.c | 34 ++++++++++++++++++++++++++++------
+ 1 file changed, 28 insertions(+), 6 deletions(-)
+
+diff --git a/fs/eventpoll.c b/fs/eventpoll.c
+index 1b08556776ce..b87254ca5ed5 100644
+--- a/fs/eventpoll.c
++++ b/fs/eventpoll.c
+@@ -200,6 +200,7 @@ struct eventpoll {
+ 
+ 	/* RB tree root used to store monitored fd structs */
+ 	struct rb_root rbr;
++	struct rb_node *rb_leftmost;
+ 
+ 	/*
+ 	 * This is a single linked list that chains all the "struct epitem" that
+@@ -714,6 +715,13 @@ static int ep_remove(struct eventpoll *ep, struct epitem *epi)
+ 	list_del_rcu(&epi->fllink);
+ 	spin_unlock(&file->f_lock);
+ 
++	if (ep->rb_leftmost == &epi->rbn) {
++		struct rb_node *next_node;
++
++		next_node = rb_next(&epi->rbn);
++		ep->rb_leftmost = next_node;
++	}
++
+ 	rb_erase(&epi->rbn, &ep->rbr);
+ 
+ 	spin_lock_irqsave(&ep->lock, flags);
+@@ -758,7 +766,7 @@ static void ep_free(struct eventpoll *ep)
+ 	/*
+ 	 * Walks through the whole tree by unregistering poll callbacks.
+ 	 */
+-	for (rbp = rb_first(&ep->rbr); rbp; rbp = rb_next(rbp)) {
++	for (rbp = ep->rb_leftmost; rbp; rbp = rb_next(rbp)) {
+ 		epi = rb_entry(rbp, struct epitem, rbn);
+ 
+ 		ep_unregister_pollwait(ep, epi);
+@@ -774,7 +782,7 @@ static void ep_free(struct eventpoll *ep)
+ 	 * a lockdep warning.
+ 	 */
+ 	mutex_lock(&ep->mtx);
+-	while ((rbp = rb_first(&ep->rbr)) != NULL) {
++	while ((rbp = ep->rb_leftmost) != NULL) {
+ 		epi = rb_entry(rbp, struct epitem, rbn);
+ 		ep_remove(ep, epi);
+ 		cond_resched();
+@@ -881,7 +889,7 @@ static void ep_show_fdinfo(struct seq_file *m, struct file *f)
+ 	struct rb_node *rbp;
+ 
+ 	mutex_lock(&ep->mtx);
+-	for (rbp = rb_first(&ep->rbr); rbp; rbp = rb_next(rbp)) {
++	for (rbp = ep->rb_leftmost; rbp; rbp = rb_next(rbp)) {
+ 		struct epitem *epi = rb_entry(rbp, struct epitem, rbn);
+ 
+ 		seq_printf(m, "tfd: %8d events: %8x data: %16llx\n",
+@@ -955,6 +963,7 @@ static int ep_alloc(struct eventpoll **pep)
+ 	init_waitqueue_head(&ep->poll_wait);
+ 	INIT_LIST_HEAD(&ep->rdllist);
+ 	ep->rbr = RB_ROOT;
++	ep->rb_leftmost = NULL;
+ 	ep->ovflist = EP_UNACTIVE_PTR;
+ 	ep->user = user;
+ 
+@@ -1120,16 +1129,22 @@ static void ep_rbtree_insert(struct eventpoll *ep, struct epitem *epi)
+ 	int kcmp;
+ 	struct rb_node **p = &ep->rbr.rb_node, *parent = NULL;
+ 	struct epitem *epic;
++	bool leftmost = true;
+ 
+ 	while (*p) {
+ 		parent = *p;
+ 		epic = rb_entry(parent, struct epitem, rbn);
+ 		kcmp = ep_cmp_ffd(&epi->ffd, &epic->ffd);
+-		if (kcmp > 0)
++		if (kcmp > 0) {
+ 			p = &parent->rb_right;
+-		else
++			leftmost = false;
++		} else
+ 			p = &parent->rb_left;
+ 	}
++
++	if (leftmost)
++		ep->rb_leftmost = &epi->rbn;
++
+ 	rb_link_node(&epi->rbn, parent, p);
+ 	rb_insert_color(&epi->rbn, &ep->rbr);
+ }
+@@ -1372,6 +1387,13 @@ error_remove_epi:
+ 	list_del_rcu(&epi->fllink);
+ 	spin_unlock(&tfile->f_lock);
+ 
++	if (ep->rb_leftmost == &epi->rbn) {
++		struct rb_node *next_node;
++
++		next_node = rb_next(&epi->rbn);
++		ep->rb_leftmost = next_node;
++	}
++
+ 	rb_erase(&epi->rbn, &ep->rbr);
+ 
+ error_unregister:
+@@ -1699,7 +1721,7 @@ static int ep_loop_check_proc(void *priv, void *cookie, int call_nests)
+ 	mutex_lock_nested(&ep->mtx, call_nests + 1);
+ 	ep->visited = 1;
+ 	list_add(&ep->visited_list_link, &visited_list);
+-	for (rbp = rb_first(&ep->rbr); rbp; rbp = rb_next(rbp)) {
++	for (rbp = ep->rb_leftmost; rbp; rbp = rb_next(rbp)) {
+ 		epi = rb_entry(rbp, struct epitem, rbn);
+ 		if (unlikely(is_file_epoll(epi->ffd.file))) {
+ 			ep_tovisit = epi->ffd.file->private_data;
+-- 
+2.12.0
+

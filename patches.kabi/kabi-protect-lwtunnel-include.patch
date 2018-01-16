@@ -1,0 +1,29 @@
+From: Jiri Slaby <jslaby@suse.cz>
+Subject: kABI: protect lwtunnel include in ip6_route.h
+Patch-mainline: never, kabi
+References: kabi
+
+In 4.4.78, commit eb7bef1db6f31cdba61a0d8794839fab57da5ed8 (net: ipv6:
+Compare lwstate in detecting duplicate nexthops), upstream commit
+f06b7549b79e29a672336d4e134524373fb7a232 added net/lwtunnel.h include to
+include/net/ip6_route.h and it made some of the symbols defined.
+
+Protect the include by __GENKSYMS__ to hide it from the kABI checker.
+
+Signed-off-by: Jiri Slaby <jslaby@suse.cz>
+---
+ include/net/ip6_route.h |    2 ++
+ 1 file changed, 2 insertions(+)
+
+--- a/include/net/ip6_route.h
++++ b/include/net/ip6_route.h
+@@ -21,7 +21,9 @@ struct route_info {
+ #include <net/flow.h>
+ #include <net/ip6_fib.h>
+ #include <net/sock.h>
++#ifndef __GENKSYMS__
+ #include <net/lwtunnel.h>
++#endif
+ #include <linux/ip.h>
+ #include <linux/ipv6.h>
+ #include <linux/route.h>

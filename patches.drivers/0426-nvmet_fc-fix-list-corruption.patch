@@ -23,6 +23,8 @@ Correct by catching the cpu reference when getting the structure
 address. Also ensure queue id indexing for the assoction is within
 range for the association.
 
+[hare: fix for 0395-nvmet_fc-Reduce-work_q-count.patch]
+
 Signed-off-by: Dick Kennedy <dick.kennedy@broadcom.com>
 Signed-off-by: James Smart <james.smart@broadcom.com>
 Acked-by: Johannes Thumshirn <jthumshirn@suse.de>

@@ -1,0 +1,47 @@
+From: Vasilis Liaskovitis <vliaskovitis@suse.com>
+Date: Wed, 20 Sep 2017 09:46:23 +0200
+Subject: [PATCH] HID: usbhid: Add HID_QUIRK_NOGET for Aten CS-1758 KVM switch
+Git-commit: d529a4ad91efcf68b65440c6555895fd7ad5a08e
+References: bnc#1022967
+Patch-Mainline: v4.12
+
+Like other switches, the Aten CS-1758 KVM switch needs a quirk to avoid spewing
+errors:
+
+[12599018.071059] usb 5-2: input irq status -75 received
+[12599018.079053] usb 5-2: input irq status -75 received
+
+Add it.
+Signed-off-by: Vasilis Liaskovitis <vliaskovitis@suse.com>
+---
+ drivers/hid/hid-ids.h           | 1 +
+ drivers/hid/usbhid/hid-quirks.c | 1 +
+ 2 files changed, 2 insertions(+)
+
+diff --git a/drivers/hid/hid-ids.h b/drivers/hid/hid-ids.h
+index 490a1ee..4455113 100644
+--- a/drivers/hid/hid-ids.h
++++ b/drivers/hid/hid-ids.h
+@@ -172,6 +172,7 @@
+ #define USB_DEVICE_ID_ATEN_4PORTKVMC	0x2208
+ #define USB_DEVICE_ID_ATEN_CS682	0x2213
+ #define USB_DEVICE_ID_ATEN_CS692	0x8021
++#define USB_DEVICE_ID_ATEN_CS1758	0x2220
+ 
+ #define USB_VENDOR_ID_ATMEL		0x03eb
+ #define USB_DEVICE_ID_ATMEL_MULTITOUCH	0x211c
+diff --git a/drivers/hid/usbhid/hid-quirks.c b/drivers/hid/usbhid/hid-quirks.c
+index 5bcf1ad..baff990 100644
+--- a/drivers/hid/usbhid/hid-quirks.c
++++ b/drivers/hid/usbhid/hid-quirks.c
+@@ -63,6 +63,7 @@ static const struct hid_blacklist {
+ 	{ USB_VENDOR_ID_ATEN, USB_DEVICE_ID_ATEN_4PORTKVMC, HID_QUIRK_NOGET },
+ 	{ USB_VENDOR_ID_ATEN, USB_DEVICE_ID_ATEN_CS682, HID_QUIRK_NOGET },
+ 	{ USB_VENDOR_ID_ATEN, USB_DEVICE_ID_ATEN_CS692, HID_QUIRK_NOGET },
++	{ USB_VENDOR_ID_ATEN, USB_DEVICE_ID_ATEN_CS1758, HID_QUIRK_NOGET },
+ 	{ USB_VENDOR_ID_CH, USB_DEVICE_ID_CH_FIGHTERSTICK, HID_QUIRK_NOGET },
+ 	{ USB_VENDOR_ID_CH, USB_DEVICE_ID_CH_COMBATSTICK, HID_QUIRK_NOGET },
+ 	{ USB_VENDOR_ID_CH, USB_DEVICE_ID_CH_FLIGHT_SIM_ECLIPSE_YOKE, HID_QUIRK_NOGET },
+-- 
+1.7.12.4
+

@@ -1,0 +1,57 @@
+From: Stephen Hemminger <stephen@networkplumber.org>
+Date: Sat, 4 Mar 2017 18:27:13 -0700
+Patch-mainline: v4.12-rc1
+Subject: vmbus: remove unnecessary initialization
+Git-commit: 2c616a8b6bd3b51b560d994f3412da998fe7ee48
+References: fate#320485
+
+Don't initialize variables that are then set a few lines later.
+
+Signed-off-by: Stephen Hemminger <sthemmin@microsoft.com>
+Signed-off-by: K. Y. Srinivasan <kys@microsoft.com>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Acked-by: Olaf Hering <ohering@suse.de>
+---
+ drivers/hv/ring_buffer.c | 13 +++++--------
+ 1 file changed, 5 insertions(+), 8 deletions(-)
+
+diff --git a/drivers/hv/ring_buffer.c b/drivers/hv/ring_buffer.c
+--- a/drivers/hv/ring_buffer.c
++++ b/drivers/hv/ring_buffer.c
+@@ -265,14 +265,13 @@ void hv_ringbuffer_cleanup(struct hv_ring_buffer_info *ring_info)
+ int hv_ringbuffer_write(struct vmbus_channel *channel,
+ 			const struct kvec *kv_list, u32 kv_count)
+ {
+-	int i = 0;
++	int i;
+ 	u32 bytes_avail_towrite;
+-	u32 totalbytes_towrite = 0;
+-
++	u32 totalbytes_towrite = sizeof(u64);
+ 	u32 next_write_location;
+ 	u32 old_write;
+-	u64 prev_indices = 0;
+-	unsigned long flags = 0;
++	u64 prev_indices;
++	unsigned long flags;
+ 	struct hv_ring_buffer_info *outring_info = &channel->outbound;
+ 
+ 	if (channel->rescind)
+@@ -281,8 +280,6 @@ int hv_ringbuffer_write(struct vmbus_channel *channel,
+ 	for (i = 0; i < kv_count; i++)
+ 		totalbytes_towrite += kv_list[i].iov_len;
+ 
+-	totalbytes_towrite += sizeof(u64);
+-
+ 	spin_lock_irqsave(&outring_info->ring_lock, flags);
+ 
+ 	bytes_avail_towrite = hv_get_bytes_to_write(outring_info);
+@@ -339,7 +336,7 @@ int hv_ringbuffer_read(struct vmbus_channel *channel,
+ 		       u64 *requestid, bool raw)
+ {
+ 	u32 bytes_avail_toread;
+-	u32 next_read_location = 0;
++	u32 next_read_location;
+ 	u64 prev_indices = 0;
+ 	struct vmpacket_descriptor desc;
+ 	u32 offset;

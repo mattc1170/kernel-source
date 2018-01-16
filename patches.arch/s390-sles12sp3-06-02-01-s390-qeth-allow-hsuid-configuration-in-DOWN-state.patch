@@ -1,0 +1,94 @@
+From: Julian Wiedmann <jwi@linux.vnet.ibm.com>
+Subject: s390/qeth: allow hsuid configuration in DOWN state
+Patch-mainline: v4.8-rc8
+Git-commit: a7531c1cc09855df5e33ceefe4fdfc2d74ccab19
+References: bnc#1070825, LTC#161871
+
+Description:  qeth: allow hsuid configuration
+Symptom:      'hsuid' parameter of HiperSockets device can't be set
+Problem:      The 'hsuid' translates to a link-local IPv6 address.
+              The hsuid can only be set while the card is DOWN,
+              but while in this state the IP registration command fails.
+Solution:     Delay the IP registration for hsuid until the card can
+              send IP registration commands.
+              Also apply proper locking when modifying the card's IP
+              address table.
+Reproduction: Attempt to set a 'hsuid' while card is in DOWN state.
+
+Upstream-Description:
+
+              s390/qeth: allow hsuid configuration in DOWN state
+
+              The qeth IP address mapping logic has been reworked recently. It
+              causes now problems to specify qeth sysfs attribute "hsuid" in DOWN
+              state, which is allowed. Postpone registering or deregistering of
+              IP-addresses in this case.
+
+              Signed-off-by: Ursula Braun <ubraun@linux.vnet.ibm.com>
+              Reviewed-by: Thomas Richter <tmricht@linux.vnet.ibm.com>
+              Signed-off-by: David S. Miller <davem@davemloft.net>
+
+
+Signed-off-by: Julian Wiedmann <jwi@linux.vnet.ibm.com>
+Acked-by: Hannes Reinecke <hare@suse.com>
+---
+ drivers/s390/net/qeth_l3_main.c |   22 +++++++++++++++++-----
+ 1 file changed, 17 insertions(+), 5 deletions(-)
+
+--- a/drivers/s390/net/qeth_l3_main.c
++++ b/drivers/s390/net/qeth_l3_main.c
+@@ -257,6 +257,11 @@ int qeth_l3_delete_ip(struct qeth_card *
+ 	if (addr->in_progress)
+ 		return -EINPROGRESS;
+ 
++	if (!qeth_card_hw_is_reachable(card)) {
++		addr->disp_flag = QETH_DISP_ADDR_DELETE;
++		return 0;
++	}
++
+ 	rc = qeth_l3_deregister_addr_entry(card, addr);
+ 
+ 	hash_del(&addr->hnode);
+@@ -296,6 +301,11 @@ int qeth_l3_add_ip(struct qeth_card *car
+ 		hash_add(card->ip_htable, &addr->hnode,
+ 				qeth_l3_ipaddr_hash(addr));
+ 
++		if (!qeth_card_hw_is_reachable(card)) {
++			addr->disp_flag = QETH_DISP_ADDR_ADD;
++			return 0;
++		}
++
+ 		/* qeth_l3_register_addr_entry can go to sleep
+ 		 * if we add a IPV4 addr. It is caused by the reason
+ 		 * that SETIP ipa cmd starts ARP staff for IPV4 addr.
+@@ -390,12 +400,16 @@ static void qeth_l3_recover_ip(struct qe
+ 	int i;
+ 	int rc;
+ 
+-	QETH_CARD_TEXT(card, 4, "recoverip");
++	QETH_CARD_TEXT(card, 4, "recovrip");
+ 
+ 	spin_lock_bh(&card->ip_lock);
+ 
+ 	hash_for_each_safe(card->ip_htable, i, tmp, addr, hnode) {
+-		if (addr->disp_flag == QETH_DISP_ADDR_ADD) {
++		if (addr->disp_flag == QETH_DISP_ADDR_DELETE) {
++			qeth_l3_deregister_addr_entry(card, addr);
++			hash_del(&addr->hnode);
++			kfree(addr);
++		} else if (addr->disp_flag == QETH_DISP_ADDR_ADD) {
+ 			if (addr->proto == QETH_PROT_IPV4) {
+ 				addr->in_progress = 1;
+ 				spin_unlock_bh(&card->ip_lock);
+@@ -407,10 +421,8 @@ static void qeth_l3_recover_ip(struct qe
+ 
+ 			if (!rc) {
+ 				addr->disp_flag = QETH_DISP_ADDR_DO_NOTHING;
+-				if (addr->ref_counter < 1) {
++				if (addr->ref_counter < 1)
+ 					qeth_l3_delete_ip(card, addr);
+-					kfree(addr);
+-				}
+ 			} else {
+ 				hash_del(&addr->hnode);
+ 				kfree(addr);

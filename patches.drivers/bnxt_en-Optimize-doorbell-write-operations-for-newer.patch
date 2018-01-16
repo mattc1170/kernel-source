@@ -1,0 +1,104 @@
+From: Michael Chan <michael.chan@broadcom.com>
+Date: Mon, 29 May 2017 19:06:08 -0400
+Subject: bnxt_en: Optimize doorbell write operations for newer chips.
+Patch-mainline: v4.13-rc1
+Git-commit: 434c975a8fe2f70b70ac09ea5ddd008e0528adfa
+References: bsc#1053309
+
+Older chips require the doorbells to be written twice, but newer chips
+do not.  Add a new common function bnxt_db_write() to write all
+doorbells appropriately depending on the chip.  Eliminating the extra
+doorbell on newer chips has a significant performance improvement
+on pktgen.
+
+Signed-off-by: Michael Chan <michael.chan@broadcom.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+Acked-by: Benjamin Poirier <bpoirier@suse.com>
+---
+ drivers/net/ethernet/broadcom/bnxt/bnxt.c |   27 +++++++++++----------------
+ drivers/net/ethernet/broadcom/bnxt/bnxt.h |    9 +++++++++
+ 2 files changed, 20 insertions(+), 16 deletions(-)
+
+--- a/drivers/net/ethernet/broadcom/bnxt/bnxt.c
++++ b/drivers/net/ethernet/broadcom/bnxt/bnxt.c
+@@ -472,8 +472,7 @@ normal_tx:
+ 	prod = NEXT_TX(prod);
+ 	txr->tx_prod = prod;
+ 
+-	writel(DB_KEY_TX | prod, txr->tx_doorbell);
+-	writel(DB_KEY_TX | prod, txr->tx_doorbell);
++	bnxt_db_write(bp, txr->tx_doorbell, DB_KEY_TX | prod);
+ 
+ tx_done:
+ 
+@@ -1825,14 +1824,10 @@ static int bnxt_poll_work(struct bnxt *b
+ 	if (event & BNXT_RX_EVENT) {
+ 		struct bnxt_rx_ring_info *rxr = bnapi->rx_ring;
+ 
+-		writel(DB_KEY_RX | rxr->rx_prod, rxr->rx_doorbell);
+-		writel(DB_KEY_RX | rxr->rx_prod, rxr->rx_doorbell);
+-		if (event & BNXT_AGG_EVENT) {
+-			writel(DB_KEY_RX | rxr->rx_agg_prod,
+-			       rxr->rx_agg_doorbell);
+-			writel(DB_KEY_RX | rxr->rx_agg_prod,
+-			       rxr->rx_agg_doorbell);
+-		}
++		bnxt_db_write(bp, rxr->rx_doorbell, DB_KEY_RX | rxr->rx_prod);
++		if (event & BNXT_AGG_EVENT)
++			bnxt_db_write(bp, rxr->rx_agg_doorbell,
++				      DB_KEY_RX | rxr->rx_agg_prod);
+ 	}
+ 	return rx_pkts;
+ }
+@@ -1892,13 +1887,11 @@ static int bnxt_poll_nitroa0(struct napi
+ 
+ 	cpr->cp_raw_cons = raw_cons;
+ 	BNXT_CP_DB(cpr->cp_doorbell, cpr->cp_raw_cons);
+-	writel(DB_KEY_RX | rxr->rx_prod, rxr->rx_doorbell);
+-	writel(DB_KEY_RX | rxr->rx_prod, rxr->rx_doorbell);
++	bnxt_db_write(bp, rxr->rx_doorbell, DB_KEY_RX | rxr->rx_prod);
+ 
+-	if (event & BNXT_AGG_EVENT) {
+-		writel(DB_KEY_RX | rxr->rx_agg_prod, rxr->rx_agg_doorbell);
+-		writel(DB_KEY_RX | rxr->rx_agg_prod, rxr->rx_agg_doorbell);
+-	}
++	if (event & BNXT_AGG_EVENT)
++		bnxt_db_write(bp, rxr->rx_agg_doorbell,
++			      DB_KEY_RX | rxr->rx_agg_prod);
+ 
+ 	if (!bnxt_has_work(bp, cpr) && rx_pkts < budget) {
+ 		napi_complete_done(napi, rx_pkts);
+@@ -7638,6 +7631,8 @@ static int bnxt_init_one(struct pci_dev
+ 	bp->gro_func = bnxt_gro_func_5730x;
+ 	if (BNXT_CHIP_P4_PLUS(bp))
+ 		bp->gro_func = bnxt_gro_func_5731x;
++	else
++		bp->flags |= BNXT_FLAG_DOUBLE_DB;
+ 
+ 	rc = bnxt_hwrm_func_drv_rgtr(bp);
+ 	if (rc)
+--- a/drivers/net/ethernet/broadcom/bnxt/bnxt.h
++++ b/drivers/net/ethernet/broadcom/bnxt/bnxt.h
+@@ -1019,6 +1019,7 @@ struct bnxt {
+ 	#define BNXT_FLAG_FW_LLDP_AGENT	0x80000
+ 	#define BNXT_FLAG_MULTI_HOST	0x100000
+ 	#define BNXT_FLAG_SHORT_CMD	0x200000
++	#define BNXT_FLAG_DOUBLE_DB	0x400000
+ 	#define BNXT_FLAG_CHIP_NITRO_A0	0x1000000
+ 
+ 	#define BNXT_FLAG_ALL_CONFIG_FEATS (BNXT_FLAG_TPA |		\
+@@ -1237,6 +1238,14 @@ struct bnxt {
+ #define SFF_MODULE_ID_QSFP28			0x11
+ #define BNXT_MAX_PHY_I2C_RESP_SIZE		64
+ 
++/* For TX and RX ring doorbells */
++static inline void bnxt_db_write(struct bnxt *bp, void __iomem *db, u32 val)
++{
++	writel(val, db);
++	if (bp->flags & BNXT_FLAG_DOUBLE_DB)
++		writel(val, db);
++}
++
+ void bnxt_set_ring_params(struct bnxt *);
+ int bnxt_set_rx_skb_mode(struct bnxt *bp, bool page_mode);
+ void bnxt_hwrm_cmd_hdr_init(struct bnxt *, void *, u16, u16, u16);

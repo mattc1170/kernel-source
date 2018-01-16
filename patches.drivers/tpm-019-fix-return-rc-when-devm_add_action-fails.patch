@@ -14,23 +14,13 @@ Reported-by: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>
 Fixes: 8e0ee3c9faed ("tpm: fix the cleanup of struct tpm_chip")
 Acked-by: Michal Suchanek <msuchanek@suse.de>
 ---
- drivers/char/tpm/tpm-chip.c | 7 ++++++-
+ drivers/char/tpm/tpm-chip.c |    7 ++++++-
  1 file changed, 6 insertions(+), 1 deletion(-)
 
-diff --git a/drivers/char/tpm/tpm-chip.c b/drivers/char/tpm/tpm-chip.c
-index 2521425..274dd01 100644
 --- a/drivers/char/tpm/tpm-chip.c
 +++ b/drivers/char/tpm/tpm-chip.c
-@@ -88,6 +88,7 @@ struct tpm_chip *tpmm_chip_alloc(struct device *dev,
- 				 const struct tpm_class_ops *ops)
- {
- 	struct tpm_chip *chip;
-+	int rc;
- 
- 	chip = kzalloc(sizeof(*chip), GFP_KERNEL);
- 	if (chip == NULL)
-@@ -136,7 +137,11 @@ struct tpm_chip *tpmm_chip_alloc(struct device *dev,
- 	chip->cdev.owner = chip->pdev->driver->owner;
+@@ -185,7 +186,11 @@ struct tpm_chip *tpmm_chip_alloc(struct
+ 	chip->cdev.owner = dev->driver->owner;
  	chip->cdev.kobj.parent = &chip->dev.kobj;
  
 -	devm_add_action(dev, (void (*)(void *)) put_device, &chip->dev);
@@ -42,6 +32,3 @@ index 2521425..274dd01 100644
  
  	return chip;
  }
--- 
-2.10.2
-

@@ -1,0 +1,40 @@
+From: Valentin Longchamp <valentin.longchamp@keymile.com>
+Date: Thu, 15 Dec 2016 14:22:26 +0100
+Subject: [PATCH] powerpc/corenet: explicitly disable the SDHC controller on
+ kmcoge4
+References: bnc#1012382
+Patch-mainline: 4.4.98
+Git-commit: a674c7d470bb47e82f4eb1fa944eadeac2f6bbaf
+
+[ Upstream commit a674c7d470bb47e82f4eb1fa944eadeac2f6bbaf ]
+
+It is not implemented on the kmcoge4 hardware and if not disabled it
+leads to error messages with the corenet32_smp_defconfig.
+
+Signed-off-by: Valentin Longchamp <valentin.longchamp@keymile.com>
+Signed-off-by: Scott Wood <oss@buserror.net>
+Signed-off-by: Sasha Levin <alexander.levin@verizon.com>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Signed-off-by: Jiri Slaby <jslaby@suse.cz>
+---
+ arch/powerpc/boot/dts/fsl/kmcoge4.dts | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/arch/powerpc/boot/dts/fsl/kmcoge4.dts b/arch/powerpc/boot/dts/fsl/kmcoge4.dts
+index 6858ec9ef295..1a953d9edf1e 100644
+--- a/arch/powerpc/boot/dts/fsl/kmcoge4.dts
++++ b/arch/powerpc/boot/dts/fsl/kmcoge4.dts
+@@ -83,6 +83,10 @@
+ 			};
+ 		};
+ 
++		sdhc@114000 {
++			status = "disabled";
++		};
++
+ 		i2c@119000 {
+ 			status = "disabled";
+ 		};
+-- 
+2.15.0
+

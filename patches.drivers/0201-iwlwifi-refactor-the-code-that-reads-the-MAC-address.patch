@@ -16,10 +16,10 @@ Signed-off-by: Emmanuel Grumbach <emmanuel.grumbach@intel.com>
 Acked-by: Takashi Iwai <tiwai@suse.de>
 
 ---
- drivers/net/wireless/iwlwifi/iwl-nvm-parse.c |   97 ++++++++++++++-------------
+ drivers/net/wireless/iwlwifi/iwl-nvm-parse.c |   99 +++++++++++++--------------
  drivers/net/wireless/iwlwifi/iwl-nvm-parse.h |    5 -
  drivers/net/wireless/iwlwifi/mvm/nvm.c       |   11 ---
- 3 files changed, 55 insertions(+), 58 deletions(-)
+ 3 files changed, 55 insertions(+), 60 deletions(-)
 
 --- a/drivers/net/wireless/iwlwifi/iwl-nvm-parse.c
 +++ b/drivers/net/wireless/iwlwifi/iwl-nvm-parse.c
@@ -39,7 +39,7 @@ Acked-by: Takashi Iwai <tiwai@suse.de>
  
  /* NVM offsets (in words) definitions */
  enum wkp_nvm_offsets {
-@@ -522,27 +524,11 @@ static void iwl_set_radio_cfg(const stru
+@@ -532,27 +534,11 @@ static void iwl_set_radio_cfg(const stru
  	data->valid_rx_ant = NVM_RF_CFG_RX_ANT_MSK_FAMILY_8000(radio_cfg);
  }
  
@@ -69,7 +69,7 @@ Acked-by: Takashi Iwai <tiwai@suse.de>
  {
  	const u8 *hw_addr;
  
-@@ -568,11 +554,16 @@ static void iwl_set_hw_address_family_80
+@@ -578,11 +564,16 @@ static void iwl_set_hw_address_family_80
  		    memcmp(reserved_mac, hw_addr, ETH_ALEN) != 0)
  			return;
  
@@ -88,7 +88,7 @@ Acked-by: Takashi Iwai <tiwai@suse.de>
  		/* read the MAC address from HW resisters */
  		hw_addr = (const u8 *)&mac_addr0;
  		data->hw_addr[0] = hw_addr[3];
-@@ -585,28 +576,50 @@ static void iwl_set_hw_address_family_80
+@@ -595,14 +586,35 @@ static void iwl_set_hw_address_family_80
  		data->hw_addr[5] = hw_addr[0];
  
  		if (!is_valid_ether_addr(data->hw_addr))
@@ -127,6 +127,10 @@ Acked-by: Takashi Iwai <tiwai@suse.de>
 +	}
  }
  
+ static bool
+@@ -639,18 +651,19 @@ iwl_nvm_no_wide_in_5ghz(struct device *d
+ }
+ 
  struct iwl_nvm_data *
 -iwl_parse_nvm_data(struct device *dev, const struct iwl_cfg *cfg,
 +iwl_parse_nvm_data(struct iwl_trans *trans, const struct iwl_cfg *cfg,
@@ -139,6 +143,7 @@ Acked-by: Takashi Iwai <tiwai@suse.de>
  {
 +	struct device *dev = trans->dev;
  	struct iwl_nvm_data *data;
+ 	bool no_wide_in_5ghz = iwl_nvm_no_wide_in_5ghz(dev, cfg, nvm_hw);
 -	u32 sku;
 -	u32 radio_cfg;
 +	bool lar_enabled;
@@ -148,7 +153,7 @@ Acked-by: Takashi Iwai <tiwai@suse.de>
  
  	if (cfg->device_family != IWL_DEVICE_FAMILY_8000)
  		data = kzalloc(sizeof(*data) +
-@@ -645,21 +658,16 @@ iwl_parse_nvm_data(struct device *dev, c
+@@ -689,22 +702,16 @@ iwl_parse_nvm_data(struct device *dev, c
  	if (cfg->device_family != IWL_DEVICE_FAMILY_8000) {
  		/* Checking for required sections */
  		if (!nvm_calib) {
@@ -168,13 +173,14 @@ Acked-by: Takashi Iwai <tiwai@suse.de>
 -		iwl_set_hw_address(cfg, data, nvm_hw);
 -
 -		iwl_init_sbands(dev, cfg, data, nvm_sw,
--				tx_chains, rx_chains, lar_fw_supported);
+-				tx_chains, rx_chains, lar_fw_supported,
+-				no_wide_in_5ghz);
 +		lar_enabled = true;
 +		ch_section = nvm_sw;
  	} else {
  		u16 lar_offset = data->nvm_version < 0xE39 ?
  				 NVM_LAR_OFFSET_FAMILY_8000_OLD :
-@@ -668,16 +676,13 @@ iwl_parse_nvm_data(struct device *dev, c
+@@ -713,17 +720,13 @@ iwl_parse_nvm_data(struct device *dev, c
  		lar_config = le16_to_cpup(regulatory + lar_offset);
  		data->lar_enabled = !!(lar_config &
  				       NVM_LAR_ENABLED_FAMILY_8000);
@@ -185,14 +191,15 @@ Acked-by: Takashi Iwai <tiwai@suse.de>
 -
 -		iwl_init_sbands(dev, cfg, data, regulatory,
 -				tx_chains, rx_chains,
--				lar_fw_supported && data->lar_enabled);
+-				lar_fw_supported && data->lar_enabled,
+-				no_wide_in_5ghz);
 +		lar_enabled = data->lar_enabled;
 +		ch_section = regulatory;
  	}
  
 +	iwl_set_hw_address(trans, cfg, data, nvm_hw, mac_override);
 +	iwl_init_sbands(dev, cfg, data, ch_section, tx_chains, rx_chains,
-+			lar_fw_supported && lar_enabled);
++			lar_fw_supported && lar_enabled, no_wide_in_5ghz);
  	data->calib_version = 255;
  
  	return data;

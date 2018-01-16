@@ -1,11 +1,9 @@
 From fef24282aef4f0360429da4b31fe9e713ec9f9c0 Mon Sep 17 00:00:00 2001
 From: Tomasz Nowicki <tn@semihalf.com>
 Date: Wed, 29 Mar 2017 14:16:13 +0200
-Subject: [PATCH 13/13] PCI/ACPI: Add ThunderX pass2.x 2nd node MCFG quirk
-
-Git-commit: 128cd6e8249f2a81773e4fcd864149863561d147
-Patch-mainline: Queued
-Git-repo: git://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git
+Subject: PCI/ACPI: Add ThunderX pass2.x 2nd node MCFG quirk
+Git-commit: cd183740480f045600aa1fa38fe70809b5498f05
+Patch-mainline: v4.12-rc1
 References: bsc#1035479
 
 Currently SoCs pass2.x do not emulate EA headers for ACPI boot method at

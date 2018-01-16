@@ -32,7 +32,7 @@ way to solve the issue is to defer freeing the hvutil_transport structure.
 Signed-off-by: Vitaly Kuznetsov <vkuznets@redhat.com>
 Signed-off-by: K. Y. Srinivasan <kys@microsoft.com>
 Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  drivers/hv/hv_utils_transport.c | 26 +++++++++++++++++++++++---
  1 file changed, 23 insertions(+), 3 deletions(-)

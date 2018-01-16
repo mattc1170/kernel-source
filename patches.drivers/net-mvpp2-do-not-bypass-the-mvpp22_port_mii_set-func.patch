@@ -1,8 +1,7 @@
 From: =?UTF-8?q?Antoine=20T=C3=A9nart?= <antoine.tenart@free-electrons.com>
 Date: Wed, 7 Jun 2017 08:17:50 +0200
 Subject: net: mvpp2: do not bypass the mvpp22_port_mii_set function
-Patch-mainline: Queued in subsystem maintainer repository
-Git-repo: git://git.kernel.org/pub/scm/linux/kernel/git/davem/net.git
+Patch-mainline: v4.12-rc6
 Git-commit: e173db36e3090d90651d97ab4bc45ace7f8cc0c6
 References: bsc#1032150
 

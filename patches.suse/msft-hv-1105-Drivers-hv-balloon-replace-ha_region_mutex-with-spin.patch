@@ -29,7 +29,7 @@ need entries in all these cases, drop meaningless list_empty() checks.
 Signed-off-by: Vitaly Kuznetsov <vkuznets@redhat.com>
 Signed-off-by: K. Y. Srinivasan <kys@microsoft.com>
 Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  drivers/hv/hv_balloon.c | 98 ++++++++++++++++++++++++++-----------------------
  1 file changed, 53 insertions(+), 45 deletions(-)

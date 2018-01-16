@@ -1,0 +1,93 @@
+From: Stephen Hemminger <stephen@networkplumber.org>
+Date: Sat, 4 Mar 2017 18:27:17 -0700
+Patch-mainline: v4.12-rc1
+Subject: vmbus: cleanup header file style
+Git-commit: 2a9d7de2038e87bb2a1085ac73c4246c260263f0
+References: fate#320485
+
+Minor changes to align hyper-v vmbus include files with current
+linux kernel style.
+
+Signed-off-by: Stephen Hemminger <sthemmin@microsoft.com>
+Signed-off-by: K. Y. Srinivasan <kys@microsoft.com>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Acked-by: Olaf Hering <ohering@suse.de>
+---
+ drivers/hv/hyperv_vmbus.h | 16 ++++++++--------
+ include/linux/hyperv.h    | 12 ++++++------
+ 2 files changed, 14 insertions(+), 14 deletions(-)
+
+diff --git a/drivers/hv/hyperv_vmbus.h b/drivers/hv/hyperv_vmbus.h
+--- a/drivers/hv/hyperv_vmbus.h
++++ b/drivers/hv/hyperv_vmbus.h
+@@ -218,8 +218,8 @@ struct hv_per_cpu_context {
+ 
+ struct hv_context {
+ 	/* We only support running on top of Hyper-V
+-	* So at this point this really can only contain the Hyper-V ID
+-	*/
++	 * So at this point this really can only contain the Hyper-V ID
++	 */
+ 	u64 guestid;
+ 
+ 	void *tsc_page;
+@@ -403,17 +403,17 @@ int vmbus_post_msg(void *buffer, size_t buflen, bool can_sleep);
+ void vmbus_on_event(unsigned long data);
+ void vmbus_on_msg_dpc(unsigned long data);
+ 
+-int hv_kvp_init(struct hv_util_service *);
++int hv_kvp_init(struct hv_util_service *srv);
+ void hv_kvp_deinit(void);
+-void hv_kvp_onchannelcallback(void *);
++void hv_kvp_onchannelcallback(void *context);
+ 
+-int hv_vss_init(struct hv_util_service *);
++int hv_vss_init(struct hv_util_service *srv);
+ void hv_vss_deinit(void);
+-void hv_vss_onchannelcallback(void *);
++void hv_vss_onchannelcallback(void *context);
+ 
+-int hv_fcopy_init(struct hv_util_service *);
++int hv_fcopy_init(struct hv_util_service *srv);
+ void hv_fcopy_deinit(void);
+-void hv_fcopy_onchannelcallback(void *);
++void hv_fcopy_onchannelcallback(void *context);
+ void vmbus_initiate_unload(bool crash);
+ 
+ static inline void hv_poll_channel(struct vmbus_channel *channel,
+diff --git a/include/linux/hyperv.h b/include/linux/hyperv.h
+--- a/include/linux/hyperv.h
++++ b/include/linux/hyperv.h
+@@ -524,10 +524,10 @@ struct vmbus_channel_open_channel {
+ 	u32 target_vp;
+ 
+ 	/*
+-	* The upstream ring buffer begins at offset zero in the memory
+-	* described by RingBufferGpadlHandle. The downstream ring buffer
+-	* follows it at this offset (in pages).
+-	*/
++	 * The upstream ring buffer begins at offset zero in the memory
++	 * described by RingBufferGpadlHandle. The downstream ring buffer
++	 * follows it at this offset (in pages).
++	 */
+ 	u32 downstream_ringbuffer_pageoffset;
+ 
+ 	/* User-specific data to be passed along to the server endpoint. */
+@@ -1006,7 +1006,7 @@ extern int vmbus_open(struct vmbus_channel *channel,
+ 			    u32 recv_ringbuffersize,
+ 			    void *userdata,
+ 			    u32 userdatalen,
+-			    void(*onchannel_callback)(void *context),
++			    void (*onchannel_callback)(void *context),
+ 			    void *context);
+ 
+ extern void vmbus_close(struct vmbus_channel *channel);
+@@ -1421,7 +1421,7 @@ struct hyperv_service_callback {
+ 	char *log_msg;
+ 	uuid_le data;
+ 	struct vmbus_channel *channel;
+-	void (*callback) (void *context);
++	void (*callback)(void *context);
+ };
+ 
+ #define MAX_SRV_VER	0x7ffffff

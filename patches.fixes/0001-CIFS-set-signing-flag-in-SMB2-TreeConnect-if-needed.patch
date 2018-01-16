@@ -1,0 +1,41 @@
+From 48ccbe6c284dbd474a8627f4f6dd000d6a57d768 Mon Sep 17 00:00:00 2001
+From: Aurelien Aptel <aaptel@suse.com>
+Date: Mon, 13 Feb 2017 16:19:04 +0100
+Subject: [PATCH] CIFS: set signing flag in SMB2+ TreeConnect if needed
+Git-commit: b9043cc5b99e9c93596a28647fd9f526f5bfa22c
+Patch-mainline: 4.11
+References: fate#323482
+
+cifs_enable_signing() already sets server->sign according to what the
+server requires/offers and what mount options allows/forbids, so use
+that.
+
+this is required for IPC tcon that connects to signing-required servers.
+
+Signed-off-by: Aurelien Aptel <aaptel@suse.com>
+Acked-by: Pavel Shilovsky <pshilov@microsoft.com>
+Signed-off-by: Steve French <smfrench@gmail.com>
+Acked-by: Aurelien Aptel <aaptel@suse.com>
+
+---
+ fs/cifs/smb2pdu.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/fs/cifs/smb2pdu.c b/fs/cifs/smb2pdu.c
+index 82df1632fa05..94df4182d113 100644
+--- a/fs/cifs/smb2pdu.c
++++ b/fs/cifs/smb2pdu.c
+@@ -1023,8 +1023,8 @@ SMB2_tcon(const unsigned int xid, struct cifs_ses *ses, const char *tree,
+ 
+ 		/* since no tcon, smb2_init can not do this, so do here */
+ 		req->hdr.sync_hdr.SessionId = ses->Suid;
+-		/* if (ses->server->sec_mode & SECMODE_SIGN_REQUIRED)
+-			req->hdr.Flags |= SMB2_FLAGS_SIGNED; */
++		if (ses->server->sign)
++			req->hdr.sync_hdr.Flags |= SMB2_FLAGS_SIGNED;
+ 	} else if (encryption_required(tcon))
+ 		flags |= CIFS_TRANSFORM_REQ;
+ 
+-- 
+2.12.3
+

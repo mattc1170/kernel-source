@@ -1,0 +1,30 @@
+From: stephen hemminger <stephen@networkplumber.org>
+Date: Fri, 14 Apr 2017 14:42:57 -0700
+Patch-mainline: v4.12-rc1
+Subject: netvsc: fix RCU warning in get_stats
+Git-commit: 776e726bfb3493f71bb11759f7a60f1b0f6dd2d2
+References: fate#320485
+
+The statistics functionis called with RTNL held during probe
+but with RCU held during access from /proc and elsewhere.
+This is safe so update the lockdep annotation.
+
+Signed-off-by: Stephen Hemminger <sthemmin@microsoft.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+Acked-by: Olaf Hering <ohering@suse.de>
+---
+ drivers/net/hyperv/netvsc_drv.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/net/hyperv/netvsc_drv.c b/drivers/net/hyperv/netvsc_drv.c
+--- a/drivers/net/hyperv/netvsc_drv.c
++++ b/drivers/net/hyperv/netvsc_drv.c
+@@ -943,7 +943,7 @@ static void netvsc_get_stats64(struct net_device *net,
+ 						    struct rtnl_link_stats64 *t)
+ {
+ 	struct net_device_context *ndev_ctx = netdev_priv(net);
+-	struct netvsc_device *nvdev = rcu_dereference(ndev_ctx->nvdev);
++	struct netvsc_device *nvdev = rcu_dereference_rtnl(ndev_ctx->nvdev);
+ 	int i;
+ 
+ 	if (!nvdev)

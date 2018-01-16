@@ -1,0 +1,30 @@
+From: Dan Carpenter <dan.carpenter@oracle.com>
+Date: Thu, 12 Oct 2017 23:30:57 +0300
+Subject: scsi: lpfc: Fix a precedence bug in lpfc_nvme_io_cmd_wqe_cmpl()
+Patch-mainline: Queued in subsystem maintainer repository
+Git-repo: git://git.kernel.org/pub/scm/linux/kernel/git/jejb/scsi.git
+Git-commit: 41319e4f62f28aeb36ad6b51a58cec5e76884ebb
+References: bsc#1056587
+
+The ! has higher precedence than the & operation.  I've added
+parenthesis so this works as intended.
+
+Fixes: 952c303b329c ("scsi: lpfc: Ensure io aborts interlocked with the target.")
+Signed-off-by: Dan Carpenter <dan.carpenter@oracle.com>
+Signed-off-by: Martin K. Petersen <martin.petersen@oracle.com>
+Acked-by: Johannes Thumshirn <jthumshirn@suse.de>
+---
+ drivers/scsi/lpfc/lpfc_nvme.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+--- a/drivers/scsi/lpfc/lpfc_nvme.c
++++ b/drivers/scsi/lpfc/lpfc_nvme.c
+@@ -935,7 +935,7 @@ out_err:
+ 	/* NVME targets need completion held off until the abort exchange
+ 	 * completes.
+ 	 */
+-	if (!lpfc_ncmd->flags & LPFC_SBUF_XBUSY)
++	if (!(lpfc_ncmd->flags & LPFC_SBUF_XBUSY))
+ 		nCmd->done(nCmd);
+ 
+ 	spin_lock_irqsave(&phba->hbalock, flags);

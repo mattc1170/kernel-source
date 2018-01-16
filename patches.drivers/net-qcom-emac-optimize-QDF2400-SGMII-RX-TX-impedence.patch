@@ -1,8 +1,7 @@
 From: Timur Tabi <timur@codeaurora.org>
 Date: Tue, 28 Feb 2017 17:16:02 -0600
 Subject: net: qcom/emac: optimize QDF2400 SGMII RX/TX impedence values
-Patch-mainline: Queued in subsystem maintainer repository
-Git-repo: git://git.kernel.org/pub/scm/linux/kernel/git/davem/net-next.git
+Patch-mainline: v4.12-rc1
 Git-commit: 57dacfedf856c475a10890c1f8ebcc1c63473cd1
 References: FATE#320512
 

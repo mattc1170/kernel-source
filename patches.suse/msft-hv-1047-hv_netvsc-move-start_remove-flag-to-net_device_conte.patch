@@ -11,7 +11,7 @@ net_device_context which is preserved.
 
 Signed-off-by: Vitaly Kuznetsov <vkuznets@redhat.com>
 Signed-off-by: David S. Miller <davem@davemloft.net>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  drivers/net/hyperv/hyperv_net.h |  4 +++-
  drivers/net/hyperv/netvsc.c     |  3 +--

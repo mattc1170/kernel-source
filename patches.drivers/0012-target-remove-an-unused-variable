@@ -21,7 +21,7 @@ Acked-by: Lee Duncan <lduncan@suse.com>
 
 --- a/drivers/target/target_core_tpg.c
 +++ b/drivers/target/target_core_tpg.c
-@@ -231,7 +231,6 @@ static void target_add_node_acl(struct s
+@@ -224,7 +224,6 @@ static void target_add_node_acl(struct s
  
  	mutex_lock(&tpg->acl_node_mutex);
  	list_add_tail(&acl->acl_list, &tpg->acl_node_list);
@@ -29,25 +29,25 @@ Acked-by: Lee Duncan <lduncan@suse.com>
  	mutex_unlock(&tpg->acl_node_mutex);
  
  	pr_debug("%s_TPG[%hu] - Added %s ACL with TCQ Depth: %d for %s"
-@@ -358,7 +357,6 @@ void core_tpg_del_initiator_node_acl(str
+@@ -351,7 +350,6 @@ void core_tpg_del_initiator_node_acl(str
  		acl->dynamic_node_acl = 0;
  	}
- 	list_del(&acl->acl_list);
+ 	list_del_init(&acl->acl_list);
 -	tpg->num_node_acls--;
  	mutex_unlock(&tpg->acl_node_mutex);
  
  	spin_lock_irqsave(&acl->nacl_sess_lock, flags);
-@@ -635,7 +633,6 @@ int core_tpg_deregister(struct se_portal
+@@ -573,7 +571,6 @@ int core_tpg_deregister(struct se_portal
  	 */
  	list_for_each_entry_safe(nacl, nacl_tmp, &node_list, acl_list) {
- 		list_del(&nacl->acl_list);
+ 		list_del_init(&nacl->acl_list);
 -		se_tpg->num_node_acls--;
  
  		core_tpg_wait_for_nacl_pr_ref(nacl);
  		core_free_device_list_for_node(nacl, se_tpg);
 --- a/include/target/target_core_base.h
 +++ b/include/target/target_core_base.h
-@@ -882,8 +882,6 @@ struct se_portal_group {
+@@ -887,8 +887,6 @@ struct se_portal_group {
  	 * Negative values can be used by fabric drivers for internal use TPGs.
  	 */
  	int			proto_id;

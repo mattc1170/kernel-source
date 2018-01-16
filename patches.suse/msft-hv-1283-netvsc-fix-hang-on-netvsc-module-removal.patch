@@ -1,0 +1,33 @@
+From: stephen hemminger <stephen@networkplumber.org>
+Date: Thu, 9 Mar 2017 15:04:15 -0800
+Patch-mainline: v4.12-rc1
+Subject: netvsc: fix hang on netvsc module removal
+Git-commit: 79cd874c96b38694fb2b4ee3850f6fbbc3015439
+References: fate#320485
+
+The code in netvsc_device_remove was incorrectly calling napi_disable
+repeatedly on the same element. This would cause attempts
+to remove netvsc module to hang.
+
+Fixes: 2506b1dc4bbe ("netvsc: implement NAPI")
+Signed-off-by: Stephen Hemminger <sthemmin@microsoft.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+Acked-by: Olaf Hering <ohering@suse.de>
+---
+ drivers/net/hyperv/netvsc.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/net/hyperv/netvsc.c b/drivers/net/hyperv/netvsc.c
+--- a/drivers/net/hyperv/netvsc.c
++++ b/drivers/net/hyperv/netvsc.c
+@@ -562,8 +562,8 @@ void netvsc_device_remove(struct hv_device *device)
+ 	/* Now, we can close the channel safely */
+ 	vmbus_close(device->channel);
+ 
+-	for (i = 0; i < VRSS_CHANNEL_MAX; i++)
+-		napi_disable(&net_device->chan_table[0].napi);
++	for (i = 0; i < net_device->num_chn; i++)
++		napi_disable(&net_device->chan_table[i].napi);
+ 
+ 	/* Release all resources */
+ 	free_netvsc_device(net_device);

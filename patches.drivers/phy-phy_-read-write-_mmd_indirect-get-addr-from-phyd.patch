@@ -54,7 +54,7 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  }
 --- a/drivers/net/phy/dp83867.c
 +++ b/drivers/net/phy/dp83867.c
-@@ -153,7 +153,7 @@ static int dp83867_config_init(struct ph
+@@ -156,7 +156,7 @@ static int dp83867_config_init(struct ph
  	if ((phydev->interface >= PHY_INTERFACE_MODE_RGMII_ID) &&
  	    (phydev->interface <= PHY_INTERFACE_MODE_RGMII_RXID)) {
  		val = phy_read_mmd_indirect(phydev, DP83867_RGMIICTL,
@@ -63,7 +63,7 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  
  		if (phydev->interface == PHY_INTERFACE_MODE_RGMII_ID)
  			val |= (DP83867_RGMII_TX_CLK_DELAY_EN | DP83867_RGMII_RX_CLK_DELAY_EN);
-@@ -165,13 +165,13 @@ static int dp83867_config_init(struct ph
+@@ -168,13 +168,13 @@ static int dp83867_config_init(struct ph
  			val |= DP83867_RGMII_RX_CLK_DELAY_EN;
  
  		phy_write_mmd_indirect(phydev, DP83867_RGMIICTL,
@@ -78,7 +78,7 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
 +				       DP83867_DEVADDR, delay);
  	}
  
- 	return 0;
+ 	/* Enable Interrupt output INT_OE in CFG3 register */
 --- a/drivers/net/phy/microchip.c
 +++ b/drivers/net/phy/microchip.c
 @@ -78,10 +78,9 @@ static int lan88xx_probe(struct phy_devi
@@ -96,7 +96,7 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  
 --- a/drivers/net/phy/phy.c
 +++ b/drivers/net/phy/phy.c
-@@ -1031,7 +1031,6 @@ static inline void mmd_phy_indirect(stru
+@@ -1043,7 +1043,6 @@ static inline void mmd_phy_indirect(stru
   * @phydev: The PHY device bus
   * @prtad: MMD Address
   * @devad: MMD DEVAD
@@ -104,7 +104,7 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
   *
   * Description: it reads data from the MMD registers (clause 22 to access to
   * clause 45) of the specified phy address.
-@@ -1041,10 +1040,10 @@ static inline void mmd_phy_indirect(stru
+@@ -1053,10 +1052,10 @@ static inline void mmd_phy_indirect(stru
   * 3) Write reg 13 // MMD Data Command for MMD DEVAD
   * 3) Read  reg 14 // Read MMD data
   */
@@ -117,7 +117,7 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  	int value = -1;
  
  	if (!phydrv->read_mmd_indirect) {
-@@ -1068,7 +1067,6 @@ EXPORT_SYMBOL(phy_read_mmd_indirect);
+@@ -1080,7 +1079,6 @@ EXPORT_SYMBOL(phy_read_mmd_indirect);
   * @phydev: The PHY device
   * @prtad: MMD Address
   * @devad: MMD DEVAD
@@ -125,7 +125,7 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
   * @data: data to write in the MMD register
   *
   * Description: Write data from the MMD registers of the specified
-@@ -1080,9 +1078,10 @@ EXPORT_SYMBOL(phy_read_mmd_indirect);
+@@ -1092,9 +1090,10 @@ EXPORT_SYMBOL(phy_read_mmd_indirect);
   * 3) Write reg 14 // Write MMD data
   */
  void phy_write_mmd_indirect(struct phy_device *phydev, int prtad,
@@ -137,7 +137,7 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  
  	if (!phydrv->write_mmd_indirect) {
  		struct mii_bus *bus = phydev->bus;
-@@ -1132,7 +1131,7 @@ int phy_init_eee(struct phy_device *phyd
+@@ -1144,7 +1143,7 @@ int phy_init_eee(struct phy_device *phyd
  
  		/* First check if the EEE ability is supported */
  		eee_cap = phy_read_mmd_indirect(phydev, MDIO_PCS_EEE_ABLE,
@@ -146,7 +146,7 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  		if (eee_cap <= 0)
  			goto eee_exit_err;
  
-@@ -1144,12 +1143,12 @@ int phy_init_eee(struct phy_device *phyd
+@@ -1156,12 +1155,12 @@ int phy_init_eee(struct phy_device *phyd
  		 * the EEE advertising registers.
  		 */
  		eee_lp = phy_read_mmd_indirect(phydev, MDIO_AN_EEE_LPABLE,
@@ -161,7 +161,7 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  		if (eee_adv <= 0)
  			goto eee_exit_err;
  
-@@ -1163,15 +1162,13 @@ int phy_init_eee(struct phy_device *phyd
+@@ -1175,15 +1174,13 @@ int phy_init_eee(struct phy_device *phyd
  			 * clock while it is signaling LPI.
  			 */
  			int val = phy_read_mmd_indirect(phydev, MDIO_CTRL1,
@@ -179,7 +179,7 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  		}
  
  		return 0; /* EEE supported */
-@@ -1190,8 +1187,7 @@ EXPORT_SYMBOL(phy_init_eee);
+@@ -1202,8 +1199,7 @@ EXPORT_SYMBOL(phy_init_eee);
   */
  int phy_get_eee_err(struct phy_device *phydev)
  {
@@ -189,7 +189,7 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  }
  EXPORT_SYMBOL(phy_get_eee_err);
  
-@@ -1208,22 +1204,19 @@ int phy_ethtool_get_eee(struct phy_devic
+@@ -1220,22 +1216,19 @@ int phy_ethtool_get_eee(struct phy_devic
  	int val;
  
  	/* Get Supported EEE */
@@ -215,7 +215,7 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  	if (val < 0)
  		return val;
  	data->lp_advertised = mmd_eee_adv_to_ethtool_adv_t(val);
-@@ -1243,8 +1236,7 @@ int phy_ethtool_set_eee(struct phy_devic
+@@ -1255,8 +1248,7 @@ int phy_ethtool_set_eee(struct phy_devic
  {
  	int val = ethtool_adv_to_mmd_eee_adv_t(data->advertised);
  

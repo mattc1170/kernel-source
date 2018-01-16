@@ -14,7 +14,7 @@ Signed-off-by: Christoph Hellwig <hch@lst.de>
 Reviewed-by: Bart Van Assche <bart.vanassche@sandisk.com>
 Reviewed-by: K. Y. Srinivasan <kys@microsoft.com>
 Signed-off-by: Martin K. Petersen <martin.petersen@oracle.com>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  drivers/scsi/storvsc_drv.c | 7 -------
  1 file changed, 7 deletions(-)

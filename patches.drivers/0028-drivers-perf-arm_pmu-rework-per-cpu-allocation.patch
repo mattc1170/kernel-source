@@ -1,0 +1,152 @@
+From 7dd2c31f223aa694fb9289bf990265729bc17f13 Mon Sep 17 00:00:00 2001
+From: Mark Rutland <mark.rutland@arm.com>
+Date: Fri, 10 Mar 2017 10:46:13 +0000
+Subject: [PATCH 28/56] drivers/perf: arm_pmu: rework per-cpu allocation
+
+Git-commit: 2681f0184276d7fc934b6866a5a267f5b3369f7d
+Patch-mainline: v4.12-rc1
+References: bsc#1062279
+
+For historical reasons, we allocate per-cpu data associated with a PMU
+rather late, in cpu_pmu_init, after we've parsed whatever hardware
+information we were provided with.
+
+In order to allow use to store some per-cpu data early in the probe
+path, we need to allocate (and initialise) the per-cpu data earlier.
+This patch reworks the way we allocate the pmu and associated per-cpu
+data in order to make that possible.
+
+Signed-off-by: Mark Rutland <mark.rutland@arm.com>
+[will: make armpmu_{alloc,free} static
+Signed-off-by: Will Deacon <will.deacon@arm.com>
+
+Signed-off-by: Mian Yousaf Kaukab <yousaf.kaukab@suse.com>
+---
+ drivers/perf/arm_pmu.c | 66 +++++++++++++++++++++++++++++++++-----------------
+ 1 file changed, 44 insertions(+), 22 deletions(-)
+
+diff --git a/drivers/perf/arm_pmu.c b/drivers/perf/arm_pmu.c
+index 6add3e73..77998474 100644
+--- a/drivers/perf/arm_pmu.c
++++ b/drivers/perf/arm_pmu.c
+@@ -827,29 +827,16 @@ static inline void cpu_pm_pmu_unregister(struct arm_pmu *cpu_pmu) { }
+ static int cpu_pmu_init(struct arm_pmu *cpu_pmu)
+ {
+ 	int err;
+-	int cpu;
+-	struct pmu_hw_events __percpu *cpu_hw_events;
+-
+-	cpu_hw_events = alloc_percpu(struct pmu_hw_events);
+-	if (!cpu_hw_events)
+-		return -ENOMEM;
+ 
+ 	err = cpuhp_state_add_instance_nocalls(CPUHP_AP_PERF_ARM_STARTING,
+ 					       &cpu_pmu->node);
+ 	if (err)
+-		goto out_free;
++		goto out;
+ 
+ 	err = cpu_pm_pmu_register(cpu_pmu);
+ 	if (err)
+ 		goto out_unregister;
+ 
+-	for_each_possible_cpu(cpu) {
+-		struct pmu_hw_events *events = per_cpu_ptr(cpu_hw_events, cpu);
+-		raw_spin_lock_init(&events->pmu_lock);
+-		events->percpu_pmu = cpu_pmu;
+-	}
+-
+-	cpu_pmu->hw_events	= cpu_hw_events;
+ 	cpu_pmu->request_irq	= cpu_pmu_request_irq;
+ 	cpu_pmu->free_irq	= cpu_pmu_free_irq;
+ 
+@@ -867,8 +854,7 @@ static int cpu_pmu_init(struct arm_pmu *cpu_pmu)
+ out_unregister:
+ 	cpuhp_state_remove_instance_nocalls(CPUHP_AP_PERF_ARM_STARTING,
+ 					    &cpu_pmu->node);
+-out_free:
+-	free_percpu(cpu_hw_events);
++out:
+ 	return err;
+ }
+ 
+@@ -877,7 +863,6 @@ static void cpu_pmu_destroy(struct arm_pmu *cpu_pmu)
+ 	cpu_pm_pmu_unregister(cpu_pmu);
+ 	cpuhp_state_remove_instance_nocalls(CPUHP_AP_PERF_ARM_STARTING,
+ 					    &cpu_pmu->node);
+-	free_percpu(cpu_pmu->hw_events);
+ }
+ 
+ /*
+@@ -999,6 +984,45 @@ static int of_pmu_irq_cfg(struct arm_pmu *pmu)
+ 	return 0;
+ }
+ 
++static struct arm_pmu *armpmu_alloc(void)
++{
++	struct arm_pmu *pmu;
++	int cpu;
++
++	pmu = kzalloc(sizeof(*pmu), GFP_KERNEL);
++	if (!pmu) {
++		pr_info("failed to allocate PMU device!\n");
++		goto out;
++	}
++
++	pmu->hw_events = alloc_percpu(struct pmu_hw_events);
++	if (!pmu->hw_events) {
++		pr_info("failed to allocate per-cpu PMU data.\n");
++		goto out_free_pmu;
++	}
++
++	for_each_possible_cpu(cpu) {
++		struct pmu_hw_events *events;
++
++		events = per_cpu_ptr(pmu->hw_events, cpu);
++		raw_spin_lock_init(&events->pmu_lock);
++		events->percpu_pmu = pmu;
++	}
++
++	return pmu;
++
++out_free_pmu:
++	kfree(pmu);
++out:
++	return NULL;
++}
++
++static void armpmu_free(struct arm_pmu *pmu)
++{
++	free_percpu(pmu->hw_events);
++	kfree(pmu);
++}
++
+ int arm_pmu_device_probe(struct platform_device *pdev,
+ 			 const struct of_device_id *of_table,
+ 			 const struct pmu_probe_info *probe_table)
+@@ -1009,11 +1033,9 @@ int arm_pmu_device_probe(struct platform_device *pdev,
+ 	struct arm_pmu *pmu;
+ 	int ret = -ENODEV;
+ 
+-	pmu = kzalloc(sizeof(struct arm_pmu), GFP_KERNEL);
+-	if (!pmu) {
+-		pr_info("failed to allocate PMU device!\n");
++	pmu = armpmu_alloc();
++	if (!pmu)
+ 		return -ENOMEM;
+-	}
+ 
+ 	armpmu_init(pmu);
+ 
+@@ -1058,7 +1080,7 @@ out_free:
+ 	pr_info("%s: failed to register PMU devices!\n",
+ 		of_node_full_name(node));
+ 	kfree(pmu->irq_affinity);
+-	kfree(pmu);
++	armpmu_free(pmu);
+ 	return ret;
+ }
+ 
+-- 
+2.11.0
+

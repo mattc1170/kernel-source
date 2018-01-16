@@ -1,0 +1,29 @@
+From: Michal Hocko <mhocko@suse.com>
+Subject: kabi: mm/page_alloc.c: broken deferred calculation
+Patch-mainline: never (kabi)
+References: bnc#1068980
+
+Hide static_init_size -> static_init_pgcnt rename from the kabi checker.
+This is an internal per-node stuff so no module should ever look at it.
+
+Signed-off-by: Michal Hocko <mhocko@suse.com>
+
+---
+ include/linux/mmzone.h |    4 ++++
+ 1 file changed, 4 insertions(+)
+
+--- a/include/linux/mmzone.h
++++ b/include/linux/mmzone.h
+@@ -693,8 +693,12 @@ typedef struct pglist_data {
+ 	 * is the first PFN that needs to be initialised.
+ 	 */
+ 	unsigned long first_deferred_pfn;
++#ifdef __GENKSYMS__
++	unsigned long static_init_size;
++#else
+ 	/* Number of non-deferred pages */
+ 	unsigned long static_init_pgcnt;
++#endif
+ #endif /* CONFIG_DEFERRED_STRUCT_PAGE_INIT */
+ 	void *suse_kabi_padding;
+ } pg_data_t;

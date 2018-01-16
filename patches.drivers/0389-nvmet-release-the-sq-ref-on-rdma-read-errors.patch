@@ -1,9 +1,8 @@
 From: Vijay Immanuel <vijayi@attalasystems.com>
 Date: Mon, 8 May 2017 16:38:35 -0700
 Subject: [PATCH] nvmet: release the sq ref on rdma read errors
-Git-commit: 3d5d1207d61b522b6aac24f896e53401e876b26e
-Patch-Mainline: queued in subsystem maintainer repository
-Git-repo: git://git.infradead.org/nvme
+Git-commit: 549f01ae7b913355bea76100d3f17694bc9ec769
+Patch-Mainline: v4.12-rc2
 References: bsc#1037838
 
 On rdma read errors, release the sq ref that was taken

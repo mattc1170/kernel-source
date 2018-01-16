@@ -1,0 +1,87 @@
+From: Quinn Tran <quinn.tran@cavium.com>
+Date: Fri, 3 Nov 2017 19:52:15 +0530
+Subject: [PATCH] qla2xxx: Recheck session state after RSCN.
+References: bsc#1043017
+Patch-Mainline: no, SLE12-SP3 specific backport
+
+when RSCN is delivered for specific remote port,
+the switch say the remote port is still up and
+current state of the remote port/session is good,
+don't trust the state.  Instead use ADISC to very
+the session is still valid or not.
+
+Signed-off-by: Quinn Tran <quinn.tran@cavium.com>
+Signed-off-by: Sawan Chandak <sawan.chandak@cavium.com>
+Signed-off-by: Hannes Reinecke <hare@suse.de>
+---
+ drivers/scsi/qla2xxx/qla_gbl.h  |  1 +
+ drivers/scsi/qla2xxx/qla_gs.c   | 16 +++++++++++-----
+ drivers/scsi/qla2xxx/qla_init.c |  4 +---
+ 3 files changed, 13 insertions(+), 8 deletions(-)
+
+diff --git a/drivers/scsi/qla2xxx/qla_gbl.h b/drivers/scsi/qla2xxx/qla_gbl.h
+index 2ce5f74..bf173aa 100644
+--- a/drivers/scsi/qla2xxx/qla_gbl.h
++++ b/drivers/scsi/qla2xxx/qla_gbl.h
+@@ -106,6 +106,7 @@ int qla24xx_post_newsess_work(struct scsi_qla_host *, port_id_t *, u8 *,
+     void *);
+ int qla24xx_fcport_handle_login(struct scsi_qla_host *, fc_port_t *);
+ 
++int qla24xx_post_gpdb_work(struct scsi_qla_host *, fc_port_t *, u8);
+ /*
+  * Global Data in qla_os.c source file.
+  */
+diff --git a/drivers/scsi/qla2xxx/qla_gs.c b/drivers/scsi/qla2xxx/qla_gs.c
+index 559c36d..868e8c4 100644
+--- a/drivers/scsi/qla2xxx/qla_gs.c
++++ b/drivers/scsi/qla2xxx/qla_gs.c
+@@ -2834,13 +2834,19 @@ void qla24xx_handle_gidpn_event(scsi_qla_host_t *vha, struct event_arg *ea)
+ 				case MODE_INITIATOR:
+ 				case MODE_DUAL:
+ 				default:
++					ql_dbg(ql_dbg_disc, vha, 0x201f,
++					    "%s %d %8phC post %s\n", __func__,
++					    __LINE__, fcport->port_name,
++					    (atomic_read(&fcport->state) ==
++					    FCS_ONLINE) ? "gpdb" : "gnl");
++
+ 					if (atomic_read(&fcport->state) ==
+ 					    FCS_ONLINE)
+-						break;
+-					ql_dbg(ql_dbg_disc, vha, 0x201f,
+-					    "%s %d %8phC post gnl\n",
+-					    __func__, __LINE__, fcport->port_name);
+-					qla24xx_post_gnl_work(vha, fcport);
++						qla24xx_post_gpdb_work(vha,
++						    fcport, PDO_FORCE_ADISC);
++					else
++						qla24xx_post_gnl_work(vha,
++						    fcport);
+ 					break;
+ 				}
+ 			} else { /* fcport->d_id.b24 != ea->id.b24 */
+diff --git a/drivers/scsi/qla2xxx/qla_init.c b/drivers/scsi/qla2xxx/qla_init.c
+index 2327041..c8fe3b0 100644
+--- a/drivers/scsi/qla2xxx/qla_init.c
++++ b/drivers/scsi/qla2xxx/qla_init.c
+@@ -36,7 +36,6 @@
+ static struct qla_chip_state_84xx *qla84xx_get_chip(struct scsi_qla_host *);
+ static int qla84xx_init_chip(scsi_qla_host_t *);
+ static int qla25xx_init_queues(struct qla_hw_data *);
+-static int qla24xx_post_gpdb_work(struct scsi_qla_host *, fc_port_t *, u8);
+ static void qla24xx_handle_plogi_done_event(struct scsi_qla_host *,
+     struct event_arg *);
+ 
+@@ -665,8 +664,7 @@ void qla24xx_async_gpdb_sp_done(void *s, int res)
+ 	sp->free(sp);
+ }
+ 
+-static int qla24xx_post_gpdb_work(struct scsi_qla_host *vha, fc_port_t *fcport,
+-    u8 opt)
++int qla24xx_post_gpdb_work(struct scsi_qla_host *vha, fc_port_t *fcport, u8 opt)
+ {
+ 	struct qla_work_evt *e;
+ 
+-- 
+1.8.5.6
+

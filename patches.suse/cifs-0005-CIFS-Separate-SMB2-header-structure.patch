@@ -19,11 +19,11 @@ Acked-by: David Mulder <dmulder@suse.com>
  fs/cifs/smb2glob.h      |    5 +
  fs/cifs/smb2maperror.c  |    5 +
  fs/cifs/smb2misc.c      |   69 ++++++++++++++-----------
- fs/cifs/smb2ops.c       |   26 +++++----
+ fs/cifs/smb2ops.c       |   30 ++++++-----
  fs/cifs/smb2pdu.c       |  128 +++++++++++++++++++++++++-----------------------
  fs/cifs/smb2pdu.h       |   12 +++-
  fs/cifs/smb2transport.c |   76 ++++++++++++++--------------
- 7 files changed, 175 insertions(+), 146 deletions(-)
+ 7 files changed, 177 insertions(+), 148 deletions(-)
 
 --- a/fs/cifs/smb2glob.h
 +++ b/fs/cifs/smb2glob.h
@@ -346,6 +346,18 @@ Acked-by: David Mulder <dmulder@suse.com>
  		spin_unlock(&server->req_lock);
  		wake_up(&server->request_q);
  	}
+@@ -971,9 +973,9 @@ smb2_is_status_pending(char *buf, struct
+ static bool
+ smb2_is_session_expired(char *buf)
+ {
+-	struct smb2_hdr *hdr = (struct smb2_hdr *)buf;
++	struct smb2_sync_hdr *shdr = get_sync_hdr(buf);
+ 
+-	if (hdr->Status != STATUS_NETWORK_SESSION_EXPIRED)
++	if (shdr->Status != STATUS_NETWORK_SESSION_EXPIRED)
+ 		return false;
+ 
+ 	cifs_dbg(FYI, "Session expired\n");
 --- a/fs/cifs/smb2pdu.c
 +++ b/fs/cifs/smb2pdu.c
 @@ -83,6 +83,7 @@ smb2_hdr_assemble(struct smb2_hdr *hdr,
@@ -433,7 +445,7 @@ Acked-by: David Mulder <dmulder@suse.com>
  
  	req->Dialects[0] = cpu_to_le16(ses->server->vals->protocol_id);
  
-@@ -641,14 +642,15 @@ ssetup_ntlmssp_authenticate:
+@@ -652,14 +653,15 @@ ssetup_ntlmssp_authenticate:
  	if (rc)
  		return rc;
  
@@ -451,7 +463,7 @@ Acked-by: David Mulder <dmulder@suse.com>
  
  	/* only one of SMB2 signing flags may be set in SMB2 request */
  	if (server->sign)
-@@ -731,7 +733,7 @@ ssetup_ntlmssp_authenticate:
+@@ -742,7 +744,7 @@ ssetup_ntlmssp_authenticate:
  		iov[1].iov_base = security_blob;
  		iov[1].iov_len = blob_length;
  	} else if (phase == NtLmAuthenticate) {
@@ -460,7 +472,7 @@ Acked-by: David Mulder <dmulder@suse.com>
  		rc = build_ntlmssp_auth_blob(&ntlmssp_blob, &blob_length, ses,
  					     nls_cp);
  		if (rc) {
-@@ -774,9 +776,9 @@ ssetup_ntlmssp_authenticate:
+@@ -785,9 +787,9 @@ ssetup_ntlmssp_authenticate:
  
  	kfree(security_blob);
  	rsp = (struct smb2_sess_setup_rsp *)iov[0].iov_base;
@@ -472,7 +484,7 @@ Acked-by: David Mulder <dmulder@suse.com>
  		if (phase != NtLmNegotiate) {
  			cifs_dbg(VFS, "Unexpected more processing error\n");
  			goto ssetup_exit;
-@@ -880,9 +882,9 @@ SMB2_logoff(const unsigned int xid, stru
+@@ -891,9 +893,9 @@ SMB2_logoff(const unsigned int xid, stru
  		return rc;
  
  	 /* since no tcon, smb2_init can not do this, so do here */
@@ -484,7 +496,7 @@ Acked-by: David Mulder <dmulder@suse.com>
  
  	rc = SendReceiveNoRsp(xid, ses, (char *) &req->hdr, 0);
  	/*
-@@ -958,7 +960,7 @@ SMB2_tcon(const unsigned int xid, struct
+@@ -969,7 +971,7 @@ SMB2_tcon(const unsigned int xid, struct
  
  	if (tcon == NULL) {
  		/* since no tcon, smb2_init can not do this, so do here */
@@ -493,7 +505,7 @@ Acked-by: David Mulder <dmulder@suse.com>
  		/* if (ses->server->sec_mode & SECMODE_SIGN_REQUIRED)
  			req->hdr.Flags |= SMB2_FLAGS_SIGNED; */
  	}
-@@ -988,7 +990,7 @@ SMB2_tcon(const unsigned int xid, struct
+@@ -999,7 +1001,7 @@ SMB2_tcon(const unsigned int xid, struct
  	}
  
  	if (tcon == NULL) {
@@ -502,7 +514,7 @@ Acked-by: David Mulder <dmulder@suse.com>
  		goto tcon_exit;
  	}
  
-@@ -1011,7 +1013,7 @@ SMB2_tcon(const unsigned int xid, struct
+@@ -1022,7 +1024,7 @@ SMB2_tcon(const unsigned int xid, struct
  	tcon->maximal_access = le32_to_cpu(rsp->MaximalAccess);
  	tcon->tidStatus = CifsGood;
  	tcon->need_reconnect = false;
@@ -511,7 +523,7 @@ Acked-by: David Mulder <dmulder@suse.com>
  	strlcpy(tcon->treeName, tree, sizeof(tcon->treeName));
  
  	if ((rsp->Capabilities & SMB2_SHARE_CAP_DFS) &&
-@@ -1028,7 +1030,7 @@ tcon_exit:
+@@ -1039,7 +1041,7 @@ tcon_exit:
  	return rc;
  
  tcon_error_exit:
@@ -520,7 +532,7 @@ Acked-by: David Mulder <dmulder@suse.com>
  		cifs_dbg(VFS, "BAD_NETWORK_NAME: %s\n", tree);
  	}
  	goto tcon_exit;
-@@ -1462,6 +1464,7 @@ SMB2_ioctl(const unsigned int xid, struc
+@@ -1473,6 +1475,7 @@ SMB2_ioctl(const unsigned int xid, struc
  {
  	struct smb2_ioctl_req *req;
  	struct smb2_ioctl_rsp *rsp;
@@ -528,7 +540,7 @@ Acked-by: David Mulder <dmulder@suse.com>
  	struct TCP_Server_Info *server;
  	struct cifs_ses *ses;
  	struct kvec iov[2];
-@@ -1586,9 +1589,8 @@ SMB2_ioctl(const unsigned int xid, struc
+@@ -1601,9 +1604,8 @@ SMB2_ioctl(const unsigned int xid, struc
  		goto ioctl_exit;
  	}
  
@@ -540,7 +552,7 @@ Acked-by: David Mulder <dmulder@suse.com>
  ioctl_exit:
  	free_rsp_buf(resp_buftype, rsp);
  	return rc;
-@@ -1807,11 +1809,11 @@ static void
+@@ -1822,11 +1824,11 @@ static void
  smb2_echo_callback(struct mid_q_entry *mid)
  {
  	struct TCP_Server_Info *server = mid->callback_data;
@@ -554,7 +566,7 @@ Acked-by: David Mulder <dmulder@suse.com>
  
  	mutex_lock(&server->srv_mutex);
  	DeleteMidQEntry(mid);
-@@ -1888,7 +1890,7 @@ SMB2_echo(struct TCP_Server_Info *server
+@@ -1903,7 +1905,7 @@ SMB2_echo(struct TCP_Server_Info *server
  	if (rc)
  		return rc;
  
@@ -563,7 +575,7 @@ Acked-by: David Mulder <dmulder@suse.com>
  
  	iov.iov_base = (char *)req;
  	/* 4 for rfc1002 length field */
-@@ -1951,6 +1953,7 @@ smb2_new_read_req(struct kvec *iov, stru
+@@ -1966,6 +1968,7 @@ smb2_new_read_req(struct kvec *iov, stru
  {
  	int rc = -EACCES;
  	struct smb2_read_req *req = NULL;
@@ -571,7 +583,7 @@ Acked-by: David Mulder <dmulder@suse.com>
  
  	rc = small_smb2_init(SMB2_READ, io_parms->tcon, (void **) &req);
  	if (rc)
-@@ -1958,7 +1961,8 @@ smb2_new_read_req(struct kvec *iov, stru
+@@ -1973,7 +1976,8 @@ smb2_new_read_req(struct kvec *iov, stru
  	if (io_parms->tcon->ses->server == NULL)
  		return -ECONNABORTED;
  
@@ -581,7 +593,7 @@ Acked-by: David Mulder <dmulder@suse.com>
  
  	req->PersistentFileId = io_parms->persistent_fid;
  	req->VolatileFileId = io_parms->volatile_fid;
-@@ -1972,18 +1976,18 @@ smb2_new_read_req(struct kvec *iov, stru
+@@ -1987,18 +1991,18 @@ smb2_new_read_req(struct kvec *iov, stru
  	if (request_type & CHAINED_REQUEST) {
  		if (!(request_type & END_OF_CHAIN)) {
  			/* 4 for rfc1002 length field */
@@ -605,7 +617,7 @@ Acked-by: David Mulder <dmulder@suse.com>
  			req->PersistentFileId = 0xFFFFFFFF;
  			req->VolatileFileId = 0xFFFFFFFF;
  		}
-@@ -2005,7 +2009,7 @@ smb2_readv_callback(struct mid_q_entry *
+@@ -2020,7 +2024,7 @@ smb2_readv_callback(struct mid_q_entry *
  	struct cifs_readdata *rdata = mid->callback_data;
  	struct cifs_tcon *tcon = tlink_tcon(rdata->cfile->tlink);
  	struct TCP_Server_Info *server = tcon->ses->server;
@@ -614,7 +626,7 @@ Acked-by: David Mulder <dmulder@suse.com>
  	unsigned int credits_received = 1;
  	struct smb_rqst rqst = { .rq_iov = &rdata->iov,
  				 .rq_nvec = 1,
-@@ -2020,7 +2024,7 @@ smb2_readv_callback(struct mid_q_entry *
+@@ -2035,7 +2039,7 @@ smb2_readv_callback(struct mid_q_entry *
  
  	switch (mid->mid_state) {
  	case MID_RESPONSE_RECEIVED:
@@ -623,7 +635,7 @@ Acked-by: David Mulder <dmulder@suse.com>
  		/* result already set, check signature */
  		if (server->sign) {
  			int rc;
-@@ -2064,7 +2068,8 @@ int
+@@ -2079,7 +2083,8 @@ int
  smb2_async_readv(struct cifs_readdata *rdata)
  {
  	int rc, flags = 0;
@@ -633,7 +645,7 @@ Acked-by: David Mulder <dmulder@suse.com>
  	struct cifs_io_parms io_parms;
  	struct smb_rqst rqst = { .rq_iov = &rdata->iov,
  				 .rq_nvec = 1 };
-@@ -2095,17 +2100,18 @@ smb2_async_readv(struct cifs_readdata *r
+@@ -2110,17 +2115,18 @@ smb2_async_readv(struct cifs_readdata *r
  		return rc;
  	}
  
@@ -656,7 +668,7 @@ Acked-by: David Mulder <dmulder@suse.com>
  		spin_unlock(&server->req_lock);
  		wake_up(&server->request_q);
  		flags = CIFS_HAS_CREDITS;
-@@ -2130,6 +2136,7 @@ SMB2_read(const unsigned int xid, struct
+@@ -2145,6 +2151,7 @@ SMB2_read(const unsigned int xid, struct
  {
  	int resp_buftype, rc = -EACCES;
  	struct smb2_read_rsp *rsp = NULL;
@@ -664,7 +676,7 @@ Acked-by: David Mulder <dmulder@suse.com>
  	struct kvec iov[1];
  
  	*nbytes = 0;
-@@ -2141,8 +2148,9 @@ SMB2_read(const unsigned int xid, struct
+@@ -2156,8 +2163,9 @@ SMB2_read(const unsigned int xid, struct
  			  &resp_buftype, CIFS_LOG_ERROR);
  
  	rsp = (struct smb2_read_rsp *)iov[0].iov_base;
@@ -675,7 +687,7 @@ Acked-by: David Mulder <dmulder@suse.com>
  		free_rsp_buf(resp_buftype, iov[0].iov_base);
  		return 0;
  	}
-@@ -2162,8 +2170,7 @@ SMB2_read(const unsigned int xid, struct
+@@ -2177,8 +2185,7 @@ SMB2_read(const unsigned int xid, struct
  	}
  
  	if (*buf) {
@@ -685,7 +697,7 @@ Acked-by: David Mulder <dmulder@suse.com>
  		free_rsp_buf(resp_buftype, iov[0].iov_base);
  	} else if (resp_buftype != CIFS_NO_BUFFER) {
  		*buf = iov[0].iov_base;
-@@ -2191,7 +2198,7 @@ smb2_writev_callback(struct mid_q_entry
+@@ -2206,7 +2213,7 @@ smb2_writev_callback(struct mid_q_entry
  
  	switch (mid->mid_state) {
  	case MID_RESPONSE_RECEIVED:
@@ -694,7 +706,7 @@ Acked-by: David Mulder <dmulder@suse.com>
  		wdata->result = smb2_check_receive(mid, tcon->ses->server, 0);
  		if (wdata->result != 0)
  			break;
-@@ -2237,6 +2244,7 @@ smb2_async_writev(struct cifs_writedata
+@@ -2252,6 +2259,7 @@ smb2_async_writev(struct cifs_writedata
  {
  	int rc = -EACCES, flags = 0;
  	struct smb2_write_req *req = NULL;
@@ -702,7 +714,7 @@ Acked-by: David Mulder <dmulder@suse.com>
  	struct cifs_tcon *tcon = tlink_tcon(wdata->cfile->tlink);
  	struct TCP_Server_Info *server = tcon->ses->server;
  	struct kvec iov;
-@@ -2255,7 +2263,8 @@ smb2_async_writev(struct cifs_writedata
+@@ -2270,7 +2278,8 @@ smb2_async_writev(struct cifs_writedata
  		goto async_writev_out;
  	}
  
@@ -712,7 +724,7 @@ Acked-by: David Mulder <dmulder@suse.com>
  
  	req->PersistentFileId = wdata->cfile->fid.persistent_fid;
  	req->VolatileFileId = wdata->cfile->fid.volatile_fid;
-@@ -2287,12 +2296,12 @@ smb2_async_writev(struct cifs_writedata
+@@ -2302,12 +2311,12 @@ smb2_async_writev(struct cifs_writedata
  	inc_rfc1001_len(&req->hdr, wdata->bytes - 1 /* Buffer */);
  
  	if (wdata->credits) {
@@ -728,7 +740,7 @@ Acked-by: David Mulder <dmulder@suse.com>
  		spin_unlock(&server->req_lock);
  		wake_up(&server->request_q);
  		flags = CIFS_HAS_CREDITS;
-@@ -2338,7 +2347,7 @@ SMB2_write(const unsigned int xid, struc
+@@ -2353,7 +2362,7 @@ SMB2_write(const unsigned int xid, struc
  	if (io_parms->tcon->ses->server == NULL)
  		return -ECONNABORTED;
  
@@ -737,7 +749,7 @@ Acked-by: David Mulder <dmulder@suse.com>
  
  	req->PersistentFileId = io_parms->persistent_fid;
  	req->VolatileFileId = io_parms->volatile_fid;
-@@ -2492,7 +2501,8 @@ SMB2_query_directory(const unsigned int
+@@ -2507,7 +2516,8 @@ SMB2_query_directory(const unsigned int
  	rsp = (struct smb2_query_directory_rsp *)iov[0].iov_base;
  
  	if (rc) {
@@ -747,7 +759,7 @@ Acked-by: David Mulder <dmulder@suse.com>
  			srch_inf->endOfSearch = true;
  			rc = 0;
  		}
-@@ -2572,7 +2582,7 @@ send_set_info(const unsigned int xid, st
+@@ -2587,7 +2597,7 @@ send_set_info(const unsigned int xid, st
  		return rc;
  	}
  
@@ -756,7 +768,7 @@ Acked-by: David Mulder <dmulder@suse.com>
  
  	req->InfoType = SMB2_O_INFO_FILE;
  	req->FileInfoClass = info_class;
-@@ -2738,7 +2748,7 @@ SMB2_oplock_break(const unsigned int xid
+@@ -2753,7 +2763,7 @@ SMB2_oplock_break(const unsigned int xid
  	req->VolatileFid = volatile_fid;
  	req->PersistentFid = persistent_fid;
  	req->OplockLevel = oplock_level;
@@ -765,7 +777,7 @@ Acked-by: David Mulder <dmulder@suse.com>
  
  	rc = SendReceiveNoRsp(xid, tcon->ses, (char *) req, CIFS_OBREAK_OP);
  	/* SMB2 buffer freed by function above */
-@@ -2912,7 +2922,7 @@ smb2_lockv(const unsigned int xid, struc
+@@ -2927,7 +2937,7 @@ smb2_lockv(const unsigned int xid, struc
  	if (rc)
  		return rc;
  
@@ -774,7 +786,7 @@ Acked-by: David Mulder <dmulder@suse.com>
  	req->LockCount = cpu_to_le16(num_lock);
  
  	req->PersistentFileId = persist_fid;
-@@ -2967,7 +2977,7 @@ SMB2_lease_break(const unsigned int xid,
+@@ -2982,7 +2992,7 @@ SMB2_lease_break(const unsigned int xid,
  	if (rc)
  		return rc;
  

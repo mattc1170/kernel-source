@@ -22,8 +22,8 @@ Acked-by: Michal Suchanek <msuchanek@suse.de>
  arch/powerpc/include/asm/mmu-hash64.h |  4 +++-
  arch/powerpc/kernel/setup_64.c        |  9 +++++++++
  arch/powerpc/mm/mmu_context_hash64.c  |  7 +++++++
- arch/powerpc/mm/slice.c               | 22 ++++++++++++----------
- 5 files changed, 32 insertions(+), 11 deletions(-)
+ arch/powerpc/mm/slice.c               | 20 +++++++++++---------
+ 4 files changed, 30 insertions(+), 10 deletions(-)
 
 diff --git a/arch/powerpc/include/asm/mmu-hash64.h b/arch/powerpc/include/asm/mmu-hash64.h
 index 3383e87..afe7c9b5 100644
@@ -155,15 +155,6 @@ index 9f98738..d1248fd 100644
  		slice_dbg(" fits potential !\n");
  		goto convert;
  	}
-@@ -646,7 +648,7 @@ void slice_set_user_psize(struct mm_struct *mm, unsigned int psize)
- 	mm->context.low_slices_psize = lpsizes;
- 
- 	hpsizes = mm->context.high_slices_psize;
--	for (i = 0; i < SLICE_NUM_HIGH; i++) {
-+	for (i = 0; i < GET_HIGH_SLICE_INDEX(mm->context.addr_limit); i++) {
- 		mask_index = i & 0x1;
- 		index = i >> 1;
- 		if (((hpsizes[index] >> (mask_index * 4)) & 0xf) == old_psize)
 @@ -718,6 +720,6 @@ int is_hugepage_only_range(struct mm_struct *mm, unsigned long addr,
  	slice_print_mask(" mask", mask);
  	slice_print_mask(" available", available);

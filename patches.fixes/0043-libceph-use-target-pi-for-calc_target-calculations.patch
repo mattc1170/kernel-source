@@ -1,0 +1,42 @@
+From: Ilya Dryomov <idryomov@gmail.com>
+Date: Thu, 15 Jun 2017 16:30:55 +0200
+Subject: libceph: use target pi for calc_target() calculations
+Git-commit: 6d637a540e6f87b9c926d45a507ff143640517cf
+Patch-mainline: v4.13-rc1
+References: bsc#1048228
+
+For luminous and beyond we are encoding the actual spgid, which
+requires operating with the correct pg_num, i.e. that of the target
+pool.
+
+Signed-off-by: Ilya Dryomov <idryomov@gmail.com>
+Acked-by: Luis Henriques <lhenriques@suse.com>
+---
+ net/ceph/osd_client.c |    9 ++++++++-
+ 1 file changed, 8 insertions(+), 1 deletion(-)
+
+--- a/net/ceph/osd_client.c
++++ b/net/ceph/osd_client.c
+@@ -1468,7 +1468,7 @@ static bool target_should_be_paused(stru
+ 		       ceph_osdmap_flag(osdc, CEPH_OSDMAP_FULL) ||
+ 		       __pool_full(pi);
+ 
+-	WARN_ON(pi->id != t->base_oloc.pool);
++	WARN_ON(pi->id != t->target_oloc.pool);
+ 	return ((t->flags & CEPH_OSD_FLAG_READ) && pauserd) ||
+ 	       ((t->flags & CEPH_OSD_FLAG_WRITE) && pausewr) ||
+ 	       (osdc->osdmap->epoch < osdc->epoch_barrier);
+@@ -1521,6 +1521,13 @@ static enum calc_target_result calc_targ
+ 			t->target_oloc.pool = pi->read_tier;
+ 		if (t->flags & CEPH_OSD_FLAG_WRITE && pi->write_tier >= 0)
+ 			t->target_oloc.pool = pi->write_tier;
++
++		pi = ceph_pg_pool_by_id(osdc->osdmap, t->target_oloc.pool);
++		if (!pi) {
++			t->osd = CEPH_HOMELESS_OSD;
++			ct_res = CALC_TARGET_POOL_DNE;
++			goto out;
++		}
+ 	}
+ 
+ 	ret = ceph_object_locator_to_pg(osdc->osdmap, &t->target_oid,

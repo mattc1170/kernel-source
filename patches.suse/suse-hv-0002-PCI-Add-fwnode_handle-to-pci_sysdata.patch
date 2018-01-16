@@ -11,7 +11,7 @@ locate an IRQ domain associated with a root PCI bus.
 [bhelgaas: changelog]
 Signed-off-by: Jake Oshins <jakeo@microsoft.com>
 Signed-off-by: Bjorn Helgaas <bhelgaas@google.com>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  arch/x86/include/asm/pci.h | 15 +++++++++++++++
  include/linux/pci.h        |  4 ++++

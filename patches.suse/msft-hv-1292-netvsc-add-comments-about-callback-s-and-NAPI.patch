@@ -1,0 +1,53 @@
+From: stephen hemminger <stephen@networkplumber.org>
+Date: Thu, 16 Mar 2017 16:12:38 -0700
+Patch-mainline: v4.12-rc1
+Subject: netvsc: add comments about callback's and NAPI
+Git-commit: 262b7f142a50badde4032e925902a0d0ad89eb7f
+References: fate#320485
+
+Add some short description of how callback's and NAPI interoperate.
+
+Signed-off-by: Stephen Hemminger <sthemmin@microsoft.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+Acked-by: Olaf Hering <ohering@suse.de>
+---
+ drivers/net/hyperv/netvsc.c | 13 ++++++++++++-
+ 1 file changed, 12 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/net/hyperv/netvsc.c b/drivers/net/hyperv/netvsc.c
+--- a/drivers/net/hyperv/netvsc.c
++++ b/drivers/net/hyperv/netvsc.c
+@@ -1209,6 +1209,10 @@ static struct hv_device *netvsc_channel_to_device(struct vmbus_channel *channel)
+ 	return primary ? primary->device_obj : channel->device_obj;
+ }
+ 
++/* Network processing softirq
++ * Process data in incoming ring buffer from host
++ * Stops when ring is empty or budget is met or exceeded.
++ */
+ int netvsc_poll(struct napi_struct *napi, int budget)
+ {
+ 	struct netvsc_channel *nvchan
+@@ -1238,7 +1242,11 @@ int netvsc_poll(struct napi_struct *napi, int budget)
+ 	}
+ 	hv_pkt_iter_close(channel);
+ 
+-	/* If ring is empty and NAPI is not doing polling */
++	/* If budget was not exhausted and
++	 * not doing busy poll
++	 * then re-enable host interrupts
++	 *  and reschedule if ring is not empty.
++	 */
+ 	if (work_done < budget &&
+ 	    napi_complete_done(napi, work_done) &&
+ 	    hv_end_read(&channel->inbound) != 0)
+@@ -1248,6 +1256,9 @@ int netvsc_poll(struct napi_struct *napi, int budget)
+ 	return work_done;
+ }
+ 
++/* Call back when data is available in host ring buffer.
++ * Processing is deferred until network softirq (NAPI)
++ */
+ void netvsc_channel_cb(void *context)
+ {
+ 	struct netvsc_channel *nvchan = context;

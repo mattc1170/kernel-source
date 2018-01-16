@@ -1,8 +1,7 @@
 From: Timmy Li <lixiaoping3@huawei.com>
 Date: Tue, 2 May 2017 10:46:52 +0800
 Subject: net: hns: fix ethtool_get_strings overflow in hns driver
-Patch-mainline: Queued in subsystem maintainer repository
-Git-repo: git://git.kernel.org/pub/scm/linux/kernel/git/davem/net-next.git
+Patch-mainline: v4.12-rc1
 Git-commit: 412b65d15a7f8a93794653968308fc100f2aa87c
 References: bsc#1033895
 

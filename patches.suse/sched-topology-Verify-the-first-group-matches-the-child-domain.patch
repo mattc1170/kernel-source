@@ -1,0 +1,41 @@
+From: Peter Zijlstra <peterz@infradead.org>
+Date: Fri, 14 Apr 2017 18:20:48 +0200
+Subject: sched/topology: Verify the first group matches the child domain
+Git-commit: a420b0630362c2c451060e6187e36d72df827134
+Patch-mainline: v4.13-rc1
+References: bnc#1022476
+
+We want sched_groups to be sibling child domains (or individual CPUs
+when there are no child domains). Furthermore, since the first group
+of a domain should include the CPU of that domain, the first group of
+each domain should match the child domain.
+
+Verify this is indeed so.
+
+Signed-off-by: Peter Zijlstra (Intel) <peterz@infradead.org>
+Cc: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: Mike Galbraith <efault@gmx.de>
+Cc: Peter Zijlstra <peterz@infradead.org>
+Cc: Thomas Gleixner <tglx@linutronix.de>
+Cc: linux-kernel@vger.kernel.org
+Signed-off-by: Ingo Molnar <mingo@kernel.org>
+Signed-off-by: Mike Galbraith <mgalbraith@suse.de>
+---
+ kernel/sched/core.c |    6 ++++++
+ 1 file changed, 6 insertions(+)
+
+--- a/kernel/sched/core.c
++++ b/kernel/sched/core.c
+@@ -6009,6 +6009,12 @@ static int sched_domain_debug_one(struct
+ 				group->sgc->capacity);
+ 		}
+ 
++		if (group == sd->groups && sd->child &&
++		    !cpumask_equal(sched_domain_span(sd->child),
++				   sched_group_cpus(group))) {
++			printk(KERN_ERR "ERROR: domain->groups does not match domain->child\n");
++		}
++
+ 		group = group->next;
+ 
+ 		if (group != sd->groups)

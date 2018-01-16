@@ -1,0 +1,71 @@
+From 96e1e6d46b8d9be3ac68b67edfac4d4bc1262535 Mon Sep 17 00:00:00 2001
+From: Mark Salter <msalter@redhat.com>
+Date: Wed, 14 Sep 2016 17:32:29 -0500
+Subject: [PATCH 25/56] arm64: pmu: add fallback probe table
+
+Git-commit: dbee3a74ef2c73acc4eb31cee7a60d5e46767a41
+Patch-mainline: v4.9-rc1
+References: bsc#1062279
+
+In preparation for ACPI support, add a pmu_probe_info table to
+the arm_pmu_device_probe() call. This table gets used when
+probing in the absence of a devicetree node for PMU.
+
+Signed-off-by: Mark Salter <msalter@redhat.com>
+Signed-off-by: Jeremy Linton <jeremy.linton@arm.com>
+Signed-off-by: Will Deacon <will.deacon@arm.com>
+Signed-off-by: Mian Yousaf Kaukab <yousaf.kaukab@suse.com>
+---
+ arch/arm64/kernel/perf_event.c | 13 ++++++++++++-
+ drivers/perf/arm_pmu.c         |  2 +-
+ 2 files changed, 13 insertions(+), 2 deletions(-)
+
+diff --git a/arch/arm64/kernel/perf_event.c b/arch/arm64/kernel/perf_event.c
+index 32593cc8..d55fd47d 100644
+--- a/arch/arm64/kernel/perf_event.c
++++ b/arch/arm64/kernel/perf_event.c
+@@ -24,6 +24,7 @@
+ #include <asm/sysreg.h>
+ #include <asm/virt.h>
+ 
++#include <linux/acpi.h>
+ #include <linux/of.h>
+ #include <linux/perf/arm_pmu.h>
+ #include <linux/platform_device.h>
+@@ -1048,9 +1049,19 @@ static const struct of_device_id armv8_pmu_of_device_ids[] = {
+ 	{},
+ };
+ 
++static const struct pmu_probe_info armv8_pmu_probe_table[] = {
++	PMU_PROBE(0, 0, armv8_pmuv3_init), /* if all else fails... */
++	{ /* sentinel value */ }
++};
++
+ static int armv8_pmu_device_probe(struct platform_device *pdev)
+ {
+-	return arm_pmu_device_probe(pdev, armv8_pmu_of_device_ids, NULL);
++	if (acpi_disabled)
++		return arm_pmu_device_probe(pdev, armv8_pmu_of_device_ids,
++					    NULL);
++
++	return arm_pmu_device_probe(pdev, armv8_pmu_of_device_ids,
++				    armv8_pmu_probe_table);
+ }
+ 
+ static struct platform_driver armv8_pmu_driver = {
+diff --git a/drivers/perf/arm_pmu.c b/drivers/perf/arm_pmu.c
+index fd82a224..6add3e73 100644
+--- a/drivers/perf/arm_pmu.c
++++ b/drivers/perf/arm_pmu.c
+@@ -1025,7 +1025,7 @@ int arm_pmu_device_probe(struct platform_device *pdev,
+ 		ret = of_pmu_irq_cfg(pmu);
+ 		if (!ret)
+ 			ret = init_fn(pmu);
+-	} else {
++	} else if (probe_table) {
+ 		cpumask_setall(&pmu->supported_cpus);
+ 		ret = probe_current_pmu(pmu, probe_table);
+ 	}
+-- 
+2.11.0
+

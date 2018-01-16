@@ -1,0 +1,49 @@
+From: Javier Martinez Canillas <javier@osg.samsung.com>
+Date: Sat, 7 Oct 2017 22:37:47 +0000
+Subject: [PATCH] platform/x86: intel_mid_thermal: Fix module autoload
+References: bnc#1012382
+Patch-mainline: 4.4.97
+Git-commit: a93151a72061e944a4915458b1b1d6d505c03bbf
+
+[ Upstream commit a93151a72061e944a4915458b1b1d6d505c03bbf ]
+
+If the driver is built as a module, autoload won't work because the module
+alias information is not filled. So user-space can't match the registered
+device with the corresponding module.
+
+Export the module alias information using the MODULE_DEVICE_TABLE() macro.
+
+Before this patch:
+
+$ modinfo drivers/platform/x86/intel_mid_thermal.ko | grep alias
+$
+
+After this patch:
+
+$ modinfo drivers/platform/x86/intel_mid_thermal.ko | grep alias
+alias:          platform:msic_thermal
+
+Signed-off-by: Javier Martinez Canillas <javier@osg.samsung.com>
+Signed-off-by: Andy Shevchenko <andriy.shevchenko@linux.intel.com>
+Signed-off-by: Sasha Levin <alexander.levin@verizon.com>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Signed-off-by: Jiri Slaby <jslaby@suse.cz>
+---
+ drivers/platform/x86/intel_mid_thermal.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/drivers/platform/x86/intel_mid_thermal.c b/drivers/platform/x86/intel_mid_thermal.c
+index 9f713b832ba3..5c768c4627d3 100644
+--- a/drivers/platform/x86/intel_mid_thermal.c
++++ b/drivers/platform/x86/intel_mid_thermal.c
+@@ -550,6 +550,7 @@ static const struct platform_device_id therm_id_table[] = {
+ 	{ "msic_thermal", 1 },
+ 	{ }
+ };
++MODULE_DEVICE_TABLE(platform, therm_id_table);
+ 
+ static struct platform_driver mid_thermal_driver = {
+ 	.driver = {
+-- 
+2.15.0
+

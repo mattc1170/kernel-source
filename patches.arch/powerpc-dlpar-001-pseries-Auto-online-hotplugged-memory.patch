@@ -1,0 +1,70 @@
+From 02c5ff0f9557754d6d5ddbfd975506021529dd62 Mon Sep 17 00:00:00 2001
+From: Nathan Fontenot <nfont@linux.vnet.ibm.com>
+Date: Wed, 29 Jun 2016 12:19:14 -0500
+Subject: [PATCH] powerpc/pseries: Auto-online hotplugged memory
+
+References: FATE#322022
+Patch-mainline: v4.8-rc1
+Git-commit: ec999072442ad531cccbecbd6d5a569b0af6c8e3
+
+A recent update (commit id 31bc3858ea3) allows for automatically
+onlining memory that is added. This patch sets the config option
+CONFIG_MEMORY_HOTPLUG_DEFAULT_ONLINE=y for pseries and updates the
+pseries memory hotplug code so that DLPAR added memory can be
+automatically onlined instead of explicitly onlining the memory.
+
+Signed-off-by: Nathan Fontenot <nfont@linux.vnet.ibm.com>
+Signed-off-by: Michael Ellerman <mpe@ellerman.id.au>
+Acked-by: Michal Suchanek <msuchanek@suse.de>
+---
+ arch/powerpc/configs/pseries_defconfig          |  1 +
+ arch/powerpc/platforms/pseries/hotplug-memory.c | 14 --------------
+ 2 files changed, 1 insertion(+), 14 deletions(-)
+
+diff --git a/arch/powerpc/configs/pseries_defconfig b/arch/powerpc/configs/pseries_defconfig
+index 36871a4bfa54..725f411eb3ff 100644
+--- a/arch/powerpc/configs/pseries_defconfig
++++ b/arch/powerpc/configs/pseries_defconfig
+@@ -53,6 +53,7 @@ CONFIG_KEXEC=y
+ CONFIG_IRQ_ALL_CPUS=y
+ CONFIG_MEMORY_HOTPLUG=y
+ CONFIG_MEMORY_HOTREMOVE=y
++CONFIG_MEMORY_HOTPLUG_DEFAULT_ONLINE=y
+ CONFIG_KSM=y
+ CONFIG_TRANSPARENT_HUGEPAGE=y
+ CONFIG_PPC_64K_PAGES=y
+diff --git a/arch/powerpc/platforms/pseries/hotplug-memory.c b/arch/powerpc/platforms/pseries/hotplug-memory.c
+index c13814eab67e..d046540791e5 100644
+--- a/arch/powerpc/platforms/pseries/hotplug-memory.c
++++ b/arch/powerpc/platforms/pseries/hotplug-memory.c
+@@ -599,7 +599,6 @@ static int dlpar_memory_remove_by_index(u32 drc_index, struct property *prop)
+ 
+ static int dlpar_add_lmb_memory(struct of_drconf_cell *lmb)
+ {
+-	struct memory_block *mem_block;
+ 	unsigned long block_sz;
+ 	int nid, rc;
+ 
+@@ -620,19 +619,6 @@ static int dlpar_add_lmb_memory(struct of_drconf_cell *lmb)
+ 		return rc;
+ 	}
+ 
+-	mem_block = lmb_to_memblock(lmb);
+-	if (!mem_block) {
+-		remove_memory(nid, lmb->base_addr, block_sz);
+-		return -EINVAL;
+-	}
+-
+-	rc = device_online(&mem_block->dev);
+-	put_device(&mem_block->dev);
+-	if (rc) {
+-		remove_memory(nid, lmb->base_addr, block_sz);
+-		return rc;
+-	}
+-
+ 	lmb->flags |= DRCONF_MEM_ASSIGNED;
+ 	return 0;
+ }
+-- 
+2.10.2
+

@@ -18,7 +18,7 @@ CC: Roman Kagan <rkagan@virtuozzo.com>
 CC: Denis V. Lunev <den@openvz.org>
 CC: qemu-devel@nongnu.org
 Signed-off-by: Paolo Bonzini <pbonzini@redhat.com>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  drivers/hv/hyperv_vmbus.h | 4 ++--
  1 file changed, 2 insertions(+), 2 deletions(-)

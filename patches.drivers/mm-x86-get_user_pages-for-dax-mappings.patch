@@ -25,19 +25,19 @@ Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 Signed-off-by: Linus Torvalds <torvalds@linux-foundation.org>
 Acked-by: Jeff Mahoney <jeffm@suse.com>
 ---
- arch/x86/include/asm/pgtable.h |    7 +++
- arch/x86/mm/gup.c              |   57 +++++++++++++++++++++++++++++--
- include/linux/huge_mm.h        |   10 ++++-
- include/linux/mm.h             |   48 +++++++++++++++++++-------
- kernel/memremap.c              |   12 ++++++
- mm/gup.c                       |   30 +++++++++++++++-
- mm/huge_memory.c               |   75 ++++++++++++++++++++++++++++++++---------
+ arch/x86/include/asm/pgtable.h |    7 ++++
+ arch/x86/mm/gup.c              |   57 ++++++++++++++++++++++++++++++++++-
+ include/linux/huge_mm.h        |   10 +++++-
+ include/linux/mm.h             |   48 ++++++++++++++++++++++--------
+ kernel/memremap.c              |   12 +++++++
+ mm/gup.c                       |   30 +++++++++++++++++-
+ mm/huge_memory.c               |   65 ++++++++++++++++++++++++++++++++++-------
  mm/swap.c                      |    3 +
- 8 files changed, 208 insertions(+), 34 deletions(-)
+ 8 files changed, 203 insertions(+), 29 deletions(-)
 
 --- a/arch/x86/include/asm/pgtable.h
 +++ b/arch/x86/include/asm/pgtable.h
-@@ -490,6 +490,13 @@ static inline int pte_present(pte_t a)
+@@ -496,6 +496,13 @@ static inline int pte_present(pte_t a)
  	return pte_flags(a) & (_PAGE_PRESENT | _PAGE_PROTNONE);
  }
  
@@ -180,7 +180,7 @@ Acked-by: Jeff Mahoney <jeffm@suse.com>
  #define HPAGE_PMD_SHIFT PMD_SHIFT
  #define HPAGE_PMD_SIZE	((1UL) << HPAGE_PMD_SHIFT)
  #define HPAGE_PMD_MASK	(~(HPAGE_PMD_SIZE - 1))
-@@ -214,6 +216,12 @@ static inline bool is_huge_zero_page(str
+@@ -215,6 +217,12 @@ static inline bool is_huge_zero_page(str
  	return false;
  }
  
@@ -203,7 +203,7 @@ Acked-by: Jeff Mahoney <jeffm@suse.com>
  #include <linux/bit_spinlock.h>
  #include <linux/shrinker.h>
  #include <linux/resource.h>
-@@ -515,19 +516,6 @@ static inline void get_huge_page_tail(st
+@@ -517,19 +518,6 @@ static inline void get_huge_page_tail(st
  
  extern bool __get_page_tail(struct page *page);
  
@@ -223,7 +223,7 @@ Acked-by: Jeff Mahoney <jeffm@suse.com>
  static inline struct page *virt_to_head_page(const void *x)
  {
  	struct page *page = virt_to_page(x);
-@@ -720,17 +708,44 @@ static inline enum zone_type page_zonenu
+@@ -722,17 +710,44 @@ static inline enum zone_type page_zonenu
  }
  
  #ifdef CONFIG_ZONE_DEVICE
@@ -268,7 +268,7 @@ Acked-by: Jeff Mahoney <jeffm@suse.com>
  #if defined(CONFIG_SPARSEMEM) && !defined(CONFIG_SPARSEMEM_VMEMMAP)
  #define SECTION_IN_PAGE_FLAGS
  #endif
-@@ -1469,6 +1484,13 @@ static inline void sync_mm_rss(struct mm
+@@ -1435,6 +1450,13 @@ static inline void sync_mm_rss(struct mm
  }
  #endif
  
@@ -381,25 +381,20 @@ Acked-by: Jeff Mahoney <jeffm@suse.com>
  #include <linux/pagemap.h>
  #include <linux/migrate.h>
  #include <linux/hashtable.h>
-@@ -944,6 +945,63 @@ int vmf_insert_pfn_pmd(struct vm_area_st
+@@ -944,6 +945,58 @@ int vmf_insert_pfn_pmd(struct vm_area_st
  	return VM_FAULT_NOPAGE;
  }
  
 +static void touch_pmd(struct vm_area_struct *vma, unsigned long addr,
-+		pmd_t *pmd)
++		pmd_t *pmd, int flags)
 +{
 +	pmd_t _pmd;
++	_pmd = pmd_mkyoung(*pmd);
++	if (flags & FOLL_WRITE)
++		_pmd = pmd_mkdirty(_pmd);
 +
-+	/*
-+	 * We should set the dirty bit only for FOLL_WRITE but for now
-+	 * the dirty bit in the pmd is meaningless.  And if the dirty
-+	 * bit will become meaningful and we'll only set it with
-+	 * FOLL_WRITE, an atomic set_bit will be required on the pmd to
-+	 * set the young bit, instead of the current set_pmd_at.
-+	 */
-+	_pmd = pmd_mkyoung(pmd_mkdirty(*pmd));
 +	if (pmdp_set_access_flags(vma, addr & HPAGE_PMD_MASK,
-+				pmd, _pmd,  1))
++				  pmd, _pmd,  flags & FOLL_WRITE))
 +		update_mmu_cache_pmd(vma, addr, pmd);
 +}
 +
@@ -422,7 +417,7 @@ Acked-by: Jeff Mahoney <jeffm@suse.com>
 +		return NULL;
 +
 +	if (flags & FOLL_TOUCH)
-+		touch_pmd(vma, addr, pmd);
++		touch_pmd(vma, addr, pmd, flags);
 +
 +	/*
 +	 * device mapped pages can only be returned if the
@@ -445,27 +440,22 @@ Acked-by: Jeff Mahoney <jeffm@suse.com>
  int copy_huge_pmd(struct mm_struct *dst_mm, struct mm_struct *src_mm,
  		  pmd_t *dst_pmd, pmd_t *src_pmd, unsigned long addr,
  		  struct vm_area_struct *vma)
-@@ -1327,21 +1385,8 @@ struct page *follow_trans_huge_pmd(struc
+@@ -1336,16 +1389,8 @@ struct page *follow_trans_huge_pmd(struc
  
  	page = pmd_page(*pmd);
  	VM_BUG_ON_PAGE(!PageHead(page), page);
 -	if (flags & FOLL_TOUCH) {
 -		pmd_t _pmd;
--		/*
--		 * We should set the dirty bit only for FOLL_WRITE but
--		 * for now the dirty bit in the pmd is meaningless.
--		 * And if the dirty bit will become meaningful and
--		 * we'll only set it with FOLL_WRITE, an atomic
--		 * set_bit will be required on the pmd to set the
--		 * young bit, instead of the current set_pmd_at.
--		 */
--		_pmd = pmd_mkyoung(pmd_mkdirty(*pmd));
+-		_pmd = pmd_mkyoung(*pmd);
+-		if (flags & FOLL_WRITE)
+-			_pmd = pmd_mkdirty(_pmd);
+-
 -		if (pmdp_set_access_flags(vma, addr & HPAGE_PMD_MASK,
--					  pmd, _pmd,  1))
+-					  pmd, _pmd,  flags & FOLL_WRITE))
 -			update_mmu_cache_pmd(vma, addr, pmd);
 -	}
 +	if (flags & FOLL_TOUCH)
-+		touch_pmd(vma, addr, pmd);
++		touch_pmd(vma, addr, pmd, flags);
  	if ((flags & FOLL_MLOCK) && (vma->vm_flags & VM_LOCKED)) {
  		if (page->mapping && trylock_page(page)) {
  			lru_add_drain();
@@ -479,7 +469,7 @@ Acked-by: Jeff Mahoney <jeffm@suse.com>
  #include <linux/percpu.h>
  #include <linux/cpu.h>
  #include <linux/notifier.h>
-@@ -271,6 +272,8 @@ static void put_compound_page(struct pag
+@@ -272,6 +273,8 @@ static void put_compound_page(struct pag
  
  void put_page(struct page *page)
  {

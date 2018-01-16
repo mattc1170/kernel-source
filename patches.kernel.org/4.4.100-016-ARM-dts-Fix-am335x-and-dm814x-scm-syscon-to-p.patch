@@ -1,0 +1,58 @@
+From: Tony Lindgren <tony@atomide.com>
+Date: Thu, 5 Jan 2017 11:10:40 -0800
+Subject: [PATCH] ARM: dts: Fix am335x and dm814x scm syscon to probe children
+References: bnc#1012382
+Patch-mainline: 4.4.100
+Git-commit: 1aa09df0854efe16b7a80358a18f0a0bebafd246
+
+[ Upstream commit 1aa09df0854efe16b7a80358a18f0a0bebafd246 ]
+
+Without these changes children of the scn syscon
+won't probe.
+
+Signed-off-by: Tony Lindgren <tony@atomide.com>
+Signed-off-by: Sasha Levin <alexander.levin@verizon.com>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Signed-off-by: Jiri Slaby <jslaby@suse.cz>
+---
+ arch/arm/boot/dts/am33xx.dtsi | 3 ++-
+ arch/arm/boot/dts/dm814x.dtsi | 3 ++-
+ 2 files changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/arch/arm/boot/dts/am33xx.dtsi b/arch/arm/boot/dts/am33xx.dtsi
+index d23e2524d694..be9c37e89be1 100644
+--- a/arch/arm/boot/dts/am33xx.dtsi
++++ b/arch/arm/boot/dts/am33xx.dtsi
+@@ -142,10 +142,11 @@
+ 				};
+ 
+ 				scm_conf: scm_conf@0 {
+-					compatible = "syscon";
++					compatible = "syscon", "simple-bus";
+ 					reg = <0x0 0x800>;
+ 					#address-cells = <1>;
+ 					#size-cells = <1>;
++					ranges = <0 0 0x800>;
+ 
+ 					scm_clocks: clocks {
+ 						#address-cells = <1>;
+diff --git a/arch/arm/boot/dts/dm814x.dtsi b/arch/arm/boot/dts/dm814x.dtsi
+index 509437839541..c226c3d952d8 100644
+--- a/arch/arm/boot/dts/dm814x.dtsi
++++ b/arch/arm/boot/dts/dm814x.dtsi
+@@ -189,10 +189,11 @@
+ 				ranges = <0 0x160000 0x16d000>;
+ 
+ 				scm_conf: scm_conf@0 {
+-					compatible = "syscon";
++					compatible = "syscon", "simple-bus";
+ 					reg = <0x0 0x800>;
+ 					#address-cells = <1>;
+ 					#size-cells = <1>;
++					ranges = <0 0 0x800>;
+ 
+ 					scm_clocks: clocks {
+ 						#address-cells = <1>;
+-- 
+2.15.0
+

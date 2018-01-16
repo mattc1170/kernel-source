@@ -1,8 +1,7 @@
 From: Jacob Keller <jacob.e.keller@intel.com>
 Date: Mon, 6 Feb 2017 14:38:38 -0800
 Subject: i40e: send correct port number to AdminQ when enabling UDP tunnels
-Patch-mainline: Queued in subsystem maintainer repository
-Git-repo: git://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git
+Patch-mainline: v4.12-rc1
 Git-commit: fe0b0cd97b4f210ecd1693edba6eec10820e11f2
 References: bsc#1024346 FATE#321239 bsc#1024373 FATE#321247
 

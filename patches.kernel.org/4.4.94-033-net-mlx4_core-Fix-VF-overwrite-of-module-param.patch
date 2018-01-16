@@ -1,0 +1,48 @@
+From: Majd Dibbiny <majd@mellanox.com>
+Date: Thu, 23 Feb 2017 12:02:43 +0200
+Subject: [PATCH] net/mlx4_core: Fix VF overwrite of module param which
+ disables DMFS on new probed PFs
+Patch-mainline: 4.4.94
+References: FATE#321685 FATE#321686 FATE#321687 bnc#1012382 bsc#1015336 bsc#1015337 bsc#1015340
+Git-commit: 95f1ba9a24af9769f6e20dfe9a77c863f253f311
+
+[ Upstream commit 95f1ba9a24af9769f6e20dfe9a77c863f253f311 ]
+
+In the VF driver, module parameter mlx4_log_num_mgm_entry_size was
+mistakenly overwritten -- and in a manner which overrode the
+device-managed flow steering option encoded in the parameter.
+
+log_num_mgm_entry_size is a global module parameter which
+affects all ConnectX-3 PFs installed on that host.
+If a VF changes log_num_mgm_entry_size, this will affect all PFs
+which are probed subsequent to the change (by disabling DMFS for
+those PFs).
+
+Fixes: 3c439b5586e9 ("mlx4_core: Allow choosing flow steering mode")
+Signed-off-by: Majd Dibbiny <majd@mellanox.com>
+Reviewed-by: Jack Morgenstein <jackm@dev.mellanox.co.il>
+Signed-off-by: Tariq Toukan <tariqt@mellanox.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+Signed-off-by: Sasha Levin <alexander.levin@verizon.com>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Signed-off-by: Jiri Slaby <jslaby@suse.cz>
+---
+ drivers/net/ethernet/mellanox/mlx4/main.c | 2 --
+ 1 file changed, 2 deletions(-)
+
+diff --git a/drivers/net/ethernet/mellanox/mlx4/main.c b/drivers/net/ethernet/mellanox/mlx4/main.c
+index 31c491e02e69..99361352ed0d 100644
+--- a/drivers/net/ethernet/mellanox/mlx4/main.c
++++ b/drivers/net/ethernet/mellanox/mlx4/main.c
+@@ -791,8 +791,6 @@ static int mlx4_slave_cap(struct mlx4_dev *dev)
+ 		return -ENOSYS;
+ 	}
+ 
+-	mlx4_log_num_mgm_entry_size = hca_param.log_mc_entry_sz;
+-
+ 	dev->caps.hca_core_clock = hca_param.hca_core_clock;
+ 
+ 	memset(&dev_cap, 0, sizeof(dev_cap));
+-- 
+2.14.3
+

@@ -15,7 +15,7 @@ disabling wakeup in the probe function in the first place.
 
 Signed-off-by: Guenter Roeck <linux@roeck-us.net>
 Signed-off-by: Dmitry Torokhov <dmitry.torokhov@gmail.com>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  drivers/input/serio/hyperv-keyboard.c | 1 -
  1 file changed, 1 deletion(-)

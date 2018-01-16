@@ -1,0 +1,29 @@
+From: Takashi Iwai <tiwai@suse.de>
+Subject: kABI fix for 4.4.99 net changes
+Patch-mainline: Never, kabi fix
+References: stable-4.4.99
+
+Fix the kABI breakage like
+  net/dccp/options.c:267: warning: dccp_parse_options: modversion changed
+  because of changes in struct inet_request_sock
+
+Signed-off-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ include/net/inet_sock.h |    4 ++++
+ 1 file changed, 4 insertions(+)
+
+--- a/include/net/inet_sock.h
++++ b/include/net/inet_sock.h
+@@ -95,7 +95,11 @@ struct inet_request_sock {
+ 	kmemcheck_bitfield_end(flags);
+ 	u32                     ir_mark;
+ 	union {
++#ifdef __GENKSYMS__
++		struct ip_options_rcu	*opt;
++#else
+ 		struct ip_options_rcu __rcu	*ireq_opt;
++#endif
+ 		struct sk_buff		*pktopts;
+ 	};
+ };

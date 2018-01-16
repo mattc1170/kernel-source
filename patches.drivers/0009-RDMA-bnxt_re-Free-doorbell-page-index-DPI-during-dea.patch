@@ -3,7 +3,8 @@ From: Devesh Sharma <devesh.sharma@broadcom.com>
 Date: Wed, 10 May 2017 03:45:30 -0700
 Subject: RDMA/bnxt_re: Free doorbell page index (DPI) during dealloc ucontext
 References: bsc#1037579
-Patch-mainline: Submitted, https://patchwork.kernel.org/patch/9719655/
+Patch-mainline: v4.13-rc2
+Git-commit: b3b2c7c5506bd8d15214136f8b11a2e6c9728033
 
 The driver must free the DPI during the dealloc_ucontext
 instead of freeing it during dealloc_pd. However, the DPI

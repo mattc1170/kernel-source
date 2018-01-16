@@ -1,0 +1,114 @@
+From 62332413ffc93fdc0687de86a5c7c8e1570fa636 Mon Sep 17 00:00:00 2001
+From: Michal Hocko <mhocko@suse.com>
+Date: Mon, 14 Aug 2017 10:46:12 +0200
+Subject: [PATCH] mm, memory_hotplug: do not fail offlining too early
+Git-commit: 72b39cfc4d750e5b8c633a7a6fdd7d07927995ad
+Patch-mainline: 4.15-rc1
+References: bnc#1051406
+
+Memory offlining can fail just too eagerly under a heavy memory pressure.
+
+[ 5410.336792] page:ffffea22a646bd00 count:255 mapcount:252 mapping:ffff88ff926c9f38 index:0x3
+[ 5410.336809] flags: 0x9855fe40010048(uptodate|active|mappedtodisk)
+[ 5410.336811] page dumped because: isolation failed
+[ 5410.336813] page->mem_cgroup:ffff8801cd662000
+[ 5420.655030] memory offlining [mem 0x18b580000000-0x18b5ffffffff] failed
+
+Isolation has failed here because the page is not on LRU. Most probably
+because it was on the pcp LRU cache or it has been removed from the LRU
+already but it hasn't been freed yet. In both cases the page doesn't look
+non-migrable so retrying more makes sense.
+
+__offline_pages seems rather cluttered when it comes to the retry
+logic. We have 5 retries at maximum and a timeout. While the later one
+makes some sense because the offline operation can be done from an udev
+context and we do not want it to get stuck for an unbound of time the
+max retry count is rather questionable. It only takes it to race with
+a process which unmaps some pages and remove them from the LRU list
+and we can fail the whole offline because of something that is a
+temporary condition. Please note that unmovable pages should be already
+excluded during start_isolate_page_range.
+
+Fix this by removing the max retry count and only rely on the timeout
+resp. interruption by a signal from the userspace. Also retry rather
+than fail when check_pages_isolated sees some !free pages because those
+could be a result of the race as well.
+
+Signed-off-by: Michal Hocko <mhocko@suse.com>
+
+---
+ mm/memory_hotplug.c |   37 ++++++++-----------------------------
+ 1 file changed, 8 insertions(+), 29 deletions(-)
+
+--- a/mm/memory_hotplug.c
++++ b/mm/memory_hotplug.c
+@@ -1688,7 +1688,7 @@ static int __ref __offline_pages(unsigne
+ {
+ 	unsigned long pfn, nr_pages, expire;
+ 	long offlined_pages;
+-	int ret, drain, retry_max, node;
++	int ret, node;
+ 	unsigned long flags;
+ 	unsigned long valid_start, valid_end;
+ 	struct zone *zone;
+@@ -1728,8 +1728,6 @@ static int __ref __offline_pages(unsigne
+ 
+ 	pfn = start_pfn;
+ 	expire = jiffies + timeout;
+-	drain = 0;
+-	retry_max = 5;
+ repeat:
+ 	/* start memory hot removal */
+ 	ret = -EAGAIN;
+@@ -1738,33 +1736,16 @@ repeat:
+ 	ret = -EINTR;
+ 	if (signal_pending(current))
+ 		goto failed_removal;
+-	ret = 0;
+-	if (drain) {
+-		lru_add_drain_all();
+-		cond_resched();
+-		drain_all_pages(zone);
+-	}
++	cond_resched();
++	lru_add_drain_all();
++	drain_all_pages(zone);
+ 
+ 	pfn = scan_movable_pages(start_pfn, end_pfn);
+ 	if (pfn) { /* We have movable pages */
+ 		ret = do_migrate_range(pfn, end_pfn);
+-		if (!ret) {
+-			drain = 1;
+-			goto repeat;
+-		} else {
+-			if (ret < 0)
+-				if (--retry_max == 0)
+-					goto failed_removal;
+-			yield();
+-			drain = 1;
+-			goto repeat;
+-		}
++		goto repeat;
+ 	}
+-	/* drain all zone's lru pagevec, this is asynchronous... */
+-	lru_add_drain_all();
+-	yield();
+-	/* drain pcp pages, this is synchronous. */
+-	drain_all_pages(zone);
++
+ 	/*
+ 	 * dissolve free hugepages in the memory block before doing offlining
+ 	 * actually in order to make hugetlbfs's object counting consistent.
+@@ -1772,10 +1753,8 @@ repeat:
+ 	dissolve_free_huge_pages(start_pfn, end_pfn);
+ 	/* check again */
+ 	offlined_pages = check_pages_isolated(start_pfn, end_pfn);
+-	if (offlined_pages < 0) {
+-		ret = -EBUSY;
+-		goto failed_removal;
+-	}
++	if (offlined_pages < 0)
++		goto repeat;
+ 	printk(KERN_INFO "Offlined Pages %ld\n", offlined_pages);
+ 	/* Ok, all of our target is isolated.
+ 	   We cannot do rollback at this point. */

@@ -3,8 +3,7 @@ From: Juergen Gross <jgross@suse.com>
 Date: Wed, 21 Sep 2016 09:15:19 +0200
 Subject: xen/pciback: avoid multiple entries in slot list
 References: bnc#995451
-Patch-mainline: Queued in subsystem maintainer repository
-Git-repo: git://git.kernel.org/pub/scm/linux/kernel/git/xen/tip
+Patch-mainline: 4.9
 Git-commit: 9f8bee9c981f5fe7382a0615d117cc128dd22458
 
 The Xen pciback driver has a list of all pci devices it is ready to

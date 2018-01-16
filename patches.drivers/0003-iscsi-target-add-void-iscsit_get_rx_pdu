@@ -51,9 +51,9 @@ Acked-by: Lee Duncan <lduncan@suse.com>
  
 --- a/drivers/target/iscsi/iscsi_target.c
 +++ b/drivers/target/iscsi/iscsi_target.c
-@@ -3951,14 +3951,8 @@ int iscsi_target_rx_thread(void *arg)
+@@ -3974,14 +3974,8 @@ int iscsi_target_rx_thread(void *arg)
  	if (rc < 0 || iscsi_target_check_conn_state(conn))
- 		return 0;
+ 		goto out;
  
 -	if (conn->conn_transport->transport_type == ISCSI_INFINIBAND) {
 -		struct completion comp;

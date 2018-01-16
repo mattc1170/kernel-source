@@ -1,0 +1,42 @@
+From: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Date: Tue, 28 Nov 2017 12:29:45 +0100
+Subject: [PATCH] Revert "sctp: do not peel off an assoc from one netns to
+ another one"
+References: bnc#1012382
+Patch-mainline: 4.4.103
+Git-commit: 3d7214a338d72a66739e83b32fe6e78688051ecc
+
+This reverts commit 2a0e60907e54dad75e9b3568d02bec11d6e74f6b which is
+commit df80cd9b28b9ebaa284a41df611dbf3a2d05ca74 upstream as I messed up
+by applying it to the tree twice.
+
+Reported-by: Michal Kubecek <mkubecek@suse.cz>
+Cc: ChunYu Wang <chunwang@redhat.com>
+Cc: Xin Long <lucien.xin@gmail.com>
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Cc: Neil Horman <nhorman@tuxdriver.com>
+Cc: David S. Miller <davem@davemloft.net>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Signed-off-by: Jiri Slaby <jslaby@suse.cz>
+---
+ net/sctp/socket.c | 4 ----
+ 1 file changed, 4 deletions(-)
+
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 272edd7748a0..7f0f689b8d2b 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -4453,10 +4453,6 @@ int sctp_do_peeloff(struct sock *sk, sctp_assoc_t id, struct socket **sockp)
+ 	struct socket *sock;
+ 	int err = 0;
+ 
+-	/* Do not peel off from one netns to another one. */
+-	if (!net_eq(current->nsproxy->net_ns, sock_net(sk)))
+-		return -EINVAL;
+-
+ 	/* Do not peel off from one netns to another one. */
+ 	if (!net_eq(current->nsproxy->net_ns, sock_net(sk)))
+ 		return -EINVAL;
+-- 
+2.15.1
+

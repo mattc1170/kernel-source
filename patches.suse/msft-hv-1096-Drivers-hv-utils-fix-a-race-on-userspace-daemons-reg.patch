@@ -36,7 +36,7 @@ Reported-by: Barry Davis <barry_davis@stormagic.com>
 Signed-off-by: Vitaly Kuznetsov <vkuznets@redhat.com>
 Signed-off-by: K. Y. Srinivasan <kys@microsoft.com>
 Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  drivers/hv/hv_fcopy.c           | 14 ++++++++++----
  drivers/hv/hv_kvp.c             | 27 ++++++++++++++++-----------

@@ -1,0 +1,54 @@
+From fff8f163a3ffdf9ba809b3289ed60927ace9a2c3 Mon Sep 17 00:00:00 2001
+From: Nathan Fontenot <nfont@linux.vnet.ibm.com>
+Date: Mon, 28 Nov 2016 11:50:45 -0500
+Subject: [PATCH] powerpc/pseries: Use lmb_is_removable() to check removability
+
+References: FATE#322022
+Patch-mainline: v4.10-rc1
+Git-commit: 2db029ef58ab7c47cecab5fe73fa6e3ae6663ecf
+
+We should be using lmb_is_removable() to validate that enough LMBs
+are available to remove when doing a remove by count. This will check
+that the LMB is owned by the system and it is considered removable.
+This patch also adds a pr_info() notification to report the LMB count
+to remove was not satisfied.
+
+What we do now is just check that there are enough LMBs owned by the
+system when validating there are enough LMBs to remove. This can
+lead to situations where there are enough LMBs owned by the system
+but not enough that are considered removable. This results in having
+to bail out of the remove operation instead of just failing the request
+that we should have known wouldn't succeed.
+
+Signed-off-by: Nathan Fontenot <nfont@linux.vnet.ibm.com>
+Signed-off-by: Michael Ellerman <mpe@ellerman.id.au>
+Acked-by: Michal Suchanek <msuchanek@suse.de>
+---
+ arch/powerpc/platforms/pseries/hotplug-memory.c | 7 +++++--
+ 1 file changed, 5 insertions(+), 2 deletions(-)
+
+diff --git a/arch/powerpc/platforms/pseries/hotplug-memory.c b/arch/powerpc/platforms/pseries/hotplug-memory.c
+index 58112f776ed5..32f51edfe036 100644
+--- a/arch/powerpc/platforms/pseries/hotplug-memory.c
++++ b/arch/powerpc/platforms/pseries/hotplug-memory.c
+@@ -481,12 +481,15 @@ static int dlpar_memory_remove_by_count(u32 lmbs_to_remove,
+ 
+ 	/* Validate that there are enough LMBs to satisfy the request */
+ 	for (i = 0; i < num_lmbs; i++) {
+-		if (lmbs[i].flags & DRCONF_MEM_ASSIGNED)
++		if (lmb_is_removable(&lmbs[i]))
+ 			lmbs_available++;
+ 	}
+ 
+-	if (lmbs_available < lmbs_to_remove)
++	if (lmbs_available < lmbs_to_remove) {
++		pr_info("Not enough LMBs available (%d of %d) to satisfy request\n",
++			lmbs_available, lmbs_to_remove);
+ 		return -EINVAL;
++	}
+ 
+ 	for (i = 0; i < num_lmbs && lmbs_removed < lmbs_to_remove; i++) {
+ 		rc = dlpar_remove_lmb(&lmbs[i]);
+-- 
+2.10.2
+

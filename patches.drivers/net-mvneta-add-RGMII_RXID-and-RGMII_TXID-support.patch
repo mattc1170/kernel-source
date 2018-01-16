@@ -1,8 +1,7 @@
 From: Jisheng Zhang <jszhang@marvell.com>
 Date: Wed, 29 Mar 2017 16:42:26 +0800
 Subject: net: mvneta: add RGMII_RXID and RGMII_TXID support
-Patch-mainline: Queued in subsystem maintainer repository
-Git-repo: git://git.kernel.org/pub/scm/linux/kernel/git/davem/net-next.git
+Patch-mainline: v4.12-rc1
 Git-commit: a38d20d791fdcd79ebccda15a8308a6d8ada6e1c
 References: fate#319899
 

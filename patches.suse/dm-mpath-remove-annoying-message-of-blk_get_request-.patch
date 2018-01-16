@@ -1,0 +1,43 @@
+From: Ming Lei <ming.lei@redhat.com>
+Date: Sat, 30 Sep 2017 19:46:48 +0800
+Subject: [PATCH] dm mpath: remove annoying message of 'blk_get_request()
+ returned -11'
+Git-commit: 9dc112e2daf87b40607fd8d357e2d7de32290d45
+Patch-mainline: v4.15-rc1
+References: bsc#1066812
+
+It is very normal to see allocation failure, especially with blk-mq
+request_queues, so it's unnecessary to report this error and annoy
+people.
+
+In practice this 'blk_get_request() returned -11' error gets logged
+quite frequently when a blk-mq DM multipath device sees heavy IO.
+
+This change is marked for stable@ because the annoying message in
+question was included in stable@ commit 7083abbbf.
+
+Fixes: 7083abbbf ("dm mpath: avoid that path removal can trigger an infinite loop")
+Cc: stable@vger.kernel.org
+Signed-off-by: Ming Lei <ming.lei@redhat.com>
+Signed-off-by: Mike Snitzer <snitzer@redhat.com>
+Acked-by: Hannes Reinecke <hare@suse.com>
+---
+ drivers/md/dm-mpath.c | 2 --
+ 1 file changed, 2 deletions(-)
+
+diff --git a/drivers/md/dm-mpath.c b/drivers/md/dm-mpath.c
+index 6c71316..b730469 100644
+--- a/drivers/md/dm-mpath.c
++++ b/drivers/md/dm-mpath.c
+@@ -574,8 +574,6 @@ static int __multipath_map(struct dm_target *ti, struct request *clone,
+ 		if (IS_ERR(clone)) {
+ 			/* EBUSY, ENODEV or EWOULDBLOCK: requeue */
+ 			bool queue_dying = blk_queue_dying(q);
+-			DMERR_LIMIT("blk_get_request() returned %ld%s - requeuing",
+-				    PTR_ERR(clone), queue_dying ? " (path offline)" : "");
+ 			clear_request_fn_mpio(m, map_context);
+ 			if (queue_dying) {
+ 				atomic_inc(&m->pg_init_in_progress);
+-- 
+1.8.5.6
+

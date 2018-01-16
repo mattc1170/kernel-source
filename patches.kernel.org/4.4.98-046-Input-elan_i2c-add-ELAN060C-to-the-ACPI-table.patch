@@ -1,0 +1,36 @@
+From: Kai-Heng Feng <kai.heng.feng@canonical.com>
+Date: Tue, 7 Nov 2017 16:19:24 -0800
+Subject: [PATCH] Input: elan_i2c - add ELAN060C to the ACPI table
+References: bnc#1012382
+Patch-mainline: 4.4.98
+Git-commit: cdea6a30c2689cc33b34c6691b57cca277f0c5dc
+
+commit cdea6a30c2689cc33b34c6691b57cca277f0c5dc upstream.
+
+ELAN060C touchpad uses elan_i2c as its driver. It can be
+found on Lenovo ideapad 320-14AST.
+
+BugLink: https://bugs.launchpad.net/bugs/1727544
+Signed-off-by: Kai-Heng Feng <kai.heng.feng@canonical.com>
+Signed-off-by: Dmitry Torokhov <dmitry.torokhov@gmail.com>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Signed-off-by: Jiri Slaby <jslaby@suse.cz>
+---
+ drivers/input/mouse/elan_i2c_core.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/drivers/input/mouse/elan_i2c_core.c b/drivers/input/mouse/elan_i2c_core.c
+index b8c50d883b2c..c9d491bc85e0 100644
+--- a/drivers/input/mouse/elan_i2c_core.c
++++ b/drivers/input/mouse/elan_i2c_core.c
+@@ -1240,6 +1240,7 @@ static const struct acpi_device_id elan_acpi_id[] = {
+ 	{ "ELAN0605", 0 },
+ 	{ "ELAN0609", 0 },
+ 	{ "ELAN060B", 0 },
++	{ "ELAN060C", 0 },
+ 	{ "ELAN0611", 0 },
+ 	{ "ELAN1000", 0 },
+ 	{ }
+-- 
+2.15.0
+

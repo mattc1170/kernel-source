@@ -1,0 +1,105 @@
+From 94671710183c3f5eed7cf33f73600c836e4777fd Mon Sep 17 00:00:00 2001
+From: Corey Minyard <cminyard@mvista.com>
+Date: Mon, 7 Nov 2016 12:07:09 -0600
+Subject: [PATCH] ipmi: Pick up slave address from SMBIOS on an ACPI device
+Git-commit: 94671710183c3f5eed7cf33f73600c836e4777fd
+Patch-mainline: 4.10-rc1
+References: bsc#1070006
+
+When added by ACPI, the information does not contain the slave address
+of the BMC.  However, that information is available from SMBIOS.  So
+if we add a device that doesn't have a slave address, look at the other
+devices that are duplicate interfaces and see if they have a slave
+address.
+
+Signed-off-by: Corey Minyard <cminyard@mvista.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/char/ipmi/ipmi_si_intf.c |   10 +++++++++-
+ drivers/char/ipmi/ipmi_ssif.c    |   33 +++++++++++++++++++++++++++++++--
+ 2 files changed, 40 insertions(+), 3 deletions(-)
+
+--- a/drivers/char/ipmi/ipmi_si_intf.c
++++ b/drivers/char/ipmi/ipmi_si_intf.c
+@@ -3492,8 +3492,16 @@ static int is_new_interface(struct smi_i
+ 	list_for_each_entry(e, &smi_infos, link) {
+ 		if (e->io.addr_type != info->io.addr_type)
+ 			continue;
+-		if (e->io.addr_data == info->io.addr_data)
++		if (e->io.addr_data == info->io.addr_data) {
++			/*
++			 * This is a cheap hack, ACPI doesn't have a defined
++			 * slave address but SMBIOS does.  Pick it up from
++			 * any source that has it available.
++			 */
++			if (info->slave_addr && !e->slave_addr)
++				e->slave_addr = info->slave_addr;
+ 			return 0;
++		}
+ 	}
+ 
+ 	return 1;
+--- a/drivers/char/ipmi/ipmi_ssif.c
++++ b/drivers/char/ipmi/ipmi_ssif.c
+@@ -174,7 +174,6 @@ enum ssif_stat_indexes {
+ };
+ 
+ struct ssif_addr_info {
+-	unsigned short addr;
+ 	struct i2c_board_info binfo;
+ 	char *adapter_name;
+ 	int debug;
+@@ -1415,6 +1414,34 @@ static bool check_acpi(struct ssif_info
+ 	return false;
+ }
+ 
++static int find_slave_address(struct i2c_client *client, int slave_addr)
++{
++	struct ssif_addr_info *info;
++
++	if (slave_addr)
++		return slave_addr;
++
++	/*
++	 * Came in without a slave address, search around to see if
++	 * the other sources have a slave address.  This lets us pick
++	 * up an SMBIOS slave address when using ACPI.
++	 */
++	list_for_each_entry(info, &ssif_infos, link) {
++		if (info->binfo.addr != client->addr)
++			continue;
++		if (info->adapter_name && client->adapter->name &&
++		    strcmp_nospace(info->adapter_name,
++				   client->adapter->name))
++			continue;
++		if (info->slave_addr) {
++			slave_addr = info->slave_addr;
++			break;
++		}
++	}
++
++	return slave_addr;
++}
++
+ /*
+  * Global enables we care about.
+  */
+@@ -1457,6 +1484,8 @@ static int ssif_probe(struct i2c_client
+ 		}
+ 	}
+ 
++	slave_addr = find_slave_address(client, slave_addr);
++
+ 	pr_info(PFX "Trying %s-specified SSIF interface at i2c address 0x%x, adapter %s, slave address 0x%x\n",
+ 	       ipmi_addr_src_to_str(ssif_info->addr_source),
+ 	       client->addr, client->adapter->name, slave_addr);
+@@ -1945,7 +1974,7 @@ static int decode_dmi(const struct dmi_d
+ 		slave_addr = data[6];
+ 	}
+ 
+-	return new_ssif_client(myaddr, NULL, 0, 0, SI_SMBIOS);
++	return new_ssif_client(myaddr, NULL, 0, slave_addr, SI_SMBIOS);
+ }
+ 
+ static void dmi_iterator(void)

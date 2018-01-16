@@ -1,0 +1,35 @@
+From add64b5142a5a71cd79b97b227a78e0706323660 Mon Sep 17 00:00:00 2001
+From: Tin Huynh <tnhuynh@apm.com>
+Date: Wed, 17 May 2017 11:25:34 +0700
+Subject: [PATCH 4/7] i2c: xgene: Set ACPI_COMPANION_I2C
+
+Git-commit: 83345d51a49a4b3f3b4a08a5db644dae438b0189
+Patch-mainline: v4.12-rc2
+References: bsc#1053633
+
+With ACPI, i2c-core requires ACPI companion to be set in order for it
+to create slave device.
+This patch sets the ACPI companion accordingly.
+
+Signed-off-by: Tin Huynh <tnhuynh@apm.com>
+Signed-off-by: Wolfram Sang <wsa@the-dreams.de>
+Signed-off-by: Mian Yousaf Kaukab <yousaf.kaukab@suse.com>
+---
+ drivers/i2c/busses/i2c-xgene-slimpro.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/drivers/i2c/busses/i2c-xgene-slimpro.c b/drivers/i2c/busses/i2c-xgene-slimpro.c
+index 44a7e237b0fd..1ca94bbedb61 100644
+--- a/drivers/i2c/busses/i2c-xgene-slimpro.c
++++ b/drivers/i2c/busses/i2c-xgene-slimpro.c
+@@ -416,6 +416,7 @@ static int xgene_slimpro_i2c_probe(struct platform_device *pdev)
+ 	adapter->class = I2C_CLASS_HWMON;
+ 	adapter->dev.parent = &pdev->dev;
+ 	adapter->dev.of_node = pdev->dev.of_node;
++	ACPI_COMPANION_SET(&adapter->dev, ACPI_COMPANION(&pdev->dev));
+ 	i2c_set_adapdata(adapter, ctx);
+ 	rc = i2c_add_adapter(adapter);
+ 	if (rc) {
+-- 
+2.11.0
+

@@ -16,12 +16,17 @@
 #
 
 
+%define srcversion @SRCVERSION@
 %define patchversion @PATCHVERSION@
 %define variant @VARIANT@%{nil}
 
 %include %_sourcedir/kernel-spec-macros
 
 %define use_fop	1
+
+%define linux_src linux-%srcversion
+
+%(chmod +x %_sourcedir/{@SCRIPTS@})
 
 Name:           kernel-docs@VARIANT@
 Summary:        Kernel Documentation (man pages)
@@ -33,7 +38,6 @@ Release:        <RELEASE>.g@COMMIT@
 %else
 Release:        @RELEASE@
 %endif
-BuildRequires:  kernel-source%variant
 BuildRequires:  xmlto
 %if %use_fop
 BuildRequires:  fop
@@ -51,7 +55,7 @@ Url:            http://www.kernel.org/
 Provides:       %name = %version-%source_rel
 BuildArch:      noarch
 BuildRoot:      %{_tmppath}/%{name}-%{version}-build
-Source:         kernel-spec-macros
+@SOURCES@
 
 %description
 These are the man pages (section 9) built from the current kernel sources.
@@ -86,7 +90,10 @@ max_strings.pdfjadetex = 240000
 save_size.pdfjadetex = 20000
 EOF
 %endif
-%setup -T -c
+# Unpack all sources and patches
+%setup -q -c -T -a 0 @UNPACK_PATCHES@
+cd %linux_src
+%_sourcedir/apply-patches %_sourcedir/series.conf ..
 
 %build
 %if !%use_fop
@@ -95,15 +102,15 @@ export TEXMFCNF=$RPM_BUILD_DIR
 %endif
 export LANG=en_US
 mkdir -p man
-make -C /usr/src/linux%variant O=$PWD/man mandocs %{?jobs:-j%jobs}
+make -C %linux_src O=$PWD/man mandocs %{?jobs:-j%jobs}
 mkdir -p html
-make -C /usr/src/linux%variant O=$PWD/html htmldocs %{?jobs:-j%jobs}
+make -C %linux_src O=$PWD/html htmldocs %{?jobs:-j%jobs}
 mkdir -p pdf
 make \
 %if %use_fop
-    XMLTOFLAGS="-m /usr/src/linux%{variant}/Documentation/DocBook/stylesheet.xsl --skip-validation --with-fop" \
+    XMLTOFLAGS="-m %linux_src/Documentation/DocBook/stylesheet.xsl --skip-validation --with-fop" \
 %endif
-  -C /usr/src/linux%variant O=$PWD/pdf pdfdocs %{?jobs:-j%jobs}
+  -C %linux_src O=$PWD/pdf pdfdocs %{?jobs:-j%jobs}
 
 %install
 install -d $RPM_BUILD_ROOT/%{_mandir}/man9
@@ -133,7 +140,7 @@ rm -f $RPM_BUILD_ROOT%{_datadir}/doc/kernel/html/*.xml
 rm -f $RPM_BUILD_ROOT%{_datadir}/doc/kernel/html/*.{gif,png}
 rm -f $RPM_BUILD_ROOT%{_datadir}/doc/kernel/html/*/*.proc
 
-cp -a /usr/src/linux%variant/{COPYING,CREDITS,MAINTAINERS,README,REPORTING-BUGS} .
+cp -a %linux_src/{COPYING,CREDITS,MAINTAINERS,README,REPORTING-BUGS} .
 
 %files
 %defattr(-,root,root)

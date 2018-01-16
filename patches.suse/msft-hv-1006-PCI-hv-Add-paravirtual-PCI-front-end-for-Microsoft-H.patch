@@ -13,7 +13,7 @@ domain, implemented within the driver.
 [bhelgaas: fold in race condition fix (http://lkml.kernel.org/r/1456340196-13717-1-git-send-email-jakeo@microsoft.com)]
 Signed-off-by: Jake Oshins <jakeo@microsoft.com>
 Signed-off-by: Bjorn Helgaas <bhelgaas@google.com>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  MAINTAINERS                   |    1 +
  drivers/pci/Kconfig           |    7 +

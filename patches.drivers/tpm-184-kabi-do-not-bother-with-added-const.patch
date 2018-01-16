@@ -1,0 +1,32 @@
+From d007e030d58ce92e0b35d93e350ae728bc804ce7 Mon Sep 17 00:00:00 2001
+From: Michal Suchanek <msuchanek@suse.de>
+Date: Tue, 28 Nov 2017 19:45:43 +0100
+Subject: [PATCH] tpm: kabi: do not bother with added const
+
+References: bsc#1020645, git-fixes
+Patch-mainline: never, kabi
+
+---
+ drivers/char/tpm/tpm_tis_core.h | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/drivers/char/tpm/tpm_tis_core.h b/drivers/char/tpm/tpm_tis_core.h
+index 6bbac319ff3b..85f15692d83e 100644
+--- a/drivers/char/tpm/tpm_tis_core.h
++++ b/drivers/char/tpm/tpm_tis_core.h
+@@ -23,6 +23,12 @@
+ #ifndef __TPM_TIS_CORE_H__
+ #define __TPM_TIS_CORE_H__
+ 
++#ifndef __GENKSYMS__
++#define CONST const
++#else
++#define CONST
++#endif
++
+ #include "tpm.h"
+ 
+ enum tis_access {
+-- 
+2.13.6
+

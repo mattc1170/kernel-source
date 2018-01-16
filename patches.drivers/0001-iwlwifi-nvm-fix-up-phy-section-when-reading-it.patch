@@ -25,15 +25,16 @@ Acked-by: Takashi Iwai <tiwai@suse.de>
 
 --- a/drivers/net/wireless/iwlwifi/iwl-nvm-parse.c
 +++ b/drivers/net/wireless/iwlwifi/iwl-nvm-parse.c
-@@ -580,15 +580,13 @@ static void iwl_set_hw_address_family_80
+@@ -590,8 +590,6 @@ static void iwl_set_hw_address_family_80
  	IWL_ERR_DEV(dev, "mac address is not found\n");
  }
  
 -#define IWL_4165_DEVICE_ID 0x5501
 -
- struct iwl_nvm_data *
- iwl_parse_nvm_data(struct device *dev, const struct iwl_cfg *cfg,
- 		   const __le16 *nvm_hw, const __le16 *nvm_sw,
+ static bool
+ iwl_nvm_no_wide_in_5ghz(struct device *dev, const struct iwl_cfg *cfg,
+ 			const __le16 *nvm_hw)
+@@ -631,7 +629,7 @@ iwl_parse_nvm_data(struct device *dev, c
  		   const __le16 *nvm_calib, const __le16 *regulatory,
  		   const __le16 *mac_override, const __le16 *phy_sku,
  		   u8 tx_chains, u8 rx_chains, bool lar_fw_supported,
@@ -41,8 +42,8 @@ Acked-by: Takashi Iwai <tiwai@suse.de>
 +		   u32 mac_addr0, u32 mac_addr1)
  {
  	struct iwl_nvm_data *data;
- 	u32 sku;
-@@ -627,17 +625,6 @@ iwl_parse_nvm_data(struct device *dev, c
+ 	bool no_wide_in_5ghz = iwl_nvm_no_wide_in_5ghz(dev, cfg, nvm_hw);
+@@ -671,17 +669,6 @@ iwl_parse_nvm_data(struct device *dev, c
  				    (sku & NVM_SKU_CAP_11AC_ENABLE);
  	data->sku_cap_mimo_disabled = sku & NVM_SKU_CAP_MIMO_DISABLE;
  

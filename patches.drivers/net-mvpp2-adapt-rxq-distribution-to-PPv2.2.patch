@@ -1,8 +1,7 @@
 From: Thomas Petazzoni <thomas.petazzoni@free-electrons.com>
 Date: Tue, 7 Mar 2017 16:53:17 +0100
 Subject: net: mvpp2: adapt rxq distribution to PPv2.2
-Patch-mainline: Queued in subsystem maintainer repository
-Git-repo: git://git.kernel.org/pub/scm/linux/kernel/git/davem/net-next.git
+Patch-mainline: v4.12-rc1
 Git-commit: 59b9a31ede18ef54dcac466052706bb47a394ab5
 References: bsc#1032150
 

@@ -1,0 +1,94 @@
+From f920f74200f3d5d43fc327801a964d27c3034533 Mon Sep 17 00:00:00 2001
+From: Dou Liyang <douly.fnst@cn.fujitsu.com>
+Date: Fri, 3 Mar 2017 16:02:27 +0800
+Subject: [PATCH] acpi/processor: Check for duplicate processor ids at hotplug
+ time
+
+References: bnc#1056230
+Patch-mainline: v4.11
+Git-commit: a77d6cd968497792e072b74dff45b891ba778ddb
+
+The check for duplicate processor ids happens at boot time based on the
+ACPI table contents, but the final sanity checks for a processor happen
+at hotplug time.
+
+At hotplug time, where the physical information is available, which might
+differ from the ACPI table information, a check for duplicate processor
+ids is missing.
+
+Add it to the hotplug checks and rename the function so it better
+reflects its purpose.
+
+Signed-off-by: Dou Liyang <douly.fnst@cn.fujitsu.com>
+Tested-by: Xiaolong Ye <xiaolong.ye@intel.com>
+Cc: rjw@rjwysocki.net
+Cc: linux-acpi@vger.kernel.org
+Cc: guzheng1@huawei.com
+Cc: izumi.taku@jp.fujitsu.com
+Cc: lenb@kernel.org
+Link: http://lkml.kernel.org/r/1488528147-2279-6-git-send-email-douly.fnst@cn.fujitsu.com
+Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
+Signed-off-by: Mel Gorman <mgorman@suse.de>
+---
+ drivers/acpi/acpi_processor.c | 13 ++++++++++---
+ include/linux/acpi.h          |  2 +-
+ 2 files changed, 11 insertions(+), 4 deletions(-)
+
+diff --git a/drivers/acpi/acpi_processor.c b/drivers/acpi/acpi_processor.c
+index f0de4ae8360e..56d4caad9d06 100644
+--- a/drivers/acpi/acpi_processor.c
++++ b/drivers/acpi/acpi_processor.c
+@@ -280,6 +280,13 @@ static int acpi_processor_get_info(struct acpi_device *device)
+ 		pr->acpi_id = value;
+ 	}
+ 
++	if (acpi_duplicate_processor_id(pr->acpi_id)) {
++		dev_err(&device->dev,
++			"Failed to get unique processor _UID (0x%x)\n",
++			pr->acpi_id);
++		return -ENODEV;
++	}
++
+ 	pr->phys_id = acpi_get_phys_id(pr->handle, device_declaration,
+ 					pr->acpi_id);
+ 	if (invalid_phys_cpuid(pr->phys_id))
+@@ -564,7 +571,7 @@ static struct acpi_scan_handler processor_handler = {
+ static int nr_unique_ids __initdata;
+ 
+ /* The number of the duplicate processor IDs */
+-static int nr_duplicate_ids __initdata;
++static int nr_duplicate_ids;
+ 
+ /* Used to store the unique processor IDs */
+ static int unique_processor_ids[] __initdata = {
+@@ -572,7 +579,7 @@ static int unique_processor_ids[] __initdata = {
+ };
+ 
+ /* Used to store the duplicate processor IDs */
+-static int duplicate_processor_ids[] __initdata = {
++static int duplicate_processor_ids[] = {
+ 	[0 ... NR_CPUS - 1] = -1,
+ };
+ 
+@@ -663,7 +670,7 @@ void __init acpi_processor_check_duplicates(void)
+ 						NULL, NULL);
+ }
+ 
+-bool __init acpi_processor_validate_proc_id(int proc_id)
++bool acpi_duplicate_processor_id(int proc_id)
+ {
+ 	int i;
+ 
+diff --git a/include/linux/acpi.h b/include/linux/acpi.h
+index eb2e6c20fe42..4a0eacee34b2 100644
+--- a/include/linux/acpi.h
++++ b/include/linux/acpi.h
+@@ -226,7 +226,7 @@ static inline bool invalid_phys_cpuid(phys_cpuid_t phys_id)
+ }
+ 
+ /* Validate the processor object's proc_id */
+-bool acpi_processor_validate_proc_id(int proc_id);
++bool acpi_duplicate_processor_id(int proc_id);
+ 
+ #ifdef CONFIG_ACPI_HOTPLUG_CPU
+ /* Arch dependent functions for cpu hotplug support */

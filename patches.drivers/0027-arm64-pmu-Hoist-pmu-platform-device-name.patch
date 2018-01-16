@@ -1,0 +1,49 @@
+From 4cfc126893fac78a71a34589386f60de20d1a571 Mon Sep 17 00:00:00 2001
+From: Jeremy Linton <jeremy.linton@arm.com>
+Date: Wed, 14 Sep 2016 17:32:31 -0500
+Subject: [PATCH 27/56] arm64: pmu: Hoist pmu platform device name
+
+Git-commit: 85023b2e1325826edf5d226a9cb4d809ed1e2024
+Patch-mainline: v4.9-rc1
+References: bsc#1062279
+
+Move the PMU name into a common header file so it may
+be referenced by other users.
+
+Signed-off-by: Jeremy Linton <jeremy.linton@arm.com>
+Signed-off-by: Will Deacon <will.deacon@arm.com>
+Signed-off-by: Mian Yousaf Kaukab <yousaf.kaukab@suse.com>
+---
+ arch/arm64/kernel/perf_event.c | 2 +-
+ include/linux/perf/arm_pmu.h   | 2 ++
+ 2 files changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/arch/arm64/kernel/perf_event.c b/arch/arm64/kernel/perf_event.c
+index b62d0d6d..57ae9d9e 100644
+--- a/arch/arm64/kernel/perf_event.c
++++ b/arch/arm64/kernel/perf_event.c
+@@ -1103,7 +1103,7 @@ static int armv8_pmu_device_probe(struct platform_device *pdev)
+ 
+ static struct platform_driver armv8_pmu_driver = {
+ 	.driver		= {
+-		.name	= "armv8-pmu",
++		.name	= ARMV8_PMU_PDEV_NAME,
+ 		.of_match_table = armv8_pmu_of_device_ids,
+ 	},
+ 	.probe		= armv8_pmu_device_probe,
+diff --git a/include/linux/perf/arm_pmu.h b/include/linux/perf/arm_pmu.h
+index 1047d445..d0f57e95 100644
+--- a/include/linux/perf/arm_pmu.h
++++ b/include/linux/perf/arm_pmu.h
+@@ -219,6 +219,8 @@ int arm_pmu_device_probe(struct platform_device *pdev,
+ 			 const struct of_device_id *of_table,
+ 			 const struct pmu_probe_info *probe_table);
+ 
++#define ARMV8_PMU_PDEV_NAME "armv8-pmu"
++
+ #endif /* CONFIG_ARM_PMU */
+ 
+ #endif /* __ARM_PMU_H__ */
+-- 
+2.11.0
+

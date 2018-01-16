@@ -1,0 +1,38 @@
+From 40a7d9f5f90681c6d7890b6a07f230bb4afe7e39 Mon Sep 17 00:00:00 2001
+From: Christoph Hellwig <hch@lst.de>
+Date: Tue, 2 Aug 2016 14:03:59 -0700
+Subject: [PATCH] printk: include <asm/sections.h> instead of
+ <asm-generic/sections.h>
+Git-commit: 40a7d9f5f90681c6d7890b6a07f230bb4afe7e39
+References: bsc#1063026
+Patch-Mainline: v4.8-rc1
+
+asm-generic headers are generic implementations for architecture
+specific code and should not be included by common code.  Thus use the
+asm/ version of sections.h to get at the linker sections.
+
+Link: http://lkml.kernel.org/r/1468285008-7331-1-git-send-email-hch@lst.de
+Signed-off-by: Christoph Hellwig <hch@lst.de>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+Signed-off-by: Linus Torvalds <torvalds@linux-foundation.org>
+Acked-by: Petr Mladek <pmladek@suse.com>
+---
+ kernel/printk/printk.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/kernel/printk/printk.c b/kernel/printk/printk.c
+index 8bdce14254f4..70c66c5ba212 100644
+--- a/kernel/printk/printk.c
++++ b/kernel/printk/printk.c
+@@ -47,7 +47,7 @@
+ #include <linux/uio.h>
+ 
+ #include <asm/uaccess.h>
+-#include <asm-generic/sections.h>
++#include <asm/sections.h>
+ 
+ #define CREATE_TRACE_POINTS
+ #include <trace/events/printk.h>
+-- 
+1.8.5.6
+

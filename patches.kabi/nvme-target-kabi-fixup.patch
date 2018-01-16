@@ -1,0 +1,31 @@
+From: Johannes Thumshirn <jthumshirn@suse.de>
+Date: Thu Sep 14 15:28:43 CEST 2017
+Subject: KABI fix drivers/nvme/target/nvmet.h
+References: bsc#1058550
+Patch-mainline: Never, KABI fixup
+
+Signed-off-by: Johannes Thumshirn <jthumshirn@suse.de>
+---
+ drivers/nvme/target/nvmet.h |    3 +++
+ 1 file changed, 3 insertions(+)
+
+--- a/drivers/nvme/target/nvmet.h
++++ b/drivers/nvme/target/nvmet.h
+@@ -111,6 +111,7 @@ struct nvmet_ctrl {
+ 
+ 	struct mutex		lock;
+ 	u64			cap;
++	u64			serial;
+ 	u32			cc;
+ 	u32			csts;
+ 
+@@ -150,7 +151,9 @@ struct nvmet_subsys {
+ 	u16			max_qid;
+ 
+ 	u64			ver;
++#ifndef __GENKSYMS__
+ 	u64			serial;
++#endif
+ 	char			*subsysnqn;
+ 
+ 	struct config_group	group;

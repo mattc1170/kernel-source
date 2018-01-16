@@ -1,0 +1,70 @@
+From 7d3713ac246902cb122d342e735dbb2f3ba563a5 Mon Sep 17 00:00:00 2001
+From: Mark Rutland <mark.rutland@arm.com>
+Date: Tue, 11 Apr 2017 09:39:57 +0100
+Subject: [PATCH 44/56] arm64: pmuv3: use arm_pmu ACPI framework
+
+Git-commit: f00fa5f4163b40c3ec8590d9a7bd845c19bf8d16
+Patch-mainline: v4.12-rc1
+References: bsc#1062279
+
+Now that we have a framework to handle the ACPI bits, make the PMUv3
+code use this. The framework is a little different to what was
+originally envisaged, and we can drop some unused support code in the
+process of moving over to it.
+
+Signed-off-by: Mark Rutland <mark.rutland@arm.com>
+Tested-by: Jeremy Linton <jeremy.linton@arm.com>
+[will: make armv8_pmu_driver_init static]
+Signed-off-by: Will Deacon <will.deacon@arm.com>
+
+Signed-off-by: Mian Yousaf Kaukab <yousaf.kaukab@suse.com>
+---
+ arch/arm64/kernel/perf_event.c | 26 +++++++++-----------------
+ 1 file changed, 9 insertions(+), 17 deletions(-)
+
+diff --git a/arch/arm64/kernel/perf_event.c b/arch/arm64/kernel/perf_event.c
+index 53f23546..98c74939 100644
+--- a/arch/arm64/kernel/perf_event.c
++++ b/arch/arm64/kernel/perf_event.c
+@@ -1136,24 +1136,9 @@ static const struct of_device_id armv8_pmu_of_device_ids[] = {
+ 	{},
+ };
+ 
+-/*
+- * Non DT systems have their micro/arch events probed at run-time.
+- * A fairly complete list of generic events are provided and ones that
+- * aren't supported by the current PMU are disabled.
+- */
+-static const struct pmu_probe_info armv8_pmu_probe_table[] = {
+-	PMU_PROBE(0, 0, armv8_pmuv3_init), /* enable all defined counters */
+-	{ /* sentinel value */ }
+-};
+-
+ static int armv8_pmu_device_probe(struct platform_device *pdev)
+ {
+-	if (acpi_disabled)
+-		return arm_pmu_device_probe(pdev, armv8_pmu_of_device_ids,
+-					    NULL);
+-
+-	return arm_pmu_device_probe(pdev, armv8_pmu_of_device_ids,
+-				    armv8_pmu_probe_table);
++	return arm_pmu_device_probe(pdev, armv8_pmu_of_device_ids, NULL);
+ }
+ 
+ static struct platform_driver armv8_pmu_driver = {
+@@ -1164,4 +1149,11 @@ static struct platform_driver armv8_pmu_driver = {
+ 	.probe		= armv8_pmu_device_probe,
+ };
+ 
+-builtin_platform_driver(armv8_pmu_driver);
++static int __init armv8_pmu_driver_init(void)
++{
++	if (acpi_disabled)
++		return platform_driver_register(&armv8_pmu_driver);
++	else
++		return arm_pmu_acpi_probe(armv8_pmuv3_init);
++}
++device_initcall(armv8_pmu_driver_init)
+-- 
+2.11.0
+

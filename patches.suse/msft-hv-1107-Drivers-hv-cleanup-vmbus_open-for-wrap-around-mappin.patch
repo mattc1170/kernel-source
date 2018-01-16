@@ -19,7 +19,7 @@ Signed-off-by: Vitaly Kuznetsov <vkuznets@redhat.com>
 Tested-by: Dexuan Cui <decui@microsoft.com>
 Signed-off-by: K. Y. Srinivasan <kys@microsoft.com>
 Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  drivers/hv/channel.c | 41 ++++++++++++++++++++++-------------------
  1 file changed, 22 insertions(+), 19 deletions(-)

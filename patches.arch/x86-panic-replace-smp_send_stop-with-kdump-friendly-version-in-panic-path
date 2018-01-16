@@ -1,0 +1,222 @@
+From: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
+Date: Tue, 11 Oct 2016 13:54:23 -0700
+Subject: x86/panic: replace smp_send_stop() with kdump friendly version in
+ panic path
+Git-commit: 0ee59413c967c35a6dd2dbdab605b4cd42025ee5
+Patch-mainline: v4.9-rc1
+References: bsc#1051478
+
+Daniel Walker reported problems which happens when
+crash_kexec_post_notifiers kernel option is enabled
+(https://lkml.org/lkml/2015/6/24/44).
+
+In that case, smp_send_stop() is called before entering kdump routines
+which assume other CPUs are still online.  As the result, for x86, kdump
+routines fail to save other CPUs' registers and disable virtualization
+extensions.
+
+To fix this problem, call a new kdump friendly function,
+crash_smp_send_stop(), instead of the smp_send_stop() when
+crash_kexec_post_notifiers is enabled.  crash_smp_send_stop() is a weak
+function, and it just call smp_send_stop().  Architecture codes should
+override it so that kdump can work appropriately.  This patch only
+provides x86-specific version.
+
+For Xen's PV kernel, just keep the current behavior.
+
+NOTES:
+
+- Right solution would be to place crash_smp_send_stop() before
+  __crash_kexec() invocation in all cases and remove smp_send_stop(), but
+  we can't do that until all architectures implement own
+  crash_smp_send_stop()
+
+- crash_smp_send_stop()-like work is still needed by
+  machine_crash_shutdown() because crash_kexec() can be called without
+  entering panic()
+
+Fixes: f06e5153f4ae (kernel/panic.c: add "crash_kexec_post_notifiers" option)
+Link: http://lkml.kernel.org/r/20160810080948.11028.15344.stgit@sysi4-13.yrl.intra.hitachi.co.jp
+Signed-off-by: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
+Reported-by: Daniel Walker <dwalker@fifo99.com>
+Cc: Dave Young <dyoung@redhat.com>
+Cc: Baoquan He <bhe@redhat.com>
+Cc: Vivek Goyal <vgoyal@redhat.com>
+Cc: Eric Biederman <ebiederm@xmission.com>
+Cc: Masami Hiramatsu <mhiramat@kernel.org>
+Cc: Daniel Walker <dwalker@fifo99.com>
+Cc: Xunlei Pang <xpang@redhat.com>
+Cc: Thomas Gleixner <tglx@linutronix.de>
+Cc: Ingo Molnar <mingo@redhat.com>
+Cc: "H. Peter Anvin" <hpa@zytor.com>
+Cc: Borislav Petkov <bp@suse.de>
+Cc: David Vrabel <david.vrabel@citrix.com>
+Cc: Toshi Kani <toshi.kani@hpe.com>
+Cc: Ralf Baechle <ralf@linux-mips.org>
+Cc: David Daney <david.daney@cavium.com>
+Cc: Aaro Koskinen <aaro.koskinen@iki.fi>
+Cc: "Steven J. Hill" <steven.hill@cavium.com>
+Cc: Corey Minyard <cminyard@mvista.com>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+Signed-off-by: Linus Torvalds <torvalds@linux-foundation.org>
+Acked-by: Joerg Roedel <jroedel@suse.de>
+---
+ arch/x86/include/asm/kexec.h |  1 +
+ arch/x86/include/asm/smp.h   |  1 +
+ arch/x86/kernel/crash.c      | 22 ++++++++++++++++++---
+ arch/x86/kernel/smp.c        |  5 +++++
+ kernel/panic.c               | 47 +++++++++++++++++++++++++++++++++++++-------
+ 5 files changed, 66 insertions(+), 10 deletions(-)
+
+--- a/arch/x86/include/asm/kexec.h
++++ b/arch/x86/include/asm/kexec.h
+@@ -210,6 +210,7 @@ struct kexec_entry64_regs {
+ 
+ typedef void crash_vmclear_fn(void);
+ extern crash_vmclear_fn __rcu *crash_vmclear_loaded_vmcss;
++extern void kdump_nmi_shootdown_cpus(void);
+ 
+ #endif /* __ASSEMBLY__ */
+ 
+--- a/arch/x86/include/asm/smp.h
++++ b/arch/x86/include/asm/smp.h
+@@ -59,6 +59,7 @@ struct smp_ops {
+ 	void (*smp_cpus_done)(unsigned max_cpus);
+ 
+ 	void (*stop_other_cpus)(int wait);
++	void (*crash_stop_other_cpus)(void);
+ 	void (*smp_send_reschedule)(int cpu);
+ 
+ 	int (*cpu_up)(unsigned cpu, struct task_struct *tidle);
+--- a/arch/x86/kernel/crash.c
++++ b/arch/x86/kernel/crash.c
+@@ -128,15 +128,31 @@ static void kdump_nmi_callback(int cpu,
+ 	disable_local_APIC();
+ }
+ 
+-static void kdump_nmi_shootdown_cpus(void)
++void kdump_nmi_shootdown_cpus(void)
+ {
+ 	nmi_shootdown_cpus(kdump_nmi_callback);
+ 
+ 	disable_local_APIC();
+ }
+ 
++/* Override the weak function in kernel/panic.c */
++void crash_smp_send_stop(void)
++{
++	static int cpus_stopped;
++
++	if (cpus_stopped)
++		return;
++
++	if (smp_ops.crash_stop_other_cpus)
++		smp_ops.crash_stop_other_cpus();
++	else
++		smp_send_stop();
++
++	cpus_stopped = 1;
++}
++
+ #else
+-static void kdump_nmi_shootdown_cpus(void)
++void crash_smp_send_stop(void)
+ {
+ 	/* There are no cpus to shootdown */
+ }
+@@ -155,7 +171,7 @@ void native_machine_crash_shutdown(struc
+ 	/* The kernel is broken so disable interrupts */
+ 	local_irq_disable();
+ 
+-	kdump_nmi_shootdown_cpus();
++	crash_smp_send_stop();
+ 
+ 	/*
+ 	 * VMCLEAR VMCSs loaded on this cpu if needed.
+--- a/arch/x86/kernel/smp.c
++++ b/arch/x86/kernel/smp.c
+@@ -32,6 +32,8 @@
+ #include <asm/nmi.h>
+ #include <asm/mce.h>
+ #include <asm/trace/irq_vectors.h>
++#include <asm/kexec.h>
++
+ /*
+  *	Some notes on x86 processor bugs affecting SMP operation:
+  *
+@@ -342,6 +344,9 @@ struct smp_ops smp_ops = {
+ 	.smp_cpus_done		= native_smp_cpus_done,
+ 
+ 	.stop_other_cpus	= native_stop_other_cpus,
++#if defined(CONFIG_KEXEC_CORE)
++	.crash_stop_other_cpus	= kdump_nmi_shootdown_cpus,
++#endif
+ 	.smp_send_reschedule	= native_smp_send_reschedule,
+ 
+ 	.cpu_up			= native_cpu_up,
+--- a/kernel/panic.c
++++ b/kernel/panic.c
+@@ -70,6 +70,32 @@ void __weak nmi_panic_self_stop(struct p
+ 	panic_smp_self_stop();
+ }
+ 
++/*
++ * Stop other CPUs in panic.  Architecture dependent code may override this
++ * with more suitable version.  For example, if the architecture supports
++ * crash dump, it should save registers of each stopped CPU and disable
++ * per-CPU features such as virtualization extensions.
++ */
++void __weak crash_smp_send_stop(void)
++{
++	static int cpus_stopped;
++
++	/*
++	 * This function can be called twice in panic path, but obviously
++	 * we execute this only once.
++	 */
++	if (cpus_stopped)
++		return;
++
++	/*
++	 * Note smp_send_stop is the usual smp shutdown function, which
++	 * unfortunately means it may not be hardened to work in a panic
++	 * situation.
++	 */
++	smp_send_stop();
++	cpus_stopped = 1;
++}
++
+ atomic_t panic_cpu = ATOMIC_INIT(PANIC_CPU_INVALID);
+ 
+ /**
+@@ -139,15 +165,23 @@ void panic(const char *fmt, ...)
+ 	 *
+ 	 * Bypass the panic_cpu check and call __crash_kexec directly.
+ 	 */
+-	if (!crash_kexec_post_notifiers)
++	if (!crash_kexec_post_notifiers) {
+ 		__crash_kexec(NULL);
+ 
+-	/*
+-	 * Note smp_send_stop is the usual smp shutdown function, which
+-	 * unfortunately means it may not be hardened to work in a panic
+-	 * situation.
+-	 */
+-	smp_send_stop();
++		/*
++		 * Note smp_send_stop is the usual smp shutdown function, which
++		 * unfortunately means it may not be hardened to work in a panic
++		 * situation.
++		 */
++		smp_send_stop();
++	} else {
++		/*
++		 * If we want to do crash dump after notifier calls and
++		 * kmsg_dump, we will need architecture dependent extra
++		 * works in addition to stopping other CPUs.
++		 */
++		crash_smp_send_stop();
++	}
+ 
+ 	/*
+ 	 * Run any panic handlers, including those that might need to

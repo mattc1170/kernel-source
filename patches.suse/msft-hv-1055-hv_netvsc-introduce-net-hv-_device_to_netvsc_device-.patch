@@ -10,7 +10,7 @@ Make it easier to get 'struct netvsc_device' from 'struct net_device' and
 
 Signed-off-by: Vitaly Kuznetsov <vkuznets@redhat.com>
 Signed-off-by: David S. Miller <davem@davemloft.net>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  drivers/net/hyperv/hyperv_net.h   | 12 ++++++++++++
  drivers/net/hyperv/netvsc.c       | 11 +++--------

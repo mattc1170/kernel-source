@@ -1,0 +1,49 @@
+From: Takashi Iwai <tiwai@suse.de>
+Subject: Fix kABI breakage with CONFIG_RT_GROUP_SCHED=n
+Patch-mainline: Never, ever, only for Leap 42.3, really please.
+References: bsc#1052204
+
+We forgot to flip off CONFIG_RT_GROUP_SCHED when merging SLE12
+configs into openSUSE Leap 42.2/42.3, while this option is known to
+work badly with rtkit.  Turning off the config, however, breaks the
+kABI also badly, so we need an ugly workaround.
+
+Signed-off-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ include/linux/sched.h |    3 ++-
+ kernel/sched/sched.h  |    4 ++--
+ 2 files changed, 4 insertions(+), 3 deletions(-)
+
+--- a/include/linux/sched.h
++++ b/include/linux/sched.h
+@@ -1361,7 +1361,8 @@ struct sched_rt_entity {
+ #endif
+ 
+ 	struct sched_rt_entity *back;
+-#ifdef CONFIG_RT_GROUP_SCHED
++#if 1 /* unconditionally enabled for kABI w/o CONFIG_RT_GROUP_SCHED */
++
+ 	struct sched_rt_entity	*parent;
+ 	/* rq on which this entity is (to be) queued: */
+ 	struct rt_rq		*rt_rq;
+--- a/kernel/sched/sched.h
++++ b/kernel/sched/sched.h
+@@ -264,7 +264,7 @@ struct task_group {
+ #endif
+ #endif
+ 
+-#ifdef CONFIG_RT_GROUP_SCHED
++#if 1 /* unconditionally enabled for kABI w/o CONFIG_RT_GROUP_SCHED */
+ 	struct sched_rt_entity **rt_se;
+ 	struct rt_rq **rt_rq;
+ 
+@@ -485,7 +485,7 @@ struct rt_rq {
+ 	/* Nests inside the rq lock: */
+ 	raw_spinlock_t rt_runtime_lock;
+ 
+-#ifdef CONFIG_RT_GROUP_SCHED
++#if 1  /* unconditionally enabled for kABI w/o CONFIG_RT_GROUP_SCHED */
+ 	unsigned long rt_nr_boosted;
+ 
+ 	struct rq *rq;

@@ -1,0 +1,133 @@
+From: Jens Axboe <axboe@kernel.dk>
+Date: Wed, 28 Jun 2017 15:30:13 -0600
+Subject: block: provide bio_uninit() free freeing integrity/task associations
+Git-commit: 9ae3b3f52c62ddd5eb12c57f195f4f38121faa01
+Patch-Mainline: v4.12
+References: bsc#1050211
+
+Wen reports significant memory leaks with DIF and O_DIRECT:
+
+"With nvme devive + T10 enabled, On a system it has 256GB and started
+logging /proc/meminfo & /proc/slabinfo for every minute and in an hour
+it increased by 15968128 kB or ~15+GB.. Approximately 256 MB / minute
+leaking.
+
+/proc/meminfo | grep SUnreclaim...
+
+SUnreclaim:      6752128 kB
+SUnreclaim:      6874880 kB
+SUnreclaim:      7238080 kB
+....
+SUnreclaim:     22307264 kB
+SUnreclaim:     22485888 kB
+SUnreclaim:     22720256 kB
+
+When testcases with T10 enabled call into __blkdev_direct_IO_simple,
+code doesn't free memory allocated by bio_integrity_alloc. The patch
+fixes the issue. HTX has been run with +60 hours without failure."
+
+Since __blkdev_direct_IO_simple() allocates the bio on the stack, it
+doesn't go through the regular bio free. This means that any ancillary
+data allocated with the bio through the stack is not freed. Hence, we
+can leak the integrity data associated with the bio, if the device is
+using DIF/DIX.
+
+Fix this by providing a bio_uninit() and export it, so that we can use
+it to free this data. Note that this is a minimal fix for this issue.
+Any current user of bio's that are allocated outside of
+bio_alloc_bioset() suffers from this issue, most notably some drivers.
+We will fix those in a more comprehensive patch for 4.13. This also
+means that the commit marked as being fixed by this isn't the real
+culprit, it's just the most obvious one out there.
+
+Fixes: 542ff7bf18c6 ("block: new direct I/O implementation")
+Reported-by: Wen Xiong <wenxiong@linux.vnet.ibm.com>
+Reviewed-by: Christoph Hellwig <hch@lst.de>
+Signed-off-by: Jens Axboe <axboe@kernel.dk>
+Acked-by: Hannes Reinecke <hare@suse.com>
+---
+ block/bio.c         | 12 +++++++++---
+ fs/block_dev.c      |  5 ++++-
+ include/linux/bio.h |  1 +
+ 3 files changed, 14 insertions(+), 4 deletions(-)
+
+diff --git a/block/bio.c b/block/bio.c
+index 6f7ae7a..469a574 100644
+--- a/block/bio.c
++++ b/block/bio.c
+@@ -239,20 +239,21 @@ fallback:
+ 	return bvl;
+ }
+ 
+-static void __bio_free(struct bio *bio)
++void bio_uninit(struct bio *bio)
+ {
+ 	bio_disassociate_task(bio);
+ 
+ 	if (bio_integrity(bio))
+ 		bio_integrity_free(bio);
+ }
++EXPORT_SYMBOL(bio_uninit);
+ 
+ static void bio_free(struct bio *bio)
+ {
+ 	struct bio_set *bs = bio->bi_pool;
+ 	void *p;
+ 
+-	__bio_free(bio);
++	bio_uninit(bio);
+ 
+ 	if (bs) {
+ 		bvec_free(bs->bvec_pool, bio->bi_io_vec, BVEC_POOL_IDX(bio));
+@@ -270,6 +271,11 @@ static void bio_free(struct bio *bio)
+ 	}
+ }
+ 
++/*
++ * Users of this function have their own bio allocation. Subsequently,
++ * they must remember to pair any call to bio_init() with bio_uninit()
++ * when IO has completed, or when the bio is released.
++ */
+ void bio_init(struct bio *bio, struct bio_vec *table,
+ 	      unsigned short max_vecs)
+ {
+@@ -296,7 +302,7 @@ void bio_reset(struct bio *bio)
+ {
+ 	unsigned long flags = bio->bi_flags & (~0UL << BIO_RESET_BITS);
+ 
+-	__bio_free(bio);
++	bio_uninit(bio);
+ 
+ 	memset(bio, 0, BIO_RESET_BYTES);
+ 	bio->bi_flags = flags;
+diff --git a/fs/block_dev.c b/fs/block_dev.c
+index 6843c90..a78be85 100644
+--- a/fs/block_dev.c
++++ b/fs/block_dev.c
+@@ -264,7 +264,10 @@ __blkdev_direct_IO_simple(struct kiocb *iocb, struct iov_iter *iter,
+ 		kfree(vecs);
+ 
+ 	if (unlikely(bio.bi_error))
+-		return bio.bi_error;
++		ret = bio.bi_error;
++
++	bio_uninit(&bio);
++
+ 	return ret;
+ }
+ 
+diff --git a/include/linux/bio.h b/include/linux/bio.h
+index 7cf8a6c..36f0e43 100644
+--- a/include/linux/bio.h
++++ b/include/linux/bio.h
+@@ -426,6 +426,7 @@ extern void bio_advance(struct bio *, unsigned);
+ 
+ extern void bio_init(struct bio *bio, struct bio_vec *table,
+ 		     unsigned short max_vecs);
++extern void bio_uninit(struct bio *);
+ extern void bio_reset(struct bio *);
+ void bio_chain(struct bio *, struct bio *);
+ 
+-- 
+1.8.5.6
+

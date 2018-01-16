@@ -1,0 +1,42 @@
+From 1aa5b6a7f0425a2dc4058ff9bc6403462801cb59 Mon Sep 17 00:00:00 2001
+From: John Allen <jallen@linux.vnet.ibm.com>
+Date: Thu, 7 Jul 2016 10:05:52 -0500
+Subject: [PATCH] powerpc/pseries: Use kernel hotplug queue for PowerVM hotplug
+ events
+
+References: FATE#322022
+Patch-mainline: v4.8-rc1
+Git-commit: 1dc75956663661e6bfee7836ddd2def2f66745b9
+
+The sysfs interface used to handle PowerVM hotplug events should use the
+hotplug queue as well. PRRN events will soon be placing many hotplug
+events on the queue at once and we will need ordinary hotplug events to
+use the queue as well in order to ensure these events will still be handled
+and that proper serialization is maintained during the PRRN event.
+
+Signed-off-by: John Allen <jallen@linux.vnet.ibm.com>
+Reviewed-by: Nathan Fontenot <nfont@linux.vnet.ibm.com>
+Signed-off-by: Michael Ellerman <mpe@ellerman.id.au>
+Acked-by: Michal Suchanek <msuchanek@suse.de>
+---
+ arch/powerpc/platforms/pseries/dlpar.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/arch/powerpc/platforms/pseries/dlpar.c b/arch/powerpc/platforms/pseries/dlpar.c
+index 244463679128..47b9c35722e6 100644
+--- a/arch/powerpc/platforms/pseries/dlpar.c
++++ b/arch/powerpc/platforms/pseries/dlpar.c
+@@ -697,7 +697,9 @@ static ssize_t dlpar_store(struct class *class, struct class_attribute *attr,
+ 		goto dlpar_store_out;
+ 	}
+ 
+-	rc = handle_dlpar_errorlog(hp_elog);
++	init_completion(&hotplug_done);
++	queue_hotplug_event(hp_elog, &hotplug_done, &rc);
++	wait_for_completion(&hotplug_done);
+ 
+ dlpar_store_out:
+ 	kfree(hp_elog);
+-- 
+2.10.2
+

@@ -1,0 +1,51 @@
+From 6ae3f8ad2017079292cb49c8959b527bcbcbefed Mon Sep 17 00:00:00 2001
+From: Russell Currey <ruscur@russell.cc>
+Date: Fri, 17 Feb 2017 13:01:35 +1100
+Subject: [PATCH] powerpc: Add POWER9 architected mode to cputable
+
+References: bsc#1048916, fate#321439
+Patch-mainline: v4.11-rc1
+Git-commit: 6ae3f8ad2017079292cb49c8959b527bcbcbefed
+
+PVR value of 0x0F000005 means we are arch v3.00 compliant (i.e. POWER9).
+
+Acked-by: Michael Neuling <mikey@neuling.org>
+Signed-off-by: Russell Currey <ruscur@russell.cc>
+[mpe: Don't set num_pmcs, so we keep the PMU fields from the raw entry]
+Signed-off-by: Michael Ellerman <mpe@ellerman.id.au>
+Acked-by: Michal Suchanek <msuchanek@suse.de>
+---
+ arch/powerpc/kernel/cputable.c | 17 +++++++++++++++++
+ 1 file changed, 17 insertions(+)
+
+diff --git a/arch/powerpc/kernel/cputable.c b/arch/powerpc/kernel/cputable.c
+index 6a82ef039c50..bb7a1890aeb7 100644
+--- a/arch/powerpc/kernel/cputable.c
++++ b/arch/powerpc/kernel/cputable.c
+@@ -386,6 +386,23 @@ static struct cpu_spec __initdata cpu_specs[] = {
+ 		.machine_check_early	= __machine_check_early_realmode_p8,
+ 		.platform		= "power8",
+ 	},
++	{	/* 3.00-compliant processor, i.e. Power9 "architected" mode */
++		.pvr_mask		= 0xffffffff,
++		.pvr_value		= 0x0f000005,
++		.cpu_name		= "POWER9 (architected)",
++		.cpu_features		= CPU_FTRS_POWER9,
++		.cpu_user_features	= COMMON_USER_POWER9,
++		.cpu_user_features2	= COMMON_USER2_POWER9,
++		.mmu_features		= MMU_FTRS_POWER9,
++		.icache_bsize		= 128,
++		.dcache_bsize		= 128,
++		.oprofile_type		= PPC_OPROFILE_INVALID,
++		.oprofile_cpu_type	= "ppc64/ibm-compat-v1",
++		.cpu_setup		= __setup_cpu_power9,
++		.cpu_restore		= __restore_cpu_power9,
++		.flush_tlb		= __flush_tlb_power9,
++		.platform		= "power9",
++	},
+ 	{	/* Power7 */
+ 		.pvr_mask		= 0xffff0000,
+ 		.pvr_value		= 0x003f0000,
+-- 
+2.10.2
+

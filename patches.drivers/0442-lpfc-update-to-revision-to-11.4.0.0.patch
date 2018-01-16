@@ -1,13 +1,15 @@
 From: James Smart <jsmart2021@gmail.com>
-Date: Tue, 30 May 2017 22:45:58 -0700
-Subject: lpfc: update to revision to 11.4.0.0
+Date: Thu, 1 Jun 2017 21:07:11 -0700
+Subject: scsi: lpfc: update to revision to 11.4.0.0
+Git-commit: 1080f7ec612569e47b747189b38e4b0aa9f14013
 References: bsc#1041873
-Patch-Mainline: submitted linux-scsi 2017/06/01
+Patch-Mainline: v4.13-rc1
 
 Set lpfc driver revision to 11.4.0.0
 
 Signed-off-by: Dick Kennedy <dick.kennedy@broadcom.com>
 Signed-off-by: James Smart <james.smart@broadcom.com>
+Signed-off-by: Martin K. Petersen <martin.petersen@oracle.com>
 Acked-by: Hannes Reinecke <hare@suse.com>
 ---
  drivers/scsi/lpfc/lpfc_version.h | 2 +-

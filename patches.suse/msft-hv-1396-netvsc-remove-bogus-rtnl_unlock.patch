@@ -1,0 +1,28 @@
+From: stephen hemminger <stephen@networkplumber.org>
+Date: Mon, 24 Jul 2017 10:57:25 -0700
+Patch-mainline: v4.14-rc1
+Subject: netvsc: remove bogus rtnl_unlock
+Git-commit: fd763ad96ae5a4aa76ce00b4090b6044c63c18ed
+References: fate#320485
+
+Remove accidental rtnl_unlock from earlier testing.
+
+Fixes: 3962981f4822 ("netvsc: add rtnl annotations in rndis")
+Signed-off-by: Stephen Hemminger <sthemmin@microsoft.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+Acked-by: Olaf Hering <ohering@suse.de>
+---
+ drivers/net/hyperv/netvsc_drv.c | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/drivers/net/hyperv/netvsc_drv.c b/drivers/net/hyperv/netvsc_drv.c
+--- a/drivers/net/hyperv/netvsc_drv.c
++++ b/drivers/net/hyperv/netvsc_drv.c
+@@ -1548,7 +1548,6 @@ static int netvsc_probe(struct hv_device *dev,
+ 
+ 	netif_set_real_num_tx_queues(net, nvdev->num_chn);
+ 	netif_set_real_num_rx_queues(net, nvdev->num_chn);
+-	rtnl_unlock();
+ 
+ 	netdev_lockdep_set_classes(net);
+ 

@@ -1,8 +1,7 @@
 From: Thomas Petazzoni <thomas.petazzoni@free-electrons.com>
 Date: Tue, 7 Mar 2017 16:53:11 +0100
 Subject: net: mvpp2: adapt mvpp2_defaults_set() to PPv2.2
-Patch-mainline: Queued in subsystem maintainer repository
-Git-repo: git://git.kernel.org/pub/scm/linux/kernel/git/davem/net-next.git
+Patch-mainline: v4.12-rc1
 Git-commit: 3d9017d9449bf8756f881970c970999c9148d306
 References: bsc#1032150
 

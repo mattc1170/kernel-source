@@ -1,8 +1,7 @@
 From: Suresh Reddy <suresh.reddy@broadcom.com>
 Date: Thu, 30 Mar 2017 00:58:32 -0400
 Subject: be2net: Fix endian issue in logical link config command
-Patch-mainline: Queued in subsystem maintainer repository
-Git-repo: git://git.kernel.org/pub/scm/linux/kernel/git/davem/net.git
+Patch-mainline: v4.11-rc6
 Git-commit: 0b98ca2a45e35dfe02f4512fa30b9f5a9900cb29
 References: bsc#1021121 FATE#321675
 

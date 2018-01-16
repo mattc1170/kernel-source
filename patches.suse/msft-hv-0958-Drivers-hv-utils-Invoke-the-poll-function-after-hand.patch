@@ -12,7 +12,7 @@ I would like to thank Dexuan for pointing this out.
 
 Signed-off-by: K. Y. Srinivasan <kys@microsoft.com>
 Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  drivers/hv/hv_kvp.c      | 2 +-
  drivers/hv/hv_snapshot.c | 2 +-

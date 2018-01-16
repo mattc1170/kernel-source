@@ -1,0 +1,46 @@
+From: Sasha Levin <alexander.levin@verizon.com>
+Date: Mon, 13 Nov 2017 18:03:32 -0500
+Subject: [PATCH] Revert "uapi: fix linux/rds.h userspace compilation errors"
+References: bnc#1012382
+Patch-mainline: 4.4.100
+Git-commit: f5e303d54ac2d739663643f52af4972f8955734d
+
+This reverts commit ad50561ba7a664bc581826c9d57d137fcf17bfa5.
+
+There was a mixup with the commit message for two upstream commit
+that have the same subject line.
+
+This revert will be followed by the two commits with proper commit
+messages.
+
+Signed-off-by: Sasha Levin <alexander.levin@verizon.com>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Signed-off-by: Jiri Slaby <jslaby@suse.cz>
+---
+ include/uapi/linux/rds.h | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
+
+diff --git a/include/uapi/linux/rds.h b/include/uapi/linux/rds.h
+index 7af20a136429..0f9265cb2a96 100644
+--- a/include/uapi/linux/rds.h
++++ b/include/uapi/linux/rds.h
+@@ -35,7 +35,6 @@
+ #define _LINUX_RDS_H
+ 
+ #include <linux/types.h>
+-#include <linux/socket.h>		/* For __kernel_sockaddr_storage. */
+ 
+ #define RDS_IB_ABI_VERSION		0x301
+ 
+@@ -224,7 +223,7 @@ struct rds_get_mr_args {
+ };
+ 
+ struct rds_get_mr_for_dest_args {
+-	struct __kernel_sockaddr_storage dest_addr;
++	struct sockaddr_storage	dest_addr;
+ 	struct rds_iovec 	vec;
+ 	uint64_t		cookie_addr;
+ 	uint64_t		flags;
+-- 
+2.15.0
+

@@ -1,8 +1,7 @@
 From: Thomas Petazzoni <thomas.petazzoni@free-electrons.com>
 Date: Tue, 7 Mar 2017 16:53:05 +0100
 Subject: net: mvpp2: add and use accessors for TX/RX descriptors
-Patch-mainline: Queued in subsystem maintainer repository
-Git-repo: git://git.kernel.org/pub/scm/linux/kernel/git/davem/net-next.git
+Patch-mainline: v4.12-rc1
 Git-commit: ac3dd277826979f50214894eb2781df4b85ab2a8
 References: bsc#1032150
 

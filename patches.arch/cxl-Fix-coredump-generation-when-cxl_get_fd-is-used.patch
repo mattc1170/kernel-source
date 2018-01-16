@@ -55,14 +55,12 @@ Signed-off-by: Frederic Barrat <fbarrat@linux.vnet.ibm.com>
 Reviewed-by: Matthew R. Ochs <mrochs@linux.vnet.ibm.com>
 Signed-off-by: Michael Ellerman <mpe@ellerman.id.au>
 ---
- drivers/misc/cxl/api.c     | 137 +++++++++++++++++++++++++++++++++++++--------
- drivers/misc/cxl/context.c |  17 ++++--
- drivers/misc/cxl/cxl.h     |   6 +-
- drivers/misc/cxl/file.c    |   5 +-
+ drivers/misc/cxl/api.c     |  137 +++++++++++++++++++++++++++++++++++++--------
+ drivers/misc/cxl/context.c |   17 +++--
+ drivers/misc/cxl/cxl.h     |    6 +
+ drivers/misc/cxl/file.c    |    5 +
  4 files changed, 135 insertions(+), 30 deletions(-)
 
-diff --git a/drivers/misc/cxl/api.c b/drivers/misc/cxl/api.c
-index 2107c94..687cb7e 100644
 --- a/drivers/misc/cxl/api.c
 +++ b/drivers/misc/cxl/api.c
 @@ -9,16 +9,118 @@
@@ -186,7 +184,7 @@ index 2107c94..687cb7e 100644
  	struct cxl_afu *afu;
  	struct cxl_context  *ctx;
  	int rc;
-@@ -33,28 +135,13 @@ struct cxl_context *cxl_dev_context_init(struct pci_dev *dev)
+@@ -33,28 +135,13 @@ struct cxl_context *cxl_dev_context_init
  
  	ctx->kernelapi = true;
  
@@ -217,7 +215,7 @@ index 2107c94..687cb7e 100644
  err_ctx:
  	kfree(ctx);
  err_dev:
-@@ -269,6 +356,11 @@ struct file *cxl_get_fd(struct cxl_context *ctx, struct file_operations *fops,
+@@ -273,6 +360,11 @@ struct file *cxl_get_fd(struct cxl_conte
  {
  	struct file *file;
  	int rc, flags, fdtmp;
@@ -229,7 +227,7 @@ index 2107c94..687cb7e 100644
  
  	flags = O_RDWR | O_CLOEXEC;
  
-@@ -292,12 +384,13 @@ struct file *cxl_get_fd(struct cxl_context *ctx, struct file_operations *fops,
+@@ -296,12 +388,13 @@ struct file *cxl_get_fd(struct cxl_conte
  	} else /* use default ops */
  		fops = (struct file_operations *)&afu_fops;
  
@@ -246,11 +244,9 @@ index 2107c94..687cb7e 100644
  	*fd = fdtmp;
  	return file;
  
-diff --git a/drivers/misc/cxl/context.c b/drivers/misc/cxl/context.c
-index 7edea9c..256fc09 100644
 --- a/drivers/misc/cxl/context.c
 +++ b/drivers/misc/cxl/context.c
-@@ -34,8 +34,7 @@ struct cxl_context *cxl_context_alloc(void)
+@@ -34,8 +34,7 @@ struct cxl_context *cxl_context_alloc(vo
  /*
   * Initialises a CXL context.
   */
@@ -260,7 +256,7 @@ index 7edea9c..256fc09 100644
  {
  	int i;
  
-@@ -44,7 +43,7 @@ int cxl_context_init(struct cxl_context *ctx, struct cxl_afu *afu, bool master,
+@@ -44,7 +43,7 @@ int cxl_context_init(struct cxl_context
  	ctx->master = master;
  	ctx->pid = ctx->glpid = NULL; /* Set in start work ioctl */
  	mutex_init(&ctx->mapping_lock);
@@ -269,7 +265,7 @@ index 7edea9c..256fc09 100644
  
  	/*
  	 * Allocate the segment table before we put it in the IDR so that we
-@@ -111,6 +110,14 @@ int cxl_context_init(struct cxl_context *ctx, struct cxl_afu *afu, bool master,
+@@ -111,6 +110,14 @@ int cxl_context_init(struct cxl_context
  	return 0;
  }
  
@@ -284,7 +280,7 @@ index 7edea9c..256fc09 100644
  static int cxl_mmap_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
  {
  	struct cxl_context *ctx = vma->vm_file->private_data;
-@@ -294,8 +301,6 @@ static void reclaim_ctx(struct rcu_head *rcu)
+@@ -294,8 +301,6 @@ static void reclaim_ctx(struct rcu_head
  	if (ctx->ff_page)
  		__free_page(ctx->ff_page);
  	ctx->sstp = NULL;
@@ -293,7 +289,7 @@ index 7edea9c..256fc09 100644
  
  	if (ctx->irq_bitmap)
  		kfree(ctx->irq_bitmap);
-@@ -308,6 +313,8 @@ static void reclaim_ctx(struct rcu_head *rcu)
+@@ -308,6 +313,8 @@ static void reclaim_ctx(struct rcu_head
  
  void cxl_context_free(struct cxl_context *ctx)
  {
@@ -302,11 +298,9 @@ index 7edea9c..256fc09 100644
  	mutex_lock(&ctx->afu->contexts_lock);
  	idr_remove(&ctx->afu->contexts_idr, ctx->pe);
  	mutex_unlock(&ctx->afu->contexts_lock);
-diff --git a/drivers/misc/cxl/cxl.h b/drivers/misc/cxl/cxl.h
-index 139b16f..78f3336 100644
 --- a/drivers/misc/cxl/cxl.h
 +++ b/drivers/misc/cxl/cxl.h
-@@ -762,8 +762,9 @@ void cxl_dump_debug_buffer(void *addr, size_t size);
+@@ -762,8 +762,9 @@ void cxl_dump_debug_buffer(void *addr, s
  void init_cxl_native(void);
  
  struct cxl_context *cxl_context_alloc(void);
@@ -326,11 +320,9 @@ index 139b16f..78f3336 100644
  
  extern struct pci_driver cxl_pci_driver;
  extern struct platform_driver cxl_of_driver;
-diff --git a/drivers/misc/cxl/file.c b/drivers/misc/cxl/file.c
-index eec468f..2224bac 100644
 --- a/drivers/misc/cxl/file.c
 +++ b/drivers/misc/cxl/file.c
-@@ -86,9 +86,12 @@ static int __afu_open(struct inode *inode, struct file *file, bool master)
+@@ -86,9 +86,12 @@ static int __afu_open(struct inode *inod
  		goto err_put_afu;
  	}
  
@@ -343,7 +335,4 @@ index eec468f..2224bac 100644
 +
  	pr_devel("afu_open pe: %i\n", ctx->pe);
  	file->private_data = ctx;
- 	cxl_ctx_get();
--- 
-2.10.2
-
+ 

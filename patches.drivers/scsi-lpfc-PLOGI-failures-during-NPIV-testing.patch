@@ -1,0 +1,40 @@
+From: Dick Kennedy <dick.kennedy@broadcom.com>
+Date: Fri, 29 Sep 2017 17:34:32 -0700
+Subject: [PATCH] scsi: lpfc: PLOGI failures during NPIV testing
+References: bsc#1067735
+Git-commit: e8bcf0ae4c0346fdc78ebefe0eefcaa6a6622d38
+Patch-Mainline: v4.15
+
+Local Reject/Invalid RPI errors seen during discovery.
+
+Temporary RPI cleanup was occurring regardless of SLI rev. It's only
+necessary on SLI-4.
+
+Adjust the test for whether cleanup is necessary.
+
+Signed-off-by: Dick Kennedy <dick.kennedy@broadcom.com>
+Signed-off-by: James Smart <james.smart@broadcom.com>
+Reviewed-by: Johannes Thumshirn <jthumshirn@suse.de>
+Signed-off-by: Martin K. Petersen <martin.petersen@oracle.com>
+Signed-off-by: Hannes Reinecke <hare@suse.de>
+---
+ drivers/scsi/lpfc/lpfc_hbadisc.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/scsi/lpfc/lpfc_hbadisc.c b/drivers/scsi/lpfc/lpfc_hbadisc.c
+index fb4cde6..88f39d3 100644
+--- a/drivers/scsi/lpfc/lpfc_hbadisc.c
++++ b/drivers/scsi/lpfc/lpfc_hbadisc.c
+@@ -4984,7 +4984,8 @@ struct lpfc_nodelist *
+ 	lpfc_cancel_retry_delay_tmo(vport, ndlp);
+ 	if ((ndlp->nlp_flag & NLP_DEFER_RM) &&
+ 	    !(ndlp->nlp_flag & NLP_REG_LOGIN_SEND) &&
+-	    !(ndlp->nlp_flag & NLP_RPI_REGISTERED)) {
++	    !(ndlp->nlp_flag & NLP_RPI_REGISTERED) &&
++	    phba->sli_rev != LPFC_SLI_REV4) {
+ 		/* For this case we need to cleanup the default rpi
+ 		 * allocated by the firmware.
+ 		 */
+-- 
+1.8.5.6
+

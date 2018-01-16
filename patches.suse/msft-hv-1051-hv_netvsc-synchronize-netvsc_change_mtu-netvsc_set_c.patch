@@ -11,7 +11,7 @@ them with start_remove flag and rtnl lock.
 
 Signed-off-by: Vitaly Kuznetsov <vkuznets@redhat.com>
 Signed-off-by: David S. Miller <davem@davemloft.net>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  drivers/net/hyperv/netvsc_drv.c | 9 +++++++--
  1 file changed, 7 insertions(+), 2 deletions(-)

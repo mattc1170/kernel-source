@@ -1,0 +1,34 @@
+From: James Smart <jsmart2021@gmail.com>
+Date: Mon, 20 Nov 2017 16:00:33 -0800
+Subject: scsi: lpfc: Raise maximum NVME sg list size for 256 elements
+References: bsc#1067735
+Patch-mainline: Queued in subsystem maintainer repository
+Git-commit: d35be7064840ff5c463b26e015f5b04a57225d93
+Git-repo: https://git.kernel.org/pub/scm/linux/kernel/git/mkp/scsi.git
+
+Raise the maximum NVME sg list size allowed to 256 elements.
+
+Signed-off-by: Dick Kennedy <dick.kennedy@broadcom.com>
+Signed-off-by: James Smart <james.smart@broadcom.com>
+Reviewed-by: Hannes Reinecke <hare@suse.com>
+Signed-off-by: Martin K. Petersen <martin.petersen@oracle.com>
+---
+ drivers/scsi/lpfc/lpfc.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/scsi/lpfc/lpfc.h b/drivers/scsi/lpfc/lpfc.h
+index 7219b6c..46a89bd 100644
+--- a/drivers/scsi/lpfc/lpfc.h
++++ b/drivers/scsi/lpfc/lpfc.h
+@@ -57,7 +57,7 @@
+ #define LPFC_MAX_SG_SEG_CNT	4096	/* sg element count per scsi cmnd */
+ #define LPFC_MAX_SGL_SEG_CNT	512	/* SGL element count per scsi cmnd */
+ #define LPFC_MAX_BPL_SEG_CNT	4096	/* BPL element count per scsi cmnd */
+-#define LPFC_MAX_NVME_SEG_CNT	128	/* max SGL element cnt per NVME cmnd */
++#define LPFC_MAX_NVME_SEG_CNT	256	/* max SGL element cnt per NVME cmnd */
+ 
+ #define LPFC_MAX_SGE_SIZE       0x80000000 /* Maximum data allowed in a SGE */
+ #define LPFC_IOCB_LIST_CNT	2250	/* list of IOCBs for fast-path usage. */
+-- 
+1.8.5.6
+

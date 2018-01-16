@@ -20,7 +20,7 @@ CC: Roman Kagan <rkagan@virtuozzo.com>
 CC: Denis V. Lunev <den@openvz.org>
 CC: qemu-devel@nongnu.org
 Signed-off-by: Paolo Bonzini <pbonzini@redhat.com>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  arch/x86/include/uapi/asm/hyperv.h | 2 ++
  drivers/hv/hyperv_vmbus.h          | 2 --

@@ -1,0 +1,35 @@
+From b707b053234ea303d073a0c1b9ec4810ad6b8cd3 Mon Sep 17 00:00:00 2001
+From: Kefeng Wang <wangkefeng.wang@huawei.com>
+Date: Wed, 10 Aug 2016 20:59:15 +0800
+Subject: [PATCH 17/56] arm64: perf: Use the builtin_platform_driver
+
+Git-commit: 826d05623f3e2b316bbad6204418a0ff1b49a720
+Patch-mainline: v4.9-rc1
+References: bsc#1062279
+
+Use the builtin_platform_driver() to simplify code.
+
+Signed-off-by: Kefeng Wang <wangkefeng.wang@huawei.com>
+Signed-off-by: Will Deacon <will.deacon@arm.com>
+Signed-off-by: Mian Yousaf Kaukab <yousaf.kaukab@suse.com>
+---
+ arch/arm64/kernel/perf_event.c | 6 +-----
+ 1 file changed, 1 insertion(+), 5 deletions(-)
+
+diff --git a/arch/arm64/kernel/perf_event.c b/arch/arm64/kernel/perf_event.c
+index 2c4df152..9f18cac7 100644
+--- a/arch/arm64/kernel/perf_event.c
++++ b/arch/arm64/kernel/perf_event.c
+@@ -1049,8 +1049,4 @@ static struct platform_driver armv8_pmu_driver = {
+ 	.probe		= armv8_pmu_device_probe,
+ };
+ 
+-static int __init register_armv8_pmu_driver(void)
+-{
+-	return platform_driver_register(&armv8_pmu_driver);
+-}
+-device_initcall(register_armv8_pmu_driver);
++builtin_platform_driver(armv8_pmu_driver);
+-- 
+2.11.0
+

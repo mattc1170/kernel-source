@@ -12,7 +12,7 @@ accept such values.
 Signed-off-by: Nikolay Aleksandrov <nikolay@cumulusnetworks.com>
 Acked-by: Michael S. Tsirkin <mst@redhat.com>
 Signed-off-by: David S. Miller <davem@davemloft.net>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  include/uapi/linux/ethtool.h | 19 +------------------
  1 file changed, 1 insertion(+), 18 deletions(-)

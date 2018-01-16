@@ -1,8 +1,7 @@
 From: Salil <salil.mehta@huawei.com>
 Date: Sat, 1 Apr 2017 12:03:48 +0100
 Subject: net: hns: Some checkpatch.pl script & warning fixes
-Patch-mainline: Queued in subsystem maintainer repository
-Git-repo: git://git.kernel.org/pub/scm/linux/kernel/git/davem/net-next.git
+Patch-mainline: v4.12-rc1
 Git-commit: b4957ab0826f6f7efdfdc648521e1c4c3fc6ceda
 References: fate#322061
 

@@ -1,9 +1,8 @@
 From: James Smart <jsmart2021@gmail.com>
 Date: Fri, 5 May 2017 16:13:02 -0700
 Subject: [PATCH] nvme-fc: correct port role bits
-Git-commit: 5d9d0a22b24ee31ba0a9ca8195da210b8fe1ba0b
-Patch-Mainline: queued in subsystem maintainer repository
-Git-repo: git://git.infradead.org/nvme
+Git-commit: 4123109050a869a8871e58a50f28f383d41e49ad
+Patch-Mainline: v4.12-rc2
 References: bsc#1037838
 
 FC Port roles is a bit mask, not individual values.

@@ -1,0 +1,98 @@
+From: Jaegeuk Kim <jaegeuk@kernel.org>
+Date: Fri, 5 Feb 2016 19:19:01 -0800
+Subject: [PATCH] f2fs crypto: replace some BUG_ON()'s with error checks
+References: bnc#1012382
+Patch-mainline: 4.4.95
+Git-commit: 66aa3e1274fcf887e9d6501a68163270fc7718e7
+
+commit 66aa3e1274fcf887e9d6501a68163270fc7718e7 upstream.
+
+This patch adopts:
+	ext4 crypto: replace some BUG_ON()'s with error checks
+
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+Signed-off-by: Jaegeuk Kim <jaegeuk@kernel.org>
+Signed-off-by: Eric Biggers <ebiggers@google.com>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Signed-off-by: Jiri Slaby <jslaby@suse.cz>
+---
+ fs/f2fs/crypto.c       |  1 -
+ fs/f2fs/crypto_fname.c |  2 --
+ fs/f2fs/crypto_key.c   | 15 ++++++++++++---
+ 3 files changed, 12 insertions(+), 6 deletions(-)
+
+diff --git a/fs/f2fs/crypto.c b/fs/f2fs/crypto.c
+index 4a62ef14e932..d879c6c846b7 100644
+--- a/fs/f2fs/crypto.c
++++ b/fs/f2fs/crypto.c
+@@ -362,7 +362,6 @@ static int f2fs_page_crypto(struct f2fs_crypto_ctx *ctx,
+ 	else
+ 		res = crypto_ablkcipher_encrypt(req);
+ 	if (res == -EINPROGRESS || res == -EBUSY) {
+-		BUG_ON(req->base.data != &ecr);
+ 		wait_for_completion(&ecr.completion);
+ 		res = ecr.res;
+ 	}
+diff --git a/fs/f2fs/crypto_fname.c b/fs/f2fs/crypto_fname.c
+index 38349ed5ea51..0fce444dd5ae 100644
+--- a/fs/f2fs/crypto_fname.c
++++ b/fs/f2fs/crypto_fname.c
+@@ -124,7 +124,6 @@ static int f2fs_fname_encrypt(struct inode *inode,
+ 	ablkcipher_request_set_crypt(req, &src_sg, &dst_sg, ciphertext_len, iv);
+ 	res = crypto_ablkcipher_encrypt(req);
+ 	if (res == -EINPROGRESS || res == -EBUSY) {
+-		BUG_ON(req->base.data != &ecr);
+ 		wait_for_completion(&ecr.completion);
+ 		res = ecr.res;
+ 	}
+@@ -180,7 +179,6 @@ static int f2fs_fname_decrypt(struct inode *inode,
+ 	ablkcipher_request_set_crypt(req, &src_sg, &dst_sg, iname->len, iv);
+ 	res = crypto_ablkcipher_decrypt(req);
+ 	if (res == -EINPROGRESS || res == -EBUSY) {
+-		BUG_ON(req->base.data != &ecr);
+ 		wait_for_completion(&ecr.completion);
+ 		res = ecr.res;
+ 	}
+diff --git a/fs/f2fs/crypto_key.c b/fs/f2fs/crypto_key.c
+index 18595d7a0efc..81c87f7a3251 100644
+--- a/fs/f2fs/crypto_key.c
++++ b/fs/f2fs/crypto_key.c
+@@ -75,7 +75,6 @@ static int f2fs_derive_key_aes(char deriving_key[F2FS_AES_128_ECB_KEY_SIZE],
+ 					F2FS_AES_256_XTS_KEY_SIZE, NULL);
+ 	res = crypto_ablkcipher_encrypt(req);
+ 	if (res == -EINPROGRESS || res == -EBUSY) {
+-		BUG_ON(req->base.data != &ecr);
+ 		wait_for_completion(&ecr.completion);
+ 		res = ecr.res;
+ 	}
+@@ -189,7 +188,11 @@ int f2fs_get_encryption_info(struct inode *inode)
+ 		keyring_key = NULL;
+ 		goto out;
+ 	}
+-	BUG_ON(keyring_key->type != &key_type_logon);
++	if (keyring_key->type != &key_type_logon) {
++		printk_once(KERN_WARNING "f2fs: key type must be logon\n");
++		res = -ENOKEY;
++		goto out;
++	}
+ 	ukp = user_key_payload(keyring_key);
+ 	if (ukp->datalen != sizeof(struct f2fs_encryption_key)) {
+ 		res = -EINVAL;
+@@ -198,7 +201,13 @@ int f2fs_get_encryption_info(struct inode *inode)
+ 	master_key = (struct f2fs_encryption_key *)ukp->data;
+ 	BUILD_BUG_ON(F2FS_AES_128_ECB_KEY_SIZE !=
+ 				F2FS_KEY_DERIVATION_NONCE_SIZE);
+-	BUG_ON(master_key->size != F2FS_AES_256_XTS_KEY_SIZE);
++	if (master_key->size != F2FS_AES_256_XTS_KEY_SIZE) {
++		printk_once(KERN_WARNING
++				"f2fs: key size incorrect: %d\n",
++				master_key->size);
++		res = -ENOKEY;
++		goto out;
++	}
+ 	res = f2fs_derive_key_aes(ctx.nonce, master_key->raw,
+ 				  raw_key);
+ 	if (res)
+-- 
+2.14.3
+

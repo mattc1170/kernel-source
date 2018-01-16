@@ -25,7 +25,7 @@ Redo link status changes handling in the following way:
 
 Signed-off-by: Vitaly Kuznetsov <vkuznets@redhat.com>
 Signed-off-by: David S. Miller <davem@davemloft.net>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  drivers/net/hyperv/hyperv_net.h |   14 +++
  drivers/net/hyperv/netvsc_drv.c |  142 ++++++++++++++++++++++++++--------------

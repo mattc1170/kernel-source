@@ -120,7 +120,7 @@ Acked-by: Bruce Rogers <brogers@suse.com>
  
 --- a/arch/x86/include/asm/kvm_host.h
 +++ b/arch/x86/include/asm/kvm_host.h
-@@ -736,6 +736,8 @@ struct kvm_arch {
+@@ -738,6 +738,8 @@ struct kvm_arch {
  	struct hlist_node hnode;
  
  	bool disabled_lapic_found;
@@ -129,7 +129,7 @@ Acked-by: Bruce Rogers <brogers@suse.com>
  };
  
  struct kvm_vm_stat {
-@@ -1309,7 +1311,7 @@ bool kvm_vcpu_is_bsp(struct kvm_vcpu *vc
+@@ -1311,7 +1313,7 @@ bool kvm_vcpu_is_bsp(struct kvm_vcpu *vc
  bool kvm_intr_is_single_vcpu(struct kvm *kvm, struct kvm_lapic_irq *irq,
  			     struct kvm_vcpu **dest_vcpu);
  
@@ -241,7 +241,7 @@ Acked-by: Bruce Rogers <brogers@suse.com>
  	return 0;
 --- a/arch/x86/kvm/vmx.c
 +++ b/arch/x86/kvm/vmx.c
-@@ -10830,7 +10830,7 @@ static int vmx_update_pi_irte(struct kvm
+@@ -10822,7 +10822,7 @@ static int vmx_update_pi_irte(struct kvm
  		 * We will support full lowest-priority interrupt later.
  		 */
  
@@ -260,8 +260,8 @@ Acked-by: Bruce Rogers <brogers@suse.com>
 +
  static void update_cr8_intercept(struct kvm_vcpu *vcpu);
  static void process_nmi(struct kvm_vcpu *vcpu);
- static void __kvm_set_rflags(struct kvm_vcpu *vcpu, unsigned long rflags);
-@@ -2626,6 +2628,9 @@ int kvm_vm_ioctl_check_extension(struct
+ static void process_smi(struct kvm_vcpu *vcpu);
+@@ -2627,6 +2629,9 @@ int kvm_vm_ioctl_check_extension(struct
  	case KVM_CAP_TSC_CONTROL:
  		r = kvm_has_tsc_control;
  		break;
@@ -271,7 +271,7 @@ Acked-by: Bruce Rogers <brogers@suse.com>
  	default:
  		r = 0;
  		break;
-@@ -3779,6 +3784,16 @@ split_irqchip_unlock:
+@@ -3791,6 +3796,16 @@ split_irqchip_unlock:
  		mutex_unlock(&kvm->lock);
  		break;
  	}

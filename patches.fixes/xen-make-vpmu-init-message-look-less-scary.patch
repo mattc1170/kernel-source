@@ -2,8 +2,7 @@ From 9c2c0cd604e7dcc935c949961f2931d738639dba Mon Sep 17 00:00:00 2001
 From: Juergen Gross <jgross@suse.com>
 Date: Tue, 2 Aug 2016 09:02:18 +0200
 Subject: [PATCH v3] xen: Make VPMU init message look less scary
-Patch-mainline: Queued in subsystem maintainer repository
-Git-repo: git://git.kernel.org/pub/scm/linux/kernel/git/xen/tip
+Patch-mainline: V4.9
 Git-commit: 0252937a87e1d46a8261da85cbd99dffe612a2d3
 References: bnc#990435
 

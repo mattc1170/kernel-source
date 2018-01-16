@@ -18,7 +18,7 @@ Please queue this for -stable as well.
 
 Signed-off-by: Stephen Hemminger <sthemmin@microsoft.com>
 Signed-off-by: David S. Miller <davem@davemloft.net>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  drivers/net/hyperv/netvsc_drv.c | 72 +++++++++++++----------------------------
  1 file changed, 22 insertions(+), 50 deletions(-)

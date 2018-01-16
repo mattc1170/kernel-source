@@ -1,0 +1,52 @@
+From: "K. Y. Srinivasan" <kys@microsoft.com>
+Date: Wed, 19 Apr 2017 13:53:49 -0700
+Patch-mainline: v4.12-rc1
+Subject: netvsc: Deal with rescinded channels correctly
+Git-commit: 73e64fa4f417b22d8d5521999a631ced8e2d442e
+References: fate#320485
+
+We will not be able to send packets over a channel that has been
+rescinded. Make necessary adjustments so we can properly cleanup
+even when the channel is rescinded. This issue can be trigerred
+in the NIC hot-remove path.
+
+Signed-off-by: K. Y. Srinivasan <kys@microsoft.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+Acked-by: Olaf Hering <ohering@suse.de>
+---
+ drivers/net/hyperv/netvsc.c | 16 ++++++++++++++++
+ 1 file changed, 16 insertions(+)
+
+diff --git a/drivers/net/hyperv/netvsc.c b/drivers/net/hyperv/netvsc.c
+--- a/drivers/net/hyperv/netvsc.c
++++ b/drivers/net/hyperv/netvsc.c
+@@ -135,6 +135,13 @@ static void netvsc_destroy_buf(struct hv_device *device)
+ 				       sizeof(struct nvsp_message),
+ 				       (unsigned long)revoke_packet,
+ 				       VM_PKT_DATA_INBAND, 0);
++		/* If the failure is because the channel is rescinded;
++		 * ignore the failure since we cannot send on a rescinded
++		 * channel. This would allow us to properly cleanup
++		 * even when the channel is rescinded.
++		 */
++		if (device->channel->rescind)
++			ret = 0;
+ 		/*
+ 		 * If we failed here, we might as well return and
+ 		 * have a leak rather than continue and a bugchk
+@@ -195,6 +202,15 @@ static void netvsc_destroy_buf(struct hv_device *device)
+ 				       sizeof(struct nvsp_message),
+ 				       (unsigned long)revoke_packet,
+ 				       VM_PKT_DATA_INBAND, 0);
++
++		/* If the failure is because the channel is rescinded;
++		 * ignore the failure since we cannot send on a rescinded
++		 * channel. This would allow us to properly cleanup
++		 * even when the channel is rescinded.
++		 */
++		if (device->channel->rescind)
++			ret = 0;
++
+ 		/* If we failed here, we might as well return and
+ 		 * have a leak rather than continue and a bugchk
+ 		 */

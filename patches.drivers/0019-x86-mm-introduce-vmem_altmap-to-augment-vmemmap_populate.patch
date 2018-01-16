@@ -46,7 +46,7 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
  #include <linux/nmi.h>
  #include <linux/gfp.h>
  #include <linux/kcore.h>
-@@ -711,6 +712,12 @@ static void __meminit free_pagetable(str
+@@ -712,6 +713,12 @@ static void __meminit free_pagetable(str
  {
  	unsigned long magic;
  	unsigned int nr_pages = 1 << order;
@@ -59,7 +59,7 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
  
  	/* bootmem page has reserved flag */
  	if (PageReserved(page)) {
-@@ -1015,13 +1022,19 @@ int __ref arch_remove_memory(u64 start,
+@@ -1016,13 +1023,19 @@ int __ref arch_remove_memory(u64 start,
  {
  	unsigned long start_pfn = start >> PAGE_SHIFT;
  	unsigned long nr_pages = size >> PAGE_SHIFT;
@@ -81,7 +81,7 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
  
  	return ret;
  }
-@@ -1233,7 +1246,7 @@ static void __meminitdata *p_start, *p_e
+@@ -1234,7 +1247,7 @@ static void __meminitdata *p_start, *p_e
  static int __meminitdata node_start;
  
  static int __meminit vmemmap_populate_hugepages(unsigned long start,
@@ -90,7 +90,7 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
  {
  	unsigned long addr;
  	unsigned long next;
-@@ -1256,7 +1269,7 @@ static int __meminit vmemmap_populate_hu
+@@ -1257,7 +1270,7 @@ static int __meminit vmemmap_populate_hu
  		if (pmd_none(*pmd)) {
  			void *p;
  
@@ -99,7 +99,7 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
  			if (p) {
  				pte_t entry;
  
-@@ -1277,7 +1290,8 @@ static int __meminit vmemmap_populate_hu
+@@ -1278,7 +1291,8 @@ static int __meminit vmemmap_populate_hu
  				addr_end = addr + PMD_SIZE;
  				p_end = p + PMD_SIZE;
  				continue;
@@ -109,7 +109,7 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
  		} else if (pmd_large(*pmd)) {
  			vmemmap_verify((pte_t *)pmd, node, addr, next);
  			continue;
-@@ -1291,11 +1305,16 @@ static int __meminit vmemmap_populate_hu
+@@ -1292,11 +1306,16 @@ static int __meminit vmemmap_populate_hu
  
  int __meminit vmemmap_populate(unsigned long start, unsigned long end, int node)
  {
@@ -229,7 +229,7 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
  #endif /* _LINUX_MEMREMAP_H_ */
 --- a/include/linux/mm.h
 +++ b/include/linux/mm.h
-@@ -2238,7 +2238,14 @@ pud_t *vmemmap_pud_populate(pgd_t *pgd,
+@@ -2248,7 +2248,14 @@ pud_t *vmemmap_pud_populate(pgd_t *pgd,
  pmd_t *vmemmap_pmd_populate(pud_t *pud, unsigned long addr, int node);
  pte_t *vmemmap_pte_populate(pmd_t *pmd, unsigned long addr, int node);
  void *vmemmap_alloc_block(unsigned long size, int node);
@@ -380,7 +380,7 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
  #include <linux/memory_hotplug.h>
  #include <linux/highmem.h>
  #include <linux/vmalloc.h>
-@@ -334,11 +335,25 @@ int __ref __add_pages(int nid, unsigned
+@@ -321,11 +322,25 @@ int __ref __add_pages(int nid, unsigned
  	unsigned long i;
  	int err = 0;
  	int start_sec, end_sec;
@@ -406,7 +406,7 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
  	for (i = start_sec; i <= end_sec; i++) {
  		err = __add_section(nid, section_nr_to_pfn(i), want_memblock);
  
-@@ -560,7 +575,8 @@ static void __remove_zone(struct zone *z
+@@ -547,7 +562,8 @@ static void __remove_zone(struct zone *z
  	pgdat_resize_unlock(zone->zone_pgdat, &flags);
  }
  
@@ -416,8 +416,8 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
  {
  	unsigned long start_pfn;
  	int scn_nr;
-@@ -577,7 +593,7 @@ static int __remove_section(struct zone
- 	start_pfn = section_nr_to_pfn(scn_nr);
+@@ -564,7 +580,7 @@ static int __remove_section(struct zone
+ 	start_pfn = section_nr_to_pfn((unsigned long)scn_nr);
  	__remove_zone(zone, start_pfn);
  
 -	sparse_remove_one_section(zone, ms);
@@ -425,7 +425,7 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
  	return 0;
  }
  
-@@ -596,9 +612,32 @@ int __remove_pages(struct zone *zone, un
+@@ -583,9 +599,32 @@ int __remove_pages(struct zone *zone, un
  		 unsigned long nr_pages)
  {
  	unsigned long i;
@@ -461,7 +461,7 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
  
  	clear_zone_contiguous(zone);
  
-@@ -608,23 +647,12 @@ int __remove_pages(struct zone *zone, un
+@@ -595,23 +634,12 @@ int __remove_pages(struct zone *zone, un
  	BUG_ON(phys_start_pfn & ~PAGE_SECTION_MASK);
  	BUG_ON(nr_pages % PAGES_PER_SECTION);
  
@@ -498,7 +498,7 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
  #include <linux/stop_machine.h>
  #include <linux/sort.h>
  #include <linux/pfn.h>
-@@ -4926,8 +4927,9 @@ static inline unsigned long wait_table_b
+@@ -4901,8 +4902,9 @@ void __ref build_all_zonelists(pg_data_t
  void __meminit memmap_init_zone(unsigned long size, int nid, unsigned long zone,
  		unsigned long start_pfn, enum memmap_context context)
  {
@@ -509,7 +509,7 @@ Acked-by: Johannes Thumshirn <jthumshirn@suse.com>
  	unsigned long pfn;
  	struct zone *z;
  	unsigned long nr_initialised = 0;
-@@ -4938,6 +4940,13 @@ void __meminit memmap_init_zone(unsigned
+@@ -4913,6 +4915,13 @@ void __meminit memmap_init_zone(unsigned
  	if (highest_memmap_pfn < end_pfn - 1)
  		highest_memmap_pfn = end_pfn - 1;
  

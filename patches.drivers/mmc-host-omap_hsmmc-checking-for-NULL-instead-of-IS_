@@ -1,0 +1,33 @@
+From ec5ab8933772c87f24ad62a4a602fe8949f423c2 Mon Sep 17 00:00:00 2001
+From: Dan Carpenter <dan.carpenter@oracle.com>
+Date: Mon, 10 Apr 2017 16:54:17 +0300
+Subject: [PATCH] mmc: host: omap_hsmmc: checking for NULL instead of IS_ERR()
+Git-commit: ec5ab8933772c87f24ad62a4a602fe8949f423c2
+Patch-mainline: 4.12-rc1
+References: bsc#1031717
+
+devm_pinctrl_get() returns error pointers, it never returns NULL.
+
+Fixes: 455e5cd6f736 ("mmc: omap_hsmmc: Pin remux workaround to support SDIO interrupt on AM335x")
+Signed-off-by: Dan Carpenter <dan.carpenter@oracle.com>
+Reviewed-by: Kishon Vijay Abraham I <kishon@ti.com>
+Signed-off-by: Ulf Hansson <ulf.hansson@linaro.org>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/mmc/host/omap_hsmmc.c |    4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+--- a/drivers/mmc/host/omap_hsmmc.c
++++ b/drivers/mmc/host/omap_hsmmc.c
+@@ -1777,8 +1777,8 @@ static int omap_hsmmc_configure_wake_irq
+ 	 */
+ 	if (host->pdata->controller_flags & OMAP_HSMMC_SWAKEUP_MISSING) {
+ 		struct pinctrl *p = devm_pinctrl_get(host->dev);
+-		if (!p) {
+-			ret = -ENODEV;
++		if (IS_ERR(p)) {
++			ret = PTR_ERR(p);
+ 			goto err_free_irq;
+ 		}
+ 		if (IS_ERR(pinctrl_lookup_state(p, PINCTRL_STATE_DEFAULT))) {

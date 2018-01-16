@@ -22,7 +22,7 @@ buffer or bytes_recvd as these may contain invalid data.
 Signed-off-by: Vitaly Kuznetsov <vkuznets@redhat.com>
 Signed-off-by: Bjorn Helgaas <bhelgaas@google.com>
 Acked-by: Jake Oshins <jakeo@microsoft.com>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  drivers/pci/host/pci-hyperv.c | 7 +++++--
  1 file changed, 5 insertions(+), 2 deletions(-)

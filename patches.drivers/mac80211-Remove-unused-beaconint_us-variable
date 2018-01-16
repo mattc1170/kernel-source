@@ -1,0 +1,42 @@
+From ab7257251cc63eef5fa6702c3c616c6e2524d777 Mon Sep 17 00:00:00 2001
+From: Kirtika Ruchandani <kirtika.ruchandani@gmail.com>
+Date: Wed, 23 Nov 2016 20:46:27 -0800
+Subject: [PATCH] mac80211: Remove unused 'beaconint_us' variable
+Mime-version: 1.0
+Content-type: text/plain; charset=UTF-8
+Content-transfer-encoding: 8bit
+Git-commit: ab7257251cc63eef5fa6702c3c616c6e2524d777
+Patch-mainline: 4.11-rc1
+References: bsc#1031717
+
+Commit 4a733ef1bea7 (mac80211: remove PM-QoS listener) removed all use
+of 'beaconint_us' from ieee80211_recalc_ps() but left the variable
+intact. Compiling with W=1 gives the following warning, fix it.
+Net/mac80211/mlme.c: In function ‘ieee80211_recalc_ps’:
+net/mac80211/mlme.c:1481:7: warning: variable ‘beaconint_us’ set but not used [-Wunused-but-set-variable]
+
+iee80211_tu_to_usec has no side-effects and is safe to remove.
+
+Fixes: 4a733ef1bea7 ("mac80211: remove PM-QoS listener")
+Cc: Johannes Berg <johannes.berg@intel.com>
+Signed-off-by: Kirtika Ruchandani <kirtika@chromium.org>
+Signed-off-by: Johannes Berg <johannes.berg@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ net/mac80211/mlme.c |    4 ----
+ 1 file changed, 4 deletions(-)
+
+--- a/net/mac80211/mlme.c
++++ b/net/mac80211/mlme.c
+@@ -1510,10 +1510,6 @@ void ieee80211_recalc_ps(struct ieee8021
+ 
+ 	if (count == 1 && ieee80211_powersave_allowed(found)) {
+ 		u8 dtimper = found->u.mgd.dtim_period;
+-		s32 beaconint_us;
+-
+-		beaconint_us = ieee80211_tu_to_usec(
+-					found->vif.bss_conf.beacon_int);
+ 
+ 		timeout = local->dynamic_ps_forced_timeout;
+ 		if (timeout < 0)

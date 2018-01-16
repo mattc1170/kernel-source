@@ -1,0 +1,26 @@
+From: Thomas Bogendoerfer <tbogendoerfer@suse.de>
+Subject: kABI: protect enum fs_flow_table_type
+Patch-Mainline: never, kABI
+References: bsc#1015342 FATE#321688 bsc#1015343 FATE#321689
+
+Fix 16f1c5bb3ed7 ("net/mlx5: Check device capability for maximum flow counters")
+changes enum fs:_flow_table_type. Protect new value to avoid kABI breakage.
+
+Signed-off-by: Thomas Bogendoerfer <tbogendoerfer@suse.de>
+
+---
+ drivers/net/ethernet/mellanox/mlx5/core/fs_core.h |    2 ++
+ 1 file changed, 2 insertions(+)
+
+--- a/drivers/net/ethernet/mellanox/mlx5/core/fs_core.h
++++ b/drivers/net/ethernet/mellanox/mlx5/core/fs_core.h
+@@ -51,7 +51,9 @@ enum fs_flow_table_type {
+ 	FS_FT_FDB             = 0X4,
+ 	FS_FT_SNIFFER_RX	= 0X5,
+ 	FS_FT_SNIFFER_TX	= 0X6,
++#ifndef __GENKSYMS__
+ 	FS_FT_MAX_TYPE = FS_FT_SNIFFER_TX,
++#endif
+ };
+ 
+ enum fs_flow_table_op_mod {

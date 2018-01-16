@@ -1,30 +1,27 @@
 From: James Smart <jsmart2021@gmail.com>
-Date: Tue, 30 May 2017 22:38:27 -0700
-Subject: lpfc: Fix transition nvme-i rport handling to nport only.
+Date: Thu, 1 Jun 2017 21:06:56 -0700
+Subject: scsi: lpfc: Fix transition nvme-i rport handling to nport only.
+Git-commit: 80cc004393619a1b3a17aaf4a9e55c5b9f4fc3c1
 References: bsc#1041873
-Patch-Mainline: submitted linux-scsi 2017/06/01
+Patch-Mainline: v4.13-rc1
 
-As the devloss API was implemented in the
-nvmei driver, an evaluation of the nvme transport
-and the lpfc driver showed dual management of the
-rports.  This creates a bug possibility when the
-thread count and SAN size increases.
+As the devloss API was implemented in the nvmei driver, an evaluation of
+the nvme transport and the lpfc driver showed dual management of the
+rports.  This creates a bug possibility when the thread count and SAN
+size increases.
 
-The nvmei driver code was based on a very
-early transport and was not revisited until the
-devloss API was introduced.
+The nvmei driver code was based on a very early transport and was not
+revisited until the devloss API was introduced.
 
-Remove the listhead in the driver's rport
-data structure and the listhead in the driver's
-lport data structure.  Remove all rport_list
-traversal.  Convert the driver to use the
-nrport (nvme rport) pointer that is now NULL
-or nonNULL depending on a devloss action.  Convert
-debugfs and nvme_info in sysfs to use the fc_nodes
-list in the vport.
+Remove the listhead in the driver's rport data structure and the
+listhead in the driver's lport data structure.  Remove all rport_list
+traversal.  Convert the driver to use the nrport (nvme rport) pointer
+that is now NULL or nonNULL depending on a devloss action.  Convert
+debugfs and nvme_info in sysfs to use the fc_nodes list in the vport.
 
 Signed-off-by: Dick Kennedy <dick.kennedy@broadcom.com>
 Signed-off-by: James Smart <james.smart@broadcom.com>
+Signed-off-by: Martin K. Petersen <martin.petersen@oracle.com>
 Acked-by: Hannes Reinecke <hare@suse.com>
 ---
  drivers/scsi/lpfc/lpfc_attr.c    | 11 ++++++-----
@@ -34,10 +31,10 @@ Acked-by: Hannes Reinecke <hare@suse.com>
  4 files changed, 11 insertions(+), 30 deletions(-)
 
 diff --git a/drivers/scsi/lpfc/lpfc_attr.c b/drivers/scsi/lpfc/lpfc_attr.c
-index 36cdc39..4d80411 100644
+index 37f258f..6d9b83c 100644
 --- a/drivers/scsi/lpfc/lpfc_attr.c
 +++ b/drivers/scsi/lpfc/lpfc_attr.c
-@@ -148,8 +148,7 @@ lpfc_nvme_info_show(struct device *dev, struct device_attribute *attr,
+@@ -148,8 +148,7 @@
  	struct lpfc_hba   *phba = vport->phba;
  	struct lpfc_nvmet_tgtport *tgtp;
  	struct nvme_fc_local_port *localport;
@@ -47,7 +44,7 @@ index 36cdc39..4d80411 100644
  	struct nvme_fc_remote_port *nrport;
  	char *statep;
  	int len = 0;
-@@ -265,7 +264,6 @@ lpfc_nvme_info_show(struct device *dev, struct device_attribute *attr,
+@@ -265,7 +264,6 @@
  	len = snprintf(buf, PAGE_SIZE, "NVME Initiator Enabled\n");
  
  	spin_lock_irq(shost->host_lock);
@@ -55,7 +52,7 @@ index 36cdc39..4d80411 100644
  
  	/* Port state is only one of two values for now. */
  	if (localport->port_id)
-@@ -281,9 +279,12 @@ lpfc_nvme_info_show(struct device *dev, struct device_attribute *attr,
+@@ -281,9 +279,12 @@
  			wwn_to_u64(vport->fc_nodename.u.wwn),
  			localport->port_id, statep);
  
@@ -71,10 +68,10 @@ index 36cdc39..4d80411 100644
  		/* Port state is only one of two values for now. */
  		switch (nrport->port_state) {
 diff --git a/drivers/scsi/lpfc/lpfc_debugfs.c b/drivers/scsi/lpfc/lpfc_debugfs.c
-index 7aa1dbe..c0a70b3 100644
+index efd8a17..e288e59 100644
 --- a/drivers/scsi/lpfc/lpfc_debugfs.c
 +++ b/drivers/scsi/lpfc/lpfc_debugfs.c
-@@ -550,8 +550,6 @@ lpfc_debugfs_nodelist_data(struct lpfc_vport *vport, char *buf, int size)
+@@ -550,8 +550,6 @@
  	struct lpfc_nodelist *ndlp;
  	unsigned char *statep;
  	struct nvme_fc_local_port *localport;
@@ -83,7 +80,7 @@ index 7aa1dbe..c0a70b3 100644
  	struct lpfc_nvmet_tgtport *tgtp;
  	struct nvme_fc_remote_port *nrport;
  
-@@ -660,7 +658,6 @@ lpfc_debugfs_nodelist_data(struct lpfc_vport *vport, char *buf, int size)
+@@ -660,7 +658,6 @@
  		goto out_exit;
  
  	spin_lock_irq(shost->host_lock);
@@ -91,7 +88,7 @@ index 7aa1dbe..c0a70b3 100644
  
  	/* Port state is only one of two values for now. */
  	if (localport->port_id)
-@@ -673,9 +670,12 @@ lpfc_debugfs_nodelist_data(struct lpfc_vport *vport, char *buf, int size)
+@@ -673,9 +670,12 @@
  			localport->port_id, statep);
  
  	len += snprintf(buf + len, size - len, "\tRport List:\n");
@@ -110,7 +107,7 @@ diff --git a/drivers/scsi/lpfc/lpfc_nvme.c b/drivers/scsi/lpfc/lpfc_nvme.c
 index 70675fd..ede4241 100644
 --- a/drivers/scsi/lpfc/lpfc_nvme.c
 +++ b/drivers/scsi/lpfc/lpfc_nvme.c
-@@ -191,7 +191,6 @@ lpfc_nvme_remoteport_delete(struct nvme_fc_remote_port *remoteport)
+@@ -191,7 +191,6 @@
  	lpfc_printf_vlog(vport, KERN_INFO, LOG_NVME_DISC,
  			"6146 remoteport delete complete %p\n",
  			remoteport);
@@ -118,7 +115,7 @@ index 70675fd..ede4241 100644
  	ndlp->nrport = NULL;
  	lpfc_nlp_put(ndlp);
  
-@@ -2208,7 +2207,6 @@ lpfc_nvme_create_localport(struct lpfc_vport *vport)
+@@ -2208,7 +2207,6 @@
  		lport = (struct lpfc_nvme_lport *)localport->private;
  		vport->localport = localport;
  		lport->vport = vport;
@@ -126,7 +123,7 @@ index 70675fd..ede4241 100644
  		vport->nvmei_support = 1;
  		len  = lpfc_new_nvme_buf(vport, phba->sli4_hba.nvme_xri_max);
  		vport->phba->total_nvme_bufs += len;
-@@ -2233,7 +2231,6 @@ lpfc_nvme_destroy_localport(struct lpfc_vport *vport)
+@@ -2233,7 +2231,6 @@
  #if (IS_ENABLED(CONFIG_NVME_FC))
  	struct nvme_fc_local_port *localport;
  	struct lpfc_nvme_lport *lport;
@@ -134,7 +131,7 @@ index 70675fd..ede4241 100644
  	int ret;
  
  	if (vport->nvmei_support == 0)
-@@ -2246,19 +2243,6 @@ lpfc_nvme_destroy_localport(struct lpfc_vport *vport)
+@@ -2246,19 +2243,6 @@
  	lpfc_printf_vlog(vport, KERN_INFO, LOG_NVME,
  			 "6011 Destroying NVME localport %p\n",
  			 localport);
@@ -154,7 +151,7 @@ index 70675fd..ede4241 100644
  
  	/* lport's rport list is clear.  Unregister
  	 * lport and release resources.
-@@ -2384,8 +2368,6 @@ lpfc_nvme_register_port(struct lpfc_vport *vport, struct lpfc_nodelist *ndlp)
+@@ -2384,8 +2368,6 @@
  			if (!rport->ndlp)
  				return -1;
  			ndlp->nrport = rport;

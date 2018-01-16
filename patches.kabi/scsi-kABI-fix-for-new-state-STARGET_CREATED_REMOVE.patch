@@ -1,0 +1,33 @@
+From: Hannes Reinecke <hare@suse.de>
+Date: Thu, 3 Aug 2017 10:14:49 +0200
+Subject: [PATCH] scsi: kABI fix for new state STARGET_CREATED_REMOVE
+Patch-Mainline: never, kABI fix for SLES12
+References: bsc#1013887
+
+The new state needs to be added to the end of the enumeration
+so as not to break kABI.
+
+Signed-off-by: Hannes Reinecke <hare@suse.com>
+---
+ include/scsi/scsi_device.h | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/include/scsi/scsi_device.h b/include/scsi/scsi_device.h
+index a2e80ea..7864189 100644
+--- a/include/scsi/scsi_device.h
++++ b/include/scsi/scsi_device.h
+@@ -254,8 +254,10 @@ enum scsi_target_state {
+ 	STARGET_CREATED = 1,
+ 	STARGET_RUNNING,
+ 	STARGET_REMOVE,
+-	STARGET_CREATED_REMOVE,
+ 	STARGET_DEL,
++#ifndef __GENKSYMS__
++	STARGET_CREATED_REMOVE,
++#endif
+ };
+ 
+ /*
+-- 
+1.8.5.6
+

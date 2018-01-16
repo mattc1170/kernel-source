@@ -11,7 +11,7 @@ that for MODULE_PARM_DESC() as well.
 Signed-off-by: Dan Carpenter <dan.carpenter@oracle.com>
 Reviewed-by: Matthew R. Ochs <mrochs@linux.vnet.ibm.com>
 Signed-off-by: Martin K. Petersen <martin.petersen@oracle.com>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  drivers/scsi/storvsc_drv.c | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)

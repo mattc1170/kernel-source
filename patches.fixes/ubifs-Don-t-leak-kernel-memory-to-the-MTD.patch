@@ -1,0 +1,64 @@
+From 4acadda74ff8b949c448c0282765ae747e088c87 Mon Sep 17 00:00:00 2001
+From: Richard Weinberger <richard@nod.at>
+Date: Fri, 16 Jun 2017 16:21:44 +0200
+Subject: [PATCH] ubifs: Don't leak kernel memory to the MTD
+Git-commit: 4acadda74ff8b949c448c0282765ae747e088c87
+Patch-mainline: v4.13-rc1
+References: bsc#1012829
+
+When UBIFS prepares data structures which will be written to the MTD it
+ensues that their lengths are multiple of 8. Since it uses kmalloc() the
+padded bytes are left uninitialized and we leak a few bytes of kernel
+memory to the MTD.
+To make sure that all bytes are initialized, let's switch to kzalloc().
+Kzalloc() is fine in this case because the buffers are not huge and in
+the IO path the performance bottleneck is anyway the MTD.
+
+Cc: stable@vger.kernel.org
+Fixes: 1e51764a3c2a ("UBIFS: add new flash file system")
+Signed-off-by: Richard Weinberger <richard@nod.at>
+Reviewed-by: Boris Brezillon <boris.brezillon@free-electrons.com>
+Acked-by: Jan Kara <jack@suse.cz>
+
+---
+ fs/ubifs/journal.c |    8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+--- a/fs/ubifs/journal.c
++++ b/fs/ubifs/journal.c
+@@ -576,7 +576,7 @@ int ubifs_jnl_update(struct ubifs_info *
+ 	/* Make sure to also account for extended attributes */
+ 	len += host_ui->data_len;
+ 
+-	dent = kmalloc(len, GFP_NOFS);
++	dent = kzalloc(len, GFP_NOFS);
+ 	if (!dent)
+ 		return -ENOMEM;
+ 
+@@ -960,7 +960,7 @@ int ubifs_jnl_rename(struct ubifs_info *
+ 	len = aligned_dlen1 + aligned_dlen2 + ALIGN(ilen, 8) + ALIGN(plen, 8);
+ 	if (old_dir != new_dir)
+ 		len += plen;
+-	dent = kmalloc(len, GFP_NOFS);
++	dent = kzalloc(len, GFP_NOFS);
+ 	if (!dent)
+ 		return -ENOMEM;
+ 
+@@ -1308,7 +1308,7 @@ int ubifs_jnl_delete_xattr(struct ubifs_
+ 	hlen = host_ui->data_len + UBIFS_INO_NODE_SZ;
+ 	len = aligned_xlen + UBIFS_INO_NODE_SZ + ALIGN(hlen, 8);
+ 
+-	xent = kmalloc(len, GFP_NOFS);
++	xent = kzalloc(len, GFP_NOFS);
+ 	if (!xent)
+ 		return -ENOMEM;
+ 
+@@ -1415,7 +1415,7 @@ int ubifs_jnl_change_xattr(struct ubifs_
+ 	aligned_len1 = ALIGN(len1, 8);
+ 	aligned_len = aligned_len1 + ALIGN(len2, 8);
+ 
+-	ino = kmalloc(aligned_len, GFP_NOFS);
++	ino = kzalloc(aligned_len, GFP_NOFS);
+ 	if (!ino)
+ 		return -ENOMEM;
+ 

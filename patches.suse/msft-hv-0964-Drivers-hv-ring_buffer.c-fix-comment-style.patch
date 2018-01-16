@@ -12,7 +12,7 @@ functional changes intended.
 Signed-off-by: Vitaly Kuznetsov <vkuznets@redhat.com>
 Signed-off-by: K. Y. Srinivasan <kys@microsoft.com>
 Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  drivers/hv/ring_buffer.c | 135 +++++++++--------------------------------------
  1 file changed, 26 insertions(+), 109 deletions(-)

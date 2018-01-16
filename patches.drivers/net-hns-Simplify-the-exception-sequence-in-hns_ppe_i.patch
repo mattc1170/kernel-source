@@ -1,8 +1,7 @@
 From: Kejian Yan <yankejian@huawei.com>
 Date: Sat, 1 Apr 2017 12:03:45 +0100
 Subject: net: hns: Simplify the exception sequence in hns_ppe_init()
-Patch-mainline: Queued in subsystem maintainer repository
-Git-repo: git://git.kernel.org/pub/scm/linux/kernel/git/davem/net-next.git
+Patch-mainline: v4.12-rc1
 Git-commit: a2185587ade79b9649639721aa21c4cefc1aea6b
 References: fate#322061
 

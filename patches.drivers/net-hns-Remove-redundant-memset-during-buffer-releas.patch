@@ -1,8 +1,7 @@
 From: lipeng <lipeng321@huawei.com>
 Date: Sat, 1 Apr 2017 12:03:34 +0100
 Subject: net: hns: Remove redundant memset during buffer release
-Patch-mainline: Queued in subsystem maintainer repository
-Git-repo: git://git.kernel.org/pub/scm/linux/kernel/git/davem/net-next.git
+Patch-mainline: v4.12-rc1
 Git-commit: fb0672d11634dd072bfb66a0b546b4fc592f4158
 References: fate#322061
 

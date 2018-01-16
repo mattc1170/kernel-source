@@ -23,7 +23,7 @@ Cc: Vitaly Kuznetsov <vkuznets@redhat.com>
 Cc: "K. Y. Srinivasan" <kys@microsoft.com>
 Link: http://lkml.kernel.org/r/20170214211736.2641241-1-arnd@arndb.de
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  arch/x86/hyperv/hv_init.c | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)

@@ -1,20 +1,23 @@
 From: James Smart <jsmart2021@gmail.com>
-Date: Sat, 13 May 2017 12:03:00 -0700
+Date: Mon, 15 May 2017 17:10:15 -0700
 Subject: nvme_fc: get rid of local reconnect_delay
+Git-commit: 0ce872bf8b5c4d425a41940a523ff1b8daa0b275
 References: bsc#1037838
-Patch-Mainline: submitted to linux-scsi 2017/05/16
+Patch-Mainline: v4.12-rc3
 
 Remove the local copy of reconnect_delay.
 Use the value in the controller options directly.
 
 Signed-off-by: James Smart <james.smart@broadcom.com>
 Reviewed-by: Hannes Reinecke <hare@suse.com>
+Reviewed-by: Johannes Thumshirn <jthumshirn@suse.de>
+Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
  drivers/nvme/host/fc.c | 10 ++++------
  1 file changed, 4 insertions(+), 6 deletions(-)
 
 diff --git a/drivers/nvme/host/fc.c b/drivers/nvme/host/fc.c
-index 3c83983..80a3a36 100644
+index dca7165..c3ab1043 100644
 --- a/drivers/nvme/host/fc.c
 +++ b/drivers/nvme/host/fc.c
 @@ -165,7 +165,6 @@ struct nvme_fc_ctrl {
@@ -25,7 +28,7 @@ index 3c83983..80a3a36 100644
  	int			connect_attempts;
  
  	struct kref		ref;
-@@ -2617,9 +2616,9 @@ nvme_fc_reset_ctrl_work(struct work_struct *work)
+@@ -2615,9 +2614,9 @@ enum {
  
  		dev_warn(ctrl->ctrl.device,
  			"NVME-FC{%d}: Reconnect attempt in %d seconds.\n",
@@ -37,7 +40,7 @@ index 3c83983..80a3a36 100644
  	} else
  		dev_info(ctrl->ctrl.device,
  			"NVME-FC{%d}: controller reset complete\n", ctrl->cnum);
-@@ -2697,9 +2696,9 @@ nvme_fc_connect_ctrl_work(struct work_struct *work)
+@@ -2695,9 +2694,9 @@ enum {
  
  		dev_warn(ctrl->ctrl.device,
  			"NVME-FC{%d}: Reconnect attempt in %d seconds.\n",
@@ -49,7 +52,7 @@ index 3c83983..80a3a36 100644
  	} else
  		dev_info(ctrl->ctrl.device,
  			"NVME-FC{%d}: controller reconnect complete\n",
-@@ -2757,7 +2756,6 @@ nvme_fc_init_ctrl(struct device *dev, struct nvmf_ctrl_options *opts,
+@@ -2755,7 +2754,6 @@ enum {
  	INIT_WORK(&ctrl->delete_work, nvme_fc_delete_ctrl_work);
  	INIT_WORK(&ctrl->reset_work, nvme_fc_reset_ctrl_work);
  	INIT_DELAYED_WORK(&ctrl->connect_work, nvme_fc_connect_ctrl_work);

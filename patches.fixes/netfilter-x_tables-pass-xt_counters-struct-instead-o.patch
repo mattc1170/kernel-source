@@ -1,0 +1,134 @@
+From: Florian Westphal <fw@strlen.de>
+Date: Tue, 22 Nov 2016 14:44:17 +0100
+Subject: netfilter: x_tables: pass xt_counters struct instead of packet counter
+Patch-mainline: v4.10-rc1
+Git-commit: 4d31eef5176df06f218201bc9c0ce40babb41660
+References: bsc#1052888
+
+On SMP we overload the packet counter (unsigned long) to contain
+percpu offset.  Hide this from callers and pass xt_counters address
+instead.
+
+Preparation patch to allocate the percpu counters in page-sized batch
+chunks.
+
+Signed-off-by: Florian Westphal <fw@strlen.de>
+Acked-by: Eric Dumazet <edumazet@google.com>
+Signed-off-by: Pablo Neira Ayuso <pablo@netfilter.org>
+Acked-by: Michal Kubecek <mkubecek@suse.cz>
+
+---
+ include/linux/netfilter/x_tables.h | 6 +-----
+ net/ipv4/netfilter/arp_tables.c    | 4 ++--
+ net/ipv4/netfilter/ip_tables.c     | 4 ++--
+ net/ipv6/netfilter/ip6_tables.c    | 5 ++---
+ net/netfilter/x_tables.c           | 9 +++++++++
+ 5 files changed, 16 insertions(+), 12 deletions(-)
+
+diff --git a/include/linux/netfilter/x_tables.h b/include/linux/netfilter/x_tables.h
+index d6c53fce006b..5950b5ac33bf 100644
+--- a/include/linux/netfilter/x_tables.h
++++ b/include/linux/netfilter/x_tables.h
+@@ -395,11 +395,7 @@ static inline unsigned long xt_percpu_counter_alloc(void)
+ 
+ 	return 0;
+ }
+-static inline void xt_percpu_counter_free(u64 pcnt)
+-{
+-	if (nr_cpu_ids > 1)
+-		free_percpu((void __percpu *) (unsigned long) pcnt);
+-}
++void xt_percpu_counter_free(struct xt_counters *cnt);
+ 
+ static inline struct xt_counters *
+ xt_get_this_cpu_counter(struct xt_counters *cnt)
+diff --git a/net/ipv4/netfilter/arp_tables.c b/net/ipv4/netfilter/arp_tables.c
+index 4cfcc22f7430..c763e54c8bf0 100644
+--- a/net/ipv4/netfilter/arp_tables.c
++++ b/net/ipv4/netfilter/arp_tables.c
+@@ -536,7 +536,7 @@ find_check_entry(struct arpt_entry *e, const char *name, unsigned int size)
+ err:
+ 	module_put(t->u.kernel.target->me);
+ out:
+-	xt_percpu_counter_free(e->counters.pcnt);
++	xt_percpu_counter_free(&e->counters);
+ 
+ 	return ret;
+ }
+@@ -624,7 +624,7 @@ static inline void cleanup_entry(struct arpt_entry *e)
+ 	if (par.target->destroy != NULL)
+ 		par.target->destroy(&par);
+ 	module_put(par.target->me);
+-	xt_percpu_counter_free(e->counters.pcnt);
++	xt_percpu_counter_free(&e->counters);
+ }
+ 
+ /* Checks and translates the user-supplied table segment (held in
+diff --git a/net/ipv4/netfilter/ip_tables.c b/net/ipv4/netfilter/ip_tables.c
+index a98173d1ea97..e70462aa6213 100644
+--- a/net/ipv4/netfilter/ip_tables.c
++++ b/net/ipv4/netfilter/ip_tables.c
+@@ -697,7 +697,7 @@ find_check_entry(struct ipt_entry *e, struct net *net, const char *name,
+ 		cleanup_match(ematch, net);
+ 	}
+ 
+-	xt_percpu_counter_free(e->counters.pcnt);
++	xt_percpu_counter_free(&e->counters);
+ 
+ 	return ret;
+ }
+@@ -793,7 +793,7 @@ cleanup_entry(struct ipt_entry *e, struct net *net)
+ 	if (par.target->destroy != NULL)
+ 		par.target->destroy(&par);
+ 	module_put(par.target->me);
+-	xt_percpu_counter_free(e->counters.pcnt);
++	xt_percpu_counter_free(&e->counters);
+ }
+ 
+ /* Checks and translates the user-supplied table segment (held in
+diff --git a/net/ipv6/netfilter/ip6_tables.c b/net/ipv6/netfilter/ip6_tables.c
+index bb1b5453a7a1..430e38a26fb7 100644
+--- a/net/ipv6/netfilter/ip6_tables.c
++++ b/net/ipv6/netfilter/ip6_tables.c
+@@ -709,7 +709,7 @@ find_check_entry(struct ip6t_entry *e, struct net *net, const char *name,
+ 		cleanup_match(ematch, net);
+ 	}
+ 
+-	xt_percpu_counter_free(e->counters.pcnt);
++	xt_percpu_counter_free(&e->counters);
+ 
+ 	return ret;
+ }
+@@ -804,8 +804,7 @@ static void cleanup_entry(struct ip6t_entry *e, struct net *net)
+ 	if (par.target->destroy != NULL)
+ 		par.target->destroy(&par);
+ 	module_put(par.target->me);
+-
+-	xt_percpu_counter_free(e->counters.pcnt);
++	xt_percpu_counter_free(&e->counters);
+ }
+ 
+ /* Checks and translates the user-supplied table segment (held in
+diff --git a/net/netfilter/x_tables.c b/net/netfilter/x_tables.c
+index 7b42b0ad3f9b..8535275159a1 100644
+--- a/net/netfilter/x_tables.c
++++ b/net/netfilter/x_tables.c
+@@ -1588,6 +1588,15 @@ void xt_proto_fini(struct net *net, u_int8_t af)
+ }
+ EXPORT_SYMBOL_GPL(xt_proto_fini);
+ 
++void xt_percpu_counter_free(struct xt_counters *counters)
++{
++	unsigned long pcnt = counters->pcnt;
++
++	if (nr_cpu_ids > 1)
++		free_percpu((void __percpu *)pcnt);
++}
++EXPORT_SYMBOL_GPL(xt_percpu_counter_free);
++
+ static int __net_init xt_net_init(struct net *net)
+ {
+ 	int i;
+-- 
+2.14.1
+

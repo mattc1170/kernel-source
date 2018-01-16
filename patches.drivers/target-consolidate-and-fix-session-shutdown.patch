@@ -12,14 +12,12 @@ Signed-off-by: Christoph Hellwig <hch@lst.de>
 Signed-off-by: Nicholas Bellinger <nab@linux-iscsi.org>
 Signed-off-by: Hannes Reinecke <hare@suse.de>
 ---
- drivers/target/target_core_tpg.c | 87 +++++++++++++++-------------------------
+ drivers/target/target_core_tpg.c |   87 ++++++++++++++-------------------------
  1 file changed, 33 insertions(+), 54 deletions(-)
 
-diff --git a/drivers/target/target_core_tpg.c b/drivers/target/target_core_tpg.c
-index ecab77f..f128a59 100644
 --- a/drivers/target/target_core_tpg.c
 +++ b/drivers/target/target_core_tpg.c
-@@ -336,44 +336,47 @@ struct se_node_acl *core_tpg_add_initiator_node_acl(
+@@ -336,44 +336,47 @@ struct se_node_acl *core_tpg_add_initiat
  	return acl;
  }
  
@@ -37,7 +35,7 @@ index ecab77f..f128a59 100644
 -	if (acl->dynamic_node_acl) {
 -		acl->dynamic_node_acl = 0;
 -	}
--	list_del(&acl->acl_list);
+-	list_del_init(&acl->acl_list);
 -	mutex_unlock(&tpg->acl_node_mutex);
 +	int ret;
  
@@ -85,7 +83,7 @@ index ecab77f..f128a59 100644
 +	mutex_lock(&tpg->acl_node_mutex);
 +	if (acl->dynamic_node_acl)
 +		acl->dynamic_node_acl = 0;
-+	list_del(&acl->acl_list);
++	list_del_init(&acl->acl_list);
 +	mutex_unlock(&tpg->acl_node_mutex);
 +
 +	target_shutdown_sessions(acl, true);
@@ -93,7 +91,7 @@ index ecab77f..f128a59 100644
  	target_put_nacl(acl);
  	/*
  	 * Wait for last target_put_nacl() to complete in target_complete_nacl()
-@@ -400,11 +403,7 @@ int core_tpg_set_initiator_node_queue_depth(
+@@ -400,11 +403,7 @@ int core_tpg_set_initiator_node_queue_de
  	struct se_node_acl *acl,
  	u32 queue_depth)
  {
@@ -105,7 +103,7 @@ index ecab77f..f128a59 100644
  
  	/*
  	 * User has requested to change the queue depth for a Initiator Node.
-@@ -413,30 +412,10 @@ int core_tpg_set_initiator_node_queue_depth(
+@@ -413,30 +412,10 @@ int core_tpg_set_initiator_node_queue_de
  	 */
  	target_set_nacl_queue_depth(tpg, acl, queue_depth);
  
@@ -140,6 +138,3 @@ index ecab77f..f128a59 100644
  
  	pr_debug("Successfully changed queue depth to: %d for Initiator"
  		" Node: %s on %s Target Portal Group: %u\n", acl->queue_depth,
--- 
-1.8.5.6
-

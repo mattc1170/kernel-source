@@ -1,0 +1,62 @@
+From: Joerg Roedel <jroedel@suse.de>
+Subject: [PATCH] kABI-fix for "x86/panic: replace smp_send_stop() with kdump
+ friendly version in panic path"
+Patch-mainline: never, kabi
+References: bsc#1051478
+
+Signed-off-by: Joerg Roedel <jroedel@suse.de>
+---
+ arch/x86/include/asm/smp.h | 1 -
+ arch/x86/kernel/crash.c    | 9 +++++----
+ arch/x86/kernel/smp.c      | 3 ---
+ 3 files changed, 5 insertions(+), 8 deletions(-)
+
+diff --git a/arch/x86/include/asm/smp.h b/arch/x86/include/asm/smp.h
+index 9f4ab55..2680ffb 100644
+--- a/arch/x86/include/asm/smp.h
++++ b/arch/x86/include/asm/smp.h
+@@ -59,7 +59,6 @@ struct smp_ops {
+ 	void (*smp_cpus_done)(unsigned max_cpus);
+ 
+ 	void (*stop_other_cpus)(int wait);
+-	void (*crash_stop_other_cpus)(void);
+ 	void (*smp_send_reschedule)(int cpu);
+ 
+ 	int (*cpu_up)(unsigned cpu, struct task_struct *tidle);
+diff --git a/arch/x86/kernel/crash.c b/arch/x86/kernel/crash.c
+index 74eaa51..e5d427c 100644
+--- a/arch/x86/kernel/crash.c
++++ b/arch/x86/kernel/crash.c
+@@ -143,10 +143,11 @@ void crash_smp_send_stop(void)
+ 	if (cpus_stopped)
+ 		return;
+ 
+-	if (smp_ops.crash_stop_other_cpus)
+-		smp_ops.crash_stop_other_cpus();
+-	else
+-		smp_send_stop();
++#if defined(CONFIG_KEXEC_CORE)
++	kdump_nmi_shootdown_cpus();
++#else
++	smp_send_stop();
++#endif
+ 
+ 	cpus_stopped = 1;
+ }
+diff --git a/arch/x86/kernel/smp.c b/arch/x86/kernel/smp.c
+index db8d499..9a586fe 100644
+--- a/arch/x86/kernel/smp.c
++++ b/arch/x86/kernel/smp.c
+@@ -344,9 +344,6 @@ struct smp_ops smp_ops = {
+ 	.smp_cpus_done		= native_smp_cpus_done,
+ 
+ 	.stop_other_cpus	= native_stop_other_cpus,
+-#if defined(CONFIG_KEXEC_CORE)
+-	.crash_stop_other_cpus	= kdump_nmi_shootdown_cpus,
+-#endif
+ 	.smp_send_reschedule	= native_smp_send_reschedule,
+ 
+ 	.cpu_up			= native_cpu_up,
+-- 
+1.8.5.6
+

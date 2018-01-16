@@ -11,7 +11,7 @@ This reverts commit 30d1de08c87ddde6f73936c3350e7e153988fe02.
 
 Signed-off-by: Stephen Hemminger <sthemmin@microsoft.com>
 Signed-off-by: David S. Miller <davem@davemloft.net>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  drivers/net/hyperv/netvsc.c | 85 +--------------------------------------------
  include/linux/hyperv.h      | 84 ++++++++++++++++++++++++++++++++++++++++++++

@@ -18,7 +18,7 @@ Signed-off-by: Xiao Guangrong <guangrong.xiao@linux.intel.com>
 Signed-off-by: Paolo Bonzini <pbonzini@redhat.com>
 Acked-by: Joerg Roedel <jroedel@suse.de>
 ---
- arch/x86/kvm/vmx.c | 23 +++++++++++++++++++++++
+ arch/x86/kvm/vmx.c |   23 +++++++++++++++++++++++
  1 file changed, 23 insertions(+)
 
 --- a/arch/x86/kvm/vmx.c
@@ -34,15 +34,15 @@ Acked-by: Joerg Roedel <jroedel@suse.de>
  };
  
  enum segment_cache_field {
-@@ -2033,6 +2037,7 @@ static void vmx_vcpu_pi_load(struct kvm_
- 	} while (cmpxchg(&pi_desc->control, old.control,
- 			new.control) != old.control);
+@@ -2032,6 +2036,7 @@ static void vmx_vcpu_pi_load(struct kvm_
+ 	} while (cmpxchg64(&pi_desc->control, old.control,
+ 			   new.control) != old.control);
  }
 +
  /*
   * Switches to specified vcpu, until a matching vcpu_put(), but assumes
   * vcpu mutex is already taken.
-@@ -2093,6 +2098,7 @@ static void vmx_vcpu_load(struct kvm_vcp
+@@ -2092,6 +2097,7 @@ static void vmx_vcpu_load(struct kvm_vcp
  	}
  
  	vmx_vcpu_pi_load(vcpu, cpu);
@@ -50,7 +50,7 @@ Acked-by: Joerg Roedel <jroedel@suse.de>
  }
  
  static void vmx_vcpu_pi_put(struct kvm_vcpu *vcpu)
-@@ -8578,6 +8584,9 @@ static void __noclone vmx_vcpu_run(struc
+@@ -8586,6 +8592,9 @@ static void __noclone vmx_vcpu_run(struc
  	if (vcpu->guest_debug & KVM_GUESTDBG_SINGLESTEP)
  		vmx_set_interrupt_shadow(vcpu, 0);
  
@@ -60,7 +60,7 @@ Acked-by: Joerg Roedel <jroedel@suse.de>
  	atomic_switch_perf_msrs(vmx);
  	debugctlmsr = get_debugctlmsr();
  
-@@ -8718,6 +8727,20 @@ static void __noclone vmx_vcpu_run(struc
+@@ -8726,6 +8735,20 @@ static void __noclone vmx_vcpu_run(struc
  	vmx->exit_reason = vmcs_read32(VM_EXIT_REASON);
  
  	/*

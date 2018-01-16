@@ -32,14 +32,12 @@ Cc: Peter Zijlstra <peterz@infradead.org>
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 Signed-off-by: Mel Gorman <mgorman@suse.de>
 ---
- mm/mprotect.c | 13 +++++++++++++
+ mm/mprotect.c |   13 +++++++++++++
  1 file changed, 13 insertions(+)
 
-diff --git a/mm/mprotect.c b/mm/mprotect.c
-index 29321f418d46..8eeb8f2d3845 100644
 --- a/mm/mprotect.c
 +++ b/mm/mprotect.c
-@@ -67,11 +67,17 @@ static unsigned long change_pte_range(struct vm_area_struct *vma, pmd_t *pmd,
+@@ -67,11 +67,17 @@ static unsigned long change_pte_range(st
  	pte_t *pte, oldpte;
  	spinlock_t *ptl;
  	unsigned long pages = 0;
@@ -54,10 +52,10 @@ index 29321f418d46..8eeb8f2d3845 100644
 +	    atomic_read(&vma->vm_mm->mm_users) == 1)
 +		target_node = numa_node_id();
 +
+ 	flush_tlb_batched_pending(vma->vm_mm);
  	arch_enter_lazy_mmu_mode();
  	do {
- 		oldpte = *pte;
-@@ -93,6 +99,13 @@ static unsigned long change_pte_range(struct vm_area_struct *vma, pmd_t *pmd,
+@@ -94,6 +100,13 @@ static unsigned long change_pte_range(st
  				/* Avoid TLB flush if possible */
  				if (pte_protnone(oldpte))
  					continue;

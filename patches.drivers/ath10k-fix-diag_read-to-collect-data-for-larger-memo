@@ -1,0 +1,94 @@
+From 1e56d5127d5c2142fcd26b93f4a9abacbd8f975d Mon Sep 17 00:00:00 2001
+From: Ashok Raj Nagarajan <arnagara@qti.qualcomm.com>
+Date: Sat, 28 May 2016 11:25:40 +0300
+Subject: [PATCH] ath10k: fix diag_read to collect data for larger memory
+Git-commit: 1e56d5127d5c2142fcd26b93f4a9abacbd8f975d
+Patch-mainline: 4.8-rc1
+References: bsc#1031717
+
+diag_read uses dma_alloc_coherent to allocate memory requested by the
+caller. If this memory requested is larger, more than DIAG_TRANSFER_LIMIT
+(2K), then it is likely that we may not get the requested memory and we
+would fail.
+
+To solve this, request dma_alloc_coherent for only DIAG_TRANSFER_LIMIT, and
+reuse this buffer multiple times as needed to copy the data requested in
+smaller chunks of size not more than DIAG_TRANSFER_LIMIT. Previously we
+were reading into the caller's only after getting the complete requested
+data.
+
+Fixes: 68c03249f388 ('ath10k: convert pci_alloc_consistent() to dma_alloc_coherent()')
+Signed-off-by: Ashok Raj Nagarajan <arnagara@qti.qualcomm.com>
+Signed-off-by: Kalle Valo <kvalo@qca.qualcomm.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/ath/ath10k/pci.c |   28 ++++++++++++++++------------
+ 1 file changed, 16 insertions(+), 12 deletions(-)
+
+--- a/drivers/net/wireless/ath/ath10k/pci.c
++++ b/drivers/net/wireless/ath/ath10k/pci.c
+@@ -852,7 +852,7 @@ static int ath10k_pci_diag_read_mem(stru
+ 	struct ath10k_pci *ar_pci = ath10k_pci_priv(ar);
+ 	int ret = 0;
+ 	u32 buf;
+-	unsigned int completed_nbytes, orig_nbytes, remaining_bytes;
++	unsigned int completed_nbytes, alloc_nbytes, remaining_bytes;
+ 	unsigned int id;
+ 	unsigned int flags;
+ 	struct ath10k_ce_pipe *ce_diag;
+@@ -872,9 +872,10 @@ static int ath10k_pci_diag_read_mem(stru
+ 	 *   1) 4-byte alignment
+ 	 *   2) Buffer in DMA-able space
+ 	 */
+-	orig_nbytes = nbytes;
++	alloc_nbytes = min_t(unsigned int, nbytes, DIAG_TRANSFER_LIMIT);
++
+ 	data_buf = (unsigned char *)dma_alloc_coherent(ar->dev,
+-						       orig_nbytes,
++						       alloc_nbytes,
+ 						       &ce_data_base,
+ 						       GFP_ATOMIC);
+ 
+@@ -882,9 +883,9 @@ static int ath10k_pci_diag_read_mem(stru
+ 		ret = -ENOMEM;
+ 		goto done;
+ 	}
+-	memset(data_buf, 0, orig_nbytes);
++	memset(data_buf, 0, alloc_nbytes);
+ 
+-	remaining_bytes = orig_nbytes;
++	remaining_bytes = nbytes;
+ 	ce_data = ce_data_base;
+ 	while (remaining_bytes) {
+ 		nbytes = min_t(unsigned int, remaining_bytes,
+@@ -943,19 +944,22 @@ static int ath10k_pci_diag_read_mem(stru
+ 		}
+ 
+ 		remaining_bytes -= nbytes;
++
++		if (ret) {
++			ath10k_warn(ar, "failed to read diag value at 0x%x: %d\n",
++				    address, ret);
++			break;
++		}
++		memcpy(data, data_buf, nbytes);
++
+ 		address += nbytes;
+-		ce_data += nbytes;
++		data += nbytes;
+ 	}
+ 
+ done:
+-	if (ret == 0)
+-		memcpy(data, data_buf, orig_nbytes);
+-	else
+-		ath10k_warn(ar, "failed to read diag value at 0x%x: %d\n",
+-			    address, ret);
+ 
+ 	if (data_buf)
+-		dma_free_coherent(ar->dev, orig_nbytes, data_buf,
++		dma_free_coherent(ar->dev, alloc_nbytes, data_buf,
+ 				  ce_data_base);
+ 
+ 	spin_unlock_bh(&ar_pci->ce_lock);

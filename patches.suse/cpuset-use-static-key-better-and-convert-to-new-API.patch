@@ -48,20 +48,20 @@ Cc: Jesper Dangaard Brouer <brouer@redhat.com>
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 Signed-off-by: Mel Gorman <mgorman@suse.de>
 ---
- include/linux/cpuset.h | 42 ++++++++++++++++++++++++++++--------------
- kernel/cpuset.c        | 14 +++++++-------
- mm/page_alloc.c        |  2 +-
- 3 files changed, 36 insertions(+), 22 deletions(-)
+ include/linux/cpuset.h |   52 +++++++++++++++++++++++++++++++------------------
+ kernel/cpuset.c        |   16 +++++++--------
+ mm/page_alloc.c        |    2 -
+ 3 files changed, 42 insertions(+), 28 deletions(-)
 
-diff --git a/include/linux/cpuset.h b/include/linux/cpuset.h
-index fea160ee5803..054c734d0170 100644
 --- a/include/linux/cpuset.h
 +++ b/include/linux/cpuset.h
-@@ -16,26 +16,26 @@
+@@ -16,29 +16,29 @@
  
  #ifdef CONFIG_CPUSETS
  
+-extern struct static_key cpusets_pre_enable_key;
 -extern struct static_key cpusets_enabled_key;
++extern struct static_key_false cpusets_pre_enable_key;
 +extern struct static_key_false cpusets_enabled_key;
  static inline bool cpusets_enabled(void)
  {
@@ -78,18 +78,22 @@ index fea160ee5803..054c734d0170 100644
  
  static inline void cpuset_inc(void)
  {
+-	static_key_slow_inc(&cpusets_pre_enable_key);
 -	static_key_slow_inc(&cpusets_enabled_key);
++	static_branch_inc(&cpusets_pre_enable_key);
 +	static_branch_inc(&cpusets_enabled_key);
  }
  
  static inline void cpuset_dec(void)
  {
 -	static_key_slow_dec(&cpusets_enabled_key);
+-	static_key_slow_dec(&cpusets_pre_enable_key);
 +	static_branch_dec(&cpusets_enabled_key);
++	static_branch_dec(&cpusets_pre_enable_key);
  }
  
  extern int cpuset_init(void);
-@@ -48,16 +48,25 @@ extern nodemask_t cpuset_mems_allowed(struct task_struct *p);
+@@ -51,16 +51,25 @@ extern nodemask_t cpuset_mems_allowed(st
  void cpuset_init_current_mems_allowed(void);
  int cpuset_nodemask_valid_mems_allowed(nodemask_t *nodemask);
  
@@ -120,7 +124,25 @@ index fea160ee5803..054c734d0170 100644
  }
  
  extern int cpuset_mems_allowed_intersects(const struct task_struct *tsk1,
-@@ -174,14 +183,19 @@ static inline int cpuset_nodemask_valid_mems_allowed(nodemask_t *nodemask)
+@@ -107,7 +116,7 @@ extern void cpuset_print_current_mems_al
+  */
+ static inline unsigned int read_mems_allowed_begin(void)
+ {
+-	if (!static_key_false(&cpusets_pre_enable_key))
++	if (!static_branch_unlikely(&cpusets_pre_enable_key))
+ 		return 0;
+ 
+ 	return read_seqcount_begin(&current->mems_allowed_seq);
+@@ -121,7 +130,7 @@ static inline unsigned int read_mems_all
+  */
+ static inline bool read_mems_allowed_retry(unsigned int seq)
+ {
+-	if (!static_key_false(&cpusets_enabled_key))
++	if (!static_branch_unlikely(&cpusets_enabled_key))
+ 		return false;
+ 
+ 	return read_seqcount_retry(&current->mems_allowed_seq, seq);
+@@ -175,14 +184,19 @@ static inline int cpuset_nodemask_valid_
  	return 1;
  }
  
@@ -144,20 +166,20 @@ index fea160ee5803..054c734d0170 100644
  }
  
  static inline int cpuset_mems_allowed_intersects(const struct task_struct *tsk1,
-diff --git a/kernel/cpuset.c b/kernel/cpuset.c
-index 2ade632197d5..4923909b09d7 100644
 --- a/kernel/cpuset.c
 +++ b/kernel/cpuset.c
-@@ -61,7 +61,7 @@
+@@ -60,8 +60,8 @@
  #include <linux/cgroup.h>
  #include <linux/wait.h>
  
+-struct static_key cpusets_pre_enable_key __read_mostly = STATIC_KEY_INIT_FALSE;
 -struct static_key cpusets_enabled_key __read_mostly = STATIC_KEY_INIT_FALSE;
++DEFINE_STATIC_KEY_FALSE(cpusets_pre_enable_key);
 +DEFINE_STATIC_KEY_FALSE(cpusets_enabled_key);
  
  /* See "Frequency meter" comments, below. */
  
-@@ -2524,27 +2524,27 @@ static struct cpuset *nearest_hardwall_ancestor(struct cpuset *cs)
+@@ -2551,27 +2551,27 @@ static struct cpuset *nearest_hardwall_a
   *	GFP_KERNEL   - any node in enclosing hardwalled cpuset ok
   *	GFP_USER     - only nodes in current tasks mems allowed ok.
   */
@@ -191,11 +213,9 @@ index 2ade632197d5..4923909b09d7 100644
  
  	/* Not hardwall and node outside mems_allowed: scan up cpusets */
  	spin_lock_irqsave(&callback_lock, flags);
-diff --git a/mm/page_alloc.c b/mm/page_alloc.c
-index 491309862daa..195585b455fd 100644
 --- a/mm/page_alloc.c
 +++ b/mm/page_alloc.c
-@@ -2795,7 +2795,7 @@ get_page_from_freelist(gfp_t gfp_mask, unsigned int order, int alloc_flags,
+@@ -2816,7 +2816,7 @@ zonelist_scan:
  
  		if (cpusets_enabled() &&
  			(alloc_flags & ALLOC_CPUSET) &&

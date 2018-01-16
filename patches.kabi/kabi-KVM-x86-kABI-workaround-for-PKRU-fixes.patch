@@ -1,0 +1,209 @@
+From: Joerg Roedel <jroedel@suse.de>
+Subject: [PATCH] KVM: x86: kABI workaround for PKRU fixes
+Patch-mainline: never, kabi
+References: bsc#1055935
+
+This patch partially reverts commit
+
+	b9dd21e104bc KVM: x86: simplify handling of PKRU
+
+and brings kABI back into place.
+
+** UPDATED **
+
+Since this may cause NULL dereference, move the new callback to the
+tail of kvm_x86_ops but with a __GENKSYMS__ protection.
+See bsc#1063570.
+
+Signed-off-by: Joerg Roedel <jroedel@suse.de>
+Signed-off-by: Takashi Iwai <tiwai@suse.de>
+---
+ arch/x86/include/asm/kvm_host.h |    6 +++++-
+ arch/x86/kvm/kvm_cache_regs.h   |   12 ++++++++++++
+ arch/x86/kvm/mmu.h              |    2 +-
+ arch/x86/kvm/svm.c              |   13 +++++++++++++
+ arch/x86/kvm/vmx.c              |   22 ++++++++++++++++++----
+ arch/x86/kvm/x86.c              |   21 ++++++++++++---------
+ 6 files changed, 61 insertions(+), 15 deletions(-)
+
+--- a/arch/x86/include/asm/kvm_host.h
++++ b/arch/x86/include/asm/kvm_host.h
+@@ -410,7 +410,6 @@ struct kvm_vcpu_arch {
+ 	unsigned long cr4;
+ 	unsigned long cr4_guest_owned_bits;
+ 	unsigned long cr8;
+-	u32 pkru;
+ 	u32 hflags;
+ 	u64 efer;
+ 	u64 apic_base;
+@@ -945,6 +944,11 @@ struct kvm_x86_ops {
+ 	void (*apicv_post_state_restore)(struct kvm_vcpu *vcpu);
+ 
+ 	void (*setup_mce)(struct kvm_vcpu *vcpu);
++
++	/* kABI compatibility hacks */
++#ifndef __GENKSYMS__
++	void (*set_pkru)(struct kvm_vcpu *vcpu, u32 pkru);
++#endif
+ };
+ 
+ struct kvm_arch_async_pf {
+--- a/arch/x86/kvm/kvm_cache_regs.h
++++ b/arch/x86/kvm/kvm_cache_regs.h
+@@ -84,6 +84,18 @@ static inline u64 kvm_read_edx_eax(struc
+ 		| ((u64)(kvm_register_read(vcpu, VCPU_REGS_RDX) & -1u) << 32);
+ }
+ 
++static inline u32 kvm_read_pkru(struct kvm_vcpu *vcpu)
++{
++	return kvm_x86_ops->get_pkru(vcpu);
++}
++
++/* kABI hack */
++static inline void kvm_write_pkru(struct kvm_vcpu *vcpu, u32 pkru)
++{
++	if (kvm_x86_ops->set_pkru)
++		kvm_x86_ops->set_pkru(vcpu, pkru);
++}
++
+ static inline void enter_guest_mode(struct kvm_vcpu *vcpu)
+ {
+ 	vcpu->arch.hflags |= HF_GUEST_MASK;
+--- a/arch/x86/kvm/mmu.h
++++ b/arch/x86/kvm/mmu.h
+@@ -182,7 +182,7 @@ static inline bool permission_fault(stru
+ 		* index of the protection domain, so pte_pkey * 2 is
+ 		* is the index of the first bit for the domain.
+ 		*/
+-		pkru_bits = (vcpu->arch.pkru >> (pte_pkey * 2)) & 3;
++		pkru_bits = (kvm_read_pkru(vcpu) >> (pte_pkey * 2)) & 3;
+ 
+ 		/* clear present bit, replace PFEC.RSVD with ACC_USER_MASK. */
+ 		offset = pfec - 1 +
+--- a/arch/x86/kvm/svm.c
++++ b/arch/x86/kvm/svm.c
+@@ -1584,6 +1584,16 @@ static void svm_set_rflags(struct kvm_vc
+ 	to_svm(vcpu)->vmcb->save.rflags = rflags;
+ }
+ 
++static u32 svm_get_pkru(struct kvm_vcpu *vcpu)
++{
++       return 0;
++}
++
++static void svm_set_pkru(struct kvm_vcpu *vcpu, u32 pkru)
++{
++	/* Not supported */
++}
++
+ static void svm_cache_reg(struct kvm_vcpu *vcpu, enum kvm_reg reg)
+ {
+ 	switch (reg) {
+@@ -4985,6 +4995,9 @@ static struct kvm_x86_ops svm_x86_ops =
+ 	.get_rflags = svm_get_rflags,
+ 	.set_rflags = svm_set_rflags,
+ 
++	.get_pkru = svm_get_pkru,
++	.set_pkru = svm_set_pkru,
++
+ 	.fpu_activate = svm_fpu_activate,
+ 	.fpu_deactivate = svm_fpu_deactivate,
+ 
+--- a/arch/x86/kvm/vmx.c
++++ b/arch/x86/kvm/vmx.c
+@@ -601,6 +601,7 @@ struct vcpu_vmx {
+ 
+ 	u64 current_tsc_ratio;
+ 
++	u32 guest_pkru;
+ 	u32 host_pkru;
+ 
+ 	/*
+@@ -2224,6 +2225,16 @@ static void vmx_set_rflags(struct kvm_vc
+ 	vmcs_writel(GUEST_RFLAGS, rflags);
+ }
+ 
++static u32 vmx_get_pkru(struct kvm_vcpu *vcpu)
++{
++	return to_vmx(vcpu)->guest_pkru;
++}
++
++static void vmx_set_pkru(struct kvm_vcpu *vcpu, u32 pkru)
++{
++	to_vmx(vcpu)->guest_pkru = pkru;
++}
++
+ static u32 vmx_get_interrupt_shadow(struct kvm_vcpu *vcpu)
+ {
+ 	u32 interruptibility = vmcs_read32(GUEST_INTERRUPTIBILITY_INFO);
+@@ -8626,8 +8637,8 @@ static void __noclone vmx_vcpu_run(struc
+ 
+ 	if (static_cpu_has(X86_FEATURE_PKU) &&
+ 	    kvm_read_cr4_bits(vcpu, X86_CR4_PKE) &&
+-	    vcpu->arch.pkru != vmx->host_pkru)
+-		__write_pkru(vcpu->arch.pkru);
++	    vmx->guest_pkru != vmx->host_pkru)
++		__write_pkru(vmx->guest_pkru);
+ 
+ 	atomic_switch_perf_msrs(vmx);
+ 	debugctlmsr = get_debugctlmsr();
+@@ -8775,8 +8786,8 @@ static void __noclone vmx_vcpu_run(struc
+ 	 */
+ 	if (static_cpu_has(X86_FEATURE_PKU) &&
+ 	    kvm_read_cr4_bits(vcpu, X86_CR4_PKE)) {
+-		vcpu->arch.pkru = __read_pkru();
+-		if (vcpu->arch.pkru != vmx->host_pkru)
++		vmx->guest_pkru = __read_pkru();
++		if (vmx->guest_pkru != vmx->host_pkru)
+ 			__write_pkru(vmx->host_pkru);
+ 	}
+ 
+@@ -10921,6 +10932,9 @@ static struct kvm_x86_ops vmx_x86_ops =
+ 	.get_rflags = vmx_get_rflags,
+ 	.set_rflags = vmx_set_rflags,
+ 
++	.get_pkru = vmx_get_pkru,
++	.set_pkru = vmx_set_pkru,
++
+ 	.fpu_activate = vmx_fpu_activate,
+ 	.fpu_deactivate = vmx_fpu_deactivate,
+ 
+--- a/arch/x86/kvm/x86.c
++++ b/arch/x86/kvm/x86.c
+@@ -3089,12 +3089,12 @@ static void fill_xsave(u8 *dest, struct
+ 			u32 size, offset, ecx, edx;
+ 			cpuid_count(XSTATE_CPUID, index,
+ 				    &size, &offset, &ecx, &edx);
+-			if (feature == XFEATURE_MASK_PKRU)
+-				memcpy(dest + offset, &vcpu->arch.pkru,
+-				       sizeof(vcpu->arch.pkru));
+-			else
++			if (feature == XFEATURE_MASK_PKRU) {
++				u32 pkru = kvm_read_pkru(vcpu);
++				memcpy(dest + offset, &pkru, sizeof(pkru));
++			} else {
+ 				memcpy(dest + offset, src, size);
+-
++			}
+ 		}
+ 
+ 		valid -= feature;
+@@ -3132,11 +3132,14 @@ static void load_xsave(struct kvm_vcpu *
+ 			u32 size, offset, ecx, edx;
+ 			cpuid_count(XSTATE_CPUID, index,
+ 				    &size, &offset, &ecx, &edx);
+-			if (feature == XFEATURE_MASK_PKRU)
+-				memcpy(&vcpu->arch.pkru, src + offset,
+-				       sizeof(vcpu->arch.pkru));
+-			else
++			if (feature == XFEATURE_MASK_PKRU) {
++				u32 pkru;
++
++				memcpy(&pkru, src + offset, sizeof(pkru));
++				kvm_write_pkru(vcpu, pkru);
++			} else {
+ 				memcpy(dest, src + offset, size);
++			}
+ 		}
+ 
+ 		valid -= feature;

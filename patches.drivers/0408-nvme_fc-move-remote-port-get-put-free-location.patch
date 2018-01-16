@@ -1,24 +1,26 @@
 From: James Smart <jsmart2021@gmail.com>
-Date: Sat, 13 May 2017 12:07:21 -0700
-Subject: nvme_fc: move remote port get/put/free location
+Date: Tue, 26 Sep 2017 21:50:45 -0700
+Subject: nvme-fc: move remote port get/put/free location
 References: bsc#1037838
-Patch-Mainline: submitted to linux-scsi 2017/05/16
+Git-commit: 469d0ef06debe29ec60350b9976a520c4ad5a1e8
+Patch-Mainline: v4.15-rc1
 
 move nvme_fc_rport_get/put and rport free to higher in the file to
 avoid adding prototypes to resolve references in upcoming code additions
 
 Signed-off-by: James Smart <james.smart@broadcom.com>
+Signed-off-by: Christoph Hellwig <hch@lst.de>
 Reviewed-by: Hannes Reinecke <hare@suse.com>
 ---
  drivers/nvme/host/fc.c | 78 +++++++++++++++++++++++++-------------------------
  1 file changed, 39 insertions(+), 39 deletions(-)
 
 diff --git a/drivers/nvme/host/fc.c b/drivers/nvme/host/fc.c
-index fcddaf1..5c765a5 100644
+index 2dc9932..b8e0822 100644
 --- a/drivers/nvme/host/fc.c
 +++ b/drivers/nvme/host/fc.c
-@@ -417,6 +417,45 @@ nvme_fc_signal_discovery_scan(struct nvme_fc_lport *lport,
- 	kobject_uevent_env(&nvmefc_device->kobj, KOBJ_CHANGE, envp);
+@@ -489,6 +489,45 @@ static void __nvme_fc_delete_hw_queue(struct nvme_fc_ctrl *,
+ 	kobject_uevent_env(&fc_udev_device->kobj, KOBJ_CHANGE, envp);
  }
  
 +static void
@@ -63,7 +65,7 @@ index fcddaf1..5c765a5 100644
  /**
   * nvme_fc_register_remoteport - transport entry point called by an
   *                              LLDD to register the existence of a NVME
-@@ -506,45 +545,6 @@ out_reghost_failed:
+@@ -568,45 +607,6 @@ static void __nvme_fc_delete_hw_queue(struct nvme_fc_ctrl *,
  }
  EXPORT_SYMBOL_GPL(nvme_fc_register_remoteport);
  

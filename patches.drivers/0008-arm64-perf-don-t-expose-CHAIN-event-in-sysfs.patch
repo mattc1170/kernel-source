@@ -1,0 +1,48 @@
+From 117cc676a41a76e4272d167a5fd3e45ed27f2f43 Mon Sep 17 00:00:00 2001
+From: Will Deacon <will.deacon@arm.com>
+Date: Mon, 25 Apr 2016 15:05:24 +0100
+Subject: [PATCH 08/56] arm64: perf: don't expose CHAIN event in sysfs
+
+Git-commit: 4ba2578fa7b557012b8f59ad7a9284ff15394338
+Patch-mainline: v4.7-rc1
+References: bsc#1062279
+
+The CHAIN event allows two 32-bit counters to be treated as a single
+64-bit counter, under certain allocation restrictions on the PMU.
+
+Whilst userspace could theoretically create CHAIN events using the raw
+event syntax, we don't really want to advertise this in sysfs, since
+it's useless in isolation. This patch removes the event from our /sys
+entries.
+
+Reported-by: Mark Rutland <mark.rutland@arm.com>
+Signed-off-by: Will Deacon <will.deacon@arm.com>
+Signed-off-by: Mian Yousaf Kaukab <yousaf.kaukab@suse.com>
+---
+ arch/arm64/kernel/perf_event.c | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
+
+diff --git a/arch/arm64/kernel/perf_event.c b/arch/arm64/kernel/perf_event.c
+index c81e9e7e..2c4df152 100644
+--- a/arch/arm64/kernel/perf_event.c
++++ b/arch/arm64/kernel/perf_event.c
+@@ -408,7 +408,7 @@ ARMV8_EVENT_ATTR(memory_error, ARMV8_PMUV3_PERFCTR_MEMORY_ERROR);
+ ARMV8_EVENT_ATTR(inst_spec, ARMV8_PMUV3_PERFCTR_INST_SPEC);
+ ARMV8_EVENT_ATTR(ttbr_write_retired, ARMV8_PMUV3_PERFCTR_TTBR_WRITE_RETIRED);
+ ARMV8_EVENT_ATTR(bus_cycles, ARMV8_PMUV3_PERFCTR_BUS_CYCLES);
+-ARMV8_EVENT_ATTR(chain, ARMV8_PMUV3_PERFCTR_CHAIN);
++/* Don't expose the chain event in /sys, since it's useless in isolation */
+ ARMV8_EVENT_ATTR(l1d_cache_allocate, ARMV8_PMUV3_PERFCTR_L1D_CACHE_ALLOCATE);
+ ARMV8_EVENT_ATTR(l2d_cache_allocate, ARMV8_PMUV3_PERFCTR_L2D_CACHE_ALLOCATE);
+ ARMV8_EVENT_ATTR(br_retired, ARMV8_PMUV3_PERFCTR_BR_RETIRED);
+@@ -459,7 +459,6 @@ static struct attribute *armv8_pmuv3_event_attrs[] = {
+ 	&armv8_event_attr_inst_spec.attr.attr,
+ 	&armv8_event_attr_ttbr_write_retired.attr.attr,
+ 	&armv8_event_attr_bus_cycles.attr.attr,
+-	&armv8_event_attr_chain.attr.attr,
+ 	&armv8_event_attr_l1d_cache_allocate.attr.attr,
+ 	&armv8_event_attr_l2d_cache_allocate.attr.attr,
+ 	&armv8_event_attr_br_retired.attr.attr,
+-- 
+2.11.0
+

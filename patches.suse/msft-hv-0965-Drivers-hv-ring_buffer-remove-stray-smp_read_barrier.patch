@@ -12,7 +12,7 @@ hv_get_ringbuffer_availbytes() does not provide any guarantees anyway.
 Signed-off-by: Vitaly Kuznetsov <vkuznets@redhat.com>
 Signed-off-by: K. Y. Srinivasan <kys@microsoft.com>
 Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  include/linux/hyperv.h | 2 --
  1 file changed, 2 deletions(-)

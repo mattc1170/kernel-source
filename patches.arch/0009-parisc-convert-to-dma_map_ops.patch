@@ -15,16 +15,14 @@ Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 Signed-off-by: Linus Torvalds <torvalds@linux-foundation.org>
 Signed-off-by: Matthias Brugger <mbrugger@suse.com>
 ---
- arch/parisc/Kconfig                   |   2 +
- arch/parisc/include/asm/dma-mapping.h | 189 ++--------------------------------
- arch/parisc/kernel/drivers.c          |   2 +-
- arch/parisc/kernel/pci-dma.c          |  92 ++++++++++-------
- drivers/parisc/ccio-dma.c             |  57 +++++-----
- drivers/parisc/sba_iommu.c            |  52 +++++-----
+ arch/parisc/Kconfig                   |    2 
+ arch/parisc/include/asm/dma-mapping.h |  189 +---------------------------------
+ arch/parisc/kernel/drivers.c          |    2 
+ arch/parisc/kernel/pci-dma.c          |   92 +++++++++-------
+ drivers/parisc/ccio-dma.c             |   57 +++++-----
+ drivers/parisc/sba_iommu.c            |   52 +++++----
  6 files changed, 124 insertions(+), 270 deletions(-)
 
-diff --git a/arch/parisc/Kconfig b/arch/parisc/Kconfig
-index 7c34caf..1489351 100644
 --- a/arch/parisc/Kconfig
 +++ b/arch/parisc/Kconfig
 @@ -29,6 +29,8 @@ config PARISC
@@ -36,8 +34,6 @@ index 7c34caf..1489351 100644
  
  	help
  	  The PA-RISC microprocessor is designed by Hewlett-Packard and used
-diff --git a/arch/parisc/include/asm/dma-mapping.h b/arch/parisc/include/asm/dma-mapping.h
-index d8d60a5..4de5186 100644
 --- a/arch/parisc/include/asm/dma-mapping.h
 +++ b/arch/parisc/include/asm/dma-mapping.h
 @@ -1,30 +1,11 @@
@@ -73,8 +69,8 @@ index d8d60a5..4de5186 100644
  **     I/O MMU        consistent method           dma_sync behavior
  **  =============   ======================       =======================
  **  a) PA-7x00LC    uncachable host memory          flush/purge
-@@ -40,158 +21,22 @@ struct hppa_dma_ops {
- */
+@@ -42,158 +23,22 @@ struct hppa_dma_ops {
+ #define DMA_ERROR_CODE	(~(dma_addr_t)0)
  
  #ifdef CONFIG_PA11
 -extern struct hppa_dma_ops pcxl_dma_ops;
@@ -238,7 +234,7 @@ index d8d60a5..4de5186 100644
  		flush_kernel_dcache_range((unsigned long)vaddr, size);
  }
  
-@@ -238,22 +83,6 @@ struct parisc_device;
+@@ -241,22 +86,6 @@ struct parisc_device;
  void * sba_get_iommu(struct parisc_device *dev);
  #endif
  
@@ -262,8 +258,6 @@ index d8d60a5..4de5186 100644
 +#include <asm-generic/dma-mapping-common.h>
  
  #endif
-diff --git a/arch/parisc/kernel/drivers.c b/arch/parisc/kernel/drivers.c
-index dba508f..f815066 100644
 --- a/arch/parisc/kernel/drivers.c
 +++ b/arch/parisc/kernel/drivers.c
 @@ -40,7 +40,7 @@
@@ -275,8 +269,6 @@ index dba508f..f815066 100644
  EXPORT_SYMBOL(hppa_dma_ops);
  
  static struct device root = {
-diff --git a/arch/parisc/kernel/pci-dma.c b/arch/parisc/kernel/pci-dma.c
-index b9402c9..a27e492 100644
 --- a/arch/parisc/kernel/pci-dma.c
 +++ b/arch/parisc/kernel/pci-dma.c
 @@ -413,7 +413,8 @@ pcxl_dma_init(void)
@@ -289,7 +281,7 @@ index b9402c9..a27e492 100644
  {
  	unsigned long vaddr;
  	unsigned long paddr;
-@@ -439,7 +440,8 @@ static void * pa11_dma_alloc_consistent (struct device *dev, size_t size, dma_ad
+@@ -439,7 +440,8 @@ static void * pa11_dma_alloc_consistent
  	return (void *)vaddr;
  }
  
@@ -299,7 +291,7 @@ index b9402c9..a27e492 100644
  {
  	int order;
  
-@@ -450,15 +452,20 @@ static void pa11_dma_free_consistent (struct device *dev, size_t size, void *vad
+@@ -450,15 +452,20 @@ static void pa11_dma_free_consistent (st
  	free_pages((unsigned long)__va(dma_handle), order);
  }
  
@@ -322,7 +314,7 @@ index b9402c9..a27e492 100644
  {
  	BUG_ON(direction == DMA_NONE);
  
-@@ -475,7 +482,9 @@ static void pa11_dma_unmap_single(struct device *dev, dma_addr_t dma_handle, siz
+@@ -475,7 +482,9 @@ static void pa11_dma_unmap_single(struct
  	return;
  }
  
@@ -333,7 +325,7 @@ index b9402c9..a27e492 100644
  {
  	int i;
  	struct scatterlist *sg;
-@@ -492,7 +501,9 @@ static int pa11_dma_map_sg(struct device *dev, struct scatterlist *sglist, int n
+@@ -492,7 +501,9 @@ static int pa11_dma_map_sg(struct device
  	return nents;
  }
  
@@ -344,7 +336,7 @@ index b9402c9..a27e492 100644
  {
  	int i;
  	struct scatterlist *sg;
-@@ -509,18 +520,24 @@ static void pa11_dma_unmap_sg(struct device *dev, struct scatterlist *sglist, in
+@@ -509,18 +520,24 @@ static void pa11_dma_unmap_sg(struct dev
  	return;
  }
  
@@ -373,7 +365,7 @@ index b9402c9..a27e492 100644
  }
  
  static void pa11_dma_sync_sg_for_cpu(struct device *dev, struct scatterlist *sglist, int nents, enum dma_data_direction direction)
-@@ -545,32 +562,28 @@ static void pa11_dma_sync_sg_for_device(struct device *dev, struct scatterlist *
+@@ -545,32 +562,28 @@ static void pa11_dma_sync_sg_for_device(
  		flush_kernel_vmap_range(sg_virt(sg), sg->length);
  }
  
@@ -420,7 +412,7 @@ index b9402c9..a27e492 100644
  	addr = (void *)__get_free_pages(flag, get_order(size));
  	if (addr)
  		*dma_handle = (dma_addr_t)virt_to_phys(addr);
-@@ -578,24 +591,23 @@ static void *pa11_dma_alloc_noncoherent(struct device *dev, size_t size,
+@@ -578,24 +591,23 @@ static void *pa11_dma_alloc_noncoherent(
  	return addr;
  }
  
@@ -456,11 +448,9 @@ index b9402c9..a27e492 100644
 +	.sync_sg_for_cpu =	pa11_dma_sync_sg_for_cpu,
 +	.sync_sg_for_device =	pa11_dma_sync_sg_for_device,
  };
-diff --git a/drivers/parisc/ccio-dma.c b/drivers/parisc/ccio-dma.c
-index 8e11fb2..e24b059 100644
 --- a/drivers/parisc/ccio-dma.c
 +++ b/drivers/parisc/ccio-dma.c
-@@ -786,18 +786,27 @@ ccio_map_single(struct device *dev, void *addr, size_t size,
+@@ -788,18 +788,27 @@ ccio_map_single(struct device *dev, void
  	return CCIO_IOVA(iovp, offset);
  }
  
@@ -493,7 +483,7 @@ index 8e11fb2..e24b059 100644
  {
  	struct ioc *ioc;
  	unsigned long flags; 
-@@ -826,7 +835,7 @@ ccio_unmap_single(struct device *dev, dma_addr_t iova, size_t size,
+@@ -832,7 +841,7 @@ ccio_unmap_single(struct device *dev, dm
  }
  
  /**
@@ -502,7 +492,7 @@ index 8e11fb2..e24b059 100644
   * @dev: The PCI device.
   * @size: The length of the DMA region.
   * @dma_handle: The DMA address handed back to the device (not the cpu).
-@@ -834,7 +843,8 @@ ccio_unmap_single(struct device *dev, dma_addr_t iova, size_t size,
+@@ -840,7 +849,8 @@ ccio_unmap_single(struct device *dev, dm
   * This function implements the pci_alloc_consistent function.
   */
  static void * 
@@ -512,7 +502,7 @@ index 8e11fb2..e24b059 100644
  {
        void *ret;
  #if 0
-@@ -858,7 +868,7 @@ ccio_alloc_consistent(struct device *dev, size_t size, dma_addr_t *dma_handle, g
+@@ -864,7 +874,7 @@ ccio_alloc_consistent(struct device *dev
  }
  
  /**
@@ -521,7 +511,7 @@ index 8e11fb2..e24b059 100644
   * @dev: The PCI device.
   * @size: The length of the DMA region.
   * @cpu_addr: The cpu address returned from the ccio_alloc_consistent.
-@@ -867,10 +877,10 @@ ccio_alloc_consistent(struct device *dev, size_t size, dma_addr_t *dma_handle, g
+@@ -873,10 +883,10 @@ ccio_alloc_consistent(struct device *dev
   * This function implements the pci_free_consistent function.
   */
  static void 
@@ -535,7 +525,7 @@ index 8e11fb2..e24b059 100644
  	free_pages((unsigned long)cpu_addr, get_order(size));
  }
  
-@@ -897,7 +907,7 @@ ccio_free_consistent(struct device *dev, size_t size, void *cpu_addr,
+@@ -903,7 +913,7 @@ ccio_free_consistent(struct device *dev,
   */
  static int
  ccio_map_sg(struct device *dev, struct scatterlist *sglist, int nents, 
@@ -544,7 +534,7 @@ index 8e11fb2..e24b059 100644
  {
  	struct ioc *ioc;
  	int coalesced, filled = 0;
-@@ -974,7 +984,7 @@ ccio_map_sg(struct device *dev, struct scatterlist *sglist, int nents,
+@@ -982,7 +992,7 @@ ccio_map_sg(struct device *dev, struct s
   */
  static void 
  ccio_unmap_sg(struct device *dev, struct scatterlist *sglist, int nents, 
@@ -553,7 +543,7 @@ index 8e11fb2..e24b059 100644
  {
  	struct ioc *ioc;
  
-@@ -993,27 +1003,22 @@ ccio_unmap_sg(struct device *dev, struct scatterlist *sglist, int nents,
+@@ -1005,27 +1015,22 @@ ccio_unmap_sg(struct device *dev, struct
  #ifdef CCIO_COLLECT_STATS
  		ioc->usg_pages += sg_dma_len(sglist) >> PAGE_SHIFT;
  #endif
@@ -588,7 +578,7 @@ index 8e11fb2..e24b059 100644
  };
  
  #ifdef CONFIG_PROC_FS
-@@ -1062,7 +1067,7 @@ static int ccio_proc_info(struct seq_file *m, void *p)
+@@ -1074,7 +1079,7 @@ static int ccio_proc_info(struct seq_fil
  			   ioc->msingle_calls, ioc->msingle_pages,
  			   (int)((ioc->msingle_pages * 1000)/ioc->msingle_calls));
  
@@ -597,11 +587,9 @@ index 8e11fb2..e24b059 100644
  		min = ioc->usingle_calls - ioc->usg_calls;
  		max = ioc->usingle_pages - ioc->usg_pages;
  		seq_printf(m, "pci_unmap_single: %8ld calls  %8ld pages (avg %d/1000)\n",
-diff --git a/drivers/parisc/sba_iommu.c b/drivers/parisc/sba_iommu.c
-index 225049b..42ec460 100644
 --- a/drivers/parisc/sba_iommu.c
 +++ b/drivers/parisc/sba_iommu.c
-@@ -780,8 +780,18 @@ sba_map_single(struct device *dev, void *addr, size_t size,
+@@ -784,8 +784,18 @@ sba_map_single(struct device *dev, void
  }
  
  
@@ -621,7 +609,7 @@ index 225049b..42ec460 100644
   * @dev: instance of PCI owned by the driver that's asking.
   * @iova:  IOVA of driver buffer previously mapped.
   * @size:  number of bytes mapped in driver buffer.
-@@ -790,8 +800,8 @@ sba_map_single(struct device *dev, void *addr, size_t size,
+@@ -794,8 +804,8 @@ sba_map_single(struct device *dev, void
   * See Documentation/DMA-API-HOWTO.txt
   */
  static void
@@ -632,7 +620,7 @@ index 225049b..42ec460 100644
  {
  	struct ioc *ioc;
  #if DELAYED_RESOURCE_CNT > 0
-@@ -858,15 +868,15 @@ sba_unmap_single(struct device *dev, dma_addr_t iova, size_t size,
+@@ -866,15 +876,15 @@ sba_unmap_single(struct device *dev, dma
  
  
  /**
@@ -651,7 +639,7 @@ index 225049b..42ec460 100644
  {
  	void *ret;
  
-@@ -888,7 +898,7 @@ static void *sba_alloc_consistent(struct device *hwdev, size_t size,
+@@ -896,7 +906,7 @@ static void *sba_alloc_consistent(struct
  
  
  /**
@@ -660,7 +648,7 @@ index 225049b..42ec460 100644
   * @hwdev: instance of PCI owned by the driver that's asking.
   * @size:  number of bytes mapped in driver buffer.
   * @vaddr:  virtual address IOVA of "consistent" buffer.
-@@ -897,10 +907,10 @@ static void *sba_alloc_consistent(struct device *hwdev, size_t size,
+@@ -905,10 +915,10 @@ static void *sba_alloc_consistent(struct
   * See Documentation/DMA-API-HOWTO.txt
   */
  static void
@@ -674,7 +662,7 @@ index 225049b..42ec460 100644
  	free_pages((unsigned long) vaddr, get_order(size));
  }
  
-@@ -933,7 +943,7 @@ int dump_run_sg = 0;
+@@ -941,7 +951,7 @@ int dump_run_sg = 0;
   */
  static int
  sba_map_sg(struct device *dev, struct scatterlist *sglist, int nents,
@@ -683,7 +671,7 @@ index 225049b..42ec460 100644
  {
  	struct ioc *ioc;
  	int coalesced, filled = 0;
-@@ -1016,7 +1026,7 @@ sba_map_sg(struct device *dev, struct scatterlist *sglist, int nents,
+@@ -1026,7 +1036,7 @@ sba_map_sg(struct device *dev, struct sc
   */
  static void 
  sba_unmap_sg(struct device *dev, struct scatterlist *sglist, int nents,
@@ -692,7 +680,7 @@ index 225049b..42ec460 100644
  {
  	struct ioc *ioc;
  #ifdef ASSERT_PDIR_SANITY
-@@ -1040,7 +1050,8 @@ sba_unmap_sg(struct device *dev, struct scatterlist *sglist, int nents,
+@@ -1054,7 +1064,8 @@ sba_unmap_sg(struct device *dev, struct
  
  	while (sg_dma_len(sglist) && nents--) {
  
@@ -702,7 +690,7 @@ index 225049b..42ec460 100644
  #ifdef SBA_COLLECT_STATS
  		ioc->usg_pages += ((sg_dma_address(sglist) & ~IOVP_MASK) + sg_dma_len(sglist) + IOVP_SIZE - 1) >> PAGE_SHIFT;
  		ioc->usingle_calls--;	/* kluge since call is unmap_sg() */
-@@ -1058,19 +1069,14 @@ sba_unmap_sg(struct device *dev, struct scatterlist *sglist, int nents,
+@@ -1072,19 +1083,14 @@ sba_unmap_sg(struct device *dev, struct
  
  }
  
@@ -727,6 +715,3 @@ index 225049b..42ec460 100644
  };
  
  
--- 
-2.10.0
-

@@ -1,8 +1,7 @@
 From: Thomas Petazzoni <thomas.petazzoni@free-electrons.com>
 Date: Tue, 7 Mar 2017 16:53:20 +0100
 Subject: net: mvpp2: finally add the PPv2.2 compatible string
-Patch-mainline: Queued in subsystem maintainer repository
-Git-repo: git://git.kernel.org/pub/scm/linux/kernel/git/davem/net-next.git
+Patch-mainline: v4.12-rc1
 Git-commit: fc5e1550e5c365ecd94497fe6d2f230a5e8a2a22
 References: bsc#1032150
 

@@ -1,0 +1,65 @@
+From: Eric Biggers <ebiggers@google.com>
+Date: Fri, 17 Nov 2017 11:50:27 -0800
+Subject: [PATCH] arm: crypto: reduce priority of bit-sliced AES cipher
+References: bnc#1012382
+Patch-mainline: 4.4.100
+Git-commit: 977784638f762db11674e96c311eeb41da90ab5c
+
+[ Not upstream because this is a minimal fix for a bug where arm32
+  kernels can use a much slower implementation of AES than is actually
+  available, potentially forcing vendors to disable encryption on their
+  devices.]
+
+All the aes-bs (bit-sliced) and aes-ce (cryptographic extensions)
+algorithms had a priority of 300.  This is undesirable because it means
+an aes-bs algorithm may be used when an aes-ce algorithm is available.
+The aes-ce algorithms have much better performance (up to 10x faster).
+
+Fix it by decreasing the priority of the aes-bs algorithms to 250.
+
+This was fixed upstream by commit cc477bf64573 ("crypto: arm/aes -
+replace bit-sliced OpenSSL NEON code"), but it was just a small part of
+a complete rewrite.  This patch just fixes the priority bug for older
+kernels.
+
+Signed-off-by: Eric Biggers <ebiggers@google.com>
+Acked-by: Ard Biesheuvel <ard.biesheuvel@linaro.org>
+Signed-off-by: Jiri Slaby <jslaby@suse.cz>
+---
+ arch/arm/crypto/aesbs-glue.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/arch/arm/crypto/aesbs-glue.c b/arch/arm/crypto/aesbs-glue.c
+index 6d685298690e..648d5fac9cbf 100644
+--- a/arch/arm/crypto/aesbs-glue.c
++++ b/arch/arm/crypto/aesbs-glue.c
+@@ -357,7 +357,7 @@ static struct crypto_alg aesbs_algs[] = { {
+ }, {
+ 	.cra_name		= "cbc(aes)",
+ 	.cra_driver_name	= "cbc-aes-neonbs",
+-	.cra_priority		= 300,
++	.cra_priority		= 250,
+ 	.cra_flags		= CRYPTO_ALG_TYPE_ABLKCIPHER|CRYPTO_ALG_ASYNC,
+ 	.cra_blocksize		= AES_BLOCK_SIZE,
+ 	.cra_ctxsize		= sizeof(struct async_helper_ctx),
+@@ -377,7 +377,7 @@ static struct crypto_alg aesbs_algs[] = { {
+ }, {
+ 	.cra_name		= "ctr(aes)",
+ 	.cra_driver_name	= "ctr-aes-neonbs",
+-	.cra_priority		= 300,
++	.cra_priority		= 250,
+ 	.cra_flags		= CRYPTO_ALG_TYPE_ABLKCIPHER|CRYPTO_ALG_ASYNC,
+ 	.cra_blocksize		= 1,
+ 	.cra_ctxsize		= sizeof(struct async_helper_ctx),
+@@ -397,7 +397,7 @@ static struct crypto_alg aesbs_algs[] = { {
+ }, {
+ 	.cra_name		= "xts(aes)",
+ 	.cra_driver_name	= "xts-aes-neonbs",
+-	.cra_priority		= 300,
++	.cra_priority		= 250,
+ 	.cra_flags		= CRYPTO_ALG_TYPE_ABLKCIPHER|CRYPTO_ALG_ASYNC,
+ 	.cra_blocksize		= AES_BLOCK_SIZE,
+ 	.cra_ctxsize		= sizeof(struct async_helper_ctx),
+-- 
+2.15.0
+

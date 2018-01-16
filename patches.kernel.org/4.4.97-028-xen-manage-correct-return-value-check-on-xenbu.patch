@@ -1,0 +1,38 @@
+From: Jan Beulich <JBeulich@suse.com>
+Date: Sat, 7 Oct 2017 22:37:47 +0000
+Subject: [PATCH] xen/manage: correct return value check on xenbus_scanf()
+References: bnc#1012382
+Patch-mainline: 4.4.97
+Git-commit: 4fed1b125eb6252bde478665fc05d4819f774fa8
+
+[ Upstream commit 4fed1b125eb6252bde478665fc05d4819f774fa8 ]
+
+A negative return value indicates an error; in fact the function at
+present won't ever return zero.
+
+Signed-off-by: Jan Beulich <jbeulich@suse.com>
+Reviewed-by: Juergen Gross <jgross@suse.com>
+Signed-off-by: Boris Ostrovsky <boris.ostrovsky@oracle.com>
+Signed-off-by: Sasha Levin <alexander.levin@verizon.com>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Signed-off-by: Jiri Slaby <jslaby@suse.cz>
+---
+ drivers/xen/manage.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/xen/manage.c b/drivers/xen/manage.c
+index e12bd3635f83..e8850b0e3272 100644
+--- a/drivers/xen/manage.c
++++ b/drivers/xen/manage.c
+@@ -275,7 +275,7 @@ static void sysrq_handler(struct xenbus_watch *watch, const char **vec,
+ 	err = xenbus_transaction_start(&xbt);
+ 	if (err)
+ 		return;
+-	if (!xenbus_scanf(xbt, "control", "sysrq", "%c", &sysrq_key)) {
++	if (xenbus_scanf(xbt, "control", "sysrq", "%c", &sysrq_key) < 0) {
+ 		pr_err("Unable to read sysrq code in control/sysrq\n");
+ 		xenbus_transaction_end(xbt, 1);
+ 		return;
+-- 
+2.15.0
+

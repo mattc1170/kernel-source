@@ -1,0 +1,78 @@
+From: Jiri Slaby <jslaby@suse.cz>
+Date: Tue, 25 Jul 2017 13:40:52 +0200
+Subject: Revert "mm/list_lru.c: fix list_lru_count_node() to be race free"
+Patch-mainline: never, kabi
+References: kabi
+
+This reverts commit 2d0db02d2e8f45e215fd2e646820c669c6e70159, upstream
+commit 2c80cd57c74339889a8752b20862a16c28929c3a. It breaks kABI heavily
+by changing struct list_lru_node and I see no way out.
+
+Signed-off-by: Jiri Slaby <jslaby@suse.cz>
+---
+ include/linux/list_lru.h |  1 -
+ mm/list_lru.c            | 14 ++++++++------
+ 2 files changed, 8 insertions(+), 7 deletions(-)
+
+diff --git a/include/linux/list_lru.h b/include/linux/list_lru.h
+index 743b34f56f2b..2a6b9947aaa3 100644
+--- a/include/linux/list_lru.h
++++ b/include/linux/list_lru.h
+@@ -44,7 +44,6 @@ struct list_lru_node {
+ 	/* for cgroup aware lrus points to per cgroup lists, otherwise NULL */
+ 	struct list_lru_memcg	*memcg_lrus;
+ #endif
+-	long nr_items;
+ } ____cacheline_aligned_in_smp;
+ 
+ struct list_lru {
+diff --git a/mm/list_lru.c b/mm/list_lru.c
+index 786176b1a0ee..5d8dffd5b57c 100644
+--- a/mm/list_lru.c
++++ b/mm/list_lru.c
+@@ -117,7 +117,6 @@ bool list_lru_add(struct list_lru *lru, struct list_head *item)
+ 		l = list_lru_from_kmem(nlru, item);
+ 		list_add_tail(item, &l->list);
+ 		l->nr_items++;
+-		nlru->nr_items++;
+ 		spin_unlock(&nlru->lock);
+ 		return true;
+ 	}
+@@ -137,7 +136,6 @@ bool list_lru_del(struct list_lru *lru, struct list_head *item)
+ 		l = list_lru_from_kmem(nlru, item);
+ 		list_del_init(item);
+ 		l->nr_items--;
+-		nlru->nr_items--;
+ 		spin_unlock(&nlru->lock);
+ 		return true;
+ 	}
+@@ -185,10 +183,15 @@ EXPORT_SYMBOL_GPL(list_lru_count_one);
+ 
+ unsigned long list_lru_count_node(struct list_lru *lru, int nid)
+ {
+-	struct list_lru_node *nlru;
++	long count = 0;
++	int memcg_idx;
+ 
+-	nlru = &lru->node[nid];
+-	return nlru->nr_items;
++	count += __list_lru_count_one(lru, nid, -1);
++	if (list_lru_memcg_aware(lru)) {
++		for_each_memcg_cache_index(memcg_idx)
++			count += __list_lru_count_one(lru, nid, memcg_idx);
++	}
++	return count;
+ }
+ EXPORT_SYMBOL_GPL(list_lru_count_node);
+ 
+@@ -223,7 +226,6 @@ restart:
+ 			assert_spin_locked(&nlru->lock);
+ 		case LRU_REMOVED:
+ 			isolated++;
+-			nlru->nr_items--;
+ 			/*
+ 			 * If the lru lock has been dropped, our list
+ 			 * traversal is now invalid and so we have to
+-- 
+2.13.3
+

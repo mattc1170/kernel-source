@@ -1,0 +1,29 @@
+From: Hanjun Guo <hanjun.guo@linaro.org>
+Date: Sat, 22 Apr 2017 11:23:44 +0800
+Subject: i2c: designware: Add ACPI HID for Hisilicon Hip07/08 I2C controller
+Git-commit: 58dd8abfad028633d36e2ba81109bd62f6e6e215
+Patch-mainline: v4.12-rc1
+References: bsc#1049291
+
+Add ACPI HID HISI02A1 and HISI02A2 for Hisilicon Hip07/08,
+which have different clock frequency.
+
+Signed-off-by: Hanjun Guo <hanjun.guo@linaro.org>
+Acked-by: Jarkko Nikula <jarkko.nikula@linux.intel.com>
+Signed-off-by: Rafael J. Wysocki <rafael.j.wysocki@intel.com>
+Signed-off-by: Matthias Brugger <mbrugger@suse.com>
+---
+ drivers/i2c/busses/i2c-designware-platdrv.c |    2 ++
+ 1 file changed, 2 insertions(+)
+
+--- a/drivers/i2c/busses/i2c-designware-platdrv.c
++++ b/drivers/i2c/busses/i2c-designware-platdrv.c
+@@ -138,6 +138,8 @@ static const struct acpi_device_id dw_i2
+ 	{ "808622C1", MODEL_CHERRYTRAIL },
+ 	{ "AMD0010", ACCESS_INTR_MASK },
+ 	{ "APMC0D0F", 0 },
++	{ "HISI02A1", 0 },
++	{ "HISI02A2", 0 },
+ 	{ }
+ };
+ MODULE_DEVICE_TABLE(acpi, dw_i2c_acpi_match);

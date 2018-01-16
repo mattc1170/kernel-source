@@ -1,8 +1,7 @@
 From: Michael Chan <michael.chan@broadcom.com>
 Date: Tue, 4 Apr 2017 18:14:09 -0400
 Subject: bnxt_en: Add ethtool get_wol method.
-Patch-mainline: Queued in subsystem maintainer repository
-Git-repo: git://git.kernel.org/pub/scm/linux/kernel/git/davem/net-next.git
+Patch-mainline: v4.12-rc1
 Git-commit: 8e202366dd752564d7f090ba280cc51cbf7bbbd9
 References: bsc#1020412 FATE#321671
 

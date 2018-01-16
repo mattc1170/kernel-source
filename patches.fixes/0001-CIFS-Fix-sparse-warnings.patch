@@ -1,0 +1,54 @@
+From 145958a20ae87e5e118d9d14d997a586eda0c5d3 Mon Sep 17 00:00:00 2001
+From: Steve French <smfrench@gmail.com>
+Date: Thu, 2 Mar 2017 15:42:48 -0600
+Subject: [PATCH] CIFS: Fix sparse warnings
+Git-commit: 284316dd42a2027afe37df34c5199eb4eabed8fd
+Patch-mainline: 4.11
+References: fate#323482
+
+Fix two minor sparse compile check warnings
+
+Signed-off-by: Steve French <steve.french@primarydata.com>
+Acked-by: Pavel Shilovsky <pshilov@microsoft.com>
+Reviewed-by: Aurelien Aptel <aaptel@suse.com>
+Acked-by: Aurelien Aptel <aaptel@suse.com>
+
+---
+ fs/cifs/cifs_unicode.h | 6 +++---
+ fs/cifs/cifssmb.c      | 2 +-
+ 2 files changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/fs/cifs/cifs_unicode.h b/fs/cifs/cifs_unicode.h
+index 07ade707fa60..8a79a34e66b8 100644
+--- a/fs/cifs/cifs_unicode.h
++++ b/fs/cifs/cifs_unicode.h
+@@ -131,10 +131,10 @@ wchar_t cifs_toupper(wchar_t in);
+  * Returns:
+  *     Address of the first string
+  */
+-static inline wchar_t *
+-UniStrcat(wchar_t *ucs1, const wchar_t *ucs2)
++static inline __le16 *
++UniStrcat(__le16 *ucs1, const __le16 *ucs2)
+ {
+-	wchar_t *anchor = ucs1;	/* save a pointer to start of ucs1 */
++	__le16 *anchor = ucs1;	/* save a pointer to start of ucs1 */
+ 
+ 	while (*ucs1++) ;	/* To end of first string */
+ 	ucs1--;			/* Return to the null */
+diff --git a/fs/cifs/cifssmb.c b/fs/cifs/cifssmb.c
+index 56cf123c1c5a..398838393936 100644
+--- a/fs/cifs/cifssmb.c
++++ b/fs/cifs/cifssmb.c
+@@ -4898,7 +4898,7 @@ getDFSRetry:
+ 				 le16_to_cpu(pSMBr->t2.DataCount),
+ 				 num_of_nodes, target_nodes, nls_codepage,
+ 				 remap, search_name,
+-				 pSMBr->hdr.Flags2 & SMBFLG2_UNICODE);
++				 (pSMBr->hdr.Flags2 & SMBFLG2_UNICODE) != 0);
+ 
+ GetDFSRefExit:
+ 	cifs_buf_release(pSMB);
+-- 
+2.12.3
+

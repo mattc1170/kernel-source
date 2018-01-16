@@ -10,7 +10,7 @@ crash notification function.
 
 Signed-off-by: K. Y. Srinivasan <kys@microsoft.com>
 Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  arch/x86/hyperv/hv_init.c          | 26 ++++++++++++++++++++++++++
  arch/x86/include/asm/mshyperv.h    |  1 +

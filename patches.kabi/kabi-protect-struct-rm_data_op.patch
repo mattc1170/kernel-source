@@ -1,0 +1,31 @@
+From: Jiri Slaby <jslaby@suse.cz>
+Subject: kABI: protect struct rm_data_op
+Patch-mainline: never, kabi
+References: kabi
+
+In 4.4.91, commit 6a501bddeba3406517e0ba3529d9a665709df4a1 (RDS: RDMA:
+Fix the composite message user notification), upstream commit
+941f8d55f6d613a460a5e080d25a38509f45eb75 added one member to struct
+rm_data_op. This indeed changed the layout of the structure and the kABI
+checker now complains.
+
+Given only a bit was added and the structure is internal to RDS anyway,
+simply make the change invisible to the kABI checker.
+
+Signed-off-by: Jiri Slaby <jslaby@suse.cz>
+---
+ net/rds/rds.h |    2 ++
+ 1 file changed, 2 insertions(+)
+
+--- a/net/rds/rds.h
++++ b/net/rds/rds.h
+@@ -378,7 +378,9 @@ struct rds_message {
+ 		} rdma;
+ 		struct rm_data_op {
+ 			unsigned int		op_active:1;
++#ifndef __GENKSYMS__
+ 			unsigned int		op_notify:1;
++#endif
+ 			unsigned int		op_nents;
+ 			unsigned int		op_count;
+ 			unsigned int		op_dmasg;

@@ -12,7 +12,7 @@ for PCI, and earlier work done by Brocade to support DPDK.
 Signed-off-by: Stephen Hemminger <sthemmin@microsoft.com>
 Signed-off-by: K. Y. Srinivasan <kys@microsoft.com>
 Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  MAINTAINERS                  |   1 +
  drivers/hv/connection.c      |   1 +

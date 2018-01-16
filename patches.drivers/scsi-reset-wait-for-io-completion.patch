@@ -1,0 +1,74 @@
+From: Lee Duncan <lduncan@suse.com>
+Date: Fri Aug 18 08:26:23 PDT 2017
+Subject: [PATCH] scsi: reset wait for IO completion
+References: bsc#996376
+Patch-mainline: Not yet, this is a test patch for SLE 11 SP4
+
+When a SCSI bus or target reset is initiated from
+user-land, it sets a flag saying that no more
+IO should be generated while the TMF is being
+processed, but it does not check for IO in
+progress. With this change the code waits for up
+to 5 seconds for IO to complete in such a case.
+
+Signed-off-by: Lee Duncan <lduncan@suse.com>
+--- 
+ drivers/scsi/scsi_error.c |   26 ++++++++++++++++++++++++++
+ 1 file changed, 26 insertions(+)
+
+--- a/drivers/scsi/scsi_error.c
++++ b/drivers/scsi/scsi_error.c
+@@ -55,6 +55,14 @@ static void scsi_eh_done(struct scsi_cmn
+ #define BUS_RESET_SETTLE_TIME   (10)
+ #define HOST_RESET_SETTLE_TIME  (10)
+ 
++/*
++ * Time to wait for outstanding IOs when about to send
++ * a device reset, e.g. sg_reset. The msecs to wait must
++ * be an multiple of the msecs to wait per try.
++ */
++#define	MSECS_PER_TRY_FOR_IO_ON_RESET		500
++#define	MSECS_TO_WAIT_FOR_IO_ON_RESET (MSECS_PER_TRY_FOR_IO_ON_RESET * 10)
++
+ static int scsi_eh_try_stu(struct scsi_cmnd *scmd);
+ static int scsi_try_to_abort_cmd(struct scsi_host_template *,
+ 				 struct scsi_cmnd *);
+@@ -2360,6 +2368,7 @@ scsi_ioctl_reset(struct scsi_device *dev
+ 	struct request req;
+ 	unsigned long flags;
+ 	int error = 0, rtn, val;
++	unsigned int msecs_to_wait = MSECS_TO_WAIT_FOR_IO_ON_RESET;
+ 
+ 	if (!capable(CAP_SYS_ADMIN) || !capable(CAP_SYS_RAWIO))
+ 		return -EACCES;
+@@ -2390,6 +2399,22 @@ scsi_ioctl_reset(struct scsi_device *dev
+ 
+ 	spin_lock_irqsave(shost->host_lock, flags);
+ 	shost->tmf_in_progress = 1;
++
++	/* if any IOs in progress wait for them a while */
++	while ((atomic_read(&shost->host_busy) > 0) && (msecs_to_wait > 0)) {
++		spin_unlock_irqrestore(shost->host_lock, flags);
++		msleep(MSECS_PER_TRY_FOR_IO_ON_RESET);
++		msecs_to_wait -= MSECS_PER_TRY_FOR_IO_ON_RESET;
++		spin_lock_irqsave(shost->host_lock, flags);
++	}
++	if (atomic_read(&shost->host_busy)) {
++		shost->tmf_in_progress = 0;
++		spin_unlock_irqrestore(shost->host_lock, flags);
++		SCSI_LOG_ERROR_RECOVERY(3,
++		    printk("%s: device reset failed: outstanding IO\n", __func__));
++		goto out_put_scmd;
++	}
++
+ 	spin_unlock_irqrestore(shost->host_lock, flags);
+ 
+ 	switch (val & ~SG_SCSI_RESET_NO_ESCALATE) {
+@@ -2438,6 +2463,7 @@ scsi_ioctl_reset(struct scsi_device *dev
+ 	wake_up(&shost->host_wait);
+ 	scsi_run_host_queues(shost);
+ 
++out_put_scmd:
+ 	scsi_put_command(scmd);
+ 
+ out_put_autopm_host:

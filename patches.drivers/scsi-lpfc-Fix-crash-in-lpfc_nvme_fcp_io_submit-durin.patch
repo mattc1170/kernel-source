@@ -1,0 +1,47 @@
+From: Dick Kennedy <dick.kennedy@broadcom.com>
+Date: Fri, 29 Sep 2017 17:34:41 -0700
+Subject: [PATCH] scsi: lpfc: Fix crash in lpfc_nvme_fcp_io_submit during LIP
+References: bsc#1067735
+Git-commit: b7672ae681f8debe125ecc2ec59ba31d886acf5d
+Patch-Mainline: v4.15
+
+The driver is seeing a NULL pointer in lpfc_nvme_fcp_io_submit.  This
+was ultimately due to a transport AER being sent on a terminated
+controller, thus some of the values were not set. In case we're in a
+system without a corrected transport and in case a race condition occurs
+where we enter the routine as the teardown is happening in a separate
+thread, validate the parameters before starting the io.
+
+Signed-off-by: Dick Kennedy <dick.kennedy@broadcom.com>
+Signed-off-by: James Smart <james.smart@broadcom.com>
+Reviewed-by: Johannes Thumshirn <jthumshirn@suse.de>
+Signed-off-by: Martin K. Petersen <martin.petersen@oracle.com>
+Signed-off-by: Hannes Reinecke <hare@suse.de>
+---
+ drivers/scsi/lpfc/lpfc_nvme.c | 10 ++++++++++
+ 1 file changed, 10 insertions(+)
+
+diff --git a/drivers/scsi/lpfc/lpfc_nvme.c b/drivers/scsi/lpfc/lpfc_nvme.c
+index 4d5e1bb..0810977 100644
+--- a/drivers/scsi/lpfc/lpfc_nvme.c
++++ b/drivers/scsi/lpfc/lpfc_nvme.c
+@@ -1252,6 +1252,16 @@
+ 	vport = lport->vport;
+ 	phba = vport->phba;
+ 
++	/* Validate pointers. */
++	if (!pnvme_lport || !pnvme_rport || !freqpriv) {
++		lpfc_printf_vlog(vport, KERN_INFO, LOG_NVME_IOERR | LOG_NODE,
++				 "6117 No Send:IO submit ptrs NULL, lport %p, "
++				 "rport %p fcreq_priv %p\n",
++				 pnvme_lport, pnvme_rport, freqpriv);
++		ret = -ENODEV;
++		goto out_fail;
++	}
++
+ #ifdef CONFIG_SCSI_LPFC_DEBUG_FS
+ 	if (phba->ktime_on)
+ 		start = ktime_get_ns();
+-- 
+1.8.5.6
+

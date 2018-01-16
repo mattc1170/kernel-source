@@ -1,0 +1,34 @@
+From: Jiri Slaby <jslaby@suse.cz>
+Subject: kABI: protect enum pid_type
+Patch-mainline: never, kabi
+References: kabi
+
+In 4.4.84, commit b4cf49024cf412a94121e61f8056636c557ead98 (pids: make
+task_tgid_nr_ns() safe), upstream commit
+dd1c1f2f2028a7b851f701fc6a8ebe39dcb95e7c added one constant to enum
+pid_type.
+
+It does not change anything except the checksum of enum pid_type, so
+make the change invisible to the kABI checker.
+
+Signed-off-by: Jiri Slaby <jslaby@suse.cz>
+---
+ include/linux/pid.h |    4 ++++
+ 1 file changed, 4 insertions(+)
+
+--- a/include/linux/pid.h
++++ b/include/linux/pid.h
+@@ -8,9 +8,13 @@ enum pid_type
+ 	PIDTYPE_PID,
+ 	PIDTYPE_PGID,
+ 	PIDTYPE_SID,
++#ifdef __GENKSYMS__
++	PIDTYPE_MAX
++#else
+ 	PIDTYPE_MAX,
+ 	/* only valid to __task_pid_nr_ns() */
+ 	__PIDTYPE_TGID
++#endif
+ };
+ 
+ /*

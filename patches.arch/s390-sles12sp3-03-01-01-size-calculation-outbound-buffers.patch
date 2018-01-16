@@ -1,0 +1,113 @@
+From: Julian Wiedmann <jwi@linux.vnet.ibm.com>
+Subject: s390/qeth: size calculation outbound buffers
+Patch-mainline: v4.11-rc6
+Git-commit: 7d969d2e8890f546c8cec634b3aa5f57d4eef883
+References: bnc#1053472, LTC#156276
+
+Description:  net/iucv: af_iucv socket loses connectivity
+Symptom:      Under high transmit load, af_iucv socket is forcefully
+              closed.
+Problem:      qeth trims off the ETH header on af_iucv skbs prior to
+              transmission. If the Output Queue is full, the skb is
+              queued back into the the txqueue and retransmitted at a
+              later time.
+              On retransmission, qeth attempts to trim off the
+              ETH header again, but erronously removes a part of the
+              payload and thus corrupts the transport header.
+              The channel rejects the corrupted packet with error,
+              which causes af_iucv to close the socket.
+Solution:     Instead of using skb_pull() to trim off the ETH header,
+              skip the header when mapping the skb into an IO buffer.
+              Thus a failed transmission attempt will not modify
+              the skb, and the retransmission succeeds.
+Reproduction: High tx load on an af_iucv-enabled HiperSocket.
+              Inspect the output of 'tc' for occurence of requeues.
+
+Upstream-Description:
+
+              s390/qeth: size calculation outbound buffers
+
+              Depending on the device type, hard_start_xmit() builds different output
+              buffer formats. For instance with HiperSockets, on both L2 and L3 we
+              strip the ETH header from the skb - L3 doesn't need it, and L2 carries
+              it in the buffer's header element.
+              For this, we pass data_offset = ETH_HLEN all the way down to
+              __qeth_fill_buffer(), where skb->data is then adjusted accordingly.
+              But the initial size calculation still considers the *full* skb length
+              (including the ETH header). So qeth_get_elements_no() can erroneously
+              reject a skb as too big, even though it would actually fit into an
+              output buffer once the ETH header has been trimmed off later.
+
+              Fix this by passing an additional offset to qeth_get_elements_no(),
+              that indicates where in the skb the on-wire data actually begins.
+              Since the current code uses data_offset=-1 for some special handling
+              on OSA, we need to clamp data_offset to 0...
+
+              On HiperSockets this helps when sending ~MTU-size skbs with weird page
+              alignment. No change for OSA or AF_IUCV.
+
+              Signed-off-by: Julian Wiedmann <jwi@linux.vnet.ibm.com>
+              Signed-off-by: Ursula Braun <ubraun@linux.vnet.ibm.com>
+              Signed-off-by: David S. Miller <davem@davemloft.net>
+
+
+Signed-off-by: Julian Wiedmann <jwi@linux.vnet.ibm.com>
+Acked-by: Hannes Reinecke <hare@suse.com>
+---
+ drivers/s390/net/qeth_core.h      |    2 +-
+ drivers/s390/net/qeth_core_main.c |    4 ++--
+ drivers/s390/net/qeth_l2_main.c   |    3 ++-
+ drivers/s390/net/qeth_l3_main.c   |    3 ++-
+ 4 files changed, 7 insertions(+), 5 deletions(-)
+
+--- a/drivers/s390/net/qeth_core.h
++++ b/drivers/s390/net/qeth_core.h
+@@ -950,7 +950,7 @@ int qeth_bridgeport_query_ports(struct q
+ int qeth_bridgeport_setrole(struct qeth_card *card, enum qeth_sbp_roles role);
+ int qeth_bridgeport_an_set(struct qeth_card *card, int enable);
+ int qeth_get_priority_queue(struct qeth_card *, struct sk_buff *, int, int);
+-int qeth_get_elements_no(struct qeth_card *, struct sk_buff *, int);
++int qeth_get_elements_no(struct qeth_card *, struct sk_buff *, int, int);
+ int qeth_get_elements_for_frags(struct sk_buff *);
+ int qeth_do_send_packet_fast(struct qeth_card *, struct qeth_qdio_out_q *,
+ 			struct sk_buff *, struct qeth_hdr *, int, int, int);
+--- a/drivers/s390/net/qeth_core_main.c
++++ b/drivers/s390/net/qeth_core_main.c
+@@ -3824,11 +3824,11 @@ int qeth_get_elements_for_frags(struct s
+ EXPORT_SYMBOL_GPL(qeth_get_elements_for_frags);
+ 
+ int qeth_get_elements_no(struct qeth_card *card,
+-		     struct sk_buff *skb, int elems)
++		     struct sk_buff *skb, int elems, int data_offset)
+ {
+ 	int dlen = skb->len - skb->data_len;
+ 	int elements_needed = PFN_UP((unsigned long)skb->data + dlen - 1) -
+-		PFN_DOWN((unsigned long)skb->data);
++		PFN_DOWN((unsigned long)skb->data + data_offset);
+ 
+ 	elements_needed += qeth_get_elements_for_frags(skb);
+ 
+--- a/drivers/s390/net/qeth_l2_main.c
++++ b/drivers/s390/net/qeth_l2_main.c
+@@ -923,7 +923,8 @@ static int qeth_l2_hard_start_xmit(struc
+ 		}
+ 	}
+ 
+-	elements = qeth_get_elements_no(card, new_skb, elements_needed);
++	elements = qeth_get_elements_no(card, new_skb, elements_needed,
++					(data_offset > 0) ? data_offset : 0);
+ 	if (!elements) {
+ 		if (data_offset >= 0)
+ 			kmem_cache_free(qeth_core_header_cache, hdr);
+--- a/drivers/s390/net/qeth_l3_main.c
++++ b/drivers/s390/net/qeth_l3_main.c
+@@ -2964,7 +2964,8 @@ static int qeth_l3_hard_start_xmit(struc
+ 			qeth_l3_hdr_csum(card, hdr, new_skb);
+ 	}
+ 
+-	elems = qeth_get_elements_no(card, new_skb, elements_needed);
++	elems = qeth_get_elements_no(card, new_skb, elements_needed,
++				     (data_offset > 0) ? data_offset : 0);
+ 	if (!elems) {
+ 		if (data_offset >= 0)
+ 			kmem_cache_free(qeth_core_header_cache, hdr);

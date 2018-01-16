@@ -1,0 +1,105 @@
+From: Marco Angaroni <marcoangaroni@gmail.com>
+Date: Tue, 26 Apr 2016 21:20:22 +0200
+Subject: ipvs: make drop_entry protection effective for SIP-pe
+Patch-mainline: v4.7-rc1
+Git-commit: 698e2a8dca98e4de32f3f630e6d9cd93753c52e1
+References: bsc#1056365
+
+DoS protection policy that deletes connections to avoid out of memory is
+currently not effective for SIP-pe plus OPS-mode for two reasons:
+  1) connection templates (holding SIP call-id) are always skipped in
+     ip_vs_random_dropentry()
+  2) in_pkts counter (used by drop_entry algorithm) is not incremented
+     for connection templates
+
+This patch addresses such problems with the following changes:
+  a) connection templates associated (via their dest) to virtual-services
+     configured in OPS mode are included in ip_vs_random_dropentry()
+     monitoring. This applies to SIP-pe over UDP (which requires OPS mode),
+     but is more general principle: when OPS is controlled by templates
+     memory can be used only by templates themselves, since OPS conns are
+     deleted after packet is forwarded.
+  b) OPS connections, if controlled by a template, cause increment of
+     in_pkts counter of their template. This is already happening but only
+     in case director is in master-slave mode (see ip_vs_sync_conn()).
+
+Signed-off-by: Marco Angaroni <marcoangaroni@gmail.com>
+Acked-by: Julian Anastasov <ja@ssi.bg>
+Signed-off-by: Simon Horman <horms@verge.net.au>
+Acked-by: Thomas Bogendoerfer <tbogendoerfer@suse.de>
+---
+ net/netfilter/ipvs/ip_vs_conn.c |   22 +++++++++++++++++++---
+ net/netfilter/ipvs/ip_vs_core.c |    8 +++++++-
+ 2 files changed, 26 insertions(+), 4 deletions(-)
+
+--- a/net/netfilter/ipvs/ip_vs_conn.c
++++ b/net/netfilter/ipvs/ip_vs_conn.c
+@@ -1240,6 +1240,16 @@ static inline int todrop_entry(struct ip
+ 	return 1;
+ }
+ 
++static inline bool ip_vs_conn_ops_mode(struct ip_vs_conn *cp)
++{
++	struct ip_vs_service *svc;
++
++	if (!cp->dest)
++		return false;
++	svc = rcu_dereference(cp->dest->svc);
++	return svc && (svc->flags & IP_VS_SVC_F_ONEPACKET);
++}
++
+ /* Called from keventd and must protect itself from softirqs */
+ void ip_vs_random_dropentry(struct netns_ipvs *ipvs)
+ {
+@@ -1254,11 +1264,16 @@ void ip_vs_random_dropentry(struct netns
+ 		unsigned int hash = prandom_u32() & ip_vs_conn_tab_mask;
+ 
+ 		hlist_for_each_entry_rcu(cp, &ip_vs_conn_tab[hash], c_list) {
+-			if (cp->flags & IP_VS_CONN_F_TEMPLATE)
+-				/* connection template */
+-				continue;
+ 			if (cp->ipvs != ipvs)
+ 				continue;
++			if (cp->flags & IP_VS_CONN_F_TEMPLATE) {
++				if (atomic_read(&cp->n_control) ||
++				    !ip_vs_conn_ops_mode(cp))
++					continue;
++				else
++					/* connection template of OPS */
++					goto try_drop;
++			}
+ 			if (cp->protocol == IPPROTO_TCP) {
+ 				switch(cp->state) {
+ 				case IP_VS_TCP_S_SYN_RECV:
+@@ -1286,6 +1301,7 @@ void ip_vs_random_dropentry(struct netns
+ 					continue;
+ 				}
+ 			} else {
++try_drop:
+ 				if (!todrop_entry(cp))
+ 					continue;
+ 			}
+--- a/net/netfilter/ipvs/ip_vs_core.c
++++ b/net/netfilter/ipvs/ip_vs_core.c
+@@ -611,7 +611,10 @@ int ip_vs_leave(struct ip_vs_service *sv
+ 		ret = cp->packet_xmit(skb, cp, pd->pp, iph);
+ 		/* do not touch skb anymore */
+ 
+-		atomic_inc(&cp->in_pkts);
++		if ((cp->flags & IP_VS_CONN_F_ONE_PACKET) && cp->control)
++			atomic_inc(&cp->control->in_pkts);
++		else
++			atomic_inc(&cp->in_pkts);
+ 		ip_vs_conn_put(cp);
+ 		return ret;
+ 	}
+@@ -1845,6 +1848,9 @@ ip_vs_in(struct netns_ipvs *ipvs, unsign
+ 
+ 	if (ipvs->sync_state & IP_VS_STATE_MASTER)
+ 		ip_vs_sync_conn(ipvs, cp, pkts);
++	else if ((cp->flags & IP_VS_CONN_F_ONE_PACKET) && cp->control)
++		/* increment is done inside ip_vs_sync_conn too */
++		atomic_inc(&cp->control->in_pkts);
+ 
+ 	ip_vs_conn_put(cp);
+ 	return ret;

@@ -1,8 +1,7 @@
 From: Michael Chan <michael.chan@broadcom.com>
 Date: Tue, 4 Apr 2017 18:14:12 -0400
 Subject: bnxt_en: Add basic ethtool -t selftest support.
-Patch-mainline: Queued in subsystem maintainer repository
-Git-repo: git://git.kernel.org/pub/scm/linux/kernel/git/davem/net-next.git
+Patch-mainline: v4.12-rc1
 Git-commit: eb51365846bc418687af4c4f41b68b6e84cdd449
 References: bsc#1020412 FATE#321671
 

@@ -1,0 +1,59 @@
+From aac55d7573c5d46ed9a62818d5d3e69dd2060105 Mon Sep 17 00:00:00 2001
+From: Michael Ellerman <mpe@ellerman.id.au>
+Date: Fri, 6 May 2016 16:47:12 +1000
+Subject: [PATCH] powerpc/mm/hash64: Fix subpage protection with 4K HPTE config
+Patch-mainline: v4.7-rc1
+Git-commit: aac55d7573c5d46ed9a62818d5d3e69dd2060105
+References: bsc#1010201, bsc#1066223
+
+With Linux page size of 64K and hardware only supporting 4K HPTE, if we
+use subpage protection, we always fail for the subpage 0 as shown
+below (using the selftest subpage_prot test):
+
+  520175565:  (4520111850): Failed at 0x3fffad4b0000 (p=13,sp=0,w=0), want=fault, got=pass !
+  4520890210: (4520826495): Failed at 0x3fffad5b0000 (p=29,sp=0,w=0), want=fault, got=pass !
+  4521574251: (4521510536): Failed at 0x3fffad6b0000 (p=45,sp=0,w=0), want=fault, got=pass !
+  4522258324: (4522194609): Failed at 0x3fffad7b0000 (p=61,sp=0,w=0), want=fault, got=pass !
+
+This is because hash preload wrongly inserts the HPTE entry for subpage
+0 without looking at the subpage protection information.
+
+Fix it by teaching should_hash_preload() not to preload if we have
+subpage protection configured for that range.
+
+It appears this has been broken since it was introduced in 2008.
+
+Fixes: fa28237cfcc5 ("[POWERPC] Provide a way to protect 4k subpages when using 64k pages")
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+[mpe: Rework into should_hash_preload() to avoid build fails w/SLICES=n]
+Signed-off-by: Michael Ellerman <mpe@ellerman.id.au>
+Acked-by: Michal Suchanek <msuchanek@suse.de>
+---
+ arch/powerpc/mm/hash_utils_64.c | 10 +++++++++-
+ 1 file changed, 9 insertions(+), 1 deletion(-)
+
+diff --git a/arch/powerpc/mm/hash_utils_64.c b/arch/powerpc/mm/hash_utils_64.c
+index 5dd369c..70bb445 100644
+--- a/arch/powerpc/mm/hash_utils_64.c
++++ b/arch/powerpc/mm/hash_utils_64.c
+@@ -1099,9 +1099,19 @@ void hash_preload(struct mm_struct *mm, unsigned long ea,
+ 	BUG_ON(REGION_ID(ea) != USER_REGION_ID);
+ 
+ #ifdef CONFIG_PPC_MM_SLICES
++	{
++	int psize = get_slice_psize(mm, ea);
++
+ 	/* We only prefault standard pages for now */
+-	if (unlikely(get_slice_psize(mm, ea) != mm->context.user_psize))
++	if (unlikely(psize != mm->context.user_psize))
+ 		return;
++
++	/*
++	 * Don't prefault if subpage protection is enabled for the EA.
++	 */
++	if (unlikely((psize == MMU_PAGE_4K) && subpage_protection(mm, ea)))
++		return;
++	}
+ #endif
+ 
+ 	DBG_LOW("hash_preload(mm=%p, mm->pgdir=%p, ea=%016lx, access=%lx,"

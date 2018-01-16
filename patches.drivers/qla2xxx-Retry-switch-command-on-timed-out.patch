@@ -1,0 +1,72 @@
+From: Quinn Tran <quinn.tran@cavium.com>
+Date: Thu, 9 Nov 2017 16:29:24 +0530
+Subject: [PATCH] qla2xxx: Retry switch command on timed out.
+References: bsc#1043017
+Patch-Mainline: no, SLE12-SP3 specific backport
+
+Retry GID_PN & GPN_ID switch commands for timed out case.
+
+Signed-off-by: Quinn Tran <quinn.tran@cavium.com>
+Signed-off-by: Sawan Chandak <sawan.chandak@cavium.com>
+Signed-off-by: Hannes Reinecke <hare@suse.de>
+---
+ drivers/scsi/qla2xxx/qla_gs.c | 29 ++++++++++++++++++++++++++---
+ 1 file changed, 26 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/scsi/qla2xxx/qla_gs.c b/drivers/scsi/qla2xxx/qla_gs.c
+index d656d46..78d4d16 100644
+--- a/drivers/scsi/qla2xxx/qla_gs.c
++++ b/drivers/scsi/qla2xxx/qla_gs.c
+@@ -175,6 +175,9 @@
+ 				set_bit(LOCAL_LOOP_UPDATE, &vha->dpc_flags);
+ 			}
+ 			break;
++		case CS_TIMEOUT:
++			rval = QLA_FUNCTION_TIMEOUT;
++			/* drop through */
+ 		default:
+ 			ql_dbg(ql_dbg_disc, vha, 0x2033,
+ 			    "%s failed, completion status (%x) on port_id: "
+@@ -2861,9 +2864,21 @@ static void qla2x00_async_gidpn_sp_done(void *s, int res)
+ 	ea.rc = res;
+ 	ea.event = FCME_GIDPN_DONE;
+ 
+-	ql_dbg(ql_dbg_disc, vha, 0x204f,
+-	    "Async done-%s res %x, WWPN %8phC ID %3phC \n",
+-	    sp->name, res, fcport->port_name, id);
++	if (res == QLA_FUNCTION_TIMEOUT) {
++		ql_dbg(ql_dbg_disc, sp->vha, 0xffff,
++		    "Async done-%s WWPN %8phC timed out.\n",
++		    sp->name, fcport->port_name);
++		qla24xx_post_gidpn_work(sp->vha, fcport);
++		sp->free(sp);
++		return;
++	} else if (res)
++		ql_dbg(ql_dbg_disc, sp->vha, 0xffff,
++		    "Async done-%s fail res %x, WWPN %8phC \n",
++		    sp->name, res, fcport->port_name);
++	else
++		ql_dbg(ql_dbg_disc, vha, 0x204f,
++		    "Async done-%s good WWPN %8phC ID %3phC\n",
++		    sp->name, fcport->port_name, id);
+ 
+ 	qla2x00_fcport_event_handler(vha, &ea);
+ 
+@@ -3198,6 +3213,14 @@ static void qla2x00_async_gpnid_sp_done(void *s, int res)
+ 	ea.rc = res;
+ 	ea.event = FCME_GPNID_DONE;
+ 
++	if (res) {
++		if (res == QLA_FUNCTION_TIMEOUT) {
++			qla24xx_post_gpnid_work(sp->vha, &ea.id);
++		}
++		sp->free(sp);
++		return;
++	}
++
+ 	qla2x00_fcport_event_handler(vha, &ea);
+ 
+ 	e = qla2x00_alloc_work(vha, QLA_EVT_GPNID_DONE);
+-- 
+1.8.5.6
+

@@ -14,7 +14,7 @@ The patch is being resent to address earlier email issues.
 
 Signed-off-by: K. Y. Srinivasan <kys@microsoft.com>
 Signed-off-by: David S. Miller <davem@davemloft.net>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  drivers/net/hyperv/netvsc.c | 88 ++++++++++++++++++++++++++++++---------------
  1 file changed, 59 insertions(+), 29 deletions(-)

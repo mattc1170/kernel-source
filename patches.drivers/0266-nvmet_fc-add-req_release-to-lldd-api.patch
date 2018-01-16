@@ -1,11 +1,9 @@
-From 80a468d80d9feff14c1e98a9641a65247a8e6648 Mon Sep 17 00:00:00 2001
 From: James Smart <jsmart2021@gmail.com>
 Date: Tue, 11 Apr 2017 11:32:29 -0700
 Subject: nvmet_fc: add req_release to lldd api
 References: bsc#1036896
 Git-commit: 19b58d9473e8e3d38e7f3602a07c8febfbd07bc1
-Patch-mainline: Queued in subsystem maintainer repository
-Git-repo: git://git.infradead.org/nvme.git
+Patch-mainline: v4.12-rc1
 
 With the advent of the opdone calls changing context, the lldd can no
 longer assume that once the op->done call returns for RSP operations

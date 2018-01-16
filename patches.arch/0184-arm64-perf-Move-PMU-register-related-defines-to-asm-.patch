@@ -20,16 +20,14 @@ Signed-off-by: Marc Zyngier <marc.zyngier@arm.com>
 Signed-off-by: Will Deacon <will.deacon@arm.com>
 Signed-off-by: Mian Yousaf Kaukab <yousaf.kaukab@suse.com>
 ---
- arch/arm64/include/asm/kvm_host.h       |  1 -
- arch/arm64/include/asm/kvm_hyp.h        |  1 -
- arch/arm64/include/asm/kvm_perf_event.h | 68 ------------------------------
- arch/arm64/include/asm/perf_event.h     | 47 +++++++++++++++++++++
- arch/arm64/kernel/perf_event.c          | 74 +++++++++------------------------
- 5 files changed, 67 insertions(+), 124 deletions(-)
+ arch/arm64/include/asm/kvm_host.h       |    1 
+ arch/arm64/include/asm/kvm_hyp.h        |    1 
+ arch/arm64/include/asm/kvm_perf_event.h |   68 -------------------------------
+ arch/arm64/include/asm/perf_event.h     |   47 +++++++++++++++++++++
+ arch/arm64/kernel/perf_event.c          |   70 ++++++++------------------------
+ 5 files changed, 65 insertions(+), 122 deletions(-)
  delete mode 100644 arch/arm64/include/asm/kvm_perf_event.h
 
-diff --git a/arch/arm64/include/asm/kvm_host.h b/arch/arm64/include/asm/kvm_host.h
-index 320b69c..cf5d7e7 100644
 --- a/arch/arm64/include/asm/kvm_host.h
 +++ b/arch/arm64/include/asm/kvm_host.h
 @@ -27,7 +27,6 @@
@@ -40,8 +38,6 @@ index 320b69c..cf5d7e7 100644
  
  #define __KVM_HAVE_ARCH_INTC_INITIALIZED
  
-diff --git a/arch/arm64/include/asm/kvm_hyp.h b/arch/arm64/include/asm/kvm_hyp.h
-index a46b019..44eaff7 100644
 --- a/arch/arm64/include/asm/kvm_hyp.h
 +++ b/arch/arm64/include/asm/kvm_hyp.h
 @@ -21,7 +21,6 @@
@@ -52,9 +48,6 @@ index a46b019..44eaff7 100644
  #include <asm/sysreg.h>
  
  #define __hyp_text __section(.hyp.text) notrace
-diff --git a/arch/arm64/include/asm/kvm_perf_event.h b/arch/arm64/include/asm/kvm_perf_event.h
-deleted file mode 100644
-index c18fdeb..0000000
 --- a/arch/arm64/include/asm/kvm_perf_event.h
 +++ /dev/null
 @@ -1,68 +0,0 @@
@@ -126,8 +119,6 @@ index c18fdeb..0000000
 -#define ARMV8_PMU_USERENR_ER	(1 << 3) /* Event counter can be read at EL0 */
 -
 -#endif
-diff --git a/arch/arm64/include/asm/perf_event.h b/arch/arm64/include/asm/perf_event.h
-index 7bd3cdb..2065f46 100644
 --- a/arch/arm64/include/asm/perf_event.h
 +++ b/arch/arm64/include/asm/perf_event.h
 @@ -17,6 +17,53 @@
@@ -184,8 +175,6 @@ index 7bd3cdb..2065f46 100644
  #ifdef CONFIG_PERF_EVENTS
  struct pt_regs;
  extern unsigned long perf_instruction_pointer(struct pt_regs *regs);
-diff --git a/arch/arm64/kernel/perf_event.c b/arch/arm64/kernel/perf_event.c
-index a6aa25b..8174e01 100644
 --- a/arch/arm64/kernel/perf_event.c
 +++ b/arch/arm64/kernel/perf_event.c
 @@ -20,6 +20,7 @@
@@ -196,7 +185,7 @@ index a6aa25b..8174e01 100644
  #include <asm/virt.h>
  
  #include <linux/of.h>
-@@ -536,9 +537,6 @@ static const struct attribute_group *armv8_pmuv3_attr_groups[] = {
+@@ -536,9 +537,6 @@ static const struct attribute_group *arm
  #define	ARMV8_IDX_COUNTER_LAST(cpu_pmu) \
  	(ARMV8_IDX_CYCLE_COUNTER + cpu_pmu->num_events - 1)
  
@@ -206,7 +195,7 @@ index a6aa25b..8174e01 100644
  /*
   * ARMv8 low level PMU access
   */
-@@ -547,40 +545,7 @@ static const struct attribute_group *armv8_pmuv3_attr_groups[] = {
+@@ -547,40 +545,7 @@ static const struct attribute_group *arm
   * Perf Event to low level counters mapping
   */
  #define	ARMV8_IDX_TO_COUNTER(x)	\
@@ -248,7 +237,7 @@ index a6aa25b..8174e01 100644
  
  static inline u32 armv8pmu_pmcr_read(void)
  {
-@@ -591,14 +556,14 @@ static inline u32 armv8pmu_pmcr_read(void)
+@@ -591,14 +556,14 @@ static inline u32 armv8pmu_pmcr_read(voi
  
  static inline void armv8pmu_pmcr_write(u32 val)
  {
@@ -265,7 +254,7 @@ index a6aa25b..8174e01 100644
  }
  
  static inline int armv8pmu_counter_valid(struct arm_pmu *cpu_pmu, int idx)
-@@ -664,7 +629,7 @@ static inline void armv8pmu_write_counter(struct perf_event *event, u32 value)
+@@ -664,7 +629,7 @@ static inline void armv8pmu_write_counte
  static inline void armv8pmu_write_evtype(int idx, u32 val)
  {
  	if (armv8pmu_select_counter(idx) == idx) {
@@ -274,7 +263,7 @@ index a6aa25b..8174e01 100644
  		asm volatile("msr pmxevtyper_el0, %0" :: "r" (val));
  	}
  }
-@@ -710,7 +675,7 @@ static inline u32 armv8pmu_getreset_flags(void)
+@@ -710,7 +675,7 @@ static inline u32 armv8pmu_getreset_flag
  	asm volatile("mrs %0, pmovsclr_el0" : "=r" (value));
  
  	/* Write to clear flags */
@@ -283,7 +272,7 @@ index a6aa25b..8174e01 100644
  	asm volatile("msr pmovsclr_el0, %0" :: "r" (value));
  
  	return value;
-@@ -848,7 +813,7 @@ static void armv8pmu_start(struct arm_pmu *cpu_pmu)
+@@ -848,7 +813,7 @@ static void armv8pmu_start(struct arm_pm
  
  	raw_spin_lock_irqsave(&events->pmu_lock, flags);
  	/* Enable all counters */
@@ -292,7 +281,7 @@ index a6aa25b..8174e01 100644
  	raw_spin_unlock_irqrestore(&events->pmu_lock, flags);
  }
  
-@@ -859,7 +824,7 @@ static void armv8pmu_stop(struct arm_pmu *cpu_pmu)
+@@ -859,7 +824,7 @@ static void armv8pmu_stop(struct arm_pmu
  
  	raw_spin_lock_irqsave(&events->pmu_lock, flags);
  	/* Disable all counters */
@@ -301,7 +290,7 @@ index a6aa25b..8174e01 100644
  	raw_spin_unlock_irqrestore(&events->pmu_lock, flags);
  }
  
-@@ -869,7 +834,7 @@ static int armv8pmu_get_event_idx(struct pmu_hw_events *cpuc,
+@@ -869,7 +834,7 @@ static int armv8pmu_get_event_idx(struct
  	int idx;
  	struct arm_pmu *cpu_pmu = to_arm_pmu(event->pmu);
  	struct hw_perf_event *hwc = &event->hw;
@@ -310,7 +299,7 @@ index a6aa25b..8174e01 100644
  
  	/* Always place a cycle counter into the cycle counter. */
  	if (evtype == ARMV8_PMUV3_PERFCTR_CPU_CYCLES) {
-@@ -906,11 +871,11 @@ static int armv8pmu_set_event_filter(struct hw_perf_event *event,
+@@ -906,11 +871,11 @@ static int armv8pmu_set_event_filter(str
  	    attr->exclude_kernel != attr->exclude_hv)
  		return -EINVAL;
  	if (attr->exclude_user)
@@ -325,7 +314,7 @@ index a6aa25b..8174e01 100644
  
  	/*
  	 * Install the filter into config_base as this is used to
-@@ -936,42 +901,43 @@ static void armv8pmu_reset(void *info)
+@@ -936,35 +901,36 @@ static void armv8pmu_reset(void *info)
  	 * Initialize & Reset PMNC. Request overflow interrupt for
  	 * 64 bit cycle counter but cheat in armv8pmu_write_counter().
  	 */
@@ -367,23 +356,3 @@ index a6aa25b..8174e01 100644
  }
  
  static int armv8_vulcan_map_event(struct perf_event *event)
- {
- 	return armpmu_map_event(event, &armv8_vulcan_perf_map,
- 				&armv8_vulcan_perf_cache_map,
--				ARMV8_EVTYPE_EVENT);
-+				ARMV8_PMU_EVTYPE_EVENT);
- }
- 
- static void armv8pmu_read_num_pmnc_events(void *info)
-@@ -979,7 +945,7 @@ static void armv8pmu_read_num_pmnc_events(void *info)
- 	int *nb_cnt = info;
- 
- 	/* Read the nb of CNTx counters supported from PMNC */
--	*nb_cnt = (armv8pmu_pmcr_read() >> ARMV8_PMCR_N_SHIFT) & ARMV8_PMCR_N_MASK;
-+	*nb_cnt = (armv8pmu_pmcr_read() >> ARMV8_PMU_PMCR_N_SHIFT) & ARMV8_PMU_PMCR_N_MASK;
- 
- 	/* Add the CPU cycles counter */
- 	*nb_cnt += 1;
--- 
-2.11.0
-

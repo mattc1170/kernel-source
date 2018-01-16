@@ -1,0 +1,62 @@
+From: Feras Daoud <ferasda@mellanox.com>
+Date: Wed, 28 Dec 2016 14:47:22 +0200
+Subject: [PATCH] IB/ipoib: Fix deadlock over vlan_mutex
+Patch-mainline: 4.4.91
+References: FATE#322350 bnc#1012382 bsc#1022595
+Git-commit: 1c3098cdb05207e740715857df7b0998e372f527
+
+[ Upstream commit 1c3098cdb05207e740715857df7b0998e372f527 ]
+
+This patch fixes Deadlock while executing ipoib_vlan_delete.
+
+The function takes the vlan_rwsem semaphore and calls
+unregister_netdevice. The later function calls
+ipoib_mcast_stop_thread that cause workqueue flush.
+
+When the queue has one of the ipoib_ib_dev_flush_xxx events,
+a deadlock occur because these events also tries to catch the
+same vlan_rwsem semaphore.
+
+To fix, unregister_netdevice should be called after releasing
+the semaphore.
+
+Fixes: cbbe1efa4972 ("IPoIB: Fix deadlock between ipoib_open() and child interface create")
+Signed-off-by: Feras Daoud <ferasda@mellanox.com>
+Signed-off-by: Erez Shitrit <erezsh@mellanox.com>
+Reviewed-by: Alex Vesker <valex@mellanox.com>
+Signed-off-by: Leon Romanovsky <leon@kernel.org>
+Signed-off-by: Doug Ledford <dledford@redhat.com>
+Signed-off-by: Sasha Levin <alexander.levin@verizon.com>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Signed-off-by: Jiri Slaby <jslaby@suse.cz>
+---
+ drivers/infiniband/ulp/ipoib/ipoib_vlan.c | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/infiniband/ulp/ipoib/ipoib_vlan.c b/drivers/infiniband/ulp/ipoib/ipoib_vlan.c
+index 57a34f87dedf..3a647fd50f09 100644
+--- a/drivers/infiniband/ulp/ipoib/ipoib_vlan.c
++++ b/drivers/infiniband/ulp/ipoib/ipoib_vlan.c
+@@ -185,7 +185,6 @@ int ipoib_vlan_delete(struct net_device *pdev, unsigned short pkey)
+ 	list_for_each_entry_safe(priv, tpriv, &ppriv->child_intfs, list) {
+ 		if (priv->pkey == pkey &&
+ 		    priv->child_type == IPOIB_LEGACY_CHILD) {
+-			unregister_netdevice(priv->dev);
+ 			list_del(&priv->list);
+ 			dev = priv->dev;
+ 			break;
+@@ -193,6 +192,11 @@ int ipoib_vlan_delete(struct net_device *pdev, unsigned short pkey)
+ 	}
+ 	up_write(&ppriv->vlan_rwsem);
+ 
++	if (dev) {
++		ipoib_dbg(ppriv, "delete child vlan %s\n", dev->name);
++		unregister_netdevice(dev);
++	}
++
+ 	rtnl_unlock();
+ 
+ 	if (dev) {
+-- 
+2.14.2
+

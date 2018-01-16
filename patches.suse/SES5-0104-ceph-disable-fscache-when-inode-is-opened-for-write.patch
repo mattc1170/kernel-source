@@ -22,7 +22,7 @@ Acked-by: Luis Henriques <lhenriques@suse.com>
 
 --- a/fs/ceph/addr.c
 +++ b/fs/ceph/addr.c
-@@ -536,8 +536,6 @@ static int writepage_nounlock(struct pag
+@@ -539,8 +539,6 @@ static int writepage_nounlock(struct pag
  	    CONGESTION_ON_THRESH(fsc->mount_options->congestion_kb))
  		set_bdi_congested(&fsc->backing_dev_info, BLK_RW_ASYNC);
  
@@ -109,7 +109,7 @@ Acked-by: Luis Henriques <lhenriques@suse.com>
 +	}
 +}
 +
- static void ceph_vfs_readpage_complete(struct page *page, void *data, int error)
+ static void ceph_readpage_from_fscache_complete(struct page *page, void *data, int error)
  {
  	if (!error)
 --- a/fs/ceph/cache.h

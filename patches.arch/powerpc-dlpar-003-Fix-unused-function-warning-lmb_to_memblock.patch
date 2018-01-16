@@ -1,0 +1,71 @@
+From 80d2efaaded45d6cd4d193654046862549bc2cb8 Mon Sep 17 00:00:00 2001
+From: Alastair D'Silva <alastair@d-silva.org>
+Date: Mon, 1 Aug 2016 16:32:51 +1000
+Subject: [PATCH] powerpc: Fix unused function warning 'lmb_to_memblock'
+
+References: FATE#322022
+Patch-mainline: v4.8-rc2
+Git-commit: 9dc512819e4b723856773f5a018865c20441072f
+
+This patch fixes the following warning:
+arch/powerpc/platforms/pseries/hotplug-memory.c:323:29: error: 'lmb_to_memblock' defined but not used [-Werror=unused-function]
+static struct memory_block *lmb_to_memblock(struct of_drconf_cell *lmb)
+                           ^~~~~~~~~~~~~~~
+
+The only consumer of this function is 'dlpar_remove_lmb', which is
+enabled with CONFIG_MEMORY_HOTREMOVE, so move it into the same
+ifdef block.
+
+Signed-off-by: Michael Ellerman <mpe@ellerman.id.au>
+Acked-by: Michal Suchanek <msuchanek@suse.de>
+---
+ arch/powerpc/platforms/pseries/hotplug-memory.c | 26 ++++++++++++-------------
+ 1 file changed, 13 insertions(+), 13 deletions(-)
+
+diff --git a/arch/powerpc/platforms/pseries/hotplug-memory.c b/arch/powerpc/platforms/pseries/hotplug-memory.c
+index 1b24c649b228..58112f776ed5 100644
+--- a/arch/powerpc/platforms/pseries/hotplug-memory.c
++++ b/arch/powerpc/platforms/pseries/hotplug-memory.c
+@@ -323,19 +323,6 @@ static int dlpar_remove_device_tree_lmb(struct of_drconf_cell *lmb)
+ 	return dlpar_update_device_tree_lmb(lmb);
+ }
+ 
+-static struct memory_block *lmb_to_memblock(struct of_drconf_cell *lmb)
+-{
+-	unsigned long section_nr;
+-	struct mem_section *mem_sect;
+-	struct memory_block *mem_block;
+-
+-	section_nr = pfn_to_section_nr(PFN_DOWN(lmb->base_addr));
+-	mem_sect = __nr_to_section(section_nr);
+-
+-	mem_block = find_memory_block(mem_sect);
+-	return mem_block;
+-}
+-
+ #ifdef CONFIG_MEMORY_HOTREMOVE
+ static int pseries_remove_memblock(unsigned long base, unsigned int memblock_size)
+ {
+@@ -429,6 +416,19 @@ static bool lmb_is_removable(struct of_drconf_cell *lmb)
+ 
+ static int dlpar_add_lmb(struct of_drconf_cell *);
+ 
++static struct memory_block *lmb_to_memblock(struct of_drconf_cell *lmb)
++{
++	unsigned long section_nr;
++	struct mem_section *mem_sect;
++	struct memory_block *mem_block;
++
++	section_nr = pfn_to_section_nr(PFN_DOWN(lmb->base_addr));
++	mem_sect = __nr_to_section(section_nr);
++
++	mem_block = find_memory_block(mem_sect);
++	return mem_block;
++}
++
+ static int dlpar_remove_lmb(struct of_drconf_cell *lmb)
+ {
+ 	struct memory_block *mem_block;
+-- 
+2.10.2
+

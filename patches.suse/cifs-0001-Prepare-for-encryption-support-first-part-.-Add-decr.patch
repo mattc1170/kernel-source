@@ -79,7 +79,7 @@ Acked-by: David Mulder <dmulder@suse.com>
  extern int calc_lanman_hash(const char *password, const char *cryptkey,
 --- a/fs/cifs/connect.c
 +++ b/fs/cifs/connect.c
-@@ -775,7 +775,7 @@ standard_receive3(struct TCP_Server_Info
+@@ -787,7 +787,7 @@ standard_receive3(struct TCP_Server_Info
  	 * 48 bytes is enough to display the header and a little bit
  	 * into the payload for debugging purposes.
  	 */
@@ -240,7 +240,7 @@ Acked-by: David Mulder <dmulder@suse.com>
  	hdr->StructureSize = cpu_to_le16(64);
  	hdr->Command = smb2_cmd;
  	if (tcon && tcon->ses && tcon->ses->server) {
-@@ -1589,7 +1586,8 @@ SMB2_ioctl(const unsigned int xid, struc
+@@ -1597,7 +1594,8 @@ SMB2_ioctl(const unsigned int xid, struc
  		goto ioctl_exit;
  	}
  
@@ -250,7 +250,7 @@ Acked-by: David Mulder <dmulder@suse.com>
  	       *plen);
  ioctl_exit:
  	free_rsp_buf(resp_buftype, rsp);
-@@ -2164,7 +2162,7 @@ SMB2_read(const unsigned int xid, struct
+@@ -2172,7 +2170,7 @@ SMB2_read(const unsigned int xid, struct
  	}
  
  	if (*buf) {
@@ -262,7 +262,7 @@ Acked-by: David Mulder <dmulder@suse.com>
 --- a/fs/cifs/smb2pdu.h
 +++ b/fs/cifs/smb2pdu.h
 @@ -86,6 +86,7 @@
- #define MAX_SMB2_HDR_SIZE 0x78 /* 4 len + 64 hdr + (2*24 wct) + 2 bct + 2 pad */
+ #define MAX_SMB2_HDR_SIZE 0x00b0
  
  #define SMB2_PROTO_NUMBER cpu_to_le32(0x424d53fe)
 +#define SMB2_TRANSFORM_PROTO_NUM cpu_to_le32(0x424d53fd)

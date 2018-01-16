@@ -1,4 +1,3 @@
-From c682d91096e13ac033a8f22b41d89cd9a8c02a2d Mon Sep 17 00:00:00 2001
 From: Dan Carpenter <dan.carpenter@oracle.com>
 Date: Thu, 4 May 2017 00:22:16 +0300
 Subject: scsi: lpfc: double lock typo in lpfc_ns_rsp()

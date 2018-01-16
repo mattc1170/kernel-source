@@ -1,0 +1,37 @@
+From: Thomas Bogendoerfer <tbogendoerfer@suse.de>
+Subject: kABI: protect struct mlx5_priv
+Patch-Mainline: never, kABI
+References: bsc#1015342 FATE#321688 bsc#1015343 FATE#321689
+
+Fix 97834eba7c19 ("net/mlx5: Delay events till ib registration ends")
+adds two fields to struct mlx5_priv, which need to be protected to
+not break kABI.
+
+Signed-off-by: Thomas Bogendoerfer <tbogendoerfer@suse.de>
+---
+ include/linux/mlx5/driver.h |    7 ++++---
+ 1 file changed, 4 insertions(+), 3 deletions(-)
+
+--- a/include/linux/mlx5/driver.h
++++ b/include/linux/mlx5/driver.h
+@@ -638,9 +638,6 @@ struct mlx5_priv {
+ 	struct list_head        ctx_list;
+ 	spinlock_t              ctx_lock;
+ 
+-	struct list_head	waiting_events_list;
+-	bool			is_accum_events;
+-
+ 	struct mlx5_flow_steering *steering;
+ 	struct mlx5_eswitch     *eswitch;
+ 	struct mlx5_core_sriov	sriov;
+@@ -660,6 +657,10 @@ struct mlx5_priv {
+ #endif
+ 	struct mlx5_bfreg_data		bfregs;
+ 	struct mlx5_uars_page	       *uar;
++#ifndef __GENKSYMS__
++	struct list_head	waiting_events_list;
++	bool			is_accum_events;
++#endif
+ };
+ 
+ enum mlx5_device_state {

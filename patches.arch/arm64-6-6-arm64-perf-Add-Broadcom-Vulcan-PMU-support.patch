@@ -1,34 +1,27 @@
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Subject: [v4,6/6] arm64/perf: Add Broadcom Vulcan PMU support
 From: Ashok Kumar <ashoks@broadcom.com>
-X-Patchwork-Id: 8800901
-Message-Id: <1460379741-1181-7-git-send-email-ashoks@broadcom.com>
-To: linux-arm-kernel@lists.infradead.org, devicetree@vger.kernel.org,
-	mark.rutland@arm.com, will.deacon@arm.com, Suzuki.Poulose@arm.com,
-	robh+dt@kernel.org, catalin.marinas@arm.com
-Cc: jchandra@broadcom.com, Ashok Kumar <ashoks@broadcom.com>,
-	jglauber@cavium.com
-Date: Mon, 11 Apr 2016 06:02:21 -0700
-Patch-mainline: Submitted, https://patchwork.kernel.org/patch/8800901
+Date: Thu, 21 Apr 2016 05:58:45 -0700
+Subject: arm64/perf: Add Broadcom Vulcan PMU support
+
+Git-commit: 201a72b2829fa6d58443fb9857db944b52d77062
+Patch-mainline: v4.7-rc1
+References: fate#319481
 
 Broadcom Vulcan uses ARMv8 PMUv3 and supports most of
 the ARMv8 recommended implementation defined events.
 
 Added Vulcan events mapping for perf and perf_cache map.
 
+Acked-by: Mark Rutland <mark.rutland@arm.com>
 Signed-off-by: Ashok Kumar <ashoks@broadcom.com>
-Signed-off-by: Matthias Brugger <mbrugger@suse.com>
-
+Signed-off-by: Will Deacon <will.deacon@arm.com>
+Signed-off-by: Mian Yousaf Kaukab <yousaf.kaukab@suse.com>
 ---
-arch/arm64/kernel/perf_event.c | 60 ++++++++++++++++++++++++++++++++++++++++++
  arch/arm64/kernel/perf_event.c |   60 +++++++++++++++++++++++++++++++++++++++++
  1 file changed, 60 insertions(+)
 
 --- a/arch/arm64/kernel/perf_event.c
 +++ b/arch/arm64/kernel/perf_event.c
-@@ -231,6 +231,20 @@ static const unsigned armv8_thunder_perf
+@@ -232,6 +232,20 @@ static const unsigned armv8_thunder_perf
  	[PERF_COUNT_HW_STALLED_CYCLES_BACKEND]	= ARMV8_PMUV3_PERFCTR_STALL_BACKEND,
  };
  
@@ -49,7 +42,7 @@ arch/arm64/kernel/perf_event.c | 60 ++++++++++++++++++++++++++++++++++++++++++
  static const unsigned armv8_pmuv3_perf_cache_map[PERF_COUNT_HW_CACHE_MAX]
  						[PERF_COUNT_HW_CACHE_OP_MAX]
  						[PERF_COUNT_HW_CACHE_RESULT_MAX] = {
-@@ -323,6 +337,35 @@ static const unsigned armv8_thunder_perf
+@@ -324,6 +338,35 @@ static const unsigned armv8_thunder_perf
  	[C(BPU)][C(OP_WRITE)][C(RESULT_MISS)]	= ARMV8_PMUV3_PERFCTR_BR_MIS_PRED,
  };
  
@@ -85,7 +78,7 @@ arch/arm64/kernel/perf_event.c | 60 ++++++++++++++++++++++++++++++++++++++++++
  
  static ssize_t
  armv8pmu_events_sysfs_show(struct device *dev,
-@@ -923,6 +966,13 @@ static int armv8_thunder_map_event(struc
+@@ -924,6 +967,13 @@ static int armv8_thunder_map_event(struc
  				ARMV8_EVTYPE_EVENT);
  }
  
@@ -93,13 +86,13 @@ arch/arm64/kernel/perf_event.c | 60 ++++++++++++++++++++++++++++++++++++++++++
 +{
 +	return armpmu_map_event(event, &armv8_vulcan_perf_map,
 +				&armv8_vulcan_perf_cache_map,
-+				ARMV8_EVTYPE_EVENT);
++				ARMV8_PMU_EVTYPE_EVENT);
 +}
 +
- static void armv8pmu_read_num_pmnc_events(void *info)
+ static void __armv8pmu_probe_pmu(void *info)
  {
- 	int *nb_cnt = info;
-@@ -1022,12 +1072,22 @@ static int armv8_thunder_pmu_init(struct
+ 	struct arm_pmu *cpu_pmu = info;
+@@ -1011,12 +1061,22 @@ static int armv8_thunder_pmu_init(struct
  	return armv8pmu_probe_pmu(cpu_pmu);
  }
  

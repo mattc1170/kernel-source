@@ -16,16 +16,14 @@ the following policy:
 Signed-off-by: K. Y. Srinivasan <kys@microsoft.com>
 Reviewed-by: Long Li <longli@microsoft.com>
 Signed-off-by: Martin K. Petersen <martin.petersen@oracle.com>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
- drivers/scsi/storvsc_drv.c | 113 +++++++++++++++++++++++++++++++++++++++++++--
+ drivers/scsi/storvsc_drv.c |  113 +++++++++++++++++++++++++++++++++++++++++++--
  1 file changed, 110 insertions(+), 3 deletions(-)
 
-diff --git a/drivers/scsi/storvsc_drv.c b/drivers/scsi/storvsc_drv.c
-index 3b1c2f6528b4..63f6b1ad57c5 100644
 --- a/drivers/scsi/storvsc_drv.c
 +++ b/drivers/scsi/storvsc_drv.c
-@@ -458,6 +458,15 @@ struct storvsc_device {
+@@ -461,6 +461,15 @@ struct storvsc_device {
  	 * Max I/O, the device can support.
  	 */
  	u32   max_transfer_bytes;
@@ -41,7 +39,7 @@ index 3b1c2f6528b4..63f6b1ad57c5 100644
  	/* Used for vsc/vsp channel reset process */
  	struct storvsc_cmd_request init_request;
  	struct storvsc_cmd_request reset_request;
-@@ -635,6 +644,11 @@ static void handle_sc_creation(struct vmbus_channel *new_sc)
+@@ -638,6 +647,11 @@ static void handle_sc_creation(struct vm
  		   (void *)&props,
  		   sizeof(struct vmstorage_channel_properties),
  		   storvsc_on_channel_callback, new_sc);
@@ -53,7 +51,7 @@ index 3b1c2f6528b4..63f6b1ad57c5 100644
  }
  
  static void  handle_multichannel_storage(struct hv_device *device, int max_chns)
-@@ -651,6 +665,7 @@ static void  handle_multichannel_storage(struct hv_device *device, int max_chns)
+@@ -654,6 +668,7 @@ static void  handle_multichannel_storage
  	if (!stor_device)
  		return;
  
@@ -61,7 +59,7 @@ index 3b1c2f6528b4..63f6b1ad57c5 100644
  	request = &stor_device->init_request;
  	vstor_packet = &request->vstor_packet;
  
-@@ -838,6 +853,25 @@ static int storvsc_channel_init(struct hv_device *device, bool is_fc)
+@@ -841,6 +856,25 @@ static int storvsc_channel_init(struct h
  	 * support multi-channel.
  	 */
  	max_chns = vstor_packet->storage_channel_properties.max_channel_cnt;
@@ -87,7 +85,7 @@ index 3b1c2f6528b4..63f6b1ad57c5 100644
  	if (vmstor_proto_version >= VMSTOR_PROTO_VERSION_WIN8) {
  		if (vstor_packet->storage_channel_properties.flags &
  		    STORAGE_CHANNEL_SUPPORTS_MULTI_CHANNEL)
-@@ -1198,17 +1232,64 @@ static int storvsc_dev_remove(struct hv_device *device)
+@@ -1217,17 +1251,64 @@ static int storvsc_dev_remove(struct hv_
  	/* Close the channel */
  	vmbus_close(device->channel);
  
@@ -153,7 +151,7 @@ index 3b1c2f6528b4..63f6b1ad57c5 100644
  
  	vstor_packet = &request->vstor_packet;
  	stor_device = get_out_stor_device(device);
-@@ -1222,7 +1303,26 @@ static int storvsc_do_io(struct hv_device *device,
+@@ -1241,7 +1322,26 @@ static int storvsc_do_io(struct hv_devic
  	 * Select an an appropriate channel to send the request out.
  	 */
  
@@ -181,7 +179,7 @@ index 3b1c2f6528b4..63f6b1ad57c5 100644
  
  
  	vstor_packet->flags |= REQUEST_COMPLETION_FLAG;
-@@ -1522,7 +1622,8 @@ static int storvsc_queuecommand(struct Scsi_Host *host, struct scsi_cmnd *scmnd)
+@@ -1548,7 +1648,8 @@ static int storvsc_queuecommand(struct S
  	cmd_request->payload_sz = payload_sz;
  
  	/* Invokes the vsc to start an IO */
@@ -190,8 +188,8 @@ index 3b1c2f6528b4..63f6b1ad57c5 100644
 +	put_cpu();
  
  	if (ret == -EAGAIN) {
- 		/* no more space */
-@@ -1679,6 +1780,11 @@ static int storvsc_probe(struct hv_device *device,
+ 		if (payload_sz > sizeof(cmd_request->mpb))
+@@ -1707,6 +1808,11 @@ static int storvsc_probe(struct hv_devic
  	 * from the host.
  	 */
  	host->sg_tablesize = (stor_device->max_transfer_bytes >> PAGE_SHIFT);
@@ -203,7 +201,7 @@ index 3b1c2f6528b4..63f6b1ad57c5 100644
  
  	/* Register the HBA and start the scsi bus scan */
  	ret = scsi_add_host(host, &device->device);
-@@ -1715,6 +1821,7 @@ err_out2:
+@@ -1743,6 +1849,7 @@ err_out2:
  	goto err_out0;
  
  err_out1:

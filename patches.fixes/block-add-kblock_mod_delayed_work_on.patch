@@ -1,0 +1,52 @@
+From: Jens Axboe <axboe@fb.com>
+Date: Mon, 10 Apr 2017 09:54:55 -0600
+Subject: [PATCH] block: add kblock_mod_delayed_work_on()
+Git-commit: 818cd1cbaa7b00bbc35452a76bebc681a65f1912
+Patch-Mainline: v4.12
+References: bsc#1050211
+
+This modifies (or adds, if not currently pending) an existing
+delayed work item.
+
+Reviewed-by: Christoph Hellwig <hch@lst.de>
+Reviewed-by: Bart Van Assche <Bart.VanAssche@sandisk.com>
+Signed-off-by: Jens Axboe <axboe@fb.com>
+Acked-by: Hannes Reinecke <hare@suse.com>
+---
+ block/blk-core.c       | 7 +++++++
+ include/linux/blkdev.h | 1 +
+ 2 files changed, 8 insertions(+)
+
+diff --git a/block/blk-core.c b/block/blk-core.c
+index 0057b5f..aa795cd 100644
+--- a/block/blk-core.c
++++ b/block/blk-core.c
+@@ -3089,6 +3089,13 @@ int kblockd_schedule_work_on(int cpu, struct work_struct *work)
+ }
+ EXPORT_SYMBOL(kblockd_schedule_work_on);
+ 
++int kblockd_mod_delayed_work_on(int cpu, struct delayed_work *dwork,
++				unsigned long delay)
++{
++	return mod_delayed_work_on(cpu, kblockd_workqueue, dwork, delay);
++}
++EXPORT_SYMBOL(kblockd_mod_delayed_work_on);
++
+ int kblockd_schedule_delayed_work(struct delayed_work *dwork,
+ 				  unsigned long delay)
+ {
+diff --git a/include/linux/blkdev.h b/include/linux/blkdev.h
+index 604707c..8c005c7 100644
+--- a/include/linux/blkdev.h
++++ b/include/linux/blkdev.h
+@@ -1692,6 +1692,7 @@ int kblockd_schedule_work(struct work_struct *work);
+ int kblockd_schedule_work_on(int cpu, struct work_struct *work);
+ int kblockd_schedule_delayed_work(struct delayed_work *dwork, unsigned long delay);
+ int kblockd_schedule_delayed_work_on(int cpu, struct delayed_work *dwork, unsigned long delay);
++int kblockd_mod_delayed_work_on(int cpu, struct delayed_work *dwork, unsigned long delay);
+ 
+ #ifdef CONFIG_BLK_CGROUP
+ /*
+-- 
+1.8.5.6
+

@@ -1,7 +1,7 @@
-From 942b14eee16d52c2d49aaa63b485ed0133c5cc05 Mon Sep 17 00:00:00 2001
+From 5cf338536e5514889e214e2ca3a677499d6a705e Mon Sep 17 00:00:00 2001
 From: Robert Richter <rrichter@cavium.com>
 Date: Wed, 12 Apr 2017 10:31:15 +0200
-Subject: [PATCH] iommu/arm-smmu, ACPI: Enable Cavium SMMU-v3
+Subject: [PATCH 14/18] iommu/arm-smmu, ACPI: Enable Cavium SMMU-v3
 
 Patch-mainline: Never, Update after IORT spec release
 References: bsc#1035000
@@ -15,11 +15,59 @@ iort change will be in place.
 Signed-off-by: Robert Richter <rrichter@cavium.com>
 Signed-off-by: Mian Yousaf Kaukab <yousaf.kaukab@suse.com>
 ---
- drivers/iommu/arm-smmu-v3.c | 18 ++++++++++++++++++
- 1 file changed, 18 insertions(+)
+ drivers/acpi/arm64/iort.c   | 16 ++++++++++++++--
+ drivers/iommu/arm-smmu-v3.c | 19 +++++++++++++++++++
+ 2 files changed, 33 insertions(+), 2 deletions(-)
 
+diff --git a/drivers/acpi/arm64/iort.c b/drivers/acpi/arm64/iort.c
+index 8e7e6a2..7e38dcd 100644
+--- a/drivers/acpi/arm64/iort.c
++++ b/drivers/acpi/arm64/iort.c
+@@ -26,6 +26,8 @@
+ #include <linux/platform_device.h>
+ #include <linux/slab.h>
+ 
++#include <asm/cputype.h>
++
+ #define IORT_TYPE_MASK(type)	(1 << (type))
+ #define IORT_MSI_TYPE		(1 << ACPI_IORT_NODE_ITS_GROUP)
+ #define IORT_IOMMU_TYPE		((1 << ACPI_IORT_NODE_SMMU) |	\
+@@ -765,13 +767,22 @@ static int __init arm_smmu_v3_count_resources(struct acpi_iort_node *node)
+ 	return num_res;
+ }
+ 
++static bool is_cavium_cn99xx_smmu_v3(void)
++{
++	u32 cpu_model = read_cpuid_id() & MIDR_CPU_MODEL_MASK;
++
++	return cpu_model == MIDR_CPU_MODEL(ARM_CPU_IMP_BRCM,
++					   BRCM_CPU_PART_VULCAN);
++}
++
+ static bool arm_smmu_v3_is_combined_irq(struct acpi_iort_smmu_v3 *smmu)
+ {
+ 	/*
+ 	 * Cavium ThunderX2 implementation doesn't not support unique
+ 	 * irq line. Use single irq line for all the SMMUv3 interrupts.
+ 	 */
+-	if (smmu->model != ACPI_IORT_SMMU_V3_CAVIUM_CN99XX)
++	if (smmu->model != ACPI_IORT_SMMU_V3_CAVIUM_CN99XX
++	    && !is_cavium_cn99xx_smmu_v3())
+ 		return false;
+ 
+ 	/*
+@@ -789,7 +800,8 @@ static unsigned long arm_smmu_v3_resource_size(struct acpi_iort_smmu_v3 *smmu)
+ 	 * Override the size, for Cavium ThunderX2 implementation
+ 	 * which doesn't support the page 1 SMMU register space.
+ 	 */
+-	if (smmu->model == ACPI_IORT_SMMU_V3_CAVIUM_CN99XX)
++	if (smmu->model == ACPI_IORT_SMMU_V3_CAVIUM_CN99XX
++	    || is_cavium_cn99xx_smmu_v3())
+ 		return SZ_64K;
+ 
+ 	return SZ_128K;
 diff --git a/drivers/iommu/arm-smmu-v3.c b/drivers/iommu/arm-smmu-v3.c
-index 804a7175..b7b9e5a2 100644
+index 56a8632..166f301 100644
 --- a/drivers/iommu/arm-smmu-v3.c
 +++ b/drivers/iommu/arm-smmu-v3.c
 @@ -39,6 +39,8 @@
@@ -31,10 +79,11 @@ index 804a7175..b7b9e5a2 100644
  #include "io-pgtable.h"
  
  /* MMIO registers */
-@@ -2636,11 +2638,27 @@ static int arm_smmu_device_hw_probe(struct arm_smmu_device *smmu)
+@@ -2667,11 +2669,28 @@ static int arm_smmu_device_hw_probe(struct arm_smmu_device *smmu)
  }
  
  #ifdef CONFIG_ACPI
++
 +static void acpi_smmu_enable_cavium(struct arm_smmu_device *smmu)
 +{
 +	u32 cpu_model;
@@ -43,7 +92,7 @@ index 804a7175..b7b9e5a2 100644
 +		return;
 +
 +	cpu_model = read_cpuid_id() & MIDR_CPU_MODEL_MASK;
-+	if (cpu_model != 0x420f5160)
++	if (cpu_model != MIDR_CPU_MODEL(ARM_CPU_IMP_BRCM, BRCM_CPU_PART_VULCAN))
 +		return;
 +
 +	smmu->options |= ARM_SMMU_OPT_PAGE0_REGS_ONLY;
@@ -51,7 +100,7 @@ index 804a7175..b7b9e5a2 100644
 +
  static void acpi_smmu_get_options(u32 model, struct arm_smmu_device *smmu)
  {
- 	if (model == ACPI_IORT_SMMU_CAVIUM_CN99XX)
+ 	if (model == ACPI_IORT_SMMU_V3_CAVIUM_CN99XX)
  		smmu->options |= ARM_SMMU_OPT_PAGE0_REGS_ONLY;
  
 +	acpi_smmu_enable_cavium(smmu);
@@ -60,5 +109,5 @@ index 804a7175..b7b9e5a2 100644
  }
  
 -- 
-2.11.0
+2.6.2
 

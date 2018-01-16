@@ -1,0 +1,37 @@
+From 5cd50acfc598bcf6d2672b3e4c9975afc193c6a2 Mon Sep 17 00:00:00 2001
+From: Eric Anholt <eric@anholt.net>
+Date: Wed, 1 Jun 2016 23:43:33 +0200
+Subject: [PATCH 1/9] i2c: bcm2835: Don't complain on -EPROBE_DEFER from
+ getting our clock
+Git-commit: 85946abc961957df08c58acf838810f08c2a4594
+Patch-mainline: v4.8-rc1
+References: bsc#1066660
+
+Fixes dmesg spam when we just need to wait a moment for the clock
+driver to probe.
+
+Signed-off-by: Eric Anholt <eric@anholt.net>
+Signed-off-by: Wolfram Sang <wsa@the-dreams.de>
+Signed-off-by: Alexander Graf <agraf@suse.de>
+
+---
+ drivers/i2c/busses/i2c-bcm2835.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/i2c/busses/i2c-bcm2835.c b/drivers/i2c/busses/i2c-bcm2835.c
+index 3032b89ac60b..a56949768075 100644
+--- a/drivers/i2c/busses/i2c-bcm2835.c
++++ b/drivers/i2c/busses/i2c-bcm2835.c
+@@ -244,7 +244,8 @@ static int bcm2835_i2c_probe(struct platform_device *pdev)
+ 
+ 	i2c_dev->clk = devm_clk_get(&pdev->dev, NULL);
+ 	if (IS_ERR(i2c_dev->clk)) {
+-		dev_err(&pdev->dev, "Could not get clock\n");
++		if (PTR_ERR(i2c_dev->clk) != -EPROBE_DEFER)
++			dev_err(&pdev->dev, "Could not get clock\n");
+ 		return PTR_ERR(i2c_dev->clk);
+ 	}
+ 
+-- 
+2.12.3
+

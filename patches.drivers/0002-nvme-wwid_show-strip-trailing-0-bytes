@@ -1,0 +1,32 @@
+From: Martin Wilck <mwilck@suse.com>
+Date: Wed, 12 Jul 2017 22:55:09 +0200
+Subject: nvme: wwid_show: strip trailing 0-bytes
+Patch-mainline: Not yet, testing
+References: bsc#1048146
+
+Some broken targets (such as the current Linux target) pad
+model or serial fields with 0-bytes rather than spaces. The
+NVME spec disallows 0 bytes in "ASCII" fields.
+Thus strip trailing 0-bytes, too.
+
+Signed-off-by: Martin Wilck <mwilck@suse.com>
+---
+ drivers/nvme/host/core.c |    6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+--- a/drivers/nvme/host/core.c
++++ b/drivers/nvme/host/core.c
+@@ -1547,9 +1547,11 @@ static ssize_t wwid_show(struct device *
+ 	if (memchr_inv(ns->eui, 0, sizeof(ns->eui)))
+ 		return sprintf(buf, "eui.%8phN\n", ns->eui);
+ 
+-	while (ctrl->serial[serial_len - 1] == ' ')
++	while (serial_len > 0 && (ctrl->serial[serial_len - 1] == ' ' ||
++				  ctrl->serial[serial_len - 1] == '\0'))
+ 		serial_len--;
+-	while (ctrl->model[model_len - 1] == ' ')
++	while (model_len > 0 && (ctrl->model[model_len - 1] == ' ' ||
++				 ctrl->model[model_len - 1] == '\0'))
+ 		model_len--;
+ 
+ 	return sprintf(buf, "nvme.%04x-%*phN-%*phN-%08x\n", ctrl->vid,

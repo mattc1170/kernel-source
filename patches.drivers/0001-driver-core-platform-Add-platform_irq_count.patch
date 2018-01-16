@@ -1,0 +1,75 @@
+From 0dd1c35a37dcbccf3b55d55905ec48f9a63ebcac Mon Sep 17 00:00:00 2001
+From: Stephen Boyd <sboyd@codeaurora.org>
+Date: Wed, 6 Jan 2016 17:12:47 -0800
+Subject: [PATCH 01/56] driver-core: platform: Add platform_irq_count()
+
+Git-commit: 4b83555d5098e73cf2c5ca7f86c17ca0ba3b968e
+Patch-mainline: v4.5-rc1
+References: bsc#1062279
+
+A recent patch added calls to of_irq_count() in the qcom pinctrl
+drivers and that caused module build failures because
+of_irq_count() is not an exported symbol. We shouldn't export
+of_irq_count() to modules because it's an internal OF API that
+shouldn't be used by drivers. Platform drivers should use
+platform device APIs instead. Therefore, add a platform_irq_count()
+API that mirrors the of_irq_count() API so that platform drivers
+can stay DT agnostic.
+
+Cc: Andy Gross <andy.gross@linaro.org>
+Acked-by: Rob Herring <robh@kernel.org>
+Acked-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org
+Signed-off-by: Stephen Boyd <sboyd@codeaurora.org>
+Signed-off-by: Linus Walleij <linus.walleij@linaro.org>
+Signed-off-by: Mian Yousaf Kaukab <yousaf.kaukab@suse.com>
+---
+ drivers/base/platform.c         | 20 ++++++++++++++++++++
+ include/linux/platform_device.h |  1 +
+ 2 files changed, 21 insertions(+)
+
+diff --git a/drivers/base/platform.c b/drivers/base/platform.c
+index 6b7fe4a5..3c33f716 100644
+--- a/drivers/base/platform.c
++++ b/drivers/base/platform.c
+@@ -128,6 +128,26 @@ int platform_get_irq(struct platform_device *dev, unsigned int num)
+ EXPORT_SYMBOL_GPL(platform_get_irq);
+ 
+ /**
++ * platform_irq_count - Count the number of IRQs a platform device uses
++ * @dev: platform device
++ *
++ * Return: Number of IRQs a platform device uses or EPROBE_DEFER
++ */
++int platform_irq_count(struct platform_device *dev)
++{
++	int ret, nr = 0;
++
++	while ((ret = platform_get_irq(dev, nr)) >= 0)
++		nr++;
++
++	if (ret == -EPROBE_DEFER)
++		return ret;
++
++	return nr;
++}
++EXPORT_SYMBOL_GPL(platform_irq_count);
++
++/**
+  * platform_get_resource_byname - get a resource for a device by name
+  * @dev: platform device
+  * @type: resource type
+diff --git a/include/linux/platform_device.h b/include/linux/platform_device.h
+index dba40b1c..03b75552 100644
+--- a/include/linux/platform_device.h
++++ b/include/linux/platform_device.h
+@@ -52,6 +52,7 @@ extern void arch_setup_pdev_archdata(struct platform_device *);
+ extern struct resource *platform_get_resource(struct platform_device *,
+ 					      unsigned int, unsigned int);
+ extern int platform_get_irq(struct platform_device *, unsigned int);
++extern int platform_irq_count(struct platform_device *);
+ extern struct resource *platform_get_resource_byname(struct platform_device *,
+ 						     unsigned int,
+ 						     const char *);
+-- 
+2.11.0
+

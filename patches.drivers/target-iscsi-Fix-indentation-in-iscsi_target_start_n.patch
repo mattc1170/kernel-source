@@ -15,14 +15,12 @@ Cc: Nicholas A. Bellinger <nab@linux-iscsi.org>
 Signed-off-by: Nicholas Bellinger <nab@linux-iscsi.org>
 Signed-off-by: Hannes Reinecke <hare@suse.de>
 ---
- drivers/target/iscsi/iscsi_target_nego.c | 16 ++++++++--------
- 1 file changed, 8 insertions(+), 8 deletions(-)
+ drivers/target/iscsi/iscsi_target_nego.c |    4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/drivers/target/iscsi/iscsi_target_nego.c b/drivers/target/iscsi/iscsi_target_nego.c
-index 89d34bd..19bb8df 100644
 --- a/drivers/target/iscsi/iscsi_target_nego.c
 +++ b/drivers/target/iscsi/iscsi_target_nego.c
-@@ -1247,16 +1247,16 @@ int iscsi_target_start_negotiation(
+@@ -1307,8 +1307,8 @@ int iscsi_target_start_negotiation(
  {
  	int ret;
  
@@ -31,22 +29,5 @@ index 89d34bd..19bb8df 100644
 +	if (conn->sock) {
 +		struct sock *sk = conn->sock->sk;
  
--               write_lock_bh(&sk->sk_callback_lock);
--               set_bit(LOGIN_FLAGS_READY, &conn->login_flags);
--               write_unlock_bh(&sk->sk_callback_lock);
--       }
-+		write_lock_bh(&sk->sk_callback_lock);
-+		set_bit(LOGIN_FLAGS_READY, &conn->login_flags);
-+		write_unlock_bh(&sk->sk_callback_lock);
-+	}
- 
--       ret = iscsi_target_do_login(conn, login);
--       if (ret < 0) {
-+	ret = iscsi_target_do_login(conn, login);
-+	if (ret < 0) {
- 		cancel_delayed_work_sync(&conn->login_work);
- 		cancel_delayed_work_sync(&conn->login_cleanup_work);
- 		iscsi_target_restore_sock_callbacks(conn);
--- 
-1.8.5.6
-
+ 		write_lock_bh(&sk->sk_callback_lock);
+ 		set_bit(LOGIN_FLAGS_READY, &conn->login_flags);

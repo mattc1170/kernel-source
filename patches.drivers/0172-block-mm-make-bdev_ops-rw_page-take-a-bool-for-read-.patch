@@ -191,7 +191,7 @@ Acked-by: Hannes Reinecke <hare@suse.de>
  		if (err) {
  			dev_info(&btt->nd_btt->dev,
  					"io error in %s sector %lld, len %d,\n",
-@@ -1200,12 +1200,12 @@ out:
+@@ -1200,14 +1200,14 @@ out:
  }
  
  static int btt_rw_page(struct block_device *bdev, sector_t sector,
@@ -199,17 +199,19 @@ Acked-by: Hannes Reinecke <hare@suse.de>
 +		struct page *page, bool is_write)
  {
  	struct btt *btt = bdev->bd_disk->private_data;
+ 	int rc;
  
--	btt_do_bvec(btt, NULL, page, PAGE_CACHE_SIZE, 0, op, sector);
--	page_endio(page, op, 0);
-+	btt_do_bvec(btt, NULL, page, PAGE_CACHE_SIZE, 0, is_write, sector);
-+	page_endio(page, is_write, 0);
- 	return 0;
+-	rc = btt_do_bvec(btt, NULL, page, PAGE_CACHE_SIZE, 0, op, sector);
++	rc = btt_do_bvec(btt, NULL, page, PAGE_CACHE_SIZE, 0, is_write, sector);
+ 	if (rc == 0)
+-		page_endio(page, op, 0);
++		page_endio(page, is_write, 0);
+ 
+ 	return rc;
  }
- 
 --- a/drivers/nvdimm/pmem.c
 +++ b/drivers/nvdimm/pmem.c
-@@ -67,7 +67,7 @@ static void pmem_clear_poison(struct pme
+@@ -98,7 +98,7 @@ static int read_pmem(struct page *page,
  }
  
  static int pmem_do_bvec(struct pmem_device *pmem, struct page *page,
@@ -218,7 +220,7 @@ Acked-by: Hannes Reinecke <hare@suse.de>
  			sector_t sector)
  {
  	int rc = 0;
-@@ -79,7 +79,7 @@ static int pmem_do_bvec(struct pmem_devi
+@@ -109,7 +109,7 @@ static int pmem_do_bvec(struct pmem_devi
  	if (unlikely(is_bad_pmem(&pmem->bb, sector, len)))
  		bad_pmem = true;
  
@@ -227,7 +229,7 @@ Acked-by: Hannes Reinecke <hare@suse.de>
  		if (unlikely(bad_pmem))
  			rc = -EIO;
  		else {
-@@ -134,7 +134,7 @@ static blk_qc_t pmem_make_request(struct
+@@ -163,7 +163,7 @@ static blk_qc_t pmem_make_request(struct
  	do_acct = nd_iostat_start(bio, &start);
  	bio_for_each_segment(bvec, bio, iter) {
  		rc = pmem_do_bvec(pmem, bvec.bv_page, bvec.bv_len,
@@ -236,7 +238,7 @@ Acked-by: Hannes Reinecke <hare@suse.de>
  				iter.bi_sector);
  		if (rc) {
  			bio->bi_error = rc;
-@@ -152,13 +152,13 @@ static blk_qc_t pmem_make_request(struct
+@@ -181,13 +181,13 @@ static blk_qc_t pmem_make_request(struct
  }
  
  static int pmem_rw_page(struct block_device *bdev, sector_t sector,
@@ -253,7 +255,7 @@ Acked-by: Hannes Reinecke <hare@suse.de>
  		wmb_pmem();
  
  	/*
-@@ -168,7 +168,7 @@ static int pmem_rw_page(struct block_dev
+@@ -197,7 +197,7 @@ static int pmem_rw_page(struct block_dev
  	 * caused by double completion.
  	 */
  	if (rc == 0)
@@ -264,7 +266,7 @@ Acked-by: Hannes Reinecke <hare@suse.de>
  }
 --- a/fs/block_dev.c
 +++ b/fs/block_dev.c
-@@ -425,8 +425,7 @@ int bdev_read_page(struct block_device *
+@@ -414,8 +414,7 @@ int bdev_read_page(struct block_device *
  	result = blk_queue_enter(bdev->bd_queue, false);
  	if (result)
  		return result;
@@ -274,7 +276,7 @@ Acked-by: Hannes Reinecke <hare@suse.de>
  	blk_queue_exit(bdev->bd_queue);
  	return result;
  }
-@@ -464,8 +463,7 @@ int bdev_write_page(struct block_device
+@@ -453,8 +452,7 @@ int bdev_write_page(struct block_device
  		return result;
  
  	set_page_writeback(page);
@@ -346,7 +348,7 @@ Acked-by: Hannes Reinecke <hare@suse.de>
  	long (*direct_access)(struct block_device *, sector_t, void **, pfn_t *,
 --- a/include/linux/fs.h
 +++ b/include/linux/fs.h
-@@ -2430,13 +2430,12 @@ extern void init_special_inode(struct in
+@@ -2435,13 +2435,12 @@ extern void init_special_inode(struct in
  extern void make_bad_inode(struct inode *);
  extern int is_bad_inode(struct inode *);
  
@@ -363,7 +365,7 @@ Acked-by: Hannes Reinecke <hare@suse.de>
   */
 --- a/include/linux/pagemap.h
 +++ b/include/linux/pagemap.h
-@@ -549,7 +549,7 @@ static inline void wait_on_page_writebac
+@@ -548,7 +548,7 @@ static inline void wait_on_page_writebac
  extern void end_page_writeback(struct page *page);
  void wait_for_stable_page(struct page *page);
  

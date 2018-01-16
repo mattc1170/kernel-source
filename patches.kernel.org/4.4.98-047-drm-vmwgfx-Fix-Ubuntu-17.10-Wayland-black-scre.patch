@@ -1,0 +1,43 @@
+From: Sinclair Yeh <syeh@vmware.com>
+Date: Wed, 1 Nov 2017 10:47:05 -0700
+Subject: [PATCH] drm/vmwgfx: Fix Ubuntu 17.10 Wayland black screen issue
+References: bnc#1012382
+Patch-mainline: 4.4.98
+Git-commit: cef75036c40408ba3bc308bcb00a3d440da713fc
+
+commit cef75036c40408ba3bc308bcb00a3d440da713fc upstream.
+
+This is an extension of Commit 7c20d213dd3c ("drm/vmwgfx: Work
+around mode set failure in 2D VMs")
+
+With Wayland desktop and atomic mode set, during the mode setting
+process there is a moment when two framebuffer sized surfaces
+are being pinned.  This was not an issue with Xorg.
+
+Since this only happens during a mode change, there should be no
+performance impact by increasing allowable mem_size.
+
+Signed-off-by: Sinclair Yeh <syeh@vmware.com>
+Reviewed-by: Thomas Hellstrom <thellstrom@vmware.com>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Signed-off-by: Jiri Slaby <jslaby@suse.cz>
+---
+ drivers/gpu/drm/vmwgfx/vmwgfx_drv.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/gpu/drm/vmwgfx/vmwgfx_drv.c b/drivers/gpu/drm/vmwgfx/vmwgfx_drv.c
+index f3f31f995878..be3971b22a02 100644
+--- a/drivers/gpu/drm/vmwgfx/vmwgfx_drv.c
++++ b/drivers/gpu/drm/vmwgfx/vmwgfx_drv.c
+@@ -708,7 +708,7 @@ static int vmw_driver_load(struct drm_device *dev, unsigned long chipset)
+ 		 * allocation taken by fbdev
+ 		 */
+ 		if (!(dev_priv->capabilities & SVGA_CAP_3D))
+-			mem_size *= 2;
++			mem_size *= 3;
+ 
+ 		dev_priv->max_mob_pages = mem_size * 1024 / PAGE_SIZE;
+ 		dev_priv->prim_bb_mem =
+-- 
+2.15.0
+

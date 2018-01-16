@@ -43,8 +43,8 @@ Signed-off-by: Linus Torvalds <torvalds@linux-foundation.org>
  include/linux/page_owner.h |    9 +++++++++
  mm/debug.c                 |    2 ++
  mm/page_alloc.c            |    1 +
- mm/page_owner.c            |   25 +++++++++++++++++++++++++
- 4 files changed, 37 insertions(+)
+ mm/page_owner.c            |   30 ++++++++++++++++++++++++++++++
+ 4 files changed, 42 insertions(+)
 
 --- a/include/linux/page_owner.h
 +++ b/include/linux/page_owner.h
@@ -97,7 +97,7 @@ Signed-off-by: Linus Torvalds <torvalds@linux-foundation.org>
  
 --- a/mm/page_alloc.c
 +++ b/mm/page_alloc.c
-@@ -439,6 +439,7 @@ static void bad_page(struct page *page,
+@@ -569,6 +569,7 @@ static void bad_page(struct page *page,
  	printk(KERN_ALERT "BUG: Bad page state in process %s  pfn:%05lx\n",
  		current->comm, page_to_pfn(page));
  	dump_page_badflags(page, reason, bad_flags);
@@ -107,7 +107,7 @@ Signed-off-by: Linus Torvalds <torvalds@linux-foundation.org>
  	dump_stack();
 --- a/mm/page_owner.c
 +++ b/mm/page_owner.c
-@@ -183,6 +183,31 @@ err:
+@@ -200,6 +200,36 @@ err:
  	return -ENOMEM;
  }
  
@@ -120,6 +120,11 @@ Signed-off-by: Linus Torvalds <torvalds@linux-foundation.org>
 +	};
 +	gfp_t gfp_mask = page_ext->gfp_mask;
 +	int mt = gfpflags_to_migratetype(gfp_mask);
++
++	if (unlikely(!page_ext)) {
++		pr_alert("There is not page extension available.\n");
++		return;
++	}
 +
 +	if (!test_bit(PAGE_EXT_OWNER, &page_ext->flags)) {
 +		pr_alert("page_owner info is not active (free page?)\n");

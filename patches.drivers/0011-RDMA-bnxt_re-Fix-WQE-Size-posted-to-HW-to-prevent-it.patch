@@ -3,7 +3,8 @@ From: Somnath Kotur <somnath.kotur@broadcom.com>
 Date: Wed, 10 May 2017 03:45:32 -0700
 Subject: RDMA/bnxt_re: Fix WQE Size posted to HW to prevent it from throwing error
 References: bsc#1037579
-Patch-mainline: Submitted, https://patchwork.kernel.org/patch/9719659/
+Patch-mainline: v4.13-rc2
+Git-commit: ab69d4c8da38024191f3514c1296e9e8deea4e98
 
 Posting WQE size of 2 results in a WQE_FORMAT_ERROR
 thrown by the HW as it requires host to supply WQE Size with room

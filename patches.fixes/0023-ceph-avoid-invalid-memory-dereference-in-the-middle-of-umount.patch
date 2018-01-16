@@ -1,0 +1,59 @@
+From: "Yan, Zheng" <zyan@redhat.com>
+Date: Thu, 22 Jun 2017 16:26:34 +0800
+Subject: ceph: avoid invalid memory dereference in the middle of umount
+Git-commit: 62a65f36d016fff32179acdbfcb8b2d8d9e54757
+Patch-mainline: v4.13-rc1
+References: bsc#1048228
+
+extra_mon_dispatch() and debugfs' foo_show functions dereference
+fsc->mdsc. we should clean up fsc->client->extra_mon_dispatch
+and debugfs before destroying fsc->mds.
+
+Signed-off-by: "Yan, Zheng" <zyan@redhat.com>
+Signed-off-by: Ilya Dryomov <idryomov@gmail.com>
+Acked-by: Luis Henriques <lhenriques@suse.com>
+---
+ fs/ceph/mds_client.c |    4 ++--
+ fs/ceph/super.c      |    6 ++++--
+ 2 files changed, 6 insertions(+), 4 deletions(-)
+
+--- a/fs/ceph/mds_client.c
++++ b/fs/ceph/mds_client.c
+@@ -3769,13 +3769,13 @@ static void ceph_mdsc_stop(struct ceph_m
+ void ceph_mdsc_destroy(struct ceph_fs_client *fsc)
+ {
+ 	struct ceph_mds_client *mdsc = fsc->mdsc;
+-
+ 	dout("mdsc_destroy %p\n", mdsc);
+-	ceph_mdsc_stop(mdsc);
+ 
+ 	/* flush out any connection work with references to us */
+ 	ceph_msgr_flush();
+ 
++	ceph_mdsc_stop(mdsc);
++
+ 	fsc->mdsc = NULL;
+ 	kfree(mdsc);
+ 	dout("mdsc_destroy %p done\n", mdsc);
+--- a/fs/ceph/super.c
++++ b/fs/ceph/super.c
+@@ -649,8 +649,6 @@ static void destroy_fs_client(struct cep
+ 
+ 	destroy_mount_options(fsc->mount_options);
+ 
+-	ceph_fs_debugfs_cleanup(fsc);
+-
+ 	ceph_destroy_client(fsc->client);
+ 
+ 	kfree(fsc);
+@@ -1054,6 +1052,10 @@ static void ceph_kill_sb(struct super_bl
+ 
+ 	ceph_mdsc_pre_umount(fsc->mdsc);
+ 	generic_shutdown_super(s);
++
++	fsc->client->extra_mon_dispatch = NULL;
++	ceph_fs_debugfs_cleanup(fsc);
++
+ 	ceph_mdsc_destroy(fsc);
+ 
+ 	destroy_fs_client(fsc);

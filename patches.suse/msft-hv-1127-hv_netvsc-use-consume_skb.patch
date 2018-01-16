@@ -10,7 +10,7 @@ instead of kfree_skb. This allows for better tracing of packet drops.
 
 Signed-off-by: Stephen Hemminger <sthemmin@microsoft.com>
 Signed-off-by: David S. Miller <davem@davemloft.net>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  drivers/net/hyperv/netvsc.c | 4 ++--
  1 file changed, 2 insertions(+), 2 deletions(-)

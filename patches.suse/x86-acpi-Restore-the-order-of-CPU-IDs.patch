@@ -1,0 +1,103 @@
+From 713fd5425c0fb575f09b4b96a3f48d91417b2ef2 Mon Sep 17 00:00:00 2001
+From: Dou Liyang <douly.fnst@cn.fujitsu.com>
+Date: Fri, 3 Mar 2017 16:02:25 +0800
+Subject: [PATCH] x86/acpi: Restore the order of CPU IDs
+
+References: bnc#1056230
+Patch-mainline: v4.11
+Git-commit: 2b85b3d22920db7473e5fed5719e7955c0ec323e
+
+The following commits:
+
+  f7c28833c2 ("x86/acpi: Enable acpi to register all possible cpus at
+boot time") and 8f54969dc8 ("x86/acpi: Introduce persistent storage
+for cpuid <-> apicid mapping")
+
+... registered all the possible CPUs at boot time via ACPI tables to
+make the mapping of cpuid <-> apicid fixed. Both enabled and disabled
+CPUs could have a logical CPU ID after boot time.
+
+But, ACPI tables are unreliable. the number amd order of Local APIC
+entries which depends on the firmware is often inconsistent with the
+physical devices. Even if they are consistent, The disabled CPUs which
+take up some logical CPU IDs will also make the order discontinuous.
+
+Revert the part of disabled CPUs registration, keep the allocation
+logic of logical CPU IDs and also keep some code location changes.
+
+Signed-off-by: Dou Liyang <douly.fnst@cn.fujitsu.com>
+Tested-by: Xiaolong Ye <xiaolong.ye@intel.com>
+Cc: rjw@rjwysocki.net
+Cc: linux-acpi@vger.kernel.org
+Cc: guzheng1@huawei.com
+Cc: izumi.taku@jp.fujitsu.com
+Cc: lenb@kernel.org
+Link: http://lkml.kernel.org/r/1488528147-2279-4-git-send-email-douly.fnst@cn.fujitsu.com
+Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
+Signed-off-by: Mel Gorman <mgorman@suse.de>
+---
+ arch/x86/kernel/acpi/boot.c |  7 ++++++-
+ arch/x86/kernel/apic/apic.c | 18 ++++--------------
+ 2 files changed, 10 insertions(+), 15 deletions(-)
+
+diff --git a/arch/x86/kernel/acpi/boot.c b/arch/x86/kernel/acpi/boot.c
+index 782b281eecba..0cc633307099 100644
+--- a/arch/x86/kernel/acpi/boot.c
++++ b/arch/x86/kernel/acpi/boot.c
+@@ -174,10 +174,15 @@ static int acpi_register_lapic(int id, u8 enabled)
+ 		return -EINVAL;
+ 	}
+ 
++	if (!enabled) {
++		++disabled_cpus;
++		return -EINVAL;
++	}
++
+ 	if (boot_cpu_physical_apicid != -1U)
+ 		ver = apic_version[boot_cpu_physical_apicid];
+ 
+-	return __generic_processor_info(id, ver, enabled);
++	return generic_processor_info(id, ver);
+ }
+ 
+ static int __init
+diff --git a/arch/x86/kernel/apic/apic.c b/arch/x86/kernel/apic/apic.c
+index 1db8b5ec2570..6249c331a677 100644
+--- a/arch/x86/kernel/apic/apic.c
++++ b/arch/x86/kernel/apic/apic.c
+@@ -2047,7 +2047,7 @@ static int allocate_logical_cpuid(int apicid)
+ 	return nr_logical_cpuids++;
+ }
+ 
+-int __generic_processor_info(int apicid, int version, bool enabled)
++int generic_processor_info(int apicid, int version)
+ {
+ 	int cpu, max = nr_cpu_ids;
+ 	bool boot_cpu_detected = physid_isset(boot_cpu_physical_apicid,
+@@ -2162,23 +2162,13 @@ int __generic_processor_info(int apicid, int version, bool enabled)
+ 		apic->x86_32_early_logical_apicid(cpu);
+ #endif
+ 	set_cpu_possible(cpu, true);
+-
+-	if (enabled) {
+-		num_processors++;
+-		physid_set(apicid, phys_cpu_present_map);
+-		set_cpu_present(cpu, true);
+-	} else {
+-		disabled_cpus++;
+-	}
++	physid_set(apicid, phys_cpu_present_map);
++	set_cpu_present(cpu, true);
++	num_processors++;
+ 
+ 	return cpu;
+ }
+ 
+-int generic_processor_info(int apicid, int version)
+-{
+-	return __generic_processor_info(apicid, version, true);
+-}
+-
+ int hard_smp_processor_id(void)
+ {
+ 	return read_apic_id();

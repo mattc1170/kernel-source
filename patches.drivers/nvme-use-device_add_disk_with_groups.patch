@@ -1,0 +1,48 @@
+From: Martin Wilck <mwilck@suse.com>
+Date: Thu, 28 Sep 2017 20:17:50 +0200
+Subject: nvme: use device_add_disk_with_groups()
+Patch-mainline: Submitted to linux-block and nvme-devel, 2017-09-28
+References: bsc#1060400
+
+By using device_add_disk_with_groups(), we can avoid the race
+condition with udev rule processing, because no udev event will
+be triggered before all attributes are available.
+
+Signed-off-by: Martin Wilck <mwilck@suse.com>
+Tested-by: Steve Schremmer <steve.schremmer@netapp.com>
+Reviewed-by: Keith Busch <keith.busch@intel.com>
+---
+ drivers/nvme/host/core.c | 12 +++++++-----
+ 1 file changed, 7 insertions(+), 5 deletions(-)
+
+diff --git a/drivers/nvme/host/core.c b/drivers/nvme/host/core.c
+index ed33e0169355..6fd0c3db3862 100644
+--- a/drivers/nvme/host/core.c
++++ b/drivers/nvme/host/core.c
+@@ -1639,6 +1639,11 @@ static const struct attribute_group nvme_ns_attr_group = {
+ 	.is_visible	= nvme_ns_attrs_are_visible,
+ };
+ 
++static const struct attribute_group *nvme_ns_attr_groups[] = {
++	&nvme_ns_attr_group,
++	NULL,
++};
++
+ #define nvme_show_str_function(field)						\
+ static ssize_t  field##_show(struct device *dev,				\
+ 			    struct device_attribute *attr, char *buf)		\
+@@ -1875,11 +1880,8 @@ static void nvme_alloc_ns(struct nvme_ctrl *ctrl, unsigned nsid)
+ 	if (ns->type == NVME_NS_LIGHTNVM)
+ 		return;
+ 
+-	device_add_disk(ctrl->device, ns->disk);
+-	if (sysfs_create_group(&disk_to_dev(ns->disk)->kobj,
+-					&nvme_ns_attr_group))
+-		pr_warn("%s: failed to create sysfs group for identification\n",
+-			ns->disk->disk_name);
++	device_add_disk_with_groups(ctrl->device, ns->disk,
++				    nvme_ns_attr_groups);
+ 	return;
+  out_free_id:
+ 	kfree(id);
+

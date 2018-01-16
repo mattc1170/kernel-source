@@ -1,0 +1,40 @@
+From: Jiri Slaby <jslaby@suse.cz>
+Subject: kABI: protect struct mm_struct
+Patch-mainline: never, kabi
+References: kabi
+
+In 4.4.40, commit 03eed7afbc09e061f66b448daf7863174c3dc3f3 (mm: Add a
+user_ns owner to mm_struct and fix ptrace permission checks), upstream
+commit bfedb589252c01fa505ac9f6f2a3d5d68d707ef4 added user_ns member to
+struct mm_struct.
+
+In 4.4.81, commit f1181047ff29d4d4d364435040bd347eb54483ca (mm,
+mprotect: flush TLB if potentially racing with a parallel reclaim
+leaving stale TLB entries), upstream commit
+3ea277194daaeaa84ce75180ec7c7a2075027a68 added tlb_flush_batched member
+to struct mm_struct.
+
+It indeed changed kABI of literally everything.
+
+Use suse_kabi_padding to cover the former and use a hole for the latter.
+
+Signed-off-by: Jiri Slaby <jslaby@suse.cz>
+---
+ include/linux/mm_types.h |    7 ++++++-
+ 1 file changed, 6 insertions(+), 1 deletion(-)
+
+--- a/include/linux/mm_types.h
++++ b/include/linux/mm_types.h
+@@ -505,10 +504,12 @@ struct mm_struct {
+ 	 */
+ 	bool tlb_flush_pending;
+ #endif
++#ifndef __GENKSYMS__
+ #ifdef CONFIG_ARCH_WANT_BATCHED_UNMAP_TLB_FLUSH
+ 	/* See flush_tlb_batched_pending() */
+ 	bool tlb_flush_batched;
+ #endif
++#endif
+ 	struct uprobes_state uprobes_state;
+ #ifdef CONFIG_X86_INTEL_MPX
+ 	/* address of the bounds directory */

@@ -14,7 +14,7 @@ to the host at the point they are unoaded.
 Signed-off-by: K. Y. Srinivasan <kys@microsoft.com>
 Cc: <Stable@vger.kernel.org>
 Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  drivers/hv/ring_buffer.c | 7 +++++++
  1 file changed, 7 insertions(+)

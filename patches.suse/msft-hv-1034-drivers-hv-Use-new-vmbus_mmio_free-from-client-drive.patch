@@ -11,7 +11,7 @@ to call vmbus_mmio_free() instead of release_mem_region().
 Signed-off-by: Jake Oshins <jakeo@microsoft.com>
 Signed-off-by: K. Y. Srinivasan <kys@microsoft.com>
 Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  drivers/pci/host/pci-hyperv.c   | 14 +++++++-------
  drivers/video/fbdev/hyperv_fb.c |  4 ++--

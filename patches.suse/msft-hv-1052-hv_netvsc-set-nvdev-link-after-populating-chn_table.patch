@@ -19,7 +19,7 @@ nvdev pointer afterwards seems more appropriate.
 
 Signed-off-by: Vitaly Kuznetsov <vkuznets@redhat.com>
 Signed-off-by: David S. Miller <davem@davemloft.net>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  drivers/net/hyperv/netvsc.c | 29 ++++++++++++++++++-----------
  1 file changed, 18 insertions(+), 11 deletions(-)

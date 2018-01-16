@@ -13,7 +13,7 @@ This patch reduces possible memory allocation failures.
 Signed-off-by: Haiyang Zhang <haiyangz@microsoft.com>
 Reviewed-by: K. Y. Srinivasan <kys@microsoft.com>
 Signed-off-by: David S. Miller <davem@davemloft.net>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  drivers/net/hyperv/hyperv_net.h   | 7 ++++---
  drivers/net/hyperv/rndis_filter.c | 4 ++--

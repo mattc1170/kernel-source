@@ -112,4 +112,4 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 +	const char *name = get_name(bank, NULL);
  	int err = 0;
  
- 	if (is_shared_bank(bank)) {
+ 	if (!dev)

@@ -1,0 +1,90 @@
+From 065f032e37b2ed87941eebc2f9b993a3e4865334 Mon Sep 17 00:00:00 2001
+From: Mark Rutland <mark.rutland@arm.com>
+Date: Tue, 11 Apr 2017 09:39:54 +0100
+Subject: [PATCH 41/56] arm64: add function to get a cpu's MADT GICC table
+
+Git-commit: e0013aed489e7ebbba59d7ada2ff5551ac4b61c6
+Patch-mainline: v4.12-rc1
+References: bsc#1062279
+
+Currently the ACPI parking protocol code needs to parse each CPU's MADT
+GICC table to extract the mailbox address and so on. Each time we parse
+a GICC table, we call back to the parking protocol code to parse it.
+
+This has been fine so far, but we're about to have more code that needs
+to extract data from the GICC tables, and adding a callback for each
+user is going to get unwieldy.
+
+Instead, this patch ensures that we stash a copy of each CPU's GICC
+table at boot time, such that anything needing to parse it can later
+request it. This will allow for other parsers of GICC, and for
+simplification to the ACPI parking protocol code. Note that we must
+store a copy, rather than a pointer, since the core ACPI code
+temporarily maps/unmaps tables while iterating over them.
+
+Since we parse the MADT before we know how many CPUs we have (and hence
+before we setup the percpu areas), we must use an NR_CPUS sized array.
+
+Signed-off-by: Mark Rutland <mark.rutland@arm.com>
+Reviewed-by: Lorenzo Pieralisi <lorenzo.pieralisi@arm.com>
+Tested-by: Jeremy Linton <jeremy.linton@arm.com>
+Cc: Catalin Marinas <catalin.marinas@arm.com>
+Cc: Will Deacon <will.deacon@arm.com>
+Signed-off-by: Will Deacon <will.deacon@arm.com>
+Signed-off-by: Mian Yousaf Kaukab <yousaf.kaukab@suse.com>
+---
+ arch/arm64/include/asm/acpi.h |  2 ++
+ arch/arm64/kernel/smp.c       | 10 ++++++++++
+ 2 files changed, 12 insertions(+)
+
+diff --git a/arch/arm64/include/asm/acpi.h b/arch/arm64/include/asm/acpi.h
+index d4f49a87..d50a44c9 100644
+--- a/arch/arm64/include/asm/acpi.h
++++ b/arch/arm64/include/asm/acpi.h
+@@ -85,6 +85,8 @@ static inline bool acpi_has_cpu_in_madt(void)
+ 	return true;
+ }
+ 
++struct acpi_madt_generic_interrupt *acpi_cpu_get_madt_gicc(int cpu);
++
+ static inline void arch_fix_phys_package_id(int num, u32 slot) { }
+ void __init acpi_init_cpus(void);
+ 
+diff --git a/arch/arm64/kernel/smp.c b/arch/arm64/kernel/smp.c
+index f30273e1..bee527e8 100644
+--- a/arch/arm64/kernel/smp.c
++++ b/arch/arm64/kernel/smp.c
+@@ -471,6 +471,13 @@ static bool bootcpu_valid __initdata;
+ static unsigned int cpu_count = 1;
+ 
+ #ifdef CONFIG_ACPI
++static struct acpi_madt_generic_interrupt cpu_madt_gicc[NR_CPUS];
++
++struct acpi_madt_generic_interrupt *acpi_cpu_get_madt_gicc(int cpu)
++{
++	return &cpu_madt_gicc[cpu];
++}
++
+ /*
+  * acpi_map_gic_cpu_interface - parse processor MADT entry
+  *
+@@ -505,6 +512,7 @@ acpi_map_gic_cpu_interface(struct acpi_madt_generic_interrupt *processor)
+ 			return;
+ 		}
+ 		bootcpu_valid = true;
++		cpu_madt_gicc[0] = *processor;
+ 		early_map_cpu_to_node(0, acpi_numa_get_nid(0, hwid));
+ 		return;
+ 	}
+@@ -515,6 +523,8 @@ acpi_map_gic_cpu_interface(struct acpi_madt_generic_interrupt *processor)
+ 	/* map the logical cpu id to cpu MPIDR */
+ 	cpu_logical_map(cpu_count) = hwid;
+ 
++	cpu_madt_gicc[cpu_count] = *processor;
++
+ 	/*
+ 	 * Set-up the ACPI parking protocol cpu entries
+ 	 * while initializing the cpu_logical_map to
+-- 
+2.11.0
+

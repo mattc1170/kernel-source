@@ -1,0 +1,49 @@
+From: Arnd Bergmann <arnd@arndb.de>
+Date: Fri, 11 Aug 2017 13:19:11 +0200
+Subject: x86/cpu/amd: Hide unused legacy_fixup_core_id() function
+Git-commit: aac64f7de999d5a7fff55f49434fdd87df919829
+Patch-mainline: v4.14-rc1
+References: bsc#1060229
+
+The newly introduced function is only used when CONFIG_SMP is set:
+
+  arch/x86/kernel/cpu/amd.c:305:13: warning: 'legacy_fixup_core_id' defined but not used
+
+This moves the existing #ifdef around the caller so it covers
+legacy_fixup_core_id() as well.
+
+Signed-off-by: Arnd Bergmann <arnd@arndb.de>
+Cc: Borislav Petkov <bp@suse.de>
+Cc: Emanuel Czirai <icanrealizeum@gmail.com>
+Cc: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: Peter Zijlstra <peterz@infradead.org>
+Cc: Suravee Suthikulpanit <suravee.suthikulpanit@amd.com>
+Cc: Thomas Gleixner <tglx@linutronix.de>
+Cc: Tom Lendacky <thomas.lendacky@amd.com>
+Cc: Yazen Ghannam <Yazen.Ghannam@amd.com>
+Fixes: b89b41d0b841 ("x86/cpu/amd: Limit cpu_core_id fixup to families older than F17h")
+Link: http://lkml.kernel.org/r/20170811111937.2006128-1-arnd@arndb.de
+Signed-off-by: Ingo Molnar <mingo@kernel.org>
+Acked-by: Borislav Petkov <bp@suse.de>
+---
+ arch/x86/kernel/cpu/amd.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+--- a/arch/x86/kernel/cpu/amd.c
++++ b/arch/x86/kernel/cpu/amd.c
+@@ -290,6 +290,7 @@ static int nearby_node(int apicid)
+ }
+ #endif
+ 
++#ifdef CONFIG_SMP
+ /*
+  * Fix up cpu_core_id for pre-F17h systems to be in the
+  * [0 .. cores_per_node - 1] range. Not really needed but
+@@ -320,7 +321,6 @@ static void legacy_fixup_core_id(struct
+  *     Assumption: Number of cores in each internal node is the same.
+  * (2) AMD processors supporting compute units
+  */
+-#ifdef CONFIG_SMP
+ static void amd_get_topology(struct cpuinfo_x86 *c)
+ {
+ 	u32 cores_per_cu = 1;

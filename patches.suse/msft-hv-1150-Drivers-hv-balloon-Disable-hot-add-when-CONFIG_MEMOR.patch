@@ -13,7 +13,7 @@ sending future hot-add requests.
 Signed-off-by: Alex Ng <alexng@microsoft.com>
 Signed-off-by: K. Y. Srinivasan <kys@microsoft.com>
 Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  drivers/hv/hv_balloon.c | 4 ++++
  1 file changed, 4 insertions(+)

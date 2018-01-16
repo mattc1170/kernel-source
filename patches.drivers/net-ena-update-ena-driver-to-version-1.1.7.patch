@@ -1,0 +1,25 @@
+From: Netanel Belgazal <netanel@amazon.com>
+Date: Sun, 11 Jun 2017 15:42:51 +0300
+Subject: net: ena: update ena driver to version 1.1.7
+Patch-mainline: v4.12-rc6
+Git-commit: e7ff7efae5708513a795e329909ccbe2ac367b1a
+References: bsc#1047121
+
+Signed-off-by: Netanel Belgazal <netanel@amazon.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+Acked-by: Benjamin Poirier <bpoirier@suse.com>
+---
+ drivers/net/ethernet/amazon/ena/ena_netdev.h |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+--- a/drivers/net/ethernet/amazon/ena/ena_netdev.h
++++ b/drivers/net/ethernet/amazon/ena/ena_netdev.h
+@@ -45,7 +45,7 @@
+ 
+ #define DRV_MODULE_VER_MAJOR	1
+ #define DRV_MODULE_VER_MINOR	1
+-#define DRV_MODULE_VER_SUBMINOR 2
++#define DRV_MODULE_VER_SUBMINOR 7
+ 
+ #define DRV_MODULE_NAME		"ena"
+ #ifndef DRV_MODULE_VERSION

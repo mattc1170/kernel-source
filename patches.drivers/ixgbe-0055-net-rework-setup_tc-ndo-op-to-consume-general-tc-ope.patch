@@ -37,7 +37,7 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
 
 --- a/drivers/net/ethernet/amd/xgbe/xgbe-drv.c
 +++ b/drivers/net/ethernet/amd/xgbe/xgbe-drv.c
-@@ -1626,15 +1626,18 @@ static void xgbe_poll_controller(struct
+@@ -1628,15 +1628,18 @@ static void xgbe_poll_controller(struct
  }
  #endif /* End CONFIG_NET_POLL_CONTROLLER */
  
@@ -91,7 +91,7 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  			struct ifla_vf_info *ivi);
 --- a/drivers/net/ethernet/broadcom/bnxt/bnxt.c
 +++ b/drivers/net/ethernet/broadcom/bnxt/bnxt.c
-@@ -5278,13 +5278,17 @@ static int bnxt_change_mtu(struct net_de
+@@ -5277,13 +5277,17 @@ static int bnxt_change_mtu(struct net_de
  	return 0;
  }
  
@@ -132,7 +132,7 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  static int fm10k_ioctl(struct net_device *netdev, struct ifreq *ifr, int cmd)
 --- a/drivers/net/ethernet/intel/i40e/i40e.h
 +++ b/drivers/net/ethernet/intel/i40e/i40e.h
-@@ -772,7 +772,8 @@ struct i40e_mac_filter *i40e_find_mac(st
+@@ -774,7 +774,8 @@ struct i40e_mac_filter *i40e_find_mac(st
  				      bool is_vf, bool is_netdev);
  #ifdef I40E_FCOE
  int i40e_close(struct net_device *netdev);
@@ -144,7 +144,7 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  int i40e_fcoe_disable(struct net_device *netdev);
 --- a/drivers/net/ethernet/intel/i40e/i40e_main.c
 +++ b/drivers/net/ethernet/intel/i40e/i40e_main.c
-@@ -5261,14 +5261,16 @@ exit:
+@@ -5296,14 +5296,16 @@ exit:
  }
  
  #ifdef I40E_FCOE
@@ -279,7 +279,7 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  		netdev_reset_tc(dev);
 --- a/include/linux/netdevice.h
 +++ b/include/linux/netdevice.h
-@@ -781,6 +781,21 @@ static inline bool netdev_phys_item_id_s
+@@ -780,6 +780,21 @@ static inline bool netdev_phys_item_id_s
  typedef u16 (*select_queue_fallback_t)(struct net_device *dev,
  				       struct sk_buff *skb);
  
@@ -301,7 +301,7 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  /*
   * This structure defines the management hooks for network devices.
   * The following hooks can be defined; unless noted otherwise, they are
-@@ -1150,7 +1165,10 @@ struct net_device_ops {
+@@ -1149,7 +1164,10 @@ struct net_device_ops {
  	int			(*ndo_set_vf_rss_query_en)(
  						   struct net_device *dev,
  						   int vf, bool setting);
@@ -332,7 +332,7 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
  	else
  		netdev_set_num_tc(dev, 0);
  }
-@@ -140,9 +141,11 @@ static int mqprio_init(struct Qdisc *sch
+@@ -137,9 +138,11 @@ static int mqprio_init(struct Qdisc *sch
  	 * supplied and verified mapping
  	 */
  	if (qopt->hw) {
@@ -344,5 +344,5 @@ Acked-by: Benjamin Poirier <bpoirier@suse.com>
 -						    qopt->num_tc);
 +		err = dev->netdev_ops->ndo_setup_tc(dev, sch->handle, 0, &tc);
  		if (err)
- 			goto err;
+ 			return err;
  	} else {

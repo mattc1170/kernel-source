@@ -1,0 +1,104 @@
+From 3ddcba9aa3a352d80054661bb7cfed4fff8acf8d Mon Sep 17 00:00:00 2001
+From: Mark Rutland <mark.rutland@arm.com>
+Date: Tue, 11 Apr 2017 09:39:50 +0100
+Subject: [PATCH 37/56] drivers/perf: arm_pmu: rename irq request/free
+ functions
+
+Git-commit: 3cf6111025cb3346be43856e4c5e9b795b447832
+Patch-mainline: v4.12-rc1
+References: bsc#1062279
+
+For historical reasons, portions of the arm_pmu code use a cpu_pmu_
+prefix rather than an armpmu_ prefix. While a minor annoyance, this
+hasn't been a problem thusfar.
+
+However, to enable ACPI support, we'll need to expose a few things in
+header files, and we should aim to keep those consistently namespaced.
+In preparation for exporting our IRQ request/free functions, rename
+these to have an armpmu_ prefix. For consistency, the 'cpu_pmu'
+parameter is also renamed to 'armpmu'.
+
+Signed-off-by: Mark Rutland <mark.rutland@arm.com>
+Tested-by: Jeremy Linton <jeremy.linton@arm.com>
+Cc: Will Deacon <will.deacon@arm.com>
+Signed-off-by: Will Deacon <will.deacon@arm.com>
+Signed-off-by: Mian Yousaf Kaukab <yousaf.kaukab@suse.com>
+---
+ drivers/perf/arm_pmu.c | 20 ++++++++++----------
+ 1 file changed, 10 insertions(+), 10 deletions(-)
+
+diff --git a/drivers/perf/arm_pmu.c b/drivers/perf/arm_pmu.c
+index 75cdbfad..6b946c7b 100644
+--- a/drivers/perf/arm_pmu.c
++++ b/drivers/perf/arm_pmu.c
+@@ -526,12 +526,12 @@ int perf_num_counters(void)
+ }
+ EXPORT_SYMBOL_GPL(perf_num_counters);
+ 
+-static void cpu_pmu_free_irqs(struct arm_pmu *cpu_pmu)
++static void armpmu_free_irqs(struct arm_pmu *armpmu)
+ {
+ 	int cpu;
+-	struct pmu_hw_events __percpu *hw_events = cpu_pmu->hw_events;
++	struct pmu_hw_events __percpu *hw_events = armpmu->hw_events;
+ 
+-	for_each_cpu(cpu, &cpu_pmu->supported_cpus) {
++	for_each_cpu(cpu, &armpmu->supported_cpus) {
+ 		int irq = per_cpu(hw_events->irq, cpu);
+ 		if (!irq)
+ 			continue;
+@@ -541,20 +541,20 @@ static void cpu_pmu_free_irqs(struct arm_pmu *cpu_pmu)
+ 			break;
+ 		}
+ 
+-		if (!cpumask_test_and_clear_cpu(cpu, &cpu_pmu->active_irqs))
++		if (!cpumask_test_and_clear_cpu(cpu, &armpmu->active_irqs))
+ 			continue;
+ 
+ 		free_irq(irq, per_cpu_ptr(&hw_events->percpu_pmu, cpu));
+ 	}
+ }
+ 
+-static int cpu_pmu_request_irqs(struct arm_pmu *cpu_pmu)
++static int armpmu_request_irqs(struct arm_pmu *armpmu)
+ {
+ 	int cpu, err;
+-	struct pmu_hw_events __percpu *hw_events = cpu_pmu->hw_events;
++	struct pmu_hw_events __percpu *hw_events = armpmu->hw_events;
+ 	const irq_handler_t handler = armpmu_dispatch_irq;
+ 
+-	for_each_cpu(cpu, &cpu_pmu->supported_cpus) {
++	for_each_cpu(cpu, &armpmu->supported_cpus) {
+ 		int irq = per_cpu(hw_events->irq, cpu);
+ 		if (!irq)
+ 			continue;
+@@ -579,7 +579,7 @@ static int cpu_pmu_request_irqs(struct arm_pmu *cpu_pmu)
+ 			return err;
+ 		}
+ 
+-		cpumask_set_cpu(cpu, &cpu_pmu->active_irqs);
++		cpumask_set_cpu(cpu, &armpmu->active_irqs);
+ 	}
+ 
+ 	return 0;
+@@ -741,7 +741,7 @@ static int cpu_pmu_init(struct arm_pmu *cpu_pmu)
+ {
+ 	int err;
+ 
+-	err = cpu_pmu_request_irqs(cpu_pmu);
++	err = armpmu_request_irqs(cpu_pmu);
+ 	if (err)
+ 		goto out;
+ 
+@@ -760,7 +760,7 @@ out_unregister:
+ 	cpuhp_state_remove_instance_nocalls(CPUHP_AP_PERF_ARM_STARTING,
+ 					    &cpu_pmu->node);
+ out:
+-	cpu_pmu_free_irqs(cpu_pmu);
++	armpmu_free_irqs(cpu_pmu);
+ 	return err;
+ }
+ 
+-- 
+2.11.0
+

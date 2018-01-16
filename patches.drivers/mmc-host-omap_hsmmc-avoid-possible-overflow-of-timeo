@@ -1,0 +1,49 @@
+From a53210f56d7f3f75d1edc1b3a069ddb87b72a919 Mon Sep 17 00:00:00 2001
+From: Ravikumar Kattekola <rk@ti.com>
+Date: Mon, 30 Jan 2017 15:41:58 +0530
+Subject: [PATCH] mmc: host: omap_hsmmc: avoid possible overflow of timeout value
+Git-commit: a53210f56d7f3f75d1edc1b3a069ddb87b72a919
+Patch-mainline: 4.11-rc1
+References: bsc#1031717
+
+Fixes: a45c6cb81647 ("[ARM] 5369/1: omap mmc: Add new omap
+hsmmc controller for 2430 and 34xx, v3")
+
+when using really large timeout (up to 4*60*1000 ms for bkops)
+there is a possibility of data overflow using
+unsigned int so use 64 bit unsigned long long.
+
+Signed-off-by: Ravikumar Kattekola <rk@ti.com>
+Signed-off-by: Sekhar Nori <nsekhar@ti.com>
+Signed-off-by: Ulf Hansson <ulf.hansson@linaro.org>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/mmc/host/omap_hsmmc.c |    7 ++++---
+ 1 file changed, 4 insertions(+), 3 deletions(-)
+
+--- a/drivers/mmc/host/omap_hsmmc.c
++++ b/drivers/mmc/host/omap_hsmmc.c
+@@ -1474,10 +1474,11 @@ static int omap_hsmmc_setup_dma_transfer
+ }
+ 
+ static void set_data_timeout(struct omap_hsmmc_host *host,
+-			     unsigned int timeout_ns,
++			     unsigned long long timeout_ns,
+ 			     unsigned int timeout_clks)
+ {
+-	unsigned int timeout, cycle_ns;
++	unsigned long long timeout = timeout_ns;
++	unsigned int cycle_ns;
+ 	uint32_t reg, clkd, dto = 0;
+ 
+ 	reg = OMAP_HSMMC_READ(host->base, SYSCTL);
+@@ -1486,7 +1487,7 @@ static void set_data_timeout(struct omap
+ 		clkd = 1;
+ 
+ 	cycle_ns = 1000000000 / (host->clk_rate / clkd);
+-	timeout = timeout_ns / cycle_ns;
++	do_div(timeout, cycle_ns);
+ 	timeout += timeout_clks;
+ 	if (timeout) {
+ 		while ((timeout & 0x80000000) == 0) {

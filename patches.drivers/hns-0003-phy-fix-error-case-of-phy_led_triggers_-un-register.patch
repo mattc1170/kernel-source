@@ -1,0 +1,39 @@
+From: Woojung Huh <woojung.huh@microchip.com>
+Date: Wed, 23 Nov 2016 23:10:33 +0000
+Subject: phy: fix error case of phy_led_triggers_(un)register
+Patch-mainline: v4.10-rc1
+Git-commit: a7dac9f9c1695d7470b2f4e7447513e4a71b7c1b (partial)
+References: bsc#1049336
+
+When phy_init_hw() fails at phy_attach_direct();
+- phy_detach() calls phy_led_triggers_unregister() without
+  previous call of phy_led_triggers_register().
+- still call phy_led_triggers_register() and cause memory leak.
+
+Fixes: 2e0bc452f472 ("net: phy: leds: add support for led triggers on phy link state change")
+Signed-off-by: Woojung Huh <woojung.huh@microchip.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+Acked-by: Thomas Bogendoerfer <tbogendoerfer@suse.de>
+---
+ drivers/net/phy/phy_device.c |    6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+--- a/drivers/net/phy/phy_device.c
++++ b/drivers/net/phy/phy_device.c
+@@ -913,13 +913,13 @@ int phy_attach_direct(struct net_device
+ 	 */
+ 	err = phy_init_hw(phydev);
+ 	if (err)
+-		phy_detach(phydev);
+-	else
+-		phy_resume(phydev);
++		goto error;
+ 
++	phy_resume(phydev);
+ 	return err;
+ 
+ error:
++	phy_detach(phydev);
+ 	put_device(d);
+ 	if (ndev_owner != bus->owner)
+ 		module_put(bus->owner);

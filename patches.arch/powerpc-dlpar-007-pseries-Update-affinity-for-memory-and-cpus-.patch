@@ -1,0 +1,120 @@
+From 5b619dc90b6bf803e8f9b8442444772b468d378a Mon Sep 17 00:00:00 2001
+From: John Allen <jallen@linux.vnet.ibm.com>
+Date: Fri, 6 Jan 2017 13:28:54 -0600
+Subject: [PATCH] powerpc/pseries: Update affinity for memory and cpus
+ specified in a PRRN event
+
+References: FATE#322022
+Patch-mainline: v4.11-rc1
+Git-commit: 675d8ee685195249d1b35e12a29f614a9888b16d
+
+Extend the existing PRRN infrastructure to perform the actual affinity
+updating for cpus and memory in addition to the device tree updating.
+For cpus, dynamic affinity updating already appears to exist in the
+kernel in the form of arch_update_cpu_topology(). For memory, we must
+place a READD operation on the hotplug queue for any phandle included in
+the PRRN event that is determined to be an LMB.
+
+Signed-off-by: John Allen <jallen@linux.vnet.ibm.com>
+Reviewed-by: Nathan Fontenot <nfont@linux.vnet.ibm.com>
+Signed-off-by: Michael Ellerman <mpe@ellerman.id.au>
+Acked-by: Michal Suchanek <msuchanek@suse.de>
+---
+ arch/powerpc/kernel/rtasd.c               |  7 ++++++-
+ arch/powerpc/platforms/pseries/mobility.c | 34 +++++++++++++++++++++++++++++++
+ 2 files changed, 40 insertions(+), 1 deletion(-)
+
+diff --git a/arch/powerpc/kernel/rtasd.c b/arch/powerpc/kernel/rtasd.c
+index bf4bbb6052b5..9c102d49eb13 100644
+--- a/arch/powerpc/kernel/rtasd.c
++++ b/arch/powerpc/kernel/rtasd.c
+@@ -21,6 +21,7 @@
+ #include <linux/cpu.h>
+ #include <linux/workqueue.h>
+ #include <linux/slab.h>
++#include <linux/topology.h>
+ 
+ #include <asm/uaccess.h>
+ #include <asm/io.h>
+@@ -282,6 +283,7 @@ static void prrn_work_fn(struct work_struct *work)
+ 	 * the RTAS event.
+ 	 */
+ 	pseries_devicetree_update(-prrn_update_scope);
++	arch_update_cpu_topology();
+ }
+ 
+ static DECLARE_WORK(prrn_work, prrn_work_fn);
+@@ -434,7 +436,10 @@ static void do_event_scan(void)
+ 		}
+ 
+ 		if (error == 0) {
+-			pSeries_log_error(logdata, ERR_TYPE_RTAS_LOG, 0);
++			if (rtas_error_type((struct rtas_error_log *)logdata) !=
++			    RTAS_TYPE_PRRN)
++				pSeries_log_error(logdata, ERR_TYPE_RTAS_LOG,
++						  0);
+ 			handle_rtas_event((struct rtas_error_log *)logdata);
+ 		}
+ 
+diff --git a/arch/powerpc/platforms/pseries/mobility.c b/arch/powerpc/platforms/pseries/mobility.c
+index ceb18d349459..1f95c22a3f72 100644
+--- a/arch/powerpc/platforms/pseries/mobility.c
++++ b/arch/powerpc/platforms/pseries/mobility.c
+@@ -39,6 +39,7 @@ struct update_props_workarea {
+ #define ADD_DT_NODE	0x03000000
+ 
+ #define MIGRATION_SCOPE	(1)
++#define PRRN_SCOPE -2
+ 
+ static int mobility_rtas_call(int token, char *buf, s32 scope)
+ {
+@@ -236,6 +237,35 @@ static int add_dt_node(__be32 parent_phandle, __be32 drc_index)
+ 	return rc;
+ }
+ 
++static void prrn_update_node(__be32 phandle)
++{
++	struct pseries_hp_errorlog *hp_elog;
++	struct device_node *dn;
++
++	/*
++	 * If a node is found from a the given phandle, the phandle does not
++	 * represent the drc index of an LMB and we can ignore.
++	 */
++	dn = of_find_node_by_phandle(be32_to_cpu(phandle));
++	if (dn) {
++		of_node_put(dn);
++		return;
++	}
++
++	hp_elog = kzalloc(sizeof(*hp_elog), GFP_KERNEL);
++	if(!hp_elog)
++		return;
++
++	hp_elog->resource = PSERIES_HP_ELOG_RESOURCE_MEM;
++	hp_elog->action = PSERIES_HP_ELOG_ACTION_READD;
++	hp_elog->id_type = PSERIES_HP_ELOG_ID_DRC_INDEX;
++	hp_elog->_drc_u.drc_index = phandle;
++
++	queue_hotplug_event(hp_elog, NULL, NULL);
++
++	kfree(hp_elog);
++}
++
+ int pseries_devicetree_update(s32 scope)
+ {
+ 	char *rtas_buf;
+@@ -274,6 +304,10 @@ int pseries_devicetree_update(s32 scope)
+ 					break;
+ 				case UPDATE_DT_NODE:
+ 					update_dt_node(phandle, scope);
++
++					if (scope == PRRN_SCOPE)
++						prrn_update_node(phandle);
++
+ 					break;
+ 				case ADD_DT_NODE:
+ 					drc_index = *data++;
+-- 
+2.10.2
+

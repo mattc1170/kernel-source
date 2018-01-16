@@ -11,7 +11,7 @@ Remove it no longer used xmit_more in sendpacket in netvsc as well.
 Signed-off-by: Stephen Hemminger <sthemmin@microsoft.com>
 Signed-off-by: K. Y. Srinivasan <kys@microsoft.com>
 Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  drivers/hv/channel.c        | 19 +++++++++----------
  drivers/net/hyperv/netvsc.c | 21 +++------------------

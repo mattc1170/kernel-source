@@ -1,0 +1,34 @@
+From 6dfa828f6c110878ffe142b4aeb868c358da1121 Mon Sep 17 00:00:00 2001
+From: Johannes Thumshirn <jthumshirn@suse.de>
+Date: Thu, 31 Aug 2017 14:03:27 +0200
+Subject: nvme: fix hostid parsing
+References: bsc#1049272
+Patch-mainline: Never, SUSE backport specific
+
+The backport patch:
+patches.drivers/0477-nvme-add-hostid-token-to-fabric-options.patch introduced
+a back-ported version of uuid_be_parse() which includes upstream's
+uuid_is_valid(). Unfortunately the format detection is wrong so correct uuids
+get flagged as invalid. Fix the format detection.
+
+Signed-off-by: Johannes Thumshirn <jthumshirn@suse.de>
+---
+ drivers/nvme/host/fabrics.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/nvme/host/fabrics.c b/drivers/nvme/host/fabrics.c
+index 8a80b0e692b2..dc70f38ce808 100644
+--- a/drivers/nvme/host/fabrics.c
++++ b/drivers/nvme/host/fabrics.c
+@@ -557,7 +557,7 @@ static inline int uuid_be_parse(const char *uuid, uuid_be *u)
+ 	unsigned int i;
+ 
+ 	for (i = 0; i < 36; i++) {
+-		if (i == 8 || i == 13 || i == 23) {
++		if (i == 8 || i == 13 || i == 18 || i == 23) {
+ 			if (uuid[i] != '-')
+ 				return -EINVAL;
+ 		} else if (!isxdigit(uuid[i])) {
+-- 
+2.12.3
+

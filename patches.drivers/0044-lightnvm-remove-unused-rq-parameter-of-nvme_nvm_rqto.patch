@@ -1,0 +1,54 @@
+From 629b1b2e0e6c8285fdc21624af60e8190fa4417e Mon Sep 17 00:00:00 2001
+From: Geert Uytterhoeven <geert@linux-m68k.org>
+Date: Sun, 7 May 2017 16:14:44 +0200
+Subject: [PATCH] lightnvm: remove unused rq parameter of nvme_nvm_rqtocmd() to kill warning
+Git-commit: 629b1b2e0e6c8285fdc21624af60e8190fa4417e
+Patch-mainline: v4.12-rc1
+References: FATE#319466
+
+With gcc 4.1.2:
+
+    drivers/nvme/host/lightnvm.c: In function ‘nvme_nvm_submit_io’:
+    drivers/nvme/host/lightnvm.c:498: warning: ‘rq’ is used uninitialized in this function
+
+Indeed, since commit 2e13f33a2464fc3a ("lightnvm: create cmd before
+allocating request"), the request is passed to nvme_nvm_rqtocmd() before
+it is allocated.
+
+Fortunately, as of commit 91276162de9476b8 ("lightnvm: refactor end_io
+functions for sync"), nvme_nvm_rqtocmd () no longer uses the passed
+request, so this warning is a false positive.
+
+Drop the unused parameter to clean up the code and kill the warning.
+
+Fixes: 2e13f33a2464fc3a ("lightnvm: create cmd before allocating request")
+Fixes: 91276162de9476b8 ("lightnvm: refactor end_io functions for sync")
+Signed-off-by: Geert Uytterhoeven <geert@linux-m68k.org>
+Signed-off-by: Jens Axboe <axboe@fb.com>
+Signed-off-by: Coly Li <colyli@suse.de>
+---
+ drivers/nvme/host/lightnvm.c |    6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+--- a/drivers/nvme/host/lightnvm.c
++++ b/drivers/nvme/host/lightnvm.c
+@@ -498,8 +498,8 @@ static int nvme_nvm_set_bb_tbl(struct nv
+ 	return ret;
+ }
+ 
+-static inline void nvme_nvm_rqtocmd(struct request *rq, struct nvm_rq *rqd,
+-				struct nvme_ns *ns, struct nvme_nvm_command *c)
++static inline void nvme_nvm_rqtocmd(struct nvm_rq *rqd, struct nvme_ns *ns,
++				    struct nvme_nvm_command *c)
+ {
+ 	c->ph_rw.opcode = rqd->opcode;
+ 	c->ph_rw.nsid = cpu_to_le32(ns->ns_id);
+@@ -554,7 +554,7 @@ static int nvme_nvm_submit_io(struct nvm
+ 	rq->__data_len = bio->bi_iter.bi_size;
+ 	rq->bio = rq->biotail = bio;
+ 
+-	nvme_nvm_rqtocmd(rq, rqd, ns, cmd);
++	nvme_nvm_rqtocmd(rqd, ns, cmd);
+ 
+ 	rq->cmd = (unsigned char *)cmd;
+ 	rq->cmd_len = sizeof(struct nvme_nvm_command);

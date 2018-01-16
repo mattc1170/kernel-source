@@ -22,27 +22,25 @@ Signed-off-by: Martin K. Petersen <martin.petersen@oracle.com>
 Signed-off-by: Johannes Thumshirn <jthumshirn@suse.de>
 
 ---
- drivers/ata/pata_icside.c           |  2 +-
- drivers/infiniband/ulp/srp/ib_srp.c |  4 ++--
- drivers/scsi/arm/cumana_2.c         |  2 +-
- drivers/scsi/arm/eesox.c            |  2 +-
- drivers/scsi/arm/powertec.c         |  2 +-
- drivers/scsi/esas2r/esas2r_main.c   |  4 ++--
- drivers/scsi/hisi_sas/hisi_sas.h    |  2 +-
- drivers/scsi/mpt3sas/mpt3sas_base.c |  4 ++--
- drivers/scsi/mpt3sas/mpt3sas_base.h |  2 +-
- drivers/scsi/scsi_debug.c           |  2 +-
- drivers/scsi/scsi_lib.c             | 34 +++++++++++++++++-----------------
- drivers/usb/storage/scsiglue.c      |  2 +-
- include/scsi/scsi.h                 |  8 ++++----
- include/scsi/scsi_host.h            |  2 +-
+ drivers/ata/pata_icside.c           |    2 +-
+ drivers/infiniband/ulp/srp/ib_srp.c |    4 ++--
+ drivers/scsi/arm/cumana_2.c         |    2 +-
+ drivers/scsi/arm/eesox.c            |    2 +-
+ drivers/scsi/arm/powertec.c         |    2 +-
+ drivers/scsi/esas2r/esas2r_main.c   |    4 ++--
+ drivers/scsi/hisi_sas/hisi_sas.h    |    2 +-
+ drivers/scsi/mpt3sas/mpt3sas_base.c |    4 ++--
+ drivers/scsi/mpt3sas/mpt3sas_base.h |    2 +-
+ drivers/scsi/scsi_debug.c           |    2 +-
+ drivers/scsi/scsi_lib.c             |   34 +++++++++++++++++-----------------
+ drivers/usb/storage/scsiglue.c      |    2 +-
+ include/scsi/scsi.h                 |    8 ++++----
+ include/scsi/scsi_host.h            |    2 +-
  14 files changed, 36 insertions(+), 36 deletions(-)
 
-diff --git a/drivers/ata/pata_icside.c b/drivers/ata/pata_icside.c
-index d7c7320..188f2f2 100644
 --- a/drivers/ata/pata_icside.c
 +++ b/drivers/ata/pata_icside.c
-@@ -294,7 +294,7 @@ static int icside_dma_init(struct pata_icside_info *info)
+@@ -294,7 +294,7 @@ static int icside_dma_init(struct pata_i
  
  static struct scsi_host_template pata_icside_sht = {
  	ATA_BASE_SHT(DRV_NAME),
@@ -51,8 +49,6 @@ index d7c7320..188f2f2 100644
  	.dma_boundary		= IOMD_DMA_BOUNDARY,
  };
  
-diff --git a/drivers/infiniband/ulp/srp/ib_srp.c b/drivers/infiniband/ulp/srp/ib_srp.c
-index 57366c8..35978e4 100644
 --- a/drivers/infiniband/ulp/srp/ib_srp.c
 +++ b/drivers/infiniband/ulp/srp/ib_srp.c
 @@ -81,7 +81,7 @@ MODULE_PARM_DESC(cmd_sg_entries,
@@ -64,7 +60,7 @@ index 57366c8..35978e4 100644
  
  module_param(allow_ext_sg, bool, 0444);
  MODULE_PARM_DESC(allow_ext_sg,
-@@ -3132,7 +3132,7 @@ static int srp_parse_options(const char *buf, struct srp_target_port *target)
+@@ -3145,7 +3145,7 @@ static int srp_parse_options(const char
  
  		case SRP_OPT_SG_TABLESIZE:
  			if (match_int(args, &token) || token < 1 ||
@@ -73,11 +69,9 @@ index 57366c8..35978e4 100644
  				pr_warn("bad max sg_tablesize parameter '%s'\n",
  					p);
  				goto out;
-diff --git a/drivers/scsi/arm/cumana_2.c b/drivers/scsi/arm/cumana_2.c
-index faa1bee..edce5f3 100644
 --- a/drivers/scsi/arm/cumana_2.c
 +++ b/drivers/scsi/arm/cumana_2.c
-@@ -365,7 +365,7 @@ static struct scsi_host_template cumanascsi2_template = {
+@@ -365,7 +365,7 @@ static struct scsi_host_template cumanas
  	.eh_abort_handler		= fas216_eh_abort,
  	.can_queue			= 1,
  	.this_id			= 7,
@@ -86,11 +80,9 @@ index faa1bee..edce5f3 100644
  	.dma_boundary			= IOMD_DMA_BOUNDARY,
  	.use_clustering			= DISABLE_CLUSTERING,
  	.proc_name			= "cumanascsi2",
-diff --git a/drivers/scsi/arm/eesox.c b/drivers/scsi/arm/eesox.c
-index a8ad688..e93e047 100644
 --- a/drivers/scsi/arm/eesox.c
 +++ b/drivers/scsi/arm/eesox.c
-@@ -484,7 +484,7 @@ static struct scsi_host_template eesox_template = {
+@@ -484,7 +484,7 @@ static struct scsi_host_template eesox_t
  	.eh_abort_handler		= fas216_eh_abort,
  	.can_queue			= 1,
  	.this_id			= 7,
@@ -99,11 +91,9 @@ index a8ad688..e93e047 100644
  	.dma_boundary			= IOMD_DMA_BOUNDARY,
  	.use_clustering			= DISABLE_CLUSTERING,
  	.proc_name			= "eesox",
-diff --git a/drivers/scsi/arm/powertec.c b/drivers/scsi/arm/powertec.c
-index 5e1b73e..79aa8891 100644
 --- a/drivers/scsi/arm/powertec.c
 +++ b/drivers/scsi/arm/powertec.c
-@@ -291,7 +291,7 @@ static struct scsi_host_template powertecscsi_template = {
+@@ -291,7 +291,7 @@ static struct scsi_host_template powerte
  
  	.can_queue			= 8,
  	.this_id			= 7,
@@ -112,11 +102,9 @@ index 5e1b73e..79aa8891 100644
  	.dma_boundary			= IOMD_DMA_BOUNDARY,
  	.cmd_per_lun			= 2,
  	.use_clustering			= ENABLE_CLUSTERING,
-diff --git a/drivers/scsi/esas2r/esas2r_main.c b/drivers/scsi/esas2r/esas2r_main.c
-index 33581ba..2aca4d1 100644
 --- a/drivers/scsi/esas2r/esas2r_main.c
 +++ b/drivers/scsi/esas2r/esas2r_main.c
-@@ -246,7 +246,7 @@ static struct scsi_host_template driver_template = {
+@@ -246,7 +246,7 @@ static struct scsi_host_template driver_
  	.eh_target_reset_handler	= esas2r_target_reset,
  	.can_queue			= 128,
  	.this_id			= -1,
@@ -134,11 +122,9 @@ index 33581ba..2aca4d1 100644
  module_param(sg_tablesize, int, 0);
  MODULE_PARM_DESC(sg_tablesize,
  		 "Maximum number of entries in a scatter/gather table.");
-diff --git a/drivers/scsi/hisi_sas/hisi_sas.h b/drivers/scsi/hisi_sas/hisi_sas.h
-index d93c93c..c0cd505 100644
 --- a/drivers/scsi/hisi_sas/hisi_sas.h
 +++ b/drivers/scsi/hisi_sas/hisi_sas.h
-@@ -322,7 +322,7 @@ struct hisi_sas_command_table_stp {
+@@ -350,7 +350,7 @@ struct hisi_sas_command_table_stp {
  	u8	atapi_cdb[ATAPI_CDB_LEN];
  };
  
@@ -146,12 +132,10 @@ index d93c93c..c0cd505 100644
 +#define HISI_SAS_SGE_PAGE_CNT SG_CHUNK_SIZE
  struct hisi_sas_sge_page {
  	struct hisi_sas_sge sge[HISI_SAS_SGE_PAGE_CNT];
- };
-diff --git a/drivers/scsi/mpt3sas/mpt3sas_base.c b/drivers/scsi/mpt3sas/mpt3sas_base.c
-index d5b6063..7b1c64e 100644
+ }  __aligned(16);
 --- a/drivers/scsi/mpt3sas/mpt3sas_base.c
 +++ b/drivers/scsi/mpt3sas/mpt3sas_base.c
-@@ -3218,10 +3218,10 @@ _base_allocate_memory_pools(struct MPT3SAS_ADAPTER *ioc,  int sleep_flag)
+@@ -3329,10 +3329,10 @@ _base_allocate_memory_pools(struct MPT3S
  		sg_tablesize = MPT_MIN_PHYS_SEGMENTS;
  	else if (sg_tablesize > MPT_MAX_PHYS_SEGMENTS) {
  		sg_tablesize = min_t(unsigned short, sg_tablesize,
@@ -164,8 +148,6 @@ index d5b6063..7b1c64e 100644
  		 sg_tablesize, MPT_MAX_PHYS_SEGMENTS);
  	}
  	ioc->shost->sg_tablesize = sg_tablesize;
-diff --git a/drivers/scsi/mpt3sas/mpt3sas_base.h b/drivers/scsi/mpt3sas/mpt3sas_base.h
-index 742cef1..4b137dd 100644
 --- a/drivers/scsi/mpt3sas/mpt3sas_base.h
 +++ b/drivers/scsi/mpt3sas/mpt3sas_base.h
 @@ -90,7 +90,7 @@
@@ -177,11 +159,9 @@ index 742cef1..4b137dd 100644
  #define MPT_MIN_PHYS_SEGMENTS	16
  
  #ifdef CONFIG_SCSI_MPT3SAS_MAX_SGE
-diff --git a/drivers/scsi/scsi_debug.c b/drivers/scsi/scsi_debug.c
-index bb85832..9211072 100644
 --- a/drivers/scsi/scsi_debug.c
 +++ b/drivers/scsi/scsi_debug.c
-@@ -5306,7 +5306,7 @@ static struct scsi_host_template sdebug_driver_template = {
+@@ -5431,7 +5431,7 @@ static struct scsi_host_template sdebug_
  	.eh_host_reset_handler = scsi_debug_host_reset,
  	.can_queue =		SDEBUG_CANQUEUE,
  	.this_id =		7,
@@ -190,8 +170,6 @@ index bb85832..9211072 100644
  	.cmd_per_lun =		DEF_CMD_PER_LUN,
  	.max_sectors =		-1U,
  	.use_clustering = 	DISABLE_CLUSTERING,
-diff --git a/drivers/scsi/scsi_lib.c b/drivers/scsi/scsi_lib.c
-index bcd282c..678c97b 100644
 --- a/drivers/scsi/scsi_lib.c
 +++ b/drivers/scsi/scsi_lib.c
 @@ -51,25 +51,25 @@ struct sg_pool {
@@ -228,7 +206,7 @@ index bcd282c..678c97b 100644
  };
  #undef SP
  
-@@ -557,7 +557,7 @@ static inline unsigned int sg_pool_index(unsigned short nents)
+@@ -557,7 +557,7 @@ static inline unsigned int sg_pool_index
  {
  	unsigned int index;
  
@@ -237,7 +215,7 @@ index bcd282c..678c97b 100644
  
  	if (nents <= 8)
  		index = 0;
-@@ -585,9 +585,9 @@ static struct scatterlist *sg_pool_alloc(unsigned int nents, gfp_t gfp_mask)
+@@ -585,9 +585,9 @@ static struct scatterlist *sg_pool_alloc
  
  static void sg_free_table_chained(struct sg_table *table, bool first_chunk)
  {
@@ -249,7 +227,7 @@ index bcd282c..678c97b 100644
  }
  
  static int sg_alloc_table_chained(struct sg_table *table, int nents,
-@@ -598,14 +598,14 @@ static int sg_alloc_table_chained(struct sg_table *table, int nents,
+@@ -598,14 +598,14 @@ static int sg_alloc_table_chained(struct
  	BUG_ON(!nents);
  
  	if (first_chunk) {
@@ -266,7 +244,7 @@ index bcd282c..678c97b 100644
  			       first_chunk, GFP_ATOMIC, sg_pool_alloc);
  	if (unlikely(ret))
  		sg_free_table_chained(table, (bool)first_chunk);
-@@ -1940,7 +1940,7 @@ static int scsi_mq_prep_fn(struct request *req)
+@@ -1941,7 +1941,7 @@ static int scsi_mq_prep_fn(struct reques
  	if (scsi_host_get_prot(shost)) {
  		cmd->prot_sdb = (void *)sg +
  			min_t(unsigned int,
@@ -275,7 +253,7 @@ index bcd282c..678c97b 100644
  			sizeof(struct scatterlist);
  		memset(cmd->prot_sdb, 0, sizeof(struct scsi_data_buffer));
  
-@@ -2113,7 +2113,7 @@ static void __scsi_init_queue(struct Scsi_Host *shost, struct request_queue *q)
+@@ -2123,7 +2123,7 @@ static void __scsi_init_queue(struct Scs
  	 * this limit is imposed by hardware restrictions
  	 */
  	blk_queue_max_segments(q, min_t(unsigned short, shost->sg_tablesize,
@@ -284,7 +262,7 @@ index bcd282c..678c97b 100644
  
  	if (scsi_host_prot_dma(shost)) {
  		shost->sg_prot_tablesize =
-@@ -2195,8 +2195,8 @@ int scsi_mq_setup_tags(struct Scsi_Host *shost)
+@@ -2206,8 +2206,8 @@ int scsi_mq_setup_tags(struct Scsi_Host
  	unsigned int cmd_size, sgl_size, tbl_size;
  
  	tbl_size = shost->sg_tablesize;
@@ -295,11 +273,9 @@ index bcd282c..678c97b 100644
  	sgl_size = tbl_size * sizeof(struct scatterlist);
  	cmd_size = sizeof(struct scsi_cmnd) + shost->hostt->cmd_size + sgl_size;
  	if (scsi_host_get_prot(shost))
-diff --git a/drivers/usb/storage/scsiglue.c b/drivers/usb/storage/scsiglue.c
-index ba25863..0a28c80 100644
 --- a/drivers/usb/storage/scsiglue.c
 +++ b/drivers/usb/storage/scsiglue.c
-@@ -571,7 +571,7 @@ static const struct scsi_host_template usb_stor_host_template = {
+@@ -563,7 +563,7 @@ static const struct scsi_host_template u
  	.target_alloc =			target_alloc,
  
  	/* lots of sg segments can be handled */
@@ -308,8 +284,6 @@ index ba25863..0a28c80 100644
  
  	/* limit the total size of a transfer to 120 KB */
  	.max_sectors =                  240,
-diff --git a/include/scsi/scsi.h b/include/scsi/scsi.h
-index e0a3398..74dafa7 100644
 --- a/include/scsi/scsi.h
 +++ b/include/scsi/scsi.h
 @@ -24,16 +24,16 @@ enum scsi_timeouts {
@@ -333,8 +307,6 @@ index e0a3398..74dafa7 100644
  #endif
  
  /*
-diff --git a/include/scsi/scsi_host.h b/include/scsi/scsi_host.h
-index fcfa3d7..76e9d27 100644
 --- a/include/scsi/scsi_host.h
 +++ b/include/scsi/scsi_host.h
 @@ -37,7 +37,7 @@ struct blk_queue_tags;
@@ -346,6 +318,3 @@ index fcfa3d7..76e9d27 100644
  
  #define MODE_UNKNOWN 0x00
  #define MODE_INITIATOR 0x01
--- 
-1.8.5.6
-

@@ -1,0 +1,131 @@
+From 5a1749f65a20a6f94c091c9790ac7a9301158487 Mon Sep 17 00:00:00 2001
+From: John Allen <jallen@linux.vnet.ibm.com>
+Date: Thu, 7 Jul 2016 10:00:34 -0500
+Subject: [PATCH] powerpc/pseries: Add pseries hotplug workqueue
+
+References: FATE#322022
+Patch-mainline: v4.8-rc1
+Git-commit: 9054619ef54a3a832863ae25d15ac410ae3df146
+
+In support of PAPR changes to add a new hotplug interrupt, introduce a
+hotplug workqueue to avoid processing hotplug events in interrupt context.
+We will also take advantage of the queue on PowerVM to ensure hotplug
+events initiated from different sources (HMC and PRRN events) are handled
+and serialized properly.
+
+Signed-off-by: John Allen <jallen@linux.vnet.ibm.com>
+Reviewed-by: Nathan Fontenot <nfont@linux.vnet.ibm.com>
+Signed-off-by: Michael Ellerman <mpe@ellerman.id.au>
+Acked-by: Michal Suchanek <msuchanek@suse.de>
+---
+ arch/powerpc/platforms/pseries/dlpar.c | 58 +++++++++++++++++++++++++++++++---
+ 1 file changed, 53 insertions(+), 5 deletions(-)
+
+diff --git a/arch/powerpc/platforms/pseries/dlpar.c b/arch/powerpc/platforms/pseries/dlpar.c
+index 9a459721bc8d..244463679128 100644
+--- a/arch/powerpc/platforms/pseries/dlpar.c
++++ b/arch/powerpc/platforms/pseries/dlpar.c
+@@ -28,6 +28,15 @@
+ #include <asm/uaccess.h>
+ #include <asm/rtas.h>
+ 
++struct workqueue_struct *pseries_hp_wq;
++
++struct pseries_hp_work {
++	struct work_struct work;
++	struct pseries_hp_errorlog *errlog;
++	struct completion *hp_completion;
++	int *rc;
++};
++
+ struct cc_workarea {
+ 	__be32	drc_index;
+ 	__be32	zero;
+@@ -579,10 +588,51 @@ static int handle_dlpar_errorlog(struct pseries_hp_errorlog *hp_elog)
+ 	return rc;
+ }
+ 
++void pseries_hp_work_fn(struct work_struct *work)
++{
++	struct pseries_hp_work *hp_work =
++			container_of(work, struct pseries_hp_work, work);
++
++	if (hp_work->rc)
++		*(hp_work->rc) = handle_dlpar_errorlog(hp_work->errlog);
++	else
++		handle_dlpar_errorlog(hp_work->errlog);
++
++	if (hp_work->hp_completion)
++		complete(hp_work->hp_completion);
++
++	kfree(hp_work->errlog);
++	kfree((void *)work);
++}
++
++void queue_hotplug_event(struct pseries_hp_errorlog *hp_errlog,
++			 struct completion *hotplug_done, int *rc)
++{
++	struct pseries_hp_work *work;
++	struct pseries_hp_errorlog *hp_errlog_copy;
++
++	hp_errlog_copy = kmalloc(sizeof(struct pseries_hp_errorlog),
++				 GFP_KERNEL);
++	memcpy(hp_errlog_copy, hp_errlog, sizeof(struct pseries_hp_errorlog));
++
++	work = kmalloc(sizeof(struct pseries_hp_work), GFP_KERNEL);
++	if (work) {
++		INIT_WORK((struct work_struct *)work, pseries_hp_work_fn);
++		work->errlog = hp_errlog_copy;
++		work->hp_completion = hotplug_done;
++		work->rc = rc;
++		queue_work(pseries_hp_wq, (struct work_struct *)work);
++	} else {
++		*rc = -ENOMEM;
++		complete(hotplug_done);
++	}
++}
++
+ static ssize_t dlpar_store(struct class *class, struct class_attribute *attr,
+ 			   const char *buf, size_t count)
+ {
+ 	struct pseries_hp_errorlog *hp_elog;
++	struct completion hotplug_done;
+ 	const char *arg;
+ 	int rc;
+ 
+@@ -658,16 +708,14 @@ static CLASS_ATTR(dlpar, S_IWUSR, NULL, dlpar_store);
+ 
+ static int __init pseries_dlpar_init(void)
+ {
+-	int rc;
+-
+ #ifdef CONFIG_ARCH_CPU_PROBE_RELEASE
+ 	ppc_md.cpu_probe = dlpar_cpu_probe;
+ 	ppc_md.cpu_release = dlpar_cpu_release;
+ #endif /* CONFIG_ARCH_CPU_PROBE_RELEASE */
+ 
+-	rc = sysfs_create_file(kernel_kobj, &class_attr_dlpar.attr);
+-
+-	return rc;
++	pseries_hp_wq = alloc_workqueue("pseries hotplug workqueue",
++					WQ_UNBOUND, 1);
++	return sysfs_create_file(kernel_kobj, &class_attr_dlpar.attr);
+ }
+ machine_device_initcall(pseries, pseries_dlpar_init);
+ 
+diff --git a/arch/powerpc/platforms/pseries/pseries.h b/arch/powerpc/platforms/pseries/pseries.h
+index ddb9aa51aad6..bba32853c468 100644
+--- a/arch/powerpc/platforms/pseries/pseries.h
++++ b/arch/powerpc/platforms/pseries/pseries.h
+@@ -56,6 +56,8 @@ extern int dlpar_detach_node(struct device_node *);
+ extern int dlpar_acquire_drc(u32 drc_index);
+ extern int dlpar_release_drc(u32 drc_index);
+ 
++void queue_hotplug_event(struct pseries_hp_errorlog *hp_errlog,
++			 struct completion *hotplug_done, int *rc);
+ #ifdef CONFIG_MEMORY_HOTPLUG
+ int dlpar_memory(struct pseries_hp_errorlog *hp_elog);
+ #else
+-- 
+2.10.2
+

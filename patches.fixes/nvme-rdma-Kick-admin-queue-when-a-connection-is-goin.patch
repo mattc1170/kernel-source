@@ -1,0 +1,44 @@
+From: Hannes Reinecke <hare@suse.de>
+Date: Fri, 17 Nov 2017 14:31:14 +0100
+Subject: [PATCH] nvme/rdma: Kick admin queue when a connection is going down
+References: bsc#1059639
+Patch-Mainline: never, code has been refactored upstream
+
+When a connection is going down we need to kick the admin queue
+to avoid an ioctl stall.
+
+Suggested-by: Steve Schremmer <sschremm@netapp.com>
+Signed-off-by: Hannes Reinecke <hare@suse.com>
+---
+ drivers/nvme/host/rdma.c | 7 +++++--
+ 1 file changed, 5 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/nvme/host/rdma.c b/drivers/nvme/host/rdma.c
+index 5981018..a5e8b23 100644
+--- a/drivers/nvme/host/rdma.c
++++ b/drivers/nvme/host/rdma.c
+@@ -832,6 +832,7 @@ static void nvme_rdma_error_recovery_work(struct work_struct *work)
+ 	 * new IO
+ 	 */
+ 	blk_mq_start_stopped_hw_queues(ctrl->ctrl.admin_q, true);
++	blk_mq_kick_requeue_list(ctrl->ctrl.admin_q);
+ 	nvme_start_queues(&ctrl->ctrl);
+ 
+ 	nvme_rdma_reconnect_or_remove(ctrl);
+@@ -1450,9 +1451,11 @@ static inline int nvme_rdma_queue_is_ready(struct nvme_rdma_queue *queue,
+ 			 * fail it fast to allow upper layers a chance to
+ 			 * failover.
+ 			 */
+-			if (queue->ctrl->ctrl.state == NVME_CTRL_RECONNECTING)
++			if (queue->ctrl->ctrl.state == NVME_CTRL_RECONNECTING ||
++			    queue->ctrl->ctrl.state == NVME_CTRL_DELETING) {
++				nvme_req(rq)->status = NVME_SC_ABORT_REQ;
+ 				return -EIO;
+-			else
++			} else
+ 				return -EAGAIN;
+ 		}
+ 	}
+-- 
+1.8.5.6
+

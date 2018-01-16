@@ -1,0 +1,34 @@
+From: Sasha Levin <alexander.levin@verizon.com>
+Date: Mon, 13 Nov 2017 17:55:20 -0500
+Subject: [PATCH] Revert "crypto: xts - Add ECB dependency"
+References: bnc#1012382
+Patch-mainline: 4.4.100
+Git-commit: d9c8d4adb5a7466cf3000c3c7d7136be5376cf22
+
+This reverts commit 6145171a6bc0abdc3eca7a4b795ede467d2ba569.
+
+The commit fixes a bug that was only introduced in 4.10, thus is
+irrelevant for <=4.9.
+
+Signed-off-by: Sasha Levin <alexander.levin@verizon.com>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Signed-off-by: Jiri Slaby <jslaby@suse.cz>
+---
+ crypto/Kconfig | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/crypto/Kconfig b/crypto/Kconfig
+index 617bf4a7da56..7240821137fd 100644
+--- a/crypto/Kconfig
++++ b/crypto/Kconfig
+@@ -343,7 +343,6 @@ config CRYPTO_XTS
+ 	select CRYPTO_BLKCIPHER
+ 	select CRYPTO_MANAGER
+ 	select CRYPTO_GF128MUL
+-	select CRYPTO_ECB
+ 	help
+ 	  XTS: IEEE1619/D16 narrow block cipher use with aes-xts-plain,
+ 	  key size 256, 384 or 512 bits. This implementation currently
+-- 
+2.15.0
+

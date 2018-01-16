@@ -1,0 +1,25 @@
+From:  Johannes Thumshirn <jthumshirn@suse.de>
+Date: Tue Aug  8 12:09:23 CEST 2017
+Subject: KABI protect struct acpi_nfit_desc
+References: bsc#1052325
+Patch-mainline: Never, KABI
+
+KABI protect struct acpi_nfit_desc as it's internal to nfit.ko
+
+Signed-off-by: Johannes Thumshirn <jthumshirn@suse.de>
+---
+ drivers/acpi/nfit/nfit.h |    2 ++
+ 1 file changed, 2 insertions(+)
+
+--- a/drivers/acpi/nfit/nfit.h
++++ b/drivers/acpi/nfit/nfit.h
+@@ -156,7 +156,9 @@ struct acpi_nfit_desc {
+ 	struct list_head idts;
+ 	struct nvdimm_bus *nvdimm_bus;
+ 	struct device *dev;
++#ifndef __GENKSYMS__
+ 	u8 ars_start_flags;
++#endif
+ 	struct nd_cmd_ars_status *ars_status;
+ 	size_t ars_status_size;
+ 	struct work_struct work;

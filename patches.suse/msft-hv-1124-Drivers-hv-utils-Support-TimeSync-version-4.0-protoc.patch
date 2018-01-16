@@ -16,7 +16,7 @@ latency is added to the sample host time prior to updating the clock.
 Signed-off-by: Alex Ng <alexng@messages.microsoft.com>
 Signed-off-by: K. Y. Srinivasan <kys@microsoft.com>
 Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  drivers/hv/hv_util.c   | 82 ++++++++++++++++++++++++++++++++++++--------------
  include/linux/hyperv.h |  9 ++++++

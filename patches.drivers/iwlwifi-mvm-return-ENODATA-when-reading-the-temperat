@@ -1,0 +1,33 @@
+From 1442a9a9f2e441b15393c2d89286303b103a57e8 Mon Sep 17 00:00:00 2001
+From: Luca Coelho <luciano.coelho@intel.com>
+Date: Mon, 18 Sep 2017 14:39:26 +0300
+Subject: [PATCH] iwlwifi: mvm: return -ENODATA when reading the temperature with the FW down
+Git-commit: 1442a9a9f2e441b15393c2d89286303b103a57e8
+Patch-mainline: 4.14-rc6
+References: bsc#1031717
+
+It seems that libsensors treats -EIO as a special non-recoverable
+failure when it tries to read the temperature while the firmware is
+not running.  To solve that, change the error code to a milder
+-ENODATA.
+
+This fixes https://bugzilla.kernel.org/show_bug.cgi?id=196941
+
+Fixes: c221daf219b1 ("iwlwifi: mvm: add registration to thermal zone")
+Signed-off-by: Luca Coelho <luciano.coelho@intel.com>
+Acked-by: Takashi Iwai <tiwai@suse.de>
+
+---
+ drivers/net/wireless/iwlwifi/mvm/tt.c |    1 +
+ 1 file changed, 1 insertion(+)
+
+--- a/drivers/net/wireless/iwlwifi/mvm/tt.c
++++ b/drivers/net/wireless/iwlwifi/mvm/tt.c
+@@ -646,6 +646,7 @@ static int iwl_mvm_tzone_get_temp(struct
+ 	mutex_lock(&mvm->mutex);
+ 
+ 	if (!mvm->ucode_loaded || !(mvm->cur_ucode == IWL_UCODE_REGULAR)) {
++		ret = -ENODATA;
+ 		ret = -EIO;
+ 		goto out;
+ 	}

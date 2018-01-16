@@ -1,0 +1,44 @@
+From: Bart Van Assche <bart.vanassche@sandisk.com>
+Date: Fri, 7 Apr 2017 11:16:54 -0700
+Subject: [PATCH] dm rq: Avoid that request processing stalls sporadically
+Git-commit: 6077c2d706097c00d8f2fed57d3f3c45cd228ee8
+Patch-mainline: v4.11-rc6
+References: bsc#1042978
+
+While running the srp-test software I noticed that request
+processing stalls sporadically at the beginning of a test, namely
+when mkfs is run against a dm-mpath device. Every time when that
+happened the following command was sufficient to resume request
+processing:
+
+    echo run >/sys/kernel/debug/block/dm-0/state
+
+This patch avoids that such request processing stalls occur. The
+test I ran is as follows:
+
+    while srp-test/run_tests -d -r 30 -t 02-mq; do :; done
+
+Signed-off-by: Bart Van Assche <bart.vanassche@sandisk.com>
+Cc: Mike Snitzer <snitzer@redhat.com>
+Cc: dm-devel@redhat.com
+Signed-off-by: Jens Axboe <axboe@fb.com>
+Signed-off-by: Coly Li <colyli@suse.de>
+---
+ drivers/md/dm-rq.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/drivers/md/dm-rq.c b/drivers/md/dm-rq.c
+index 28955b94d2b2..0b081d170087 100644
+--- a/drivers/md/dm-rq.c
++++ b/drivers/md/dm-rq.c
+@@ -755,6 +755,7 @@ static int dm_mq_queue_rq(struct blk_mq_hw_ctx *hctx,
+ 		/* Undo dm_start_request() before requeuing */
+ 		rq_end_stats(md, rq);
+ 		rq_completed(md, rq_data_dir(rq), false);
++		blk_mq_delay_run_hw_queue(hctx, 100/*ms*/);
+ 		return BLK_MQ_RQ_QUEUE_BUSY;
+ 	}
+ 
+-- 
+2.13.6
+

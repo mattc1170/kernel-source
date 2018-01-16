@@ -1,0 +1,61 @@
+From: James Smart <jsmart2021@gmail.com>
+Date: Wed, 18 Oct 2017 14:33:59 -0700
+Subject: nvmet: synchronize sqhd update
+Patch-mainline: Queued in subsystem maintainer repository
+Git-repo: git://git.infradead.org/nvme.git
+Git-commit: f9cf2a64912d67c9cf49c316a0a0ada0ea7ed1da
+References: bsc#1063349
+
+In testing target io in read write mix, we did indeed get into cases where
+sqhd didn't update properly and slowly missed enough updates to shutdown
+the queue.
+
+Protect the updating sqhd by using cmpxchg, and for that turn the sqhd
+field into a u32 so that cmpxchg works on it for all architectures.
+
+Signed-off-by: James Smart <james.smart@broadcom.com>
+Signed-off-by: Christoph Hellwig <hch@lst.de>
+Acked-by: Johannes Thumshirn <jthumshirn@suse.de>
+---
+ drivers/nvme/target/core.c  |   15 ++++++++++++---
+ drivers/nvme/target/nvmet.h |    2 +-
+ 2 files changed, 13 insertions(+), 4 deletions(-)
+
+--- a/drivers/nvme/target/core.c
++++ b/drivers/nvme/target/core.c
+@@ -384,12 +384,21 @@ struct nvmet_ns *nvmet_ns_alloc(struct n
+ 
+ static void __nvmet_req_complete(struct nvmet_req *req, u16 status)
+ {
++	u32 old_sqhd, new_sqhd;
++	u16 sqhd;
++
+ 	if (status)
+ 		nvmet_set_status(req, status);
+ 
+-	if (req->sq->size)
+-		req->sq->sqhd = (req->sq->sqhd + 1) % req->sq->size;
+-	req->rsp->sq_head = cpu_to_le16(req->sq->sqhd);
++	if (req->sq->size) {
++		do {
++			old_sqhd = req->sq->sqhd;
++			new_sqhd = (old_sqhd + 1) % req->sq->size;
++		} while (cmpxchg(&req->sq->sqhd, old_sqhd, new_sqhd) !=
++					old_sqhd);
++	}
++	sqhd = req->sq->sqhd & 0x0000FFFF;
++	req->rsp->sq_head = cpu_to_le16(sqhd);
+ 	req->rsp->sq_id = cpu_to_le16(req->sq->qid);
+ 	req->rsp->command_id = req->cmd->common.command_id;
+ 
+--- a/drivers/nvme/target/nvmet.h
++++ b/drivers/nvme/target/nvmet.h
+@@ -76,7 +76,7 @@ struct nvmet_sq {
+ 	struct completion	free_done;
+ 	struct completion	confirm_done;
+ #ifndef __GENKSYMS__
+-	u16			sqhd;
++	u32			sqhd;
+ #endif
+ };
+ 

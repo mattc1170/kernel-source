@@ -23,7 +23,7 @@ Reviewed-by: Jake Oshins <jakeo@microsoft.com>
 Acked-by: K. Y. Srinivasan <kys@microsoft.com>
 CC: Haiyang Zhang <haiyangz@microsoft.com>
 CC: Vitaly Kuznetsov <vkuznets@redhat.com>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  drivers/pci/host/pci-hyperv.c | 53 +++++++++++++++++++++++++++----------------
  1 file changed, 33 insertions(+), 20 deletions(-)

@@ -1,0 +1,57 @@
+From: James Smart <jsmart2021@gmail.com>
+Date: Thu, 7 Sep 2017 13:20:23 -0700
+Subject: [PATCH] nvme: add transport SGL definitions
+Patch-Mainline: v4.14
+Git-commit: d85cf207499e6740ab9c490ff4f360af5c432d23
+References: bsc#1057820
+
+Add transport SGL defintions from NVMe TP 4008, required for
+the final NVMe-FC standard.
+
+Signed-off-by: James Smart <james.smart@broadcom.com>
+Signed-off-by: Christoph Hellwig <hch@lst.de>
+Signed-off-by: Jens Axboe <axboe@kernel.dk>
+Acked-by: Hannes Reinecke <hare@suse.com>
+---
+ include/linux/nvme.h | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/include/linux/nvme.h b/include/linux/nvme.h
+index 15cf318..97d187b 100644
+--- a/include/linux/nvme.h
++++ b/include/linux/nvme.h
+@@ -434,12 +434,14 @@ enum nvme_opcode {
+  *
+  * @NVME_SGL_FMT_ADDRESS:     absolute address of the data block
+  * @NVME_SGL_FMT_OFFSET:      relative offset of the in-capsule data block
++ * @NVME_SGL_FMT_TRANSPORT_A: transport defined format, value 0xA
+  * @NVME_SGL_FMT_INVALIDATE:  RDMA transport specific remote invalidation
+  *                            request subtype
+  */
+ enum {
+ 	NVME_SGL_FMT_ADDRESS		= 0x00,
+ 	NVME_SGL_FMT_OFFSET		= 0x01,
++	NVME_SGL_FMT_TRANSPORT_A	= 0x0A,
+ 	NVME_SGL_FMT_INVALIDATE		= 0x0f,
+ };
+ 
+@@ -453,12 +455,16 @@ enum {
+  *
+  * For struct nvme_keyed_sgl_desc:
+  *   @NVME_KEY_SGL_FMT_DATA_DESC:	keyed data block descriptor
++ *
++ * Transport-specific SGL types:
++ *   @NVME_TRANSPORT_SGL_DATA_DESC:	Transport SGL data dlock descriptor
+  */
+ enum {
+ 	NVME_SGL_FMT_DATA_DESC		= 0x00,
+ 	NVME_SGL_FMT_SEG_DESC		= 0x02,
+ 	NVME_SGL_FMT_LAST_SEG_DESC	= 0x03,
+ 	NVME_KEY_SGL_FMT_DATA_DESC	= 0x04,
++	NVME_TRANSPORT_SGL_DATA_DESC	= 0x05,
+ };
+ 
+ struct nvme_sgl_desc {
+-- 
+1.8.5.6
+

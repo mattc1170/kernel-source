@@ -2,8 +2,7 @@ From: Deepak Khungar <deepak.khungar@broadcom.com>
 Date: Fri, 21 Apr 2017 20:11:26 -0400
 Subject: bnxt_en: Restrict a PF in Multi-Host mode from changing port PHY
  configuration
-Patch-mainline: Queued in subsystem maintainer repository
-Git-repo: git://git.kernel.org/pub/scm/linux/kernel/git/davem/net-next.git
+Patch-mainline: v4.12-rc1
 Git-commit: 9e54e322ded40f424dcb5a13508e2556919ce12a
 References: bsc#1020412 FATE#321671
 

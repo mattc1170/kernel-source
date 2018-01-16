@@ -10,7 +10,7 @@ The link flag pthread is not needed.
 Signed-off-by: Weibing Zhang <atheism.zhang@gmail.com>
 Signed-off-by: K. Y. Srinivasan <kys@microsoft.com>
 Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  tools/hv/Makefile | 3 +--
  1 file changed, 1 insertion(+), 2 deletions(-)

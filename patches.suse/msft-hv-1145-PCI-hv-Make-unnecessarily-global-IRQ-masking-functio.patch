@@ -13,7 +13,7 @@ This fixes a sparse warning.
 Signed-off-by: Tobias Klauser <tklauser@distanz.ch>
 Signed-off-by: Bjorn Helgaas <bhelgaas@google.com>
 Acked-by: K. Y. Srinivasan <kys@microsoft.com>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  drivers/pci/host/pci-hyperv.c | 4 ++--
  1 file changed, 2 insertions(+), 2 deletions(-)

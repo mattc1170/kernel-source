@@ -1,0 +1,87 @@
+From: Xin Long <lucien.xin@gmail.com>
+Date: Thu, 6 Apr 2017 13:41:28 +0800
+Subject: team: call netdev_change_features out of team lock
+Patch-mainline: v4.11-rc7
+Git-commit: 16cf72bb085626ae1323e59985d6cbb58a8f71d8
+References: bsc#1055567
+
+Commit f6988cb63a4e ("team: don't call netdev_change_features under
+team->lock") fixed the issue calling netdev_change_features under
+team->lock for team_compute_features.
+
+But there are still two places where it calls netdev_change_features
+under team->lock, team_port_add and team_port_del. It may cause a
+dead lock when the slave port with LRO enabled is added.
+
+This patch is to fix this dead lock by moving netdev_change_features
+out of team_port_add and team_port_del, and call it after unlocking
+the team lock.
+
+Reported-by: Patrick Talbert <ptalbert@redhat.com>
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+Acked-by: Jiri Pirko <jiri@mellanox.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+Acked-by: Benjamin Poirier <bpoirier@suse.com>
+---
+ drivers/net/team/team.c |   19 +++++++++++--------
+ 1 file changed, 11 insertions(+), 8 deletions(-)
+
+--- a/drivers/net/team/team.c
++++ b/drivers/net/team/team.c
+@@ -985,7 +985,7 @@ static void team_port_disable(struct tea
+ 			    NETIF_F_FRAGLIST | NETIF_F_ALL_TSO | \
+ 			    NETIF_F_HIGHDMA | NETIF_F_LRO)
+ 
+-static void ___team_compute_features(struct team *team)
++static void __team_compute_features(struct team *team)
+ {
+ 	struct team_port *port;
+ 	u32 vlan_features = TEAM_VLAN_FEATURES & NETIF_F_ALL_FOR_ALL;
+@@ -1011,16 +1011,10 @@ static void ___team_compute_features(str
+ 		team->dev->priv_flags |= IFF_XMIT_DST_RELEASE;
+ }
+ 
+-static void __team_compute_features(struct team *team)
+-{
+-	___team_compute_features(team);
+-	netdev_change_features(team->dev);
+-}
+-
+ static void team_compute_features(struct team *team)
+ {
+ 	mutex_lock(&team->lock);
+-	___team_compute_features(team);
++	__team_compute_features(team);
+ 	mutex_unlock(&team->lock);
+ 	netdev_change_features(team->dev);
+ }
+@@ -1639,6 +1633,7 @@ static void team_uninit(struct net_devic
+ 	team_notify_peers_fini(team);
+ 	team_queue_override_fini(team);
+ 	mutex_unlock(&team->lock);
++	netdev_change_features(dev);
+ }
+ 
+ static void team_destructor(struct net_device *dev)
+@@ -1924,6 +1919,10 @@ static int team_add_slave(struct net_dev
+ 	mutex_lock(&team->lock);
+ 	err = team_port_add(team, port_dev);
+ 	mutex_unlock(&team->lock);
++
++	if (!err)
++		netdev_change_features(dev);
++
+ 	return err;
+ }
+ 
+@@ -1935,6 +1934,10 @@ static int team_del_slave(struct net_dev
+ 	mutex_lock(&team->lock);
+ 	err = team_port_del(team, port_dev);
+ 	mutex_unlock(&team->lock);
++
++	if (!err)
++		netdev_change_features(dev);
++
+ 	return err;
+ }
+ 

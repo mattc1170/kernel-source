@@ -37,7 +37,7 @@ Signed-off-by: Lee Duncan <lduncan@suse.com>
  
  
  static void scsi_host_cls_release(struct device *dev)
-@@ -355,6 +355,8 @@ static void scsi_host_dev_release(struct
+@@ -366,6 +366,8 @@ static void scsi_host_dev_release(struct
  
  	kfree(shost->shost_data);
  
@@ -46,7 +46,7 @@ Signed-off-by: Lee Duncan <lduncan@suse.com>
  	if (parent)
  		put_device(parent);
  	kfree(shost);
-@@ -388,6 +390,7 @@ struct Scsi_Host *scsi_host_alloc(struct
+@@ -399,6 +401,7 @@ struct Scsi_Host *scsi_host_alloc(struct
  {
  	struct Scsi_Host *shost;
  	gfp_t gfp_mask = GFP_KERNEL;
@@ -54,7 +54,7 @@ Signed-off-by: Lee Duncan <lduncan@suse.com>
  
  	if (sht->unchecked_isa_dma && privsize)
  		gfp_mask |= __GFP_DMA;
-@@ -406,11 +409,11 @@ struct Scsi_Host *scsi_host_alloc(struct
+@@ -417,11 +420,11 @@ struct Scsi_Host *scsi_host_alloc(struct
  	init_waitqueue_head(&shost->host_wait);
  	mutex_init(&shost->scan_mutex);
  
@@ -71,7 +71,7 @@ Signed-off-by: Lee Duncan <lduncan@suse.com>
  	shost->dma_channel = 0xff;
  
  	/* These three are default values which can be overridden */
-@@ -495,7 +498,7 @@ struct Scsi_Host *scsi_host_alloc(struct
+@@ -506,7 +509,7 @@ struct Scsi_Host *scsi_host_alloc(struct
  		shost_printk(KERN_WARNING, shost,
  			"error handler thread failed to spawn, error = %ld\n",
  			PTR_ERR(shost->ehandler));
@@ -80,7 +80,7 @@ Signed-off-by: Lee Duncan <lduncan@suse.com>
  	}
  
  	shost->tmf_work_q = alloc_workqueue("scsi_tmf_%d",
-@@ -511,6 +514,8 @@ struct Scsi_Host *scsi_host_alloc(struct
+@@ -522,6 +525,8 @@ struct Scsi_Host *scsi_host_alloc(struct
  
   fail_kthread:
  	kthread_stop(shost->ehandler);
@@ -89,7 +89,7 @@ Signed-off-by: Lee Duncan <lduncan@suse.com>
   fail_kfree:
  	kfree(shost);
  	return NULL;
-@@ -606,6 +611,7 @@ int scsi_init_hosts(void)
+@@ -617,6 +622,7 @@ int scsi_init_hosts(void)
  void scsi_exit_hosts(void)
  {
  	class_unregister(&shost_class);

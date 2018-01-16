@@ -1,8 +1,7 @@
 From: lipeng <lipeng321@huawei.com>
 Date: Sat, 1 Apr 2017 12:03:47 +0100
 Subject: net: hns: Avoid Hip06 chip TX packet line bug
-Patch-mainline: Queued in subsystem maintainer repository
-Git-repo: git://git.kernel.org/pub/scm/linux/kernel/git/davem/net-next.git
+Patch-mainline: v4.12-rc1
 Git-commit: 820c90cb3e2e452c80824391953cab9d5b5af154
 References: fate#322061
 

@@ -1,0 +1,37 @@
+From 7e7e4a6516fd82e4d52bbaeca5dac72764226c4f Mon Sep 17 00:00:00 2001
+From: Aurelien Aptel <aaptel@suse.com>
+Date: Tue, 28 Feb 2017 15:26:30 +0100
+Subject: [PATCH] CIFS: let ses->ipc_tid hold smb2 TreeIds
+Git-commit: 7f9f6d2ec51449a20bc35359c9e190bf861b57e1
+Patch-mainline: 4.11
+References: fate#323482
+
+the TreeId field went from 2 bytes in CIFS to 4 bytes in SMB2+. this
+commit updates the size of the ipc_tid field of a cifs_ses, which was
+still using 2 bytes.
+
+Signed-off-by: Aurelien Aptel <aaptel@suse.com>
+Reviewed-by: Pavel Shilovsky <pshilov@microsoft.com>
+Signed-off-by: Steve French <smfrench@gmail.com>
+Acked-by: Aurelien Aptel <aaptel@suse.com>
+
+---
+ fs/cifs/cifsglob.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/fs/cifs/cifsglob.h b/fs/cifs/cifsglob.h
+index 423db2ffc13d..09206f8432b5 100644
+--- a/fs/cifs/cifsglob.h
++++ b/fs/cifs/cifsglob.h
+@@ -801,7 +801,7 @@ struct cifs_ses {
+ 	int ses_count;		/* reference counter */
+ 	enum statusEnum status;
+ 	unsigned overrideSecFlg;  /* if non-zero override global sec flags */
+-	__u16 ipc_tid;		/* special tid for connection to IPC share */
++	__u32 ipc_tid;		/* special tid for connection to IPC share */
+ 	char *serverOS;		/* name of operating system underlying server */
+ 	char *serverNOS;	/* name of network operating system of server */
+ 	char *serverDomain;	/* security realm of server */
+-- 
+2.12.3
+

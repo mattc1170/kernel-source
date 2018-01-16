@@ -13,7 +13,7 @@ Signed-off-by: K. Y. Srinivasan <kys@microsoft.com>
 Reviewed-by: Long Li <longli@microsoft.com>
 Tested-by: Alex Ng <alexng@microsoft.com>
 Signed-off-by: Martin K. Petersen <martin.petersen@oracle.com>
-Acked-by: <ohering@suse.de>
+Acked-by: Olaf Hering <ohering@suse.de>
 ---
  drivers/scsi/storvsc_drv.c | 181 +++++++++++++++++++++++++++++++++------------
  1 file changed, 134 insertions(+), 47 deletions(-)

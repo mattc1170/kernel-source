@@ -1,0 +1,40 @@
+From: Gabriele Mazzotta <gabriele.mzt@gmail.com>
+Date: Sat, 24 Dec 2016 19:50:00 +0100
+Subject: [PATCH] ALSA: hda - Apply ALC269_FIXUP_NO_SHUTUP on
+ HDA_FIXUP_ACT_PROBE
+References: bnc#1012382
+Patch-mainline: 4.4.103
+Git-commit: 972aa2c708703c21f14eb958b37e82aae2530e44
+
+[ Upstream commit 972aa2c708703c21f14eb958b37e82aae2530e44 ]
+
+Setting shutup when the action is HDA_FIXUP_ACT_PRE_PROBE might
+not have the desired effect since it could be overridden by
+another more generic shutup function. Prevent this by setting
+the more specific shutup function on HDA_FIXUP_ACT_PROBE.
+
+Signed-off-by: Gabriele Mazzotta <gabriele.mzt@gmail.com>
+Signed-off-by: Takashi Iwai <tiwai@suse.de>
+Signed-off-by: Sasha Levin <alexander.levin@verizon.com>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Signed-off-by: Jiri Slaby <jslaby@suse.cz>
+---
+ sound/pci/hda/patch_realtek.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/sound/pci/hda/patch_realtek.c b/sound/pci/hda/patch_realtek.c
+index 64085a512dbf..e5730a7d0480 100644
+--- a/sound/pci/hda/patch_realtek.c
++++ b/sound/pci/hda/patch_realtek.c
+@@ -4404,7 +4404,7 @@ static void alc_no_shutup(struct hda_codec *codec)
+ static void alc_fixup_no_shutup(struct hda_codec *codec,
+ 				const struct hda_fixup *fix, int action)
+ {
+-	if (action == HDA_FIXUP_ACT_PRE_PROBE) {
++	if (action == HDA_FIXUP_ACT_PROBE) {
+ 		struct alc_spec *spec = codec->spec;
+ 		spec->shutup = alc_no_shutup;
+ 	}
+-- 
+2.15.1
+

@@ -1,0 +1,43 @@
+From: Robin Murphy <robin.murphy@arm.com>
+Date: Tue, 7 Jun 2016 18:44:48 +0100
+Subject: drivers: of: Fix of_pci.h header guard
+
+Git-commit: 5c1d3310d84309330264e2a06e5000eb289a44ad
+Patch-mainline: v4.7-rc3
+References: bsc#1065959
+
+The compilation of of_pci.c is governed by CONFIG_OF_PCI, but the
+corresponding declarations in of_pci.h are inconsistently guarded by
+CONFIG_OF, with the result that if CONFIG_PCI is disabled for an OF
+platform, the dangling external declarations are still active and the
+inline stub definitions not. So far this has managed to go unnoticed
+since it happens that the only references to these functions are from
+code which itself depends on CONFIG_PCI or CONFIG_OF_PCI.
+
+Fix this with the appropriate config guard so that any new callers
+outside PCI-specific code don't start unexpectedly breaking under
+certain configs.
+
+Signed-off-by: Robin Murphy <robin.murphy@arm.com>
+Signed-off-by: Rob Herring <robh@kernel.org>
+Signed-off-by: Mian Yousaf Kaukab <yousaf.kaukab@suse.com>
+---
+ include/linux/of_pci.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/include/linux/of_pci.h b/include/linux/of_pci.h
+index f6e9e85164e8..b969e9443962 100644
+--- a/include/linux/of_pci.h
++++ b/include/linux/of_pci.h
+@@ -8,7 +8,7 @@ struct pci_dev;
+ struct of_phandle_args;
+ struct device_node;
+ 
+-#ifdef CONFIG_OF
++#ifdef CONFIG_OF_PCI
+ int of_irq_parse_pci(const struct pci_dev *pdev, struct of_phandle_args *out_irq);
+ struct device_node *of_pci_find_child_device(struct device_node *parent,
+ 					     unsigned int devfn);
+-- 
+2.11.0
+

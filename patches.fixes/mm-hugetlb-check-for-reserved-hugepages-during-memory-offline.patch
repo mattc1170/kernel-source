@@ -35,16 +35,14 @@ Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 Signed-off-by: Linus Torvalds <torvalds@linux-foundation.org>
 Signed-off-by: Mel Gorman <mgorman@suse.de>
 ---
- include/linux/hugetlb.h |  6 +++---
- mm/hugetlb.c            | 30 ++++++++++++++++++++++++------
- mm/memory_hotplug.c     |  4 +++-
+ include/linux/hugetlb.h |    6 +++---
+ mm/hugetlb.c            |   30 ++++++++++++++++++++++++------
+ mm/memory_hotplug.c     |    4 +++-
  3 files changed, 30 insertions(+), 10 deletions(-)
 
-diff --git a/include/linux/hugetlb.h b/include/linux/hugetlb.h
-index a499127b06ae..024c8399ae41 100644
 --- a/include/linux/hugetlb.h
 +++ b/include/linux/hugetlb.h
-@@ -453,8 +453,8 @@ static inline pgoff_t basepage_index(struct page *page)
+@@ -453,8 +453,8 @@ static inline pgoff_t basepage_index(str
  	return __basepage_index(page);
  }
  
@@ -55,7 +53,7 @@ index a499127b06ae..024c8399ae41 100644
  static inline int hugepage_migration_supported(struct hstate *h)
  {
  #ifdef CONFIG_ARCH_ENABLE_HUGEPAGE_MIGRATION
-@@ -521,7 +521,7 @@ static inline pgoff_t basepage_index(struct page *page)
+@@ -522,7 +522,7 @@ static inline pgoff_t basepage_index(str
  {
  	return page->index;
  }
@@ -64,11 +62,9 @@ index a499127b06ae..024c8399ae41 100644
  #define hugepage_migration_supported(h)	0
  
  static inline spinlock_t *huge_pte_lockptr(struct hstate *h,
-diff --git a/mm/hugetlb.c b/mm/hugetlb.c
-index 8a067f31018a..bb44dabb719e 100644
 --- a/mm/hugetlb.c
 +++ b/mm/hugetlb.c
-@@ -1411,22 +1411,32 @@ static int free_pool_huge_page(struct hstate *h, nodemask_t *nodes_allowed,
+@@ -1410,22 +1410,32 @@ static int free_pool_huge_page(struct hs
  
  /*
   * Dissolve a given free hugepage into free buddy pages. This function does
@@ -103,7 +99,7 @@ index 8a067f31018a..bb44dabb719e 100644
  }
  
  /*
-@@ -1434,16 +1444,24 @@ static void dissolve_free_huge_page(struct page *page)
+@@ -1433,16 +1443,24 @@ static void dissolve_free_huge_page(stru
   * make specified memory blocks removable from the system.
   * Note that this will dissolve a free gigantic hugepage completely, if any
   * part of it lies within the given range.
@@ -132,11 +128,9 @@ index 8a067f31018a..bb44dabb719e 100644
  }
  
  /*
-diff --git a/mm/memory_hotplug.c b/mm/memory_hotplug.c
-index 916723aa5a26..f4867ac1b969 100644
 --- a/mm/memory_hotplug.c
 +++ b/mm/memory_hotplug.c
-@@ -1851,7 +1851,9 @@ static int __ref __offline_pages(unsigned long start_pfn,
+@@ -1732,7 +1732,9 @@ repeat:
  	 * dissolve free hugepages in the memory block before doing offlining
  	 * actually in order to make hugetlbfs's object counting consistent.
  	 */
@@ -146,4 +140,4 @@ index 916723aa5a26..f4867ac1b969 100644
 +		goto failed_removal;
  	/* check again */
  	offlined_pages = check_pages_isolated(start_pfn, end_pfn);
- 	if (offlined_pages < 0) {
+ 	if (offlined_pages < 0)

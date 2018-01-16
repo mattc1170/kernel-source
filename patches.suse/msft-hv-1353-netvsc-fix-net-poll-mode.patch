@@ -1,0 +1,50 @@
+From: stephen hemminger <stephen@networkplumber.org>
+Date: Wed, 7 Jun 2017 15:53:48 -0700
+Patch-mainline: v4.12-rc6
+Subject: netvsc: fix net poll mode
+Git-commit: a5ecd43992a7cd9f91d5f98b0082ae44df5e543c
+References: fate#320485
+
+The ndo_poll_controller function needs to schedule NAPI to pick
+up arriving packets and send completions. Otherwise no data
+will ever be received. For simple case of netconsole, it also
+will allow send completions to happen.  Without this netpoll
+will eventually get stuck.
+
+Signed-off-by: Stephen Hemminger <sthemmin@microsoft.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+Acked-by: Olaf Hering <ohering@suse.de>
+---
+ drivers/net/hyperv/netvsc_drv.c | 19 +++++++++++++++----
+ 1 file changed, 15 insertions(+), 4 deletions(-)
+
+diff --git a/drivers/net/hyperv/netvsc_drv.c b/drivers/net/hyperv/netvsc_drv.c
+--- a/drivers/net/hyperv/netvsc_drv.c
++++ b/drivers/net/hyperv/netvsc_drv.c
+@@ -1158,11 +1158,22 @@ netvsc_get_rxnfc(struct net_device *dev, struct ethtool_rxnfc *info,
+ }
+ 
+ #ifdef CONFIG_NET_POLL_CONTROLLER
+-static void netvsc_poll_controller(struct net_device *net)
++static void netvsc_poll_controller(struct net_device *dev)
+ {
+-	/* As netvsc_start_xmit() works synchronous we don't have to
+-	 * trigger anything here.
+-	 */
++	struct net_device_context *ndc = netdev_priv(dev);
++	struct netvsc_device *ndev;
++	int i;
++
++	rcu_read_lock();
++	ndev = rcu_dereference(ndc->nvdev);
++	if (ndev) {
++		for (i = 0; i < ndev->num_chn; i++) {
++			struct netvsc_channel *nvchan = &ndev->chan_table[i];
++
++			napi_schedule(&nvchan->napi);
++		}
++	}
++	rcu_read_unlock();
+ }
+ #endif
+ 
